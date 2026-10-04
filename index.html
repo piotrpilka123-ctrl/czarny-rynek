@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Czarny Rynek</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="statCard">
+    <div class="row"><span id="hCash">💵 0 zł</span><span id="hTime">Dzień 1 • 08:00</span></div>
+    <div class="row small"><span id="hBank">🏦 0 zł</span><span id="hDebt">📉 0 zł</span></div>
+    <div class="row small"><span>🚨 Uwaga policji (tutaj)</span><span id="hHeatTxt">0%</span></div>
+    <div class="bar"><div id="hHeat"></div></div>
+    <div class="row small"><span id="hInv">🔎 Śledztwo 0%</span><span id="hLoc">Ulica</span></div>
+    <div class="row small"><span id="hRep">⭐ Pionek</span><span id="hCarry">🎒 0/20</span></div>
+    <div class="bar xp"><div id="hXp"></div></div>
+  </div>
+  <div id="miniWrap">
+    <canvas id="mini" width="220" height="220"></canvas>
+    <div id="navLine"></div>
+    <div id="musicTag" class="hidden"></div>
+  </div>
+  <div id="objCard"><div class="t" id="objTitle">Cel</div><div id="objText"></div></div>
+  <div id="smsBadge" class="hidden"></div>
+  <div id="crosshair"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="stamWrap"><div id="stam"></div></div>
+  <div id="chaseBanner" class="hidden">🚨 POŚCIG! Zgub policję lub schowaj się w budynku</div>
+  <div id="zoneBanner" class="hidden"></div>
+  <div id="keysHint">[E] interakcja • [Tab] telefon • [N] trasa • [Q] cel • [Shift] sprint • [F] latarka • [Esc] pauza</div>
+</div>
+<div id="toasts"></div>
+
+<!-- DIALOG -->
+<div id="dialog" class="panel hidden">
+  <div id="dlgName"></div>
+  <div id="dlgText"></div>
+  <div id="dlgChoices"></div>
+  <div id="dlgHint">Spacja / Enter — dalej</div>
+</div>
+
+<div id="modal" class="hidden"><div id="modalBox"></div></div>
+
+<div id="phone" class="hidden">
+  <div id="phoneBody">
+    <div id="phoneTabs"></div>
+    <div id="phoneContent"></div>
+  </div>
+</div>
+
+<div id="skill" class="hidden">
+  <div id="skillBox">
+    <h3 id="skillTitle">Precyzja</h3>
+    <p id="skillHelp"></p>
+    <div id="skillBar"><div id="skillZone"></div><div id="skillCur"></div></div>
+    <div id="skillPips"></div>
+    <button id="skillBtn" class="btn big" tabindex="-1">STOP (spacja)</button>
+  </div>
+</div>
+
+<div id="fade"></div>
+<div id="vignette"></div>
+<div id="hurt"></div>
+
+<div id="title" class="screen">
+  <div class="titleBox">
+    <div class="logo">CZARNY<span>RYNEK</span></div>
+    <div class="sub">Dług. Towar. Ulica. Policja. Jeden ruch za dużo.</div>
+    <div class="btns">
+      <button id="btnNew" class="btn big">▶ Nowa gra</button>
+      <button id="btnContinue" class="btn big">⟳ Kontynuuj</button>
+      <button id="btnHelp" class="btn">⌨ Sterowanie</button>
+    </div>
+    <div class="help" id="titleHelp"></div>
+    <div class="disc">Fikcyjna gra. Wszystkie substancje, receptury i postacie są zmyślone. Gra nie zachęca do łamania prawa ani zażywania narkotyków.</div>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="titleBox">
+    <h2>⏸ Pauza</h2>
+    <div class="btns">
+      <button id="btnResume" class="btn big">▶ Wróć do gry</button>
+      <button id="btnPhonePause" class="btn">📱 Telefon</button>
+      <button id="btnSavePause" class="btn">💾 Zapisz</button>
+      <button id="btnMute" class="btn">🔊 Dźwięk: wł.</button>
+      <button id="btnQuit" class="btn">⏏ Menu główne</button>
+    </div>
+    <div class="help" id="helpText"></div>
+  </div>
+</div>
+
+<div id="ending" class="screen hidden"><div class="titleBox"><h2 id="endTitle"></h2><p id="endText"></p><div id="endStats"></div><div class="btns"><button id="btnEndMenu" class="btn big">Menu główne</button></div></div></div>
+
+<div id="clickToPlay" class="hidden">Kliknij, aby wrócić do gry</div>
+
+<script>window.__errs=[];window.addEventListener("error",function(e){__errs.push(e.message+" @"+(e.filename||"").split("/").pop()+":"+e.lineno);});window.addEventListener("unhandledrejection",function(e){__errs.push("promise: "+(e.reason&&e.reason.message||e.reason));});</script>
+<script src="three.min.js"></script>
+<script src="lib/CopyShader.js"></script>
+<script src="lib/LuminosityHighPassShader.js"></script>
+<script src="lib/EffectComposer.js"></script>
+<script src="lib/RenderPass.js"></script>
+<script src="lib/ShaderPass.js"></script>
+<script src="lib/MaskPass.js"></script>
+<script src="lib/UnrealBloomPass.js"></script>
+<script src="lib/FXAAShader.js"></script>
+<script src="js/data.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/gfx.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/models.js"></script>
+<script src="js/world.js"></script>
+<script src="js/interiors.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/npc.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+<script src="js/story.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

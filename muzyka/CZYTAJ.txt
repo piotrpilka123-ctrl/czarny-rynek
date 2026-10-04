@@ -1,0 +1,6 @@
+Wrzuć tutaj własne pliki z muzyką (MP3, M4A, OGG, WAV).
+Gra odtwarza je w klubie Neon i w jego pobliżu (im bliżej, tym głośniej;
+na ulicy dźwięk jest przytłumiony, w środku pełny).
+
+Uruchom grę przez Uruchom.command — lista plików jest wczytywana przy starcie.
+Jeśli folder jest pusty, w klubie gra wbudowany, syntezowany bit klubowy.
