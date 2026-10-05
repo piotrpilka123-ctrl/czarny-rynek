@@ -60,6 +60,11 @@ const UPGRADES := [
 	{"id": "waga", "name": "Waga jubilerska", "price": 650, "lvl": 2, "desc": "Dużo mniej strat przy porcjowaniu, a spokojna robota jest całkiem bezstratna."},
 	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 150 miejsc zamiast 60."},
 ]
+## stroje gracza (sklep z ubraniami). speed = mnożnik prędkości, vis = jak bardzo rzucasz się w oczy patrolom,
+## noise = słyszalność kroków, attention = jak szybko policja nabiera podejrzeń, gdy już Cię widzi.
+const OUTFITS := {
+	"dres": {"name": "Stary dres", "model": "m10", "price": 0, "lvl": 1, "desc": "To, w czym uciekłeś. Nikt nie patrzy dwa razy."},
+}
 ## czym rozrabia się dany towar
 const FILLER := {"dym": "majeranek", "szron": "cukier", "krysztal": "cukier", "snieg": "cukier"}
 const FILLER_NAMES := {"majeranek": "Majeranek", "cukier": "Cukier puder"}

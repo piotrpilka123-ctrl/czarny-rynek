@@ -42,9 +42,9 @@ func _ready() -> void:
 ## akcja -> klawisz (kod fizyczny); zmieniane w Opcjach i zapisywane w ustawieniach
 const KEY_DEFAULTS := {"fwd": KEY_W, "back": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "crouch": KEY_C,
 	"use": KEY_E, "phone": KEY_TAB, "inv": KEY_I, "map": KEY_M, "flash": KEY_F, "nav": KEY_N, "track": KEY_Q,
-	"build": KEY_B, "rotate": KEY_R, "ditch": KEY_X}
+	"build": KEY_B, "rotate": KEY_R, "ditch": KEY_X, "throw": KEY_G}
 const KEY_ACTIONS := [["fwd", "Do przodu"], ["back", "Do tyłu"], ["left", "W lewo"], ["right", "W prawo"], ["sprint", "Bieg"], ["crouch", "Kucanie"],
-	["use", "Użyj / rozmawiaj"], ["phone", "Telefon"], ["inv", "Ekwipunek"], ["map", "Mapa"], ["flash", "Latarka"], ["nav", "Trasa do celu"],
+	["use", "Użyj / rozmawiaj"], ["phone", "Telefon"], ["inv", "Ekwipunek"], ["map", "Mapa"], ["flash", "Latarka"], ["throw", "Rzut kamykiem (odciąga patrol)"], ["nav", "Trasa do celu"],
 	["track", "Następny cel"], ["ditch", "Wyrzuć towar (przytrzymaj)"], ["build", "Meblowanie kryjówki"], ["rotate", "Obrót mebla"]]
 var keys := KEY_DEFAULTS.duplicate()
 
@@ -199,6 +199,12 @@ func add_minutes(m: float) -> void:
 			on_hour()
 		if int(prev / 1440.0) != int(S.t / 1440.0):
 			on_day()
+
+
+## cecha aktualnego stroju (sklep z ubraniami): "speed", "vis", "noise", "attention", "stamina"
+func outfit_stat(key: String, def := 1.0) -> float:
+	var o: Dictionary = D.OUTFITS.get(String(S.get("outfit", "dres")), {})
+	return float(o.get(key, def))
 
 
 # ================================================================ towar i ekwipunek

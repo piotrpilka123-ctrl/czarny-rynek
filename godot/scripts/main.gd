@@ -46,6 +46,9 @@ var args := {}
 var cine: Camera3D = null
 var prof := [0, 0, 0, 0]
 var ditch_hold := 0.0
+var stones: Array = []          # lecące kamyki: {node, p, v, seen}
+var throw_cd := 0.0
+var hide_at := {}               # kryjówka, w której siedzi gracz
 var way := {}                 # znacznik celu na ekranie: {pos, color, dist}
 var build := {}               # tryb ustawiania mebla: {fid, room, r, ghost, mark, valid, x, z}
 
@@ -760,6 +763,9 @@ func _find_interact() -> Variant:
 
 
 func interact() -> void:
+	if player.hidden:
+		hide_leave()
+		return
 	cur_inter = _find_interact()
 	if cur_inter == null:
 		return
@@ -768,6 +774,111 @@ func interact() -> void:
 		hold_t = 0.0
 		return
 	cur_inter.act.call()
+
+
+# ================================================================ skradanie: kryjówki i odciąganie patroli
+## Chowa gracza w altance. Patrol, który to widział, wie, gdzie szukać.
+func hide_enter(h: Dictionary) -> void:
+	if player.hidden or G.busy:
+		return
+	var seen := false
+	for c in npcs.cops:
+		if c.sees or float(c.get("lvl", 0.0)) > 0.0:
+			c.know = true
+			c.inv = Vector2(float(h.x), float(h.z))
+			seen = true
+	hide_at = h
+	player.global_position = Vector3(float(h.x), world.height(float(h.x), float(h.z)), float(h.z))
+	player.yaw = float(h.rot) + PI
+	player.pitch = -0.05
+	player.set_crouch(true)
+	player.crouching = true
+	player.hidden = true
+	player.velocity = Vector3.ZERO
+	if player.flash.light_energy > 0.0:
+		player.flash.light_energy = 0.0
+	Sfx.play("pickup")
+	if seen:
+		G.notify("Widzieli, gdzie się chowasz!", "bad")
+	elif G.S.wanted:
+		G.notify("Schowany. Siedź cicho, aż odpuszczą.", "good")
+
+
+func hide_leave(_forced := false) -> void:
+	if not player.hidden:
+		return
+	player.hidden = false
+	var h := hide_at
+	hide_at = {}
+	if not h.is_empty():
+		player.global_position = Vector3(float(h.ox), world.height(float(h.ox), float(h.oz)), float(h.oz))
+	player.crouching = true
+	player.set_crouch(false)
+	for c in npcs.cops:
+		c.know = false
+
+
+## Rzut kamykiem: tam, gdzie spadnie, robi się hałas i spokojne patrole idą to sprawdzić.
+## Patrol, który akurat na Ciebie patrzy, nie da się nabrać.
+func throw_stone() -> void:
+	if throw_cd > 0.0 or player.loc != "out" or player.hidden or G.busy:
+		return
+	throw_cd = 2.2
+	var cam: Camera3D = player.cam
+	var dir := -cam.global_transform.basis.z
+	var node := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.045
+	sm.height = 0.075
+	sm.radial_segments = 8
+	sm.rings = 4
+	node.mesh = sm
+	node.material_override = Models.mat("6b6862", 0.95)
+	add_child(node)
+	var p0 := cam.global_position + dir * 0.5 + Vector3(0, -0.2, 0)
+	node.global_position = p0
+	var seen := false
+	for c in npcs.cops:
+		if float(c.get("lvl", 0.0)) > 0.0:
+			seen = true
+			if npcs.susp_mult > 0.0:
+				c.susp += 0.25
+	stones.append({"node": node, "p": p0, "v": dir * 13.5 + Vector3(0, 3.2, 0), "seen": seen, "t": 0.0})
+	Sfx.play("pickup", -6.0)
+	G.S.stats["thrown"] = int(G.S.stats.get("thrown", 0)) + 1
+
+
+func _stones_tick(dt: float) -> void:
+	throw_cd = maxf(0.0, throw_cd - dt)
+	for st in stones.duplicate():
+		st.t = float(st.t) + dt
+		if st.has("rest"):
+			if float(st.t) > 25.0:
+				st.node.queue_free()
+				stones.erase(st)
+			continue
+		var p: Vector3 = st.p
+		var v: Vector3 = st.v
+		v.y -= 16.0 * dt
+		var np := p + v * dt
+		# mury i auta zatrzymują kamyk
+		if np.y < 3.0 and not world.los(p.x, p.z, np.x, np.z, np.y < 1.0):
+			v.x *= -0.25
+			v.z *= -0.25
+			np = p + Vector3(v.x, v.y, v.z) * dt
+		var gy: float = world.height(np.x, np.z)
+		if np.y <= gy + 0.04 or float(st.t) > 4.0:
+			np.y = gy + 0.04
+			st["rest"] = true
+			st.t = 0.0
+			Sfx.play("drop", -2.0)
+			if not st.seen:
+				var n: int = npcs.noise_at(np.x, np.z, 13.0)
+				if n > 0:
+					G.S.stats["lured"] = int(G.S.stats.get("lured", 0)) + n
+		st.p = np
+		st.v = v
+		st.node.global_position = np
 
 
 func toggle_flash() -> void:
@@ -1108,6 +1219,7 @@ func _tick(dt: float) -> void:
 		_wanted_tick(dt)
 	else:
 		S.heat = maxf(0.0, S.heat - dt * (0.25 if player.loc != "out" else 0.1))
+	_stones_tick(dt)
 	slow_t -= dt
 	if slow_t <= 0.0:
 		slow_t = 0.25
@@ -1126,6 +1238,13 @@ func _tick(dt: float) -> void:
 		hold_inter = null
 		aim_hints.clear()
 		ui.set_aim(false)
+		return
+	if player.hidden:
+		cur_inter = null
+		hold_inter = null
+		aim_hints.clear()
+		ui.set_aim(false)
+		ui.set_prompt("[%s] Wyjdź z kryjówki" % G.kn("use"))
 		return
 	cur_inter = _find_interact()
 	ui.set_aim(cur_inter != null)
@@ -1157,15 +1276,24 @@ func _wanted_tick(dt: float) -> void:
 		ditch_hold = 0.0
 	var chasing := false
 	var seen := false
+	var hunting := false
+	var known := false
 	for c in npcs.cops:
 		if c.state == "chase":
 			chasing = true
 			if c.sees:
 				seen = true
+			if c.know:
+				known = true
+		elif c.state == "search" and c.hunt:
+			hunting = true
 	if player.loc != "out":
 		G.wanted_grace += dt * 1.5
+	elif player.hidden and not known:
+		G.wanted_grace += dt * 0.9
 	elif not chasing:
-		G.wanted_grace += dt
+		# patrole przeczesują okolicę: jeszcze nie odpuścili
+		G.wanted_grace += dt * (0.45 if hunting else 1.0)
 	elif not seen:
 		G.wanted_grace += dt * 0.25
 	else:
@@ -1380,6 +1508,26 @@ func _apply_test_args() -> void:
 			wr.root.rotation.y = atan2(pp0.x - p3.x, pp0.z - p3.y) + 0.5
 			Chars.animate(wr, 0.0, 1.2, "")
 			wr.anim.seek(0.35 + i * 0.07, true)
+	if args.has("cop"):
+		# patrol przed graczem (--cop=odległość, --copturn=obrót względem „twarzą do gracza”) — do oglądania latarki i łuków
+		while npcs.cops.is_empty():
+			npcs.spawn_cop(false)
+		var tc: Dictionary = npcs.cops[0]
+		var fw2: Vector2 = player.forward()
+		var side := Vector2(-fw2.y, fw2.x) * float(args.get("copside", "0"))
+		tc.x = player.global_position.x + fw2.x * float(args.cop) + side.x
+		tc.z = player.global_position.z + fw2.y * float(args.cop) + side.y
+		tc.idle = 9999.0
+		tc.state = "patrol"
+		tc.node.rotation.y = atan2(-fw2.x, -fw2.y) + float(args.get("copturn", "0"))
+		if args.has("mult"):
+			G.add_pack(G.S.inv, "dym", 80, 5)
+			G.S.heat = 90.0
+	if args.has("hide"):
+		var hh: Dictionary = world.hides[int(args.hide) % world.hides.size()]
+		var hf := Vector2(sin(float(hh.rot) + PI), cos(float(hh.rot) + PI))
+		teleport("out", Vector3(float(hh.ox) + hf.x * 5.0 + 2.0, 0.0, float(hh.oz) + hf.y * 5.0), atan2(hf.x, hf.y) + 0.3)
+		print("HIDES ", world.hides.size(), " ", hh)
 	if args.has("cars"):
 		# rząd aut każdego rodzaju przed graczem (do oglądania modeli)
 		var pp0 := player.global_position

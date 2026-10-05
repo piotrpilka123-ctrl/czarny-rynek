@@ -22,6 +22,7 @@ var stasiu := {}
 var car := {}
 var dog := {}
 var max_susp := 0.0          # najwyższe podejrzenie wśród widzących gracza (do HUD-u)
+var aware: Array = []        # patrole, które właśnie zauważają gracza: {x, z, n, s, chase} (łuki na HUD-zie)
 
 
 func build() -> void:
@@ -165,7 +166,26 @@ func spawn_cop(at_station: bool) -> Dictionary:
 		"kind": "cop", "loc": "out", "rig": rig, "node": rig.root, "x": w.x, "z": w.z, "wi": ni, "pi": -1, "tx": w.x, "tz": w.z,
 		"rot": 0.0, "speed": 1.35, "state": "patrol", "side": 1.0, "susp": 0.0, "look_t": randf() * 0.2, "sees": false, "last_seen": 0.0, "idle": 0.0,
 		"inv": null, "search_t": 0.0, "alert": alert, "post": false,
+		"notice": 0.0, "lvl": 0.0, "hear_t": 0.0, "hear_rot": 0.0, "sp_wait": 0.0, "search_pts": [], "hunt": false, "lure": false, "know": false,
 	}
+	# latarka: nocą widać, gdzie patrol patrzy — i w jej snopie ciemność nie chroni
+	var torch := SpotLight3D.new()
+	torch.position = Vector3(0.18, 1.32, 0.28)
+	torch.rotation = Vector3(0.2, PI, 0.0)
+	torch.spot_range = TORCH_RANGE + 3.0
+	torch.spot_angle = rad_to_deg(TORCH_ANG)
+	torch.spot_angle_attenuation = 0.6
+	torch.spot_attenuation = 0.8
+	torch.light_color = Color(0.92, 0.96, 1.0)
+	torch.light_energy = 6.0
+	torch.light_volumetric_fog_energy = 2.5
+	torch.shadow_enabled = false
+	torch.distance_fade_enabled = true
+	torch.distance_fade_begin = 60.0
+	torch.distance_fade_length = 15.0
+	torch.visible = false
+	rig.root.add_child(torch)
+	c["torch"] = torch
 	_pick_next(c, false)
 	cops.append(c)
 	all.append(c)
@@ -283,7 +303,7 @@ func _update_car(dt: float, pp: Vector3, outside: bool) -> void:
 	car.look_t = float(car.look_t) - dt
 	if float(car.look_t) <= 0.0:
 		car.look_t = 0.25
-		car.sees = can_see(car.x, car.z, float(car.rot), 30.0 - G.night * 6.0)
+		car.sees = see_level(car.x, car.z, float(car.rot), 30.0, true) > 0.0
 	if car.alarm:
 		car.light.visible = fmod(G.now * 5.0, 1.0) < 0.5
 		if not G.S.wanted:
@@ -545,25 +565,89 @@ static func sight(ang: float) -> float:
 	return lerpf(1.0, 0.3, (ang - SIGHT_FULL) / (SIGHT_SIDE - SIGHT_FULL))
 
 
-## Czy patrzący z punktu (x, z) w kierunku `rot` widzi gracza. Jedyna droga, którą policja „widzi”:
-## liczy się kierunek patrzenia, odległość, zasłony po drodze i to, czy gracz kuca.
-func can_see(x: float, z: float, rot: float, view_range: float) -> bool:
+const VIEW := 27.0          # zasięg wzroku patrolu: dzień, na wprost, gracz stoi
+const TORCH_ANG := 0.36     # połowa kąta snopu latarki patrolu
+const TORCH_RANGE := 15.0
+
+## Jak wyraźnie patrzący z punktu (x, z) w kierunku `rot` widzi gracza: 0 = wcale, 1 = z bliska na wprost.
+## Jedyna droga, którą policja „widzi”. Liczy się kierunek patrzenia, odległość, zasłony po drodze
+## i WIDOCZNOŚĆ gracza (postawa, ruch, ciemność, światło latarni, krzaki, strój — patrz player.visibility()).
+## `torch`: patrzący świeci latarką — nocą w snopie światła ciemność nie pomaga.
+func see_level(x: float, z: float, rot: float, view_range: float, torch := false) -> float:
 	var P = G.player
+	if P.hidden:
+		return 0.0
 	var pp: Vector3 = P.global_position
 	var dx := pp.x - x
 	var dz := pp.z - z
 	var dist := sqrt(dx * dx + dz * dz)
 	var crouch: bool = P.crouching
-	var r := view_range * sight(absf(_ang_diff(atan2(dx, dz), rot))) * (0.62 if crouch else 1.0)
-	return dist < r and G.world.los(x, z, pp.x, pp.z, crouch)
+	var ang := absf(_ang_diff(atan2(dx, dz), rot))
+	var vis: float = P.visibility()
+	if torch and G.night > 0.35 and ang < TORCH_ANG and dist < TORCH_RANGE:
+		vis = maxf(vis, 0.7 if crouch else 1.0)
+	var r := view_range * sight(ang) * vis
+	if dist >= r or not G.world.los(x, z, pp.x, pp.z, crouch):
+		return 0.0
+	return clampf(1.0 - dist / r, 0.04, 1.0)
+
+
+func can_see(x: float, z: float, rot: float, view_range: float) -> bool:
+	return see_level(x, z, rot, view_range) > 0.0
 
 
 ## czy któryś patrol akurat patrzy na gracza z odległości do `r` metrów
 func watcher(r: float) -> Variant:
 	for c in cops:
-		if can_see(c.x, c.z, c.node.rotation.y, r):
+		if see_level(c.x, c.z, c.node.rotation.y, r, true) > 0.0:
 			return c
 	return null
+
+
+## Hałas w świecie (rzucony kamień, trzask): patrole w zasięgu idą sprawdzić, co to było.
+## Zwraca liczbę patroli, które dały się odciągnąć.
+func noise_at(x: float, z: float, r: float) -> int:
+	var n := 0
+	for c in cops:
+		if c.state != "patrol" and c.state != "post" and c.state != "search":
+			continue
+		if Vector2(c.x - x, c.z - z).length() > r:
+			continue
+		c.state = "investigate"
+		c.inv = Vector2(x, z)
+		c.lure = true
+		c.back = Vector2(c.x, c.z)
+		c.alert.visible = true
+		c.alert.modulate = Color(1.0, 0.8, 0.2)
+		n += 1
+	return n
+
+
+## zaczyna przeszukiwanie okolicy punktu `c.inv`: rozgląda się, potem sprawdza 2–3 miejsca w pobliżu
+func _begin_search(c: Dictionary, secs: float, hunt := false) -> void:
+	c.state = "search"
+	c.search_t = secs
+	c.sp_wait = 1.6
+	c.hunt = hunt
+	var pts: Array = []
+	var o: Vector2 = c.inv if c.inv != null else Vector2(c.x, c.z)
+	var a0 := randf() * TAU
+	for k in range(3 if hunt else 1):
+		var a := a0 + k * TAU / 3.0 + randf_range(-0.4, 0.4)
+		var q: Vector2 = G.world.near_free(o.x + cos(a) * randf_range(5.0, 9.0), o.y + sin(a) * randf_range(5.0, 9.0))
+		if q.distance_to(o) < 14.0:
+			pts.append(q)
+	c.search_pts = pts
+
+
+func _end_search(c: Dictionary) -> void:
+	c.state = "post" if c.post else "patrol"
+	c.susp = 0.0
+	c.hunt = false
+	c.lure = false
+	c.alert.visible = false
+	if not c.post:
+		_snap_to_node(c)
 
 
 func nearest_interact(px: float, pz: float, fwd: Vector2, loc: String) -> Variant:
@@ -607,6 +691,7 @@ func dispatch_to(x: float, z: float, count: int) -> void:
 	for i in range(mini(count, avail.size())):
 		avail[i].state = "investigate"
 		avail[i].inv = Vector2(x, z)
+		avail[i].lure = false
 		avail[i].alert.visible = true
 
 
@@ -617,12 +702,17 @@ func start_chase(c: Dictionary) -> void:
 	c.state = "chase"
 	c.alert.visible = true
 	c.last_seen = G.now
+	c.notice = 1.0
+	c.lure = false
+	c.know = false
 	c.inv = Vector2(pp.x, pp.z)
 	G.on_chase_start()
 	for o in cops:
 		if o != c and o.state != "chase" and not o.post and Vector2(o.x - c.x, o.z - c.z).length() < 55.0:
 			o.state = "chase"
 			o.last_seen = G.now
+			o.lure = false
+			o.know = false
 			o.alert.visible = true
 			o.inv = Vector2(pp.x, pp.z)
 
@@ -642,6 +732,10 @@ func end_chase() -> void:
 		if c.state != "patrol" and c.state != "post":
 			c.state = "post" if c.post else "patrol"
 			c.susp = 0.0
+			c.notice = 0.0
+			c.hunt = false
+			c.lure = false
+			c.know = false
 			c.alert.visible = false
 			c.inv = null
 			if not c.post:
@@ -658,7 +752,7 @@ func any_chase() -> bool:
 func citizens_near(x: float, z: float, r: float) -> int:
 	var n := 0
 	for c in citizens:
-		if c.active and c.state != "talk" and Vector2(c.x - x, c.z - z).length() < r and G.world.los(c.x, c.z, x, z):
+		if c.active and c.state != "talk" and Vector2(c.x - x, c.z - z).length() < r * clampf(float(G.player.vis_now), 0.35, 1.0) and G.world.los(c.x, c.z, x, z):
 			n += 1
 	return n
 
@@ -815,7 +909,10 @@ func update(dt: float) -> void:
 
 func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 	var mult := susp_mult
-	var view_range: float = 27.0 - G.night * 6.0 - G.rain * 5.0
+	var torch_on: bool = G.night > 0.35
+	var P = G.player
+	var noise_r: float = P.noise() if outside else 0.0
+	aware.clear()
 	for c in cops.duplicate():
 		c.node.visible = outside
 		if not outside:
@@ -823,15 +920,34 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		var dx: float = pp.x - c.x
 		var dz: float = pp.z - c.z
 		var dist := sqrt(dx * dx + dz * dz)
+		c.torch.visible = torch_on and dist < 75.0
 		c.look_t -= dt
 		if c.look_t <= 0.0:
 			c.look_t = 0.2
 			# w pościgu patrzy uważniej (dalej), ale dalej tylko przed siebie
-			c.sees = can_see(c.x, c.z, c.node.rotation.y, view_range * (1.4 if c.state == "chase" else 1.0))
-			# z bliska słyszy bieg za plecami: nie „widzi”, tylko odwraca się sprawdzić
-			if not c.sees and dist < 4.5 and G.player.sprinting and (c.state == "patrol" or c.state == "post"):
-				c.hear_t = 1.8
-				c.hear_rot = atan2(dx, dz)
+			var lvl := see_level(c.x, c.z, c.node.rotation.y, VIEW * (1.4 if c.state == "chase" else 1.0), torch_on)
+			c.lvl = lvl
+			if c.state == "chase":
+				c.notice = 1.0 if lvl > 0.0 else maxf(0.0, float(c.notice) - 0.1)
+				c.sees = lvl > 0.0
+			else:
+				# zauważanie trwa: kątem oka i z daleka ponad sekundę, z bliska ułamek sekundy
+				if lvl > 0.0:
+					c.notice = minf(1.0, float(c.notice) + 0.2 * (0.55 + lvl * 3.2) * (1.6 if G.S.wanted else 1.0))
+				else:
+					c.notice = maxf(0.0, float(c.notice) - 0.2 * 0.4)
+				c.sees = lvl > 0.0 and float(c.notice) >= 1.0
+				var calm: bool = c.state == "patrol" or c.state == "post"
+				# coś mignęło na skraju pola widzenia: odwraca się w tę stronę
+				if calm and lvl > 0.0 and float(c.notice) > 0.3 and (mult > 0.0 or G.S.wanted):
+					c.hear_t = maxf(float(c.hear_t), 0.7)
+					c.hear_rot = atan2(dx, dz)
+				# słuch: kroki za plecami (bieg słychać z daleka, skradania wcale)
+				if calm and lvl <= 0.0 and noise_r > 0.0 and dist < noise_r:
+					c.hear_t = 1.8
+					c.hear_rot = atan2(dx, dz)
+		if (mult > 0.0 or G.S.wanted) and (float(c.notice) > 0.02 or c.susp > 0.02 or c.state == "chase"):
+			aware.append({"x": c.x, "z": c.z, "n": float(c.notice), "s": clampf(c.susp, 0.0, 1.0), "chase": c.state == "chase"})
 		var move_speed := 0.0
 		var has_tgt := false
 		var tgt := Vector2.ZERO
@@ -839,7 +955,7 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		match c.state:
 			"patrol", "post":
 				if c.sees and mult > 0.0:
-					c.susp += mult * dt * (1.6 if dist < 10.0 else 0.8) * 0.65
+					c.susp += mult * dt * (1.6 if dist < 10.0 else 0.8) * 0.65 * G.outfit_stat("attention", 1.0)
 				else:
 					c.susp = maxf(0.0, c.susp - dt * 0.3)
 				if c.sees:
@@ -849,7 +965,7 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 					c.alert.modulate = Color(1.0, 0.8, 0.2)
 				if c.susp >= 1.0:
 					start_chase(c)
-				if float(c.get("hear_t", 0.0)) > 0.0:
+				if float(c.hear_t) > 0.0:
 					c.hear_t = float(c.hear_t) - dt
 					c.node.rotation.y += _ang_diff(float(c.hear_rot), c.node.rotation.y) * minf(1.0, dt * 4.0)
 				elif c.state == "post":
@@ -874,27 +990,37 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 					max_susp = maxf(max_susp, c.susp)
 				if c.susp >= 1.0:
 					start_chase(c)
-				elif Vector2(c.inv.x - c.x, c.inv.y - c.z).length() < 3.0:
-					c.state = "search"
-					c.search_t = 14.0
+				elif Vector2(c.inv.x - c.x, c.inv.y - c.z).length() < 2.2:
+					_begin_search(c, 7.0 if c.lure else 14.0)
 				else:
-					move_speed = 3.6
+					move_speed = 2.2 if c.lure else 3.6
 					tgt = c.inv
 					has_tgt = true
 			"search":
 				c.search_t -= dt
-				c.node.rotation.y += dt * 1.5
-				if c.sees and mult > 0.0:
-					c.susp += mult * dt
+				if c.sees and (mult > 0.0 or G.S.wanted):
+					c.susp += maxf(mult, 1.0) * dt
 					max_susp = maxf(max_susp, c.susp)
 					if c.susp >= 1.0:
 						start_chase(c)
-				if c.search_t <= 0.0 and c.state == "search":
-					c.state = "post" if c.post else "patrol"
-					c.susp = 0.0
-					c.alert.visible = false
-					if not c.post:
-						_snap_to_node(c)
+				if c.state == "search":
+					if c.search_t <= 0.0:
+						_end_search(c)
+					elif float(c.sp_wait) > 0.0:
+						# stoi i omiata okolicę wzrokiem (i latarką)
+						c.sp_wait = float(c.sp_wait) - dt
+						c.node.rotation.y += sin(G.now * 1.9 + c.x) * dt * 2.4
+					elif c.search_pts.is_empty():
+						c.sp_wait = 2.0
+					else:
+						var sp0: Vector2 = c.search_pts[0]
+						if sp0.distance_to(Vector2(c.x, c.z)) < 0.9:
+							c.search_pts.remove_at(0)
+							c.sp_wait = 2.4
+						else:
+							move_speed = 2.5
+							tgt = sp0
+							has_tgt = true
 			"chase":
 				max_susp = 1.0
 				c.alert.visible = true
@@ -904,9 +1030,14 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 					c.inv = Vector2(pp.x, pp.z)
 				if c.inv == null:
 					c.inv = Vector2(pp.x, pp.z)
-				if G.now - float(c.last_seen) > 7.5:
-					c.state = "search"
-					c.search_t = 7.0
+				var at_last: bool = not c.sees and Vector2(c.inv.x - c.x, c.inv.y - c.z).length() < 1.6
+				if P.hidden and c.know and dist < 2.4:
+					# widział, gdzie się schowałeś: wyciąga Cię z kryjówki
+					G.main.hide_leave(true)
+					G.arrest(c)
+				elif G.now - float(c.last_seen) > 7.5 or (at_last and G.now - float(c.last_seen) > 1.2):
+					# zgubił trop: przeczesuje okolicę ostatniego miejsca, w którym Cię widział
+					_begin_search(c, 15.0, true)
 				else:
 					var goal: Vector2 = Vector2(pp.x, pp.z) if c.sees else c.inv
 					if (goal - Vector2(c.x, c.z)).length() > 0.5:
@@ -918,7 +1049,7 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		if has_tgt:
 			var to := tgt - Vector2(c.x, c.z)
 			var face := atan2(to.x, to.y)
-			if c.state == "chase" or c.state == "investigate":
+			if c.state == "chase" or c.state == "investigate" or c.state == "search":
 				# biegnie trasą omijającą płoty, mury i auta; pod górę wolniej — tak jak gracz
 				var here := Vector2(c.x, c.z)
 				var path: PackedVector2Array = c.get("path", PackedVector2Array())

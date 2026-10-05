@@ -395,6 +395,9 @@ func run() -> void:
 	var NS = G.npcs.get_script()
 	ok(NS.sight(0.0) == 1.0 and NS.sight(1.2) > 0.0 and NS.sight(1.2) < 1.0 and NS.sight(2.4) == 0.0, "pole widzenia policji: przód tak, boki słabiej, tył wcale")
 
+	# --- skradanie: widoczność, wzrok i słuch patroli, odciąganie, przeczesywanie, kryjówki
+	await load("res://scripts/stealth_test.gd").run(self)
+
 	# --- doświadczony klient rozpoznaje mieszankę
 	var rejected := 0
 	for i in range(40):

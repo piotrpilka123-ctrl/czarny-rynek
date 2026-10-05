@@ -33,6 +33,9 @@ var inter: Array = []          # stałe punkty interakcji: {loc,x,z,range,label,
 var inter_dyn := {}            # meble w kryjówkach: pokój -> Array
 var zones: Array = []
 var lamps: Array = []
+var covers: Array = []          # krzaki, za którymi da się przyczaić: Vector3(x, z, promień) w metrach świata
+var hides: Array = []           # kryjówki na czas pościgu (altanki śmietnikowe): {x, z, rot, name}
+var _lamp_pts: PackedVector3Array = PackedVector3Array()
 var lamp_mat: StandardMaterial3D
 var sirens: Array = []
 var rooms := {}
@@ -542,6 +545,7 @@ func build(loader = null) -> void:
 	_lamps()
 	_backdrop()
 	_curb_lines()
+	_hide_spots()
 	_build_grid()
 	if loader != null:
 		await loader.step(66.0, "Furnishing the hideouts")
@@ -820,6 +824,79 @@ func _place(n: Node3D, x: float, z: float, ry := 0.0, solid_x := 0.0, solid_z :=
 	return n
 
 
+## czy prostokąt (współrzędne projektu) jest wolny: żadnych brył, budynków ani ścieżek
+func _area_free(x: float, z: float, hx: float, hz: float, path_keep := 2.6) -> bool:
+	for b in blocks:
+		if x + hx > float(b.x0) * INV and x - hx < float(b.x1) * INV and z + hz > float(b.z0) * INV and z - hz < float(b.z1) * INV:
+			return false
+	for b in blds:
+		if x + hx > float(b.x0) - 0.6 and x - hx < float(b.x1) + 0.6 and z + hz > float(b.z0) - 0.6 and z - hz < float(b.z1) + 0.6:
+			return false
+	for dx in [-hx, 0.0, hx]:
+		for dz in [-hz, 0.0, hz]:
+			if not wp.is_empty() and _path_dist(x + dx, z + dz) < path_keep:
+				return false
+			var px := clampi(int((x + dx - X0) * 2.0), 0, MAP_W - 1)
+			var pz := clampi(int((z + dz - Z0) * 2.0), 0, MAP_H - 1)
+			if img2.get_pixel(px, pz).r > 0.25:
+				return false
+	return absf(hd(x - hx, z) - hd(x + hx, z)) < 0.5 and absf(hd(x, z - hz) - hd(x, z + hz)) < 0.5
+
+
+## Altanka śmietnikowa = kryjówka na czas pościgu. Gdy `search`, szuka wolnego miejsca w pobliżu
+## (żeby nie stanęła na ścieżce, w budynku ani na torach); jak go nie ma, nie stawia nic.
+func _hide_shed(x: float, z: float, ry: float, search := true) -> bool:
+	var hx := 2.9 * INV if absf(sin(ry)) < 0.5 else 2.0 * INV
+	var hz := 2.0 * INV if absf(sin(ry)) < 0.5 else 2.9 * INV
+	if search:
+		var found := false
+		for rad in [0.0, 3.0, 6.0, 9.0, 12.0]:
+			for k in range(8 if rad > 0.0 else 1):
+				var nx: float = x + cos(k * PI / 4.0) * rad
+				var nz: float = z + sin(k * PI / 4.0) * rad
+				if _area_free(nx, nz, hx + 1.0, hz + 2.2):
+					x = nx
+					z = nz
+					found = true
+					break
+			if found:
+				break
+		if not found:
+			return false
+	if absf(sin(ry)) < 0.5:
+		_place(Props.trash_shed(), x, z, ry, 2.6, 1.7, 2.0)
+	else:
+		_place(Props.trash_shed(), x, z, ry, 1.7, 2.6, 2.0)
+	# wejście od otwartej strony; w środku kucasz między kontenerami
+	var f := Vector2(sin(ry), cos(ry))
+	var front := Vector2(x, z) + f * 2.6 * INV
+	var inside := Vector2(x, z) + f * 0.75 * INV
+	var h := {"x": inside.x * SC, "z": inside.y * SC, "ox": front.x * SC, "oz": front.y * SC, "rot": ry + PI, "name": "altanka śmietnikowa"}
+	hides.append(h)
+	inter.append({"loc": "out", "x": front.x * SC, "z": front.y * SC, "ax": (x + f.x * 1.4 * INV) * SC, "az": (z + f.y * 1.4 * INV) * SC, "y0": 0.2, "y1": 1.7, "r": 1.5, "reach": 3.4, "id": "hide",
+		"label": func(): return "[E] Schowaj się między kontenerami", "act": func(): G.main.hide_enter(h)})
+	return true
+
+
+## dodatkowe altanki rozsiane po osiedlu — w każdej da się przeczekać pościg
+func _hide_spots() -> void:
+	for e in [[-84.0, 57.0, PI], [-128.0, -42.0, PI / 2.0], [104.0, 88.0, PI], [100.0, -58.0, 0.0], [-26.0, 96.0, -PI / 2.0], [36.0, 52.0, PI], [-150.0, 44.0, 0.0], [150.0, -8.0, -PI / 2.0], [-20.0, -52.0, 0.0], [-112.0, 98.0, 0.0]]:
+		if not _hide_shed(e[0], e[1], e[2]):
+			continue
+		var hd0: Dictionary = hides[hides.size() - 1]
+		var cx: float = (float(hd0.x) - sin(float(e[2])) * 0.75) * INV
+		var cz: float = (float(hd0.z) - cos(float(e[2])) * 0.75) * INV
+		_prop("trashbag", cx + 3.4 * INV * cos(float(e[2])), cz - 3.4 * INV * sin(float(e[2])), rng.randf() * TAU, 0.5, 0.0, false)
+
+
+## wolny punkt (w metrach świata) w pobliżu podanego — do przeszukiwania okolicy przez patrol
+func near_free(x: float, z: float) -> Vector2:
+	if grid == null:
+		return Vector2(x, z)
+	var c := _free_cell(_cell(x, z))
+	return Vector2(X0 * SC + (c.x + 0.5) * GCELL, Z0 * SC + (c.y + 0.5) * GCELL)
+
+
 ## Zaparkowane auta: parking pod blokami, wzdłuż krawężników Hutniczej i Robotniczej, pod garażami.
 ## Stare, różne, brudne — za autem można się schować na kucaka przed patrolem.
 func _parked_cars() -> void:
@@ -965,6 +1042,7 @@ func _bush(x: float, z: float, s := 1.0) -> void:
 		var r := sz.x * 0.3
 		add_col(x - r * INV, x + r * INV, z - r * INV, z + r * INV, clampf(sz.y, 1.0, 2.0))
 		rects.pop_back()
+		covers.append(Vector3(x * SC, z * SC, sz.x * 0.5))
 
 
 func _lamp(x: float, z: float, ry: float, broken := false) -> void:
@@ -1197,8 +1275,8 @@ func _estate() -> void:
 	var cc := _prop("covered_car", 47.2, -119.9, PI, 0.0, 0.0)
 	cc.scale = Vector3(1.0, 1.0, 1.0)
 	# altanki śmietnikowe
-	_place(Props.trash_shed(), 53.0, -108.0, 0.0, 2.6, 1.7, 2.0)
-	_place(Props.trash_shed(), -70.0, -110.0, 0.0, 2.6, 1.7, 2.0)
+	_hide_shed(53.0, -108.0, 0.0, false)
+	_hide_shed(-70.0, -110.0, 0.0, false)
 	for e in [[56.6, -106.5, 0.4], [50.4, -106.4, 1.9], [55.2, -111.6, 2.6], [-66.8, -108.2, 1.0], [-72.5, -107.8, 0.2]]:
 		_prop("trashbag", e[0], e[1], e[2], 0.5, 0.0, false)
 	_prop("old_tyre", 51.2, -111.8, 0.3, 0.0, 0.0, false).rotation.x = PI / 2.0 - 0.2
@@ -2294,6 +2372,35 @@ func club_tick() -> void:
 
 ## Linia wzroku między dwoma punktami. Zasłaniają ją budynki, mury i blaszane płoty;
 ## gdy cel kuca (`low`), wystarczy coś do pasa: auto, murek, śmietnik.
+## Jak jasno jest w danym miejscu od latarni i ognisk (0 = ciemno, 1 = pod samą lampą).
+## Liczy się tylko nocą: patrol widzi wtedy daleko tylko to, co stoi w świetle.
+func light_at(x: float, z: float) -> float:
+	if _lamp_pts.is_empty():
+		for l in lamps:
+			if not is_instance_valid(l) or l.has_meta("tv") or not l.is_inside_tree():
+				continue
+			var gp: Vector3 = l.global_position
+			_lamp_pts.append(Vector3(gp.x, gp.z, 9.5 if l is SpotLight3D else float(l.omni_range) * 0.75))
+	var best := 0.0
+	for p in _lamp_pts:
+		var dx := p.x - x
+		var dz := p.y - z
+		if absf(dx) < p.z and absf(dz) < p.z:
+			best = maxf(best, 1.0 - sqrt(dx * dx + dz * dz) / p.z)
+	return clampf(best * 1.7, 0.0, 1.0)
+
+
+## czy tuż obok jest gęsty krzak, przy którym można się przyczaić
+func cover_at(x: float, z: float) -> bool:
+	for c in covers:
+		var dx: float = c.x - x
+		var dz: float = c.y - z
+		var r: float = c.z + 0.85
+		if dx * dx + dz * dz < r * r:
+			return true
+	return false
+
+
 func los(ax: float, az: float, bx: float, bz: float, low := false) -> bool:
 	if _bk.is_empty() and not blocks.is_empty():
 		_pack_blocks()

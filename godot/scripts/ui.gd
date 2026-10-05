@@ -95,6 +95,7 @@ var cop_bar: ProgressBar = null
 var waymark: Control
 var mini_card: PanelContainer
 var ic_stance: TextureRect
+var aware_cv: Control
 var susp_box: VBoxContainer
 var obj_card: PanelContainer
 var sms_key: Label
@@ -352,6 +353,12 @@ func _build_hud() -> void:
 	sh.add_child(smv)
 
 	# --- znacznik celu w świecie
+	# łuki wokół celownika: z której strony patrol zaczyna Cię zauważać
+	aware_cv = Control.new()
+	aware_cv.set_anchors_preset(Control.PRESET_FULL_RECT)
+	aware_cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	aware_cv.draw.connect(_draw_aware)
+	hud.add_child(aware_cv)
 	waymark = Control.new()
 	waymark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	waymark.draw.connect(_draw_way)
@@ -1540,12 +1547,13 @@ func show_controls(back := "") -> void:
 		[[G.kn("fwd"), G.kn("left"), G.kn("back"), G.kn("right")], "Chodzenie"],
 		[["Mysz"], "Rozglądanie się"],
 		[[G.kn("sprint")], "Bieg (zużywa kondycję)"],
-		[[G.kn("crouch")], "Kucanie — ciszej, trudniej Cię zauważyć, przełazy w płotach"],
+		[[G.kn("crouch")], "Kucanie — bezgłośnie, trudniej Cię zauważyć, przełazy w płotach"],
 		[[G.kn("use")], "Użyj / rozmawiaj (naceluj na coś z bliska)"],
 		[[G.kn("phone")], "Telefon: wiadomości, klienci, mapa"],
 		[[G.kn("inv")], "Ekwipunek: towar, gotówka, cel, stan"],
 		[[G.kn("map")], "Mapa z trasą do celu"],
-		[[G.kn("flash")], "Latarka"],
+		[[G.kn("flash")], "Latarka (nocą widać Cię z daleka)"],
+		[[G.kn("throw")], "Rzut kamykiem — hałas odciąga patrol"],
 		[[G.kn("ditch")], "Wyrzuć towar (przytrzymaj w pościgu)"],
 		[["Esc"], "Pauza, opcje, zmiana klawiszy"],
 	]
@@ -1661,8 +1669,11 @@ func update_hud() -> void:
 	bar_stam.max_value = P.max_stamina()
 	bar_stam.value = P.stamina
 	bar_stam.modulate.a = 0.55 if (P.stamina >= P.max_stamina() - 0.01 and not P.crouching) else 1.0
-	ic_stance.texture = K.tex("chevron_down" if P.crouching else "footprints")
-	ic_stance.modulate = K.C_ACC if P.crouching else Color(1, 1, 1, 0.6 if bar_stam.modulate.a < 1.0 else 0.95)
+	# „oko”: jak bardzo rzucasz się w oczy (postawa, ruch, ciemność, światło latarni, krzaki)
+	var vis: float = P.visibility() if P.loc == "out" else 1.0
+	ic_stance.texture = K.tex("eye_off" if vis < 0.5 else "eye")
+	ic_stance.modulate = K.C_ACC if vis < 0.5 else (K.C_WARN if vis > 1.05 else Color(1, 1, 1, 0.5 if vis < 0.8 else 0.9))
+	aware_cv.queue_redraw()
 	var su: float = clampf(G.npcs.max_susp, 0.0, 1.0)
 	bar_susp.value = su
 	susp_box.visible = su > 0.04 and not G.npcs.any_chase()
@@ -1741,6 +1752,35 @@ func set_build_hint(text: String) -> void:
 	build_hint.visible = text != ""
 	if text != "" and l_build.text != text:
 		l_build.text = text
+
+
+## Łuk dla każdego patrolu, który właśnie Ci się przygląda: wypełnia się w miarę zauważania,
+## potem żółknie i czerwienieje razem z podejrzeniem. Kierunek łuku = kierunek do patrolu.
+func _draw_aware() -> void:
+	if not G.running or G.player == null or G.player.loc != "out" or G.test_hide_hud:
+		return
+	var P = G.player
+	var c0 := aware_cv.size * 0.5
+	var pp: Vector3 = P.global_position
+	var f: Vector2 = P.forward()
+	var base := atan2(f.x, f.y)
+	for a in G.npcs.aware:
+		if a.chase:
+			continue
+		var rel := wrapf(atan2(float(a.x) - pp.x, float(a.z) - pp.z) - base, -PI, PI)
+		var mid := -PI / 2.0 - rel
+		var half := 0.34
+		var n: float = clampf(float(a.n), 0.0, 1.0)
+		var sus: float = float(a.s)
+		aware_cv.draw_arc(c0, 86.0, mid - half, mid + half, 14, Color(0, 0, 0, 0.35), 7.0, true)
+		aware_cv.draw_arc(c0, 86.0, mid - half, mid + half, 14, Color(1, 1, 1, 0.16), 4.0, true)
+		var col := Color(1, 1, 1, 0.9)
+		if n >= 1.0:
+			col = K.C_WARN.lerp(K.C_BAD, sus)
+		var fill := n if n < 1.0 else 1.0
+		aware_cv.draw_arc(c0, 86.0, mid - half * fill, mid + half * fill, 14, col, 4.0, true)
+		if n >= 1.0 and sus > 0.0:
+			aware_cv.draw_arc(c0, 94.0, mid - half * sus, mid + half * sus, 14, K.C_BAD, 3.0, true)
 
 
 func _draw_way() -> void:
@@ -2000,6 +2040,7 @@ func _input(event: InputEvent) -> void:
 					"map": open_phone("mapa")
 					"use": G.main.interact()
 					"flash": G.main.toggle_flash()
+					"throw": G.main.throw_stone()
 					"nav": G.main.toggle_nav()
 					"track":
 						G.main.cycle_track()

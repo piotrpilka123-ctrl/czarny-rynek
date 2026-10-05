@@ -26,6 +26,8 @@ var look_scale := 1.0
 var invert_y := false
 var base_fov := 70.0
 var crouching := false
+var hidden := false          # siedzi w kryjówce (altanka śmietnikowa): niewidoczny, dopóki nikt nie widział, jak wchodzi
+var vis_now := 1.0           # ostatnio policzona widoczność (HUD)
 var eye_y := EYE
 var _cs: CollisionShape3D
 var _cap: CapsuleShape3D
@@ -126,6 +128,7 @@ func place(pos: Vector3, new_yaw: float) -> void:
 		crouching = false
 		_cap.height = BODY_H
 		_cs.position.y = 0.9
+	hidden = false
 	eye_y = EYE
 	if G.world != null and loc == "out":
 		global_position.y = G.world.height(pos.x, pos.z)
@@ -133,6 +136,15 @@ func place(pos: Vector3, new_yaw: float) -> void:
 
 func _physics_process(dt: float) -> void:
 	if not G.running or G.busy:
+		return
+	if hidden:
+		# w kryjówce można się tylko rozglądać
+		velocity = Vector3.ZERO
+		moving = false
+		sprinting = false
+		stamina = minf(max_stamina(), stamina + dt)
+		rotation = Vector3(0, yaw, 0)
+		cam.rotation = Vector3(pitch, 0, 0)
 		return
 	# rozglądanie strzałkami (alternatywa dla myszy)
 	yaw += (float(Input.is_physical_key_pressed(KEY_LEFT)) - float(Input.is_physical_key_pressed(KEY_RIGHT))) * 1.9 * dt
@@ -201,6 +213,49 @@ func _physics_process(dt: float) -> void:
 	cam.rotation = Vector3(pitch + randf_range(-1.0, 1.0) * shake * 0.02, 0, 0)
 	var fov := base_fov + (5.0 if sprinting else 0.0)
 	cam.fov = lerpf(cam.fov, fov, minf(1.0, dt * 8.0))
+
+
+## Jak dobrze widać gracza: 1 = zwykły przechodzień w dzień. Przez to mnożony jest zasięg wzroku patroli.
+## Liczy się postawa, ruch, ciemność (i to, czy stoisz w świetle latarni), deszcz, krzaki i ubranie.
+func visibility() -> float:
+	if hidden:
+		vis_now = 0.0
+		return 0.0
+	var v := 1.0
+	if crouching:
+		v *= 0.6
+	if sprinting:
+		v *= 1.25
+	elif Vector2(velocity.x, velocity.z).length() < 0.3:
+		v *= 0.85
+	if loc == "out" and G.world != null:
+		var gp := global_position
+		var dark: float = G.night * (1.0 - G.world.light_at(gp.x, gp.z))
+		if flash.light_energy > 0.05 and G.night > 0.3:
+			# latarka nocą: świecisz jak choinka
+			dark = 0.0
+			v *= 1.2
+		v *= 1.0 - dark * 0.5
+		v *= 1.0 - G.rain * 0.18
+		if crouching and G.world.cover_at(gp.x, gp.z):
+			v *= 0.55
+	v *= G.outfit_stat("vis", 1.0)
+	vis_now = clampf(v, 0.12, 1.5)
+	return vis_now
+
+
+## z jakiej odległości słychać kroki (0 = cisza)
+func noise() -> float:
+	if hidden or not moving or crouching or loc != "out":
+		return 0.0
+	var r := 9.0 if sprinting else 3.2
+	if G.world != null:
+		var surf := String(G.world.surface_at(global_position.x, global_position.z))
+		if surf == "grass":
+			r *= 0.7
+		elif surf == "gravel":
+			r *= 1.2
+	return r * (1.0 + G.night * 0.25 - G.rain * 0.4) * G.outfit_stat("noise", 1.0)
 
 
 func forward() -> Vector2:
