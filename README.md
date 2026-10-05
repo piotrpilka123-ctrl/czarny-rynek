@@ -1,70 +1,76 @@
-# CZARNY RYNEK
+# Czarny Rynek
 
-Gra 3D z widokiem z pierwszej osoby w stylu *Schedule I*: produkujesz fikcyjny towar, odpowiadasz na SMS-y klientów,
-targujesz się, unikasz policji, pierzesz pieniądze i spłacasz dług u Księgowego.
-Wszystkie substancje, receptury i postacie są **całkowicie zmyślone**.
+Gra testowa Piotra Piłki — symulator osiedlowego dilera w klimacie polskiego blokowiska (Godot 4, widok z pierwszej osoby).
+Wszystkie postacie, miejsca i wydarzenia są fikcyjne. Gra nie zachęca do łamania prawa ani zażywania narkotyków.
 
-## Pobieranie
+▶ **Zwiastun:** [zwiastun/czarny-rynek-zwiastun-720p.mp4](zwiastun/czarny-rynek-zwiastun-720p.mp4)
 
-Pobierz paczkę ZIP (zielony przycisk **Code → Download ZIP** na GitHubie), rozpakuj ją i uruchom grę jak niżej.
-Nie trzeba niczego instalować poza Pythonem 3 (na Macu zwykle już jest).
+| | |
+|---|---|
+| ![Ulica i HUD](screenshots/02-ulica-hud.png) | ![Rozmowa z klientem](screenshots/03-rozmowa-z-klientem.png) |
+| ![Klub Neon nocą](screenshots/07-klub-neon.png) | ![Ekwipunek](screenshots/04-ekwipunek.png) |
 
 ## Jak uruchomić
 
-**Mac:** dwuklik na `Uruchom.command` — startuje lokalny serwer i otwiera grę w przeglądarce.
-Jeśli macOS zablokuje plik: prawy przycisk → Otwórz, albo w Terminalu w folderze gry: `python3 serve.py`.
+**macOS:** kliknij dwukrotnie **`Uruchom Czarny Rynek.command`**. Potrzebny jest [Godot 4](https://godotengine.org/download)
+(projekt powstał w wersji 4.7) w `/Applications/Godot.app`.
 
-**Windows:** dwuklik na `Uruchom.bat` (wymaga Pythona 3 z python.org).
+**Windows / Linux:** otwórz w Godocie plik `godot/project.godot` i naciśnij F5.
 
-**Bez Pythona:** można spróbować otworzyć `index.html` bezpośrednio w przeglądarce
-(wtedy nie działa tylko własna muzyka z folderu `muzyka/`).
+Pierwsze uruchomienie po pobraniu trwa dłużej — Godot musi zaimportować modele i tekstury (ok. 300 MB zasobów).
 
-Adres gry po uruchomieniu serwera: `http://localhost:8765/`. Najlepiej Chrome, Opera lub Edge, na pełnym ekranie.
+Gra startuje na pełnym ekranie (F11 przełącza okno). Jakość grafiki zmienisz w telefonie → Ustawienia.
+Obraz 3D skaluje się automatycznie, żeby utrzymać ok. 60 kl./s na MacBooku z M2; interfejs zawsze jest ostry.
+
+## O co chodzi
+
+Brat zniknął i zostawił Ci kawalerkę oraz 25 000 zł długu u Wiktora. Wiktor daje towar na zeszyt i pierwszego klienta.
+Resztę budujesz sam: klienci z polecenia, własna kryjówka, uprawa, kolejne towary (Green → Speed → Blue → Snow).
+Raty rosną co cztery dni — trzy wpadki i koniec gry. Spłata całości zajmuje ok. 45 dni gry (1 godzina gry = 60 s).
+
+- **Towar**: zamawiasz w telefonie (Hurt), odbierasz ze skrytki w mieście, porcjujesz na wadze, możesz rozrobić
+  (większa waga, niższa czystość — doświadczeni klienci rozpoznają mieszankę i odmówią).
+- **Klienci**: piszą SMS-y z godziną i miejscem. Odpowiadasz: Zgoda / Negocjuj / Zmień godzinę / Anuluj.
+  Klient wychodzi z domu i idzie na miejsce. Na spotkaniu wybierasz ton rozmowy i taktyki.
+- **Ekwipunek** (I): rzeczy mają rozmiar i wagę, układają się w stosy; przeciągasz je między plecakiem a skrytką.
+- **Policja**: patrole piesze i radiowóz, gorąco w dzielnicach, śledztwo. W pościgu przytrzymaj X, żeby wyrzucić towar.
+- **Kryjówki**: garaż i piwnica do kupienia; meblujesz je sam (B) — stół z wagą, regały, namiot uprawowy.
 
 ## Sterowanie
 
-| Klawisz | Akcja |
+| Klawisz | Działanie |
 |---|---|
-| WASD | ruch |
-| Mysz / trackpad | rozglądanie (kliknij okno gry); alternatywnie strzałki |
+| WASD, mysz | ruch i rozglądanie |
 | Shift | sprint |
-| E | interakcja: rozmowa, drzwi, stanowiska, łóżko, skrytka |
-| Tab | telefon: zadania, **SMS-y z odpowiedziami**, plecak, klienci, mapa, sklep, umiejętności, finanse, ekipa, opcje |
-| N | trasa do celu wł./wył. (zielona wstęga na ziemi i linia na minimapie) |
-| Q | następny cel trasy (cel fabularny, umówieni klienci, dom, hurtownia…) |
+| E | interakcja (przytrzymaj przy skrytce) |
+| Tab | telefon |
+| I | ekwipunek |
+| N / Q | trasa do celu / następny cel |
+| B / R | meblowanie kryjówki / obrót mebla |
 | F | latarka |
-| Spacja / Enter | dalej w dialogu, STOP w mini-grze produkcji |
-| 1–5 | wybór odpowiedzi w dialogu |
-| M / Esc | dźwięk / pauza |
-
-## Najważniejsze zasady
-
-- **Dług:** 70 000 zł w 56 dni, raty co tydzień, +2% odsetek tygodniowo. Trzy spóźnienia = koniec gry.
-- **Produkcja:** cztery stanowiska (doniczki, stół reakcyjny, prasa, laboratorium). Jakość zależy od mini-gry;
-  0 trafień grozi zepsuciem partii. Dodatki: Stabilizator (bez zepsucia), Wzmacniacz (+1 jakość), rozcieńczanie (+2 szt., −1 jakość).
-- **Klienci:** piszą SMS-y z ofertą. Odpowiedz w telefonie: przyjmij, zaproponuj wyższą cenę albo odmów.
-  Po przyjęciu klient pojawia się na mapie, a trasa prowadzi prosto do niego. Na ulicy chętni przechodnie mają ikonę 👀.
-  Klienci mają zadowolenie, lojalność i „znudzenie” tym samym towarem.
-- **Policja:** uwaga policji jest lokalna (dzielnice) i globalna; do tego rośnie śledztwo. Zdarzają się obławy,
-  naloty i prowokacje — klient, który bierze każdą cenę, może być policjantem.
-- **Pieniądze:** gotówka z ulicy jest „brudna”. Myjnia pierze ją na konto; z konta kupisz najdroższy sprzęt.
-- **Rozwój:** ulepszenia wielopoziomowe, umiejętności za doświadczenie, pracownik produkcji i dilerzy uliczni.
-- **Fabuła:** 8 rozdziałów i 5 zakończeń.
+| X (przytrzymaj) | wyrzuć towar |
+| M | dźwięk |
+| F11 | pełny ekran |
+| Esc | pauza |
 
 ## Muzyka w klubie
 
-W pobliżu klubu Neon słychać muzykę (na ulicy przytłumioną, w środku pełną).
-Domyślnie gra wbudowany, syntezowany bit klubowy. Żeby grały **Twoje utwory**, wrzuć pliki MP3/M4A/OGG/WAV
-do folderu `muzyka/` i uruchom grę przez `Uruchom.command`.
+Klub Neon gra wbudowany, oryginalny bit. Żeby leciała Twoja muzyka, wrzuć własne pliki MP3 do `godot/muzyka/`.
 
-## Jakość grafiki
+## Co jest w repozytorium
 
-Telefon → Opcje → Jakość grafiki (Wysoka / Średnia / Niska). Jeśli gra się przycina, wybierz niższą.
+- `godot/` — **główna gra** (Godot 4; skrypty w `scripts/`, zasoby w `assets/`).
+- `game/` — starsza wersja przeglądarkowa (Three.js), od której projekt się zaczął. Uruchomienie: `game/Uruchom.command`
+  albo `python3 game/serve.py`. Ma własny opis w `game/README.md`.
+- `zwiastun/` — zwiastun gry (720p).
+- `screenshots/` — zrzuty ekranu.
+- `LICENCJE.md` — autorzy i licencje użytych zasobów.
 
-## Zapis
+## Dla ciekawych: narzędzia
 
-Automatycznie co dzień, przy zamknięciu karty i przy spaniu w łóżku. „Kontynuuj” w menu wczytuje zapis.
+Wszystko uruchamia się z folderu `godot/`:
 
-## Biblioteki
-
-Gra korzysta z [three.js](https://threejs.org/) r128 (licencja MIT) — pliki `three.min.js` oraz `lib/`.
+- `./tools/runtest.sh 90` — automatyczny test rozgrywki (bez okna i dźwięku).
+- `./tools/runtest.sh 240 --sim=48 --runs=3 --lazy=0.35` — symulacja ekonomii: bot gra 48 dni i wypisuje bilans.
+- `./shot.sh nazwa --autostart --loc=out --hour=18` — zrzut ekranu z gry (trafia do folderu tymczasowego).
+- `./tools/trailer.sh <folder>` — nagranie klatek zwiastuna; potem `python3 tools/soundtrack.py` i `swift tools/encode.swift`.

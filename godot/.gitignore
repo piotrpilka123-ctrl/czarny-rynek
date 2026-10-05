@@ -1,0 +1,5 @@
+.godot/
+export/
+.DS_Store
+muzyka/*
+!muzyka/CZYTAJ.txt

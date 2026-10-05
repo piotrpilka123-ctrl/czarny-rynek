@@ -1,0 +1,1957 @@
+extends CanvasLayer
+## Interfejs: HUD (kompas, minimapa, wskaźniki), dialogi, telefon, stół roboczy,
+## skrytki, sklep, negocjacje, katalog mebli, ekrany tytułowy / pauzy / zakończenia.
+
+const K = preload("res://scripts/uikit.gd")
+const PhoneScript = preload("res://scripts/phone.gd")
+const InvScript = preload("res://scripts/inventory.gd")
+const Chars = preload("res://scripts/chars.gd")
+
+var mode := "title"        # "" = rozgrywka; dialog | modal | phone | skill | pause | title | end
+var root: Control
+var hud: Control
+var phone: Control
+var l_cash: Label
+var l_time: Label
+var l_lvl: Label
+var l_next: Label
+var bar_xp: ProgressBar
+var bar_stam: ProgressBar
+var bar_susp: ProgressBar
+var bar_heat: ProgressBar
+var l_susp: Label
+var l_heat: Label
+var l_bag: Label
+var ic_weather: TextureRect
+var minimap: Control
+var compass: Control
+var l_nav: RichTextLabel
+var l_obj_t: Label
+var l_obj: Label
+var l_zone: Label
+var l_zone_s: Label
+var l_day: Label
+var sms_banner: PanelContainer
+var sms_name: Label
+var sms_text: Label
+var sms_t := 0.0
+var zone_t := 0.0
+var last_zone := ""
+var prompt: PanelContainer
+var l_prompt: RichTextLabel
+var prompt_bar: ProgressBar
+var chase: PanelContainer
+var build_hint: PanelContainer
+var l_build: RichTextLabel
+var toasts: VBoxContainer
+var dialog_box: PanelContainer
+var d_name: Label
+var d_text: RichTextLabel
+var d_choices: VBoxContainer
+var d_hint: Label
+var modal: Control
+var bar_bag: ProgressBar
+var ic_next: TextureRect
+var inv
+var modal_box: PanelContainer
+var modal_title: Label
+var modal_sub: Label
+var modal_scroll: ScrollContainer
+var modal_body: VBoxContainer
+var modal_v: VBoxContainer
+var modal_head_extra: HBoxContainer
+var modal_dock := "center"
+var deal_said := ""
+var deal_npc = null
+var skill_box: PanelContainer
+var skill_bar: Control
+var l_skill_t: Label
+var l_skill_p: Label
+var l_skill_w: Label
+var fade_rect: ColorRect
+var hurt_rect: ColorRect
+var screen: Control
+var screen_box: VBoxContainer
+
+var dlg := {}
+var deal := {}
+var sk := {}
+var bench := {"room": "", "sel": {}, "g": 5, "mixing": false, "filler": 1}
+var hud_t := 0.0
+var nav_info := {}
+var cop_bar: ProgressBar = null
+var waymark: Control
+
+
+# ================================================================ budowa
+func build() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	layer = 10
+	root = Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = K.theme()
+	add_child(root)
+	_build_hud()
+	_build_dialog()
+	phone = PhoneScript.new()
+	root.add_child(phone)
+	phone.build(self)
+	_build_modal()
+	inv = InvScript.new()
+	root.add_child(inv)
+	inv.build(self)
+	_build_skill()
+	hurt_rect = ColorRect.new()
+	hurt_rect.color = Color(0.8, 0.0, 0.0, 0.0)
+	hurt_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hurt_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(hurt_rect)
+	screen = ColorRect.new()
+	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.66)
+	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(screen)
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	screen.add_child(cc)
+	screen_box = K.vbox(14)
+	screen_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	cc.add_child(screen_box)
+	fade_rect = ColorRect.new()
+	fade_rect.color = Color(0, 0, 0, 0)
+	fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(fade_rect)
+	G.toast.connect(toast_add)
+	G.sms.connect(_on_sms)
+
+
+func _ign(c: Control) -> Control:
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
+
+
+# ---------------------------------------------------------------- HUD
+func _shadow(c: Control, size := 4) -> void:
+	c.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	c.add_theme_constant_override("shadow_offset_x", 1)
+	c.add_theme_constant_override("shadow_offset_y", 1)
+	c.add_theme_constant_override("shadow_outline_size", size)
+
+
+## wspólny styl kart HUD-u: ciemne, półprzezroczyste, z delikatną ramką i cieniem
+func _hud_card() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.045, 0.055, 0.078, 0.8)
+	sb.set_corner_radius_all(14)
+	sb.set_border_width_all(1)
+	sb.border_color = Color(1, 1, 1, 0.09)
+	sb.shadow_color = Color(0, 0, 0, 0.35)
+	sb.shadow_size = 8
+	sb.content_margin_left = 13
+	sb.content_margin_right = 13
+	sb.content_margin_top = 9
+	sb.content_margin_bottom = 10
+	return sb
+
+
+func _thin_bar(color: Color, w := 0.0) -> ProgressBar:
+	var b := ProgressBar.new()
+	b.show_percentage = false
+	b.max_value = 1.0
+	b.custom_minimum_size = Vector2(w, 5)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_stylebox_override("background", K.sb(Color(0, 0, 0, 0.55), 3, Color(1, 1, 1, 0.08), 1, 0))
+	b.add_theme_stylebox_override("fill", K.sb(color, 3, Color(0, 0, 0, 0), 0, 0))
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return b
+
+
+func _bar_row(parent: Node, ic: String, color: Color) -> ProgressBar:
+	var h := K.hbox(6)
+	_ign(h)
+	h.add_child(K.icon(ic, 13, Color(1, 1, 1, 0.85)))
+	var b := _thin_bar(color)
+	h.add_child(b)
+	parent.add_child(h)
+	return b
+
+
+func _build_hud() -> void:
+	hud = Control.new()
+	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.visible = false
+	root.add_child(hud)
+
+	# --- prawy górny róg: karta stanu (gotówka, czas, poziom, plecak, najbliższa płatność)
+	var st_card := K.panel(_hud_card())
+	st_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	st_card.offset_left = -268.0
+	st_card.offset_right = -18.0
+	st_card.offset_top = 16.0
+	st_card.grow_vertical = Control.GROW_DIRECTION_END
+	_ign(st_card)
+	hud.add_child(st_card)
+	var tr := K.vbox(6)
+	_ign(tr)
+	st_card.add_child(tr)
+	var top := K.hbox(6)
+	_ign(top)
+	l_cash = K.head("0 zł", 30, K.C_ACC)
+	top.add_child(l_cash)
+	top.add_child(K.spacer())
+	var tv := K.vbox(0)
+	_ign(tv)
+	var trow := K.hbox(5)
+	trow.alignment = BoxContainer.ALIGNMENT_END
+	ic_weather = K.icon("sun", 14, K.C_WARN)
+	trow.add_child(ic_weather)
+	l_time = K.head("09:00", 20, Color.WHITE)
+	trow.add_child(l_time)
+	tv.add_child(trow)
+	l_day = K.lbl("dzień 1", 11, K.C_DIM)
+	l_day.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tv.add_child(l_day)
+	top.add_child(tv)
+	tr.add_child(top)
+	var sep := ColorRect.new()
+	sep.color = Color(1, 1, 1, 0.07)
+	sep.custom_minimum_size = Vector2(0, 1)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.add_child(sep)
+	var lrow := K.hbox(8)
+	_ign(lrow)
+	lrow.add_child(K.icon("award", 13, K.C_GOLD))
+	l_lvl = K.head("POZ. 1", 13, K.C_GOLD)
+	l_lvl.custom_minimum_size = Vector2(118, 0)
+	l_lvl.clip_text = true
+	lrow.add_child(l_lvl)
+	bar_xp = _thin_bar(K.C_GOLD)
+	lrow.add_child(bar_xp)
+	tr.add_child(lrow)
+	var brow := K.hbox(8)
+	_ign(brow)
+	brow.add_child(K.icon("backpack", 13, K.C_BLUE))
+	l_bag = K.head("0 / 15", 13, K.C_TXT)
+	l_bag.custom_minimum_size = Vector2(118, 0)
+	l_bag.clip_text = true
+	brow.add_child(l_bag)
+	bar_bag = _thin_bar(K.C_BLUE)
+	brow.add_child(bar_bag)
+	tr.add_child(brow)
+	var nrow := K.hbox(8)
+	_ign(nrow)
+	ic_next = K.icon("calendar", 13, K.C_DIM)
+	nrow.add_child(ic_next)
+	l_next = K.lbl("", 12, K.C_DIM)
+	l_next.clip_text = true
+	l_next.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nrow.add_child(l_next)
+	tr.add_child(nrow)
+
+	# --- lewy górny róg: karta celu
+	var ob_card := K.panel(_hud_card())
+	ob_card.position = Vector2(18, 16)
+	_ign(ob_card)
+	hud.add_child(ob_card)
+	var ob := K.hbox(10)
+	_ign(ob)
+	ob_card.add_child(ob)
+	var acc := ColorRect.new()
+	acc.color = K.C_ACC
+	acc.custom_minimum_size = Vector2(3, 0)
+	acc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ob.add_child(acc)
+	var opv := K.vbox(2)
+	_ign(opv)
+	l_obj_t = K.head("CEL", 12, K.C_ACC)
+	l_obj = K.wrap("", 15, Color.WHITE, 380.0)
+	l_nav = K.rich("", 12)
+	l_nav.custom_minimum_size = Vector2(380, 0)
+	opv.add_child(l_obj_t)
+	opv.add_child(l_obj)
+	opv.add_child(l_nav)
+	ob.add_child(opv)
+
+	# --- kompas: same kreski i litery
+	compass = Control.new()
+	compass.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	compass.offset_left = -190.0
+	compass.offset_right = 190.0
+	compass.offset_top = 10.0
+	compass.offset_bottom = 44.0
+	compass.clip_contents = true
+	compass.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	compass.draw.connect(_draw_compass)
+	hud.add_child(compass)
+	l_zone = K.head("", 24, Color(1, 1, 1, 0.0))
+	l_zone.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	l_zone.offset_left = -300.0
+	l_zone.offset_right = 300.0
+	l_zone.offset_top = 56.0
+	l_zone.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_shadow(l_zone, 6)
+	hud.add_child(l_zone)
+
+	# --- lewy dolny róg: karta z minimapą i paskami stanu
+	var bl_card := K.panel(_hud_card())
+	bl_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	bl_card.offset_left = 18.0
+	bl_card.offset_bottom = -16.0
+	bl_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ign(bl_card)
+	hud.add_child(bl_card)
+	var bl := K.vbox(6)
+	_ign(bl)
+	bl_card.add_child(bl)
+	var zrow := K.hbox(5)
+	_ign(zrow)
+	zrow.add_child(K.icon("map_pin", 12, K.C_ACC))
+	l_zone_s = K.head("", 13, K.C_TXT)
+	zrow.add_child(l_zone_s)
+	bl.add_child(zrow)
+	var mp := K.panel(K.sb(Color(0.03, 0.035, 0.05, 1.0), 10, Color(0, 0, 0, 0), 0, 0))
+	mp.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	_ign(mp)
+	bl.add_child(mp)
+	minimap = Control.new()
+	minimap.custom_minimum_size = Vector2(196, 196)
+	minimap.clip_contents = true
+	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	minimap.draw.connect(_draw_mini)
+	mp.add_child(minimap)
+	bar_stam = _bar_row(bl, "footprints", K.C_BLUE)
+	bar_susp = _bar_row(bl, "eye", K.C_WARN)
+	bar_heat = _bar_row(bl, "flame", K.C_BAD)
+	bar_heat.max_value = 100.0
+	l_susp = K.lbl("", 12, K.C_BAD)
+	l_susp.position = Vector2(232, 0)
+	l_susp.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	l_susp.offset_left = 254.0
+	l_susp.offset_bottom = -38.0
+	l_susp.offset_top = -58.0
+	_shadow(l_susp)
+	hud.add_child(l_susp)
+	l_heat = K.lbl("", 11, Color(1, 1, 1, 0.6))
+	l_heat.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	l_heat.offset_left = 254.0
+	l_heat.offset_bottom = -18.0
+	l_heat.offset_top = -36.0
+	_shadow(l_heat)
+	hud.add_child(l_heat)
+
+	# --- powiadomienie o wiadomości — jak na ekranie telefonu
+	var sbox := StyleBoxFlat.new()
+	sbox.bg_color = Color(0.07, 0.08, 0.11, 0.94)
+	sbox.set_corner_radius_all(16)
+	sbox.set_border_width_all(1)
+	sbox.border_color = Color(1, 1, 1, 0.1)
+	sbox.shadow_color = Color(0, 0, 0, 0.45)
+	sbox.shadow_size = 10
+	sbox.content_margin_left = 12
+	sbox.content_margin_right = 14
+	sbox.content_margin_top = 9
+	sbox.content_margin_bottom = 9
+	sms_banner = K.panel(sbox)
+	sms_banner.visible = false
+	sms_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	sms_banner.offset_left = -338.0
+	sms_banner.offset_right = -18.0
+	sms_banner.offset_top = 164.0
+	_ign(sms_banner)
+	hud.add_child(sms_banner)
+	var sh := K.hbox(11)
+	sms_banner.add_child(sh)
+	var app_ic := K.panel(K.sb(Color(0.2, 0.72, 0.38), 10, Color(0, 0, 0, 0), 0, 7))
+	app_ic.custom_minimum_size = Vector2(36, 36)
+	app_ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	app_ic.add_child(K.icon("message_circle", 20, Color.WHITE))
+	sh.add_child(app_ic)
+	var smv := K.vbox(1)
+	smv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var srow := K.hbox(6)
+	sms_name = K.lbl("", 14, Color.WHITE)
+	srow.add_child(sms_name)
+	srow.add_child(K.spacer())
+	var kc := K.panel(K.sb(Color(1, 1, 1, 0.1), 5, Color(1, 1, 1, 0.2), 1, 6))
+	kc.add_child(K.lbl("Tab", 10, K.C_TXT))
+	srow.add_child(kc)
+	smv.add_child(srow)
+	sms_text = K.wrap("", 13, Color(0.82, 0.84, 0.88), 230.0)
+	sms_text.max_lines_visible = 3
+	smv.add_child(sms_text)
+	sh.add_child(smv)
+
+	# --- znacznik celu w świecie
+	waymark = Control.new()
+	waymark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	waymark.draw.connect(_draw_way)
+	waymark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud.add_child(waymark)
+
+	# --- celownik, podpowiedź
+	var cross := ColorRect.new()
+	cross.color = Color(1, 1, 1, 0.8)
+	cross.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	cross.offset_left = -1.5
+	cross.offset_top = -1.5
+	cross.offset_right = 1.5
+	cross.offset_bottom = 1.5
+	cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(cross)
+	var pc := CenterContainer.new()
+	pc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pc.offset_top = 150.0
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(pc)
+	prompt = K.panel(K.sb(Color(0, 0, 0, 0.62), 10, Color(1, 1, 1, 0.12), 1, 14))
+	prompt.visible = false
+	_ign(prompt)
+	pc.add_child(prompt)
+	var pv := K.vbox(5)
+	prompt.add_child(pv)
+	l_prompt = K.rich("", 16)
+	l_prompt.autowrap_mode = TextServer.AUTOWRAP_OFF
+	l_prompt.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	pv.add_child(l_prompt)
+	prompt_bar = K.bar(0.0, 1.0, K.C_ACC, 5.0)
+	prompt_bar.visible = false
+	pv.add_child(prompt_bar)
+
+	var tc := CenterContainer.new()
+	tc.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	tc.offset_top = 96.0
+	tc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(tc)
+	chase = K.panel(K.sb(Color(0.7, 0.1, 0.1, 0.9), 10, Color(1, 0.8, 0.8, 0.6), 1, 16))
+	var chh := K.hbox(8)
+	chh.add_child(K.icon("siren", 18, Color.WHITE))
+	chh.add_child(K.head("POŚCIG — zgub policję albo schowaj się w budynku", 16, Color.WHITE))
+	chase.add_child(chh)
+	chase.visible = false
+	tc.add_child(chase)
+
+	var bc := CenterContainer.new()
+	bc.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	bc.offset_top = -92.0
+	bc.offset_bottom = -22.0
+	bc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(bc)
+	build_hint = K.panel(K.sb(Color(0.03, 0.04, 0.06, 0.9), 12, K.C_BLUE, 1, 14))
+	build_hint.visible = false
+	bc.add_child(build_hint)
+	l_build = K.rich("", 14)
+	l_build.autowrap_mode = TextServer.AUTOWRAP_OFF
+	build_hint.add_child(l_build)
+
+	var tcc := CenterContainer.new()
+	tcc.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	tcc.offset_top = -230.0
+	tcc.offset_bottom = -110.0
+	tcc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(tcc)
+	toasts = K.vbox(5)
+	toasts.alignment = BoxContainer.ALIGNMENT_END
+	toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tcc.add_child(toasts)
+
+
+func toast_add(text: String, kind: String) -> void:
+	var border := Color(1, 1, 1, 0.12)
+	var fc := K.C_TXT
+	var ic := "info"
+	match kind:
+		"good": border = K.C_ACC; fc = Color(0.78, 0.97, 0.84); ic = "circle_check"
+		"warn": border = K.C_WARN; fc = Color(0.99, 0.9, 0.55); ic = "triangle_alert"
+		"bad": border = K.C_BAD; fc = Color(1.0, 0.8, 0.8); ic = "siren"
+		"level": border = K.C_GOLD; fc = K.C_GOLD; ic = "award"
+	var p := K.panel(K.sb(Color(0.035, 0.045, 0.065, 0.93) if kind != "level" else Color(0.14, 0.11, 0.03, 0.95), 10, border, 1, 14))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var h := K.hbox(8)
+	h.add_child(K.icon(ic, 16, border if kind != "" else K.C_DIM))
+	var l := K.lbl(text, 16 if kind == "level" else 13, fc)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(minf(520.0, 30.0 + text.length() * 7.6), 0)
+	h.add_child(l)
+	p.add_child(h)
+	toasts.add_child(p)
+	while toasts.get_child_count() > 4:
+		var old := toasts.get_child(0)
+		toasts.remove_child(old)
+		old.queue_free()
+	if kind == "bad":
+		Sfx.play("bad")
+	get_tree().create_timer(5.0 if kind == "level" else 4.2).timeout.connect(p.queue_free)
+
+
+func _on_sms(cid: String, text: String) -> void:
+	sms_name.text = G.contact_name(cid)
+	sms_text.text = text if text.length() < 110 else text.substr(0, 108) + "…"
+	sms_banner.visible = true
+	sms_banner.modulate.a = 0.0
+	sms_banner.offset_left = -280.0
+	sms_banner.offset_right = 40.0
+	var tw := create_tween().set_parallel(true)
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(sms_banner, "offset_left", -340.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sms_banner, "offset_right", -20.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sms_banner, "modulate:a", 1.0, 0.2)
+	sms_t = 7.0
+	if phone.visible:
+		phone.refresh()
+
+
+func fade(on: bool) -> void:
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(fade_rect, "color:a", 1.0 if on else 0.0, 0.45)
+	await tw.finished
+
+
+func hurt() -> void:
+	hurt_rect.color.a = 0.45
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(hurt_rect, "color:a", 0.0, 0.6)
+	if G.player != null:
+		G.player.shake = 1.0
+
+
+# ---------------------------------------------------------------- tryby
+func set_mode(m: String) -> void:
+	mode = m
+	if G.running and not G.test_hide_hud and m != "title" and m != "end":
+		hud.visible = m != "inv" and m != "modal"
+	get_tree().paused = m != ""
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if (m != "" or G.test_mode) else Input.MOUSE_MODE_CAPTURED
+
+
+func is_open() -> bool:
+	return mode != ""
+
+
+func close_all() -> void:
+	dialog_box.visible = false
+	modal.visible = false
+	skill_box.visible = false
+	screen.visible = false
+	phone.visible = false
+	if inv.visible:
+		inv.close()
+	_deal_unstage()
+	dlg = {}
+	deal = {}
+	sk = {}
+	cop_bar = null
+	set_mode("")
+
+
+# ---------------------------------------------------------------- dialog
+func _build_dialog() -> void:
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	c.offset_top = -300.0
+	c.offset_bottom = -30.0
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(c)
+	dialog_box = K.panel(K.sb(K.C_PANEL, 14, K.C_LINE, 1, 22))
+	dialog_box.custom_minimum_size = Vector2(800, 0)
+	dialog_box.visible = false
+	c.add_child(dialog_box)
+	var v := K.vbox(8)
+	dialog_box.add_child(v)
+	d_name = K.lbl("", 13, K.C_WARN)
+	v.add_child(d_name)
+	d_text = K.rich("", 19)
+	d_text.custom_minimum_size = Vector2(760, 56)
+	v.add_child(d_text)
+	d_choices = K.vbox(6)
+	v.add_child(d_choices)
+	d_hint = K.lbl("Spacja / Enter — dalej", 11, K.C_DIM)
+	d_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	v.add_child(d_hint)
+
+
+## d: {name, lines: [String | {n,t}], choices: [{label, act, disabled, kind}], on_end: Callable}
+func dialog(d: Dictionary) -> void:
+	var lines := []
+	for l in d.lines:
+		if l is String:
+			lines.append({"n": d.get("name", ""), "t": l})
+		else:
+			lines.append({"n": l.get("n", d.get("name", "")), "t": l.t})
+	var nm := String(d.get("name", ""))
+	var voice: float = d.get("voice", 0.8 + float(absi(nm.hash()) % 30) / 100.0)
+	dlg = {"lines": lines, "i": 0, "choices": d.get("choices", []), "on_end": d.get("on_end", Callable()), "typed": 0.0, "done": false, "voice": voice, "said": 0}
+	modal.visible = false
+	skill_box.visible = false
+	phone.visible = false
+	dialog_box.visible = true
+	set_mode("dialog")
+	Sfx.play("open")
+	_show_line()
+
+
+func _show_line() -> void:
+	var l: Dictionary = dlg.lines[dlg.i]
+	d_name.text = String(l.n).to_upper()
+	d_text.text = l.t
+	d_text.visible_characters = 0
+	dlg.typed = 0.0
+	dlg.said = 0
+	dlg.done = false
+	K.clear(d_choices)
+	d_hint.visible = true
+
+
+func _line_done() -> void:
+	dlg.done = true
+	d_text.visible_characters = -1
+	if int(dlg.i) == dlg.lines.size() - 1 and not dlg.choices.is_empty():
+		d_hint.visible = false
+		var idx := 0
+		for c in dlg.choices:
+			var i := idx
+			var b := K.btn("%d. %s" % [idx + 1, c.label], func(): pick_choice(i), c.get("kind", ""))
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.disabled = c.get("disabled", false)
+			d_choices.add_child(b)
+			idx += 1
+
+
+func advance() -> void:
+	if dlg.is_empty():
+		return
+	if not dlg.done:
+		_line_done()
+		return
+	if int(dlg.i) < dlg.lines.size() - 1:
+		dlg.i = int(dlg.i) + 1
+		_show_line()
+		return
+	if not dlg.choices.is_empty():
+		return
+	var cb: Callable = dlg.on_end
+	close_all()
+	if cb.is_valid():
+		cb.call()
+
+
+func pick_choice(i: int) -> void:
+	if dlg.is_empty() or not dlg.done or i >= dlg.choices.size():
+		return
+	var c: Dictionary = dlg.choices[i]
+	if c.get("disabled", false):
+		return
+	close_all()
+	if c.has("act"):
+		c.act.call()
+
+
+# ---------------------------------------------------------------- okno modalne
+func _build_modal() -> void:
+	modal = ColorRect.new()
+	(modal as ColorRect).color = Color(0, 0, 0, 0.5)
+	modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	modal.visible = false
+	root.add_child(modal)
+	var mg := MarginContainer.new()
+	mg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		mg.add_theme_constant_override("margin_" + side, 22)
+	modal.add_child(mg)
+	modal_v = K.vbox(0)
+	modal_v.alignment = BoxContainer.ALIGNMENT_CENTER
+	mg.add_child(modal_v)
+	var hrow := K.hbox(0)
+	hrow.alignment = BoxContainer.ALIGNMENT_CENTER
+	modal_v.add_child(hrow)
+	modal_box = K.panel(K.sb(Color(0.045, 0.055, 0.08, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20))
+	modal_box.custom_minimum_size = Vector2(900, 0)
+	hrow.add_child(modal_box)
+	var v := K.vbox(10)
+	modal_box.add_child(v)
+	var head := K.hbox()
+	var hv := K.vbox(0)
+	modal_title = K.head("", 26)
+	modal_sub = K.lbl("", 12, K.C_DIM)
+	hv.add_child(modal_title)
+	hv.add_child(modal_sub)
+	head.add_child(hv)
+	head.add_child(K.spacer())
+	modal_head_extra = K.hbox(14)
+	head.add_child(modal_head_extra)
+	head.add_child(K.btn("Zamknij  [Esc]", _modal_close, "", true))
+	v.add_child(head)
+	modal_scroll = ScrollContainer.new()
+	modal_scroll.custom_minimum_size = Vector2(856, 120)
+	modal_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(modal_scroll)
+	modal_body = K.vbox(8)
+	modal_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	modal_scroll.add_child(modal_body)
+
+
+## okno dopasowuje wysokość do treści (do maksimum zależnego od ekranu)
+func _fit_modal() -> void:
+	var max_h := root.size.y - (150.0 if modal_dock == "center" else 170.0)
+	var want := clampf(modal_body.get_combined_minimum_size().y, 60.0, max_h)
+	if absf(modal_scroll.custom_minimum_size.y - want) > 0.5:
+		modal_scroll.custom_minimum_size.y = want
+
+
+func _modal_close() -> void:
+	if not deal.is_empty():
+		G.deal_leave(deal)
+	close_all()
+
+
+func _open_modal(title: String, sub := "", dock := "center", width := 900.0) -> void:
+	dialog_box.visible = false
+	skill_box.visible = false
+	phone.visible = false
+	modal.visible = true
+	modal_dock = dock
+	modal_v.alignment = BoxContainer.ALIGNMENT_END if dock == "bottom" else BoxContainer.ALIGNMENT_CENTER
+	(modal as ColorRect).color = Color(0, 0, 0, 0.16 if dock == "bottom" else 0.6)
+	modal_box.custom_minimum_size.x = width
+	modal_scroll.custom_minimum_size.x = width - 44.0
+	modal_title.text = title
+	modal_sub.text = sub
+	modal_sub.visible = sub != ""
+	K.clear(modal_head_extra)
+	K.clear(modal_body)
+	if mode != "modal":
+		Sfx.play("open")
+	set_mode("modal")
+
+
+func _row(parent: Node, bb: String, buttons: Array, size := 14) -> void:
+	var h := K.hbox()
+	h.add_child(K.rich(bb, size))
+	for b in buttons:
+		h.add_child(b)
+	parent.add_child(h)
+
+
+# ---------------------------------------------------------------- telefon
+func open_phone(app := "") -> void:
+	dialog_box.visible = false
+	modal.visible = false
+	skill_box.visible = false
+	if mode != "phone":
+		Sfx.play("open")
+	set_mode("phone")
+	phone.open(app)
+
+
+func help_text() -> String:
+	return "[b]WASD[/b] ruch   [b]Mysz[/b] rozglądanie (lub strzałki)   [b]Shift[/b] sprint\n[b]E[/b] interakcja (przytrzymaj przy skrytce)   [b]Tab[/b] telefon   [b]I[/b] ekwipunek\n[b]N[/b] trasa do celu wł./wył.   [b]Q[/b] następny cel\n[b]B[/b] meblowanie (we własnej kryjówce)   [b]R[/b] obrót mebla\n[b]F[/b] latarka   [b]X[/b] (przytrzymaj) wyrzuć towar   [b]M[/b] dźwięk   [b]F11[/b] pełny ekran   [b]Esc[/b] pauza"
+
+
+# ---------------------------------------------------------------- stół roboczy: porcjowanie i mieszanie
+func open_pack(room: String) -> void:
+	bench.room = room
+	bench.sel = {}
+	bench.mixing = false
+	_render_bench()
+
+
+func _render_bench() -> void:
+	var room: String = bench.room
+	_open_modal("Stół roboczy", "Waga, woreczki i towar. Luzem się nie sprzedaje — najpierw porcjuj.")
+	var S: Dictionary = G.S
+	var top := K.hbox(16)
+	modal_body.add_child(top)
+	top.add_child(K.icon_label("package", "Woreczki: %d" % G.item_at(room, "woreczki"), 14, K.C_TXT if G.item_at(room, "woreczki") > 0 else K.C_BAD))
+	top.add_child(K.icon_label("backpack", "%s: %s / %d" % [G.bag_name(), G.units(G.carry_total()), G.capacity()], 14))
+	top.add_child(K.icon_label("leaf", "Majeranek: %d g" % G.item_at(room, "majeranek"), 14))
+	if int(G.S.lvl) >= 4:
+		top.add_child(K.icon_label("beaker", "Cukier puder: %d g" % G.item_at(room, "cukier"), 14))
+	var stacks := G.bench_bulk(room)
+	var c := K.card(modal_body)
+	c.add_child(K.lbl("TOWAR LUZEM (plecak + skrytka)", 10, K.C_DIM))
+	if stacks.is_empty():
+		c.add_child(K.wrap("Nie masz towaru luzem. Zamów u Wiktora (telefon → Hurt) i odbierz paczkę ze skrytki.", 13, K.C_DIM))
+	for s in stacks:
+		var ss: Dictionary = s
+		var btns := [K.btn("Porcjuj…", func(): bench.sel = ss; bench.mixing = false; bench.g = mini(int(ss.n), 5); _render_bench(), "go", true)]
+		var mb := K.btn("Domieszaj…", func(): bench.sel = ss; bench.mixing = true; bench.filler = 1; _render_bench(), "warn", true)
+		mb.disabled = G.item_at(room, G.filler_for(ss.p)) <= 0
+		mb.tooltip_text = "Potrzebny dodatek ze sklepu: " + String(D.FILLER_NAMES[G.filler_for(ss.p)])
+		btns.append(mb)
+		_row(c, "%s  %s   [b]%s[/b]" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), G.grams(s.n)], btns)
+	if not bench.sel.is_empty():
+		var sel: Dictionary = bench.sel
+		var have := 0.0
+		for s in stacks:
+			if s.p == sel.p and int(s.pur) == int(sel.pur):
+				have = float(s.n)
+		if have < 0.99 and not bench.mixing:
+			bench.sel = {}
+		elif bench.mixing:
+			_bench_mix(room, sel, have)
+		else:
+			_bench_pack(room, sel, have)
+	var c2 := K.card(modal_body)
+	c2.add_child(K.lbl("ZAPORCJOWANE", 10, K.C_DIM))
+	var any := false
+	for src in [[S.inv, "plecak"], [S.stash[room], "skrytka"]]:
+		for s in G.stacks(src[0], "pack"):
+			any = true
+			c2.add_child(K.rich("%s  %s   ×[b]%d g[/b]   %s" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), int(s.n), K.col("(%s)" % src[1], K.C_DIM)], 13))
+	if not any:
+		c2.add_child(K.lbl("Jeszcze nic.", 12, K.C_DIM))
+	if G.item_at(room, "woreczki") <= 0:
+		modal_body.add_child(K.wrap("Brak woreczków — kup je w Sklepie u Stasia (ul. Hutnicza).", 12, K.C_WARN))
+
+
+func _bench_pack(room: String, sel: Dictionary, have: float) -> void:
+	var maxg: int = mini(mini(int(floor(have + 0.001)), G.item_at(room, "woreczki")), G.pack_session_max())
+	var c := K.card(modal_body, 12, K.C_CARD2)
+	c.add_child(K.rich("[b]Porcjowanie:[/b] %s %s" % [D.PRODUCTS[sel.p].name, K.tier_bb(sel.pur)], 14))
+	if maxg <= 0:
+		c.add_child(K.lbl("Potrzebujesz co najmniej 1 g towaru i 1 woreczka.", 12, K.C_WARN))
+		return
+	bench.g = clampi(int(bench.g), 1, maxg)
+	var gl := K.lbl("Ile gramów: %d" % int(bench.g), 14)
+	c.add_child(gl)
+	var sl := HSlider.new()
+	sl.min_value = 1
+	sl.max_value = maxg
+	sl.step = 1
+	sl.value = int(bench.g)
+	sl.focus_mode = Control.FOCUS_NONE
+	sl.editable = maxg > 1
+	sl.value_changed.connect(func(v):
+		bench.g = int(v)
+		gl.text = "Ile gramów: %d" % int(v))
+	c.add_child(sl)
+	c.add_child(K.wrap("Trzy ważenia. Każde trafienie w zieloną strefę to mniej rozsypanego towaru (0 trafień: ok. 16% strat, 3 trafienia: bez strat). Maks. %d g na sesję." % G.pack_session_max(), 12, K.C_DIM))
+	c.add_child(K.btn("Zacznij ważenie", func(): _start_pack(room, sel), "go"))
+
+
+func _start_pack(room: String, sel: Dictionary) -> void:
+	var g := int(bench.g)
+	var widen := 1.0 + (0.25 if G.upg("waga") else 0.0) + (0.22 if G.has_skill("reka") else 0.0)
+	skill_check("Ważenie: %d g %s" % [g, D.PRODUCTS[sel.p].name], widen, func(hits: int):
+		Sfx.play("pack")
+		G.pack(room, sel.p, int(sel.pur), g, hits)
+		bench.sel = sel
+		_render_bench())
+
+
+func _bench_mix(room: String, sel: Dictionary, have: float) -> void:
+	var c := K.card(modal_body, 12, K.C_CARD2)
+	var fid: String = G.filler_for(sel.p)
+	var fname: String = D.FILLER_NAMES[fid]
+	c.add_child(K.rich("[b]Mieszanka:[/b] %s %s — %s  +  %s" % [D.PRODUCTS[sel.p].name, K.tier_bb(sel.pur), G.grams(have), fname.to_lower()], 14))
+	var maxf_g: int = mini(G.item_at(room, fid), int(floor(have)))
+	if maxf_g <= 0:
+		c.add_child(K.lbl("Brak dodatku (%s) — kupisz go w sklepie u Stasia." % fname.to_lower(), 12, K.C_WARN))
+		return
+	bench.filler = clampi(int(bench.filler), 1, maxf_g)
+	var info := K.rich("", 13)
+	var upd := func(f: int):
+		var eff := float(f) * (0.8 if G.has_skill("mieszanie") else 1.0)
+		var np: int = G.qpur(float(sel.pur) * have / (have + eff))
+		info.text = "%s: [b]%d g[/b]  →  razem [b]%s[/b], czystość %s\nCena uliczna: %s → %s za gram" % [fname, f, G.grams(have + f), K.tier_bb(np), G.money(G.market_price(sel.p, sel.pur)), G.money(G.market_price(sel.p, np))]
+	upd.call(int(bench.filler))
+	c.add_child(info)
+	var sl := HSlider.new()
+	sl.min_value = 1
+	sl.max_value = maxf_g
+	sl.step = 1
+	sl.value = int(bench.filler)
+	sl.focus_mode = Control.FOCUS_NONE
+	sl.editable = maxf_g > 1
+	sl.value_changed.connect(func(v):
+		bench.filler = int(v)
+		upd.call(int(v)))
+	c.add_child(sl)
+	c.add_child(K.wrap("Więcej gramów to więcej pieniędzy — dopóki klienci nie poczują różnicy. Stali klienci, którzy biorą dużo, rozpoznają mieszankę i po prostu odmówią.", 12, K.C_DIM))
+	c.add_child(K.btn("Zmieszaj", func(): G.mix(room, sel.p, int(sel.pur), have, int(bench.filler)); bench.sel = {}; _render_bench(), "warn"))
+
+
+# ---------------------------------------------------------------- minimap-gra: waga
+func _build_skill() -> void:
+	var c := CenterContainer.new()
+	c.set_anchors_preset(Control.PRESET_FULL_RECT)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(c)
+	skill_box = K.panel(K.sb(K.C_PANEL, 16, K.C_LINE, 1, 26))
+	skill_box.visible = false
+	c.add_child(skill_box)
+	var v := K.vbox(12)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	skill_box.add_child(v)
+	l_skill_t = K.lbl("", 20)
+	l_skill_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(l_skill_t)
+	var hl := K.lbl("Naciśnij SPACJĘ, gdy wskazówka wagi jest w zielonej strefie.", 13, K.C_DIM)
+	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(hl)
+	var disp := K.panel(K.sb(Color(0.02, 0.05, 0.03), 8, Color(0.1, 0.3, 0.15), 1, 12))
+	disp.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	l_skill_w = K.lbl("0.00 g", 30, Color(0.5, 1.0, 0.65))
+	l_skill_w.custom_minimum_size = Vector2(150, 0)
+	l_skill_w.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	disp.add_child(l_skill_w)
+	v.add_child(disp)
+	skill_bar = Control.new()
+	skill_bar.custom_minimum_size = Vector2(560, 46)
+	skill_bar.draw.connect(_draw_skill)
+	v.add_child(skill_bar)
+	l_skill_p = K.lbl("", 20)
+	l_skill_p.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(l_skill_p)
+	var b := K.btn("STOP (spacja)", _skill_press, "go")
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(b)
+
+
+func skill_check(title: String, widen: float, cb: Callable) -> void:
+	modal.visible = false
+	dialog_box.visible = false
+	phone.visible = false
+	skill_box.visible = true
+	l_skill_t.text = title
+	sk = {"round": 0, "hits": 0, "cb": cb, "res": [], "widen": widen, "t0": _now_ms(), "speed": 0.8, "z0": 0.0, "z1": 0.0, "lock": 0, "flash": 0.0, "flash_ok": false, "ending": false}
+	_skill_round()
+	set_mode("skill")
+
+
+## zegar mini-gry; w nagraniu zwiastuna podmieniany na zegar klatek
+var fake_ms := -1
+
+func _now_ms() -> int:
+	return fake_ms if fake_ms >= 0 else Time.get_ticks_msec()
+
+
+func _skill_pos(now_ms: int) -> float:
+	var u := fmod((now_ms - int(sk.t0)) / 1000.0 * float(sk.speed), 2.0)
+	return u if u < 1.0 else 2.0 - u
+
+
+func _skill_marks() -> String:
+	var marks := ""
+	for r in sk.res:
+		marks += ("●  " if r else "○  ")
+	for i in range(3 - sk.res.size()):
+		marks += "·  "
+	return marks.strip_edges()
+
+
+func _skill_round() -> void:
+	var w: float = minf(0.5, [0.2, 0.15, 0.11][int(sk.round)] * float(sk.widen))
+	var start := randf_range(0.08, 0.92 - w)
+	sk.z0 = start
+	sk.z1 = start + w
+	sk.speed = 0.74 + int(sk.round) * 0.4
+	sk.t0 = _now_ms() - randi_range(0, 600)
+	l_skill_p.text = _skill_marks()
+
+
+func _skill_press() -> void:
+	if sk.is_empty() or sk.ending:
+		return
+	var now := _now_ms()
+	if now < int(sk.lock):
+		return
+	sk.lock = now + 120
+	var pos := _skill_pos(now)
+	var hit: bool = pos >= float(sk.z0) and pos <= float(sk.z1)
+	sk.res.append(hit)
+	if hit:
+		sk.hits = int(sk.hits) + 1
+		Sfx.play("hit")
+	else:
+		Sfx.play("miss")
+	sk.flash = 1.0
+	sk.flash_ok = hit
+	sk.round = int(sk.round) + 1
+	l_skill_p.text = _skill_marks()
+	if int(sk.round) >= 3:
+		sk.ending = true
+		get_tree().create_timer(0.38).timeout.connect(_skill_finish)
+	else:
+		_skill_round()
+
+
+func _skill_finish() -> void:
+	if sk.is_empty():
+		return
+	var cb: Callable = sk.cb
+	var hits := int(sk.hits)
+	skill_box.visible = false
+	sk = {}
+	set_mode("")
+	cb.call(hits)
+
+
+func _draw_skill() -> void:
+	if sk.is_empty():
+		return
+	var w := skill_bar.size.x
+	var h := skill_bar.size.y
+	skill_bar.draw_rect(Rect2(0, 8, w, h - 16), Color(0.09, 0.11, 0.16))
+	for i in range(21):
+		var tx := i * w / 20.0
+		skill_bar.draw_line(Vector2(tx, 8), Vector2(tx, 14 if i % 5 != 0 else 20), Color(1, 1, 1, 0.25), 1.0)
+	skill_bar.draw_rect(Rect2(float(sk.z0) * w, 8, (float(sk.z1) - float(sk.z0)) * w, h - 16), Color(0.29, 0.87, 0.5, 0.5))
+	skill_bar.draw_rect(Rect2(float(sk.z0) * w, 8, 2, h - 16), K.C_ACC)
+	skill_bar.draw_rect(Rect2(float(sk.z1) * w - 2, 8, 2, h - 16), K.C_ACC)
+	var p := _skill_pos(_now_ms())
+	var x := p * (w - 4.0)
+	skill_bar.draw_rect(Rect2(x, 0, 4, h), Color.WHITE)
+	if float(sk.flash) > 0.0:
+		var fc := K.C_ACC if sk.flash_ok else K.C_BAD
+		skill_bar.draw_rect(Rect2(0, 8, w, h - 16), Color(fc.r, fc.g, fc.b, float(sk.flash) * 0.35))
+	var mid := (float(sk.z0) + float(sk.z1)) * 0.5
+	l_skill_w.text = "%.2f g" % (1.0 + (p - mid) * 0.9)
+
+
+# ---------------------------------------------------------------- skrytka
+func open_stash(room: String) -> void:
+	open_inventory(room)
+
+
+## ekwipunek: plecak, postać, organizer; `room` = skrytka otwarta po prawej stronie
+func open_inventory(room := "", tab := "inv") -> void:
+	dialog_box.visible = false
+	modal.visible = false
+	skill_box.visible = false
+	phone.visible = false
+	if mode != "inv":
+		Sfx.play("open")
+	set_mode("inv")
+	inv.open(room, tab)
+
+
+# ---------------------------------------------------------------- sklep u Stasia
+func open_shop() -> void:
+	_open_modal("Sklep spożywczy u Stasia", "„Wszystko, czego trzeba. O nic nie pytam.”")
+	var S: Dictionary = G.S
+	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
+	var c := K.card(modal_body)
+	c.add_child(K.lbl("TOWARY", 10, K.C_DIM))
+	for it in D.SHOP:
+		var id: String = it.id
+		var locked: bool = int(S.lvl) < int(it.lvl) or (it.has("skill") and not G.has_skill(it.skill))
+		var b := K.btn("Kup — %s" % G.money(it.price), func(): G.shop_buy(id); open_shop(), "go", true)
+		b.disabled = locked or S.cash < float(it.price)
+		var req := ""
+		if int(S.lvl) < int(it.lvl):
+			req = K.col("  (poziom %d)" % int(it.lvl), K.C_WARN)
+		elif it.has("skill") and not G.has_skill(it.skill):
+			req = K.col("  (wymaga umiejętności: %s)" % G.skill_def(it.skill).name, K.C_WARN)
+		_row(c, "[b]%s[/b] %s%s\n%s" % [it.name, K.col("masz: %d" % G.item(id), K.C_DIM), req, K.col(it.desc, K.C_DIM)], [b], 13)
+	var c2 := K.card(modal_body)
+	c2.add_child(K.lbl("WYPOSAŻENIE", 10, K.C_DIM))
+	for it in D.UPGRADES:
+		var id2: String = it.id
+		if G.upg(id2):
+			_row(c2, "[b]%s[/b]  %s" % [it.name, K.col("kupione", K.C_ACC)], [], 13)
+			continue
+		var why := ""
+		if int(S.lvl) < int(it.lvl):
+			why = "poziom %d" % int(it.lvl)
+		elif it.has("req") and not G.upg(it.req):
+			why = "najpierw poprzedni"
+		var b2 := K.btn(("Kup — %s" % G.money(it.price)) if why == "" else why, func(): G.upgrade_buy(id2); open_shop(), "go", true)
+		b2.disabled = why != "" or S.cash < float(it.price)
+		_row(c2, "[b]%s[/b]\n%s" % [it.name, K.col(it.desc, K.C_DIM)], [b2], 13)
+
+
+# ---------------------------------------------------------------- namiot uprawowy
+func open_grow(room: String, idx: int) -> void:
+	_open_modal("Namiot uprawowy", "Własny Green — taniej niż u Wiktora, ale trzeba poczekać.")
+	var j = G.grow_job(room, idx)
+	var c := K.card(modal_body)
+	if j == null:
+		c.add_child(K.rich("Namiot jest pusty. Nasiona: [b]%d[/b]" % G.item_at(room, "nasiona"), 14))
+		c.add_child(K.wrap("Plon: ok. 18 g po 36 godzinach. Im lepiej pójdzie sadzenie, tym większy plon i wyższa czystość (60–84%).", 12, K.C_DIM))
+		var b := K.btn("Zasiej (1 paczka nasion)", _grow_seed.bind(room, idx), "go")
+		b.disabled = G.item_at(room, "nasiona") <= 0
+		c.add_child(b)
+		if G.item_at(room, "nasiona") <= 0:
+			c.add_child(K.lbl("Nasiona kupisz w Sklepie u Stasia.", 12, K.C_WARN))
+	elif G.S.t >= float(j.end):
+		c.add_child(K.rich(K.col("Plon gotowy do zbioru!", K.C_ACC), 15))
+		c.add_child(K.btn("Zbierz", func(): G.grow_collect(room, idx); G.world.update_stations(); open_grow(room, idx), "go"))
+	else:
+		var total: float = float(j.end) - float(j.start)
+		var left: float = float(j.end) - G.S.t
+		c.add_child(K.rich("Rośnie… jeszcze [b]%dh %02dm[/b]" % [int(left / 60.0), int(left) % 60], 15))
+		c.add_child(K.bar(total - left, total, K.C_ACC, 9.0))
+
+
+func _grow_seed(room: String, idx: int) -> void:
+	skill_check("Sadzenie: Green", 1.0 + (0.22 if G.has_skill("reka") else 0.0), func(hits: int):
+		G.grow_start(room, idx, hits)
+		G.world.update_stations()
+		open_grow(room, idx))
+
+
+# ---------------------------------------------------------------- nieruchomość / meble
+func open_property(pid: String) -> void:
+	var p := G.prop_def(pid)
+	_open_modal(p.name, p.where)
+	var c := K.card(modal_body)
+	c.add_child(K.wrap(p.desc, 14))
+	c.add_child(K.rich("Cena: [b]%s[/b]   •   wymagany poziom: [b]%d[/b]   •   masz przy sobie: %s" % [K.col(G.money(p.price), K.C_WARN), int(p.lvl), G.money(G.S.cash)], 14))
+	var why := ""
+	if int(G.S.lvl) < int(p.lvl):
+		why = "Wymaga poziomu %d" % int(p.lvl)
+	elif G.S.cash < float(p.price):
+		why = "Brakuje %s" % G.money(float(p.price) - G.S.cash)
+	var b := K.btn("Kup" if why == "" else why, func(): G.buy_property(pid); close_all(), "go")
+	b.disabled = why != ""
+	c.add_child(b)
+	c.add_child(K.wrap("Kryjówkę urządzasz samodzielnie: stół roboczy, regały na towar, łóżko, a z czasem namiot uprawowy.", 12, K.C_DIM))
+
+
+func open_build(room: String) -> void:
+	_open_modal("Meble — " + String(D.ROOMS[room].name), "Wybierz mebel, a potem ustaw go w pomieszczeniu.")
+	var S: Dictionary = G.S
+	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
+	var c := K.card(modal_body)
+	c.add_child(K.lbl("KATALOG", 10, K.C_DIM))
+	var names := {"pack": "stanowisko", "stash": "skrytka", "grow": "uprawa", "bed": "sen i zapis", "light": "światło", "decor": "wystrój"}
+	for f in D.FURNITURE:
+		var fid: String = f.id
+		var why := ""
+		if int(S.lvl) < int(f.lvl):
+			why = "poziom %d" % int(f.lvl)
+		elif S.cash < float(f.price):
+			why = "za drogie"
+		var b := K.btn(("Ustaw — %s" % G.money(f.price)) if why == "" else why, func(): close_all(); G.main.build_begin(fid), "go", true)
+		b.disabled = why != ""
+		_row(c, "[b]%s[/b]  %s\n%s" % [f.name, K.col("[%s]" % names.get(f["func"], ""), K.C_BLUE), K.col(f.desc, K.C_DIM)], [b], 13)
+	var items: Array = S.hide[room].items
+	if not items.is_empty():
+		var c2 := K.card(modal_body)
+		c2.add_child(K.lbl("USTAWIONE (sprzedaż za połowę ceny)", 10, K.C_DIM))
+		for i in range(items.size()):
+			var idx := i
+			var f := G.furn_def(items[i].f)
+			_row(c2, String(f.name), [K.btn("Sprzedaj (+%s)" % G.money(round(float(f.price) * 0.5)), func(): G.furn_remove(room, idx); open_build(room), "bad", true)], 13)
+
+
+# ---------------------------------------------------------------- NEGOCJACJE
+func open_deal(ctx: Dictionary) -> bool:
+	var d: Dictionary = G.deal_start(ctx)
+	if d.is_empty():
+		return false
+	deal = d
+	deal_said = ""
+	_deal_stage(ctx)
+	_render_deal()
+	return true
+
+
+## kadr rozmowy: gracz patrzy na klienta, klient gestykuluje mimo pauzy
+func _deal_stage(ctx: Dictionary) -> void:
+	deal_npc = ctx.get("npc")
+	if deal_npc == null or not (deal_npc is Dictionary) or deal_npc.get("node") == null:
+		deal_npc = null
+		return
+	var node: Node3D = deal_npc.node
+	for ch in node.get_children():
+		if ch is Label3D:
+			ch.visible = false
+	var P = G.player
+	var np := node.global_position
+	var pp: Vector3 = P.global_position
+	node.rotation.y = atan2(pp.x - np.x, pp.z - np.z)
+	if deal_npc.get("rig") != null:
+		var rig: Dictionary = deal_npc.rig
+		rig.anim.process_mode = Node.PROCESS_MODE_ALWAYS
+		Chars.animate(rig, 0.0, 0.0, "talk")
+	var y0: float = P.yaw
+	var p0: float = P.pitch
+	var d := np + Vector3(0, 1.02, 0) - (pp + Vector3(0, 1.66, 0))
+	var y1 := atan2(-d.x, -d.z)
+	var p1 := clampf(atan2(d.y, Vector2(d.x, d.z).length()), -1.0, 0.6)
+	var f0: float = P.cam.fov
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(k: float):
+		P.yaw = lerp_angle(y0, y1, k)
+		P.pitch = lerpf(p0, p1, k)
+		P.rotation = Vector3(0, P.yaw, 0)
+		P.cam.rotation = Vector3(P.pitch, 0, 0)
+		P.cam.fov = lerpf(f0, 56.0, k), 0.0, 1.0, 0.35)
+
+
+func _deal_anim_done() -> void:
+	if deal_npc != null and deal_npc is Dictionary and deal_npc.get("rig") != null and mode == "modal":
+		Chars.animate(deal_npc.rig, 0.0, 0.0, "talk")
+
+
+func _deal_unstage() -> void:
+	if deal_npc != null and deal_npc is Dictionary and deal_npc.get("rig") != null and is_instance_valid(deal_npc.rig.anim):
+		deal_npc.rig.anim.process_mode = Node.PROCESS_MODE_INHERIT
+	if deal_npc != null and deal_npc is Dictionary and deal_npc.get("node") != null and is_instance_valid(deal_npc.node):
+		for ch in deal_npc.node.get_children():
+			if ch is Label3D:
+				ch.visible = true
+	deal_npc = null
+
+
+## kilka sylab mamrotania po nowej kwestii klienta
+func _mumble_burst(voice: float, n: int) -> void:
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	for i in range(n):
+		tw.tween_callback(Sfx.mumble.bind(voice))
+		tw.tween_interval(randf_range(0.09, 0.15))
+
+
+func _meter(parent: Node, ic: String, label: String, value: float, color: Color) -> void:
+	var h := K.hbox(6)
+	h.add_child(K.icon(ic, 15, color))
+	h.add_child(K.lbl(label, 11, K.C_DIM))
+	var b := K.bar(value, 100.0, color, 7.0)
+	b.custom_minimum_size = Vector2(110, 7)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(b)
+	parent.add_child(h)
+
+
+func _render_deal() -> void:
+	var saved := deal
+	var who: Dictionary = saved.who
+	var ctx: Dictionary = saved.ctx
+	var typ := ""
+	if saved.st.has("deals") and int(saved.st.deals) >= 2:
+		typ = " • " + String(D.TYPE_NAMES.get(who.get("type", ""), ""))
+	_open_modal(String(who.name), String(who.get("bio", "")) + typ, "bottom", 1010.0)
+	deal = saved
+	deal_npc = ctx.get("npc") if (ctx.get("npc") is Dictionary and ctx.get("npc").get("node") != null) else null
+	var S: Dictionary = G.S
+	if String(deal.speech) != deal_said:
+		# gest klienta: podanie ręki przy sprzedaży, kręcenie głową przy odmowie
+		if deal_said != "" and deal_npc != null and deal_npc.get("rig") != null:
+			if deal.sold:
+				Chars.one_shot(deal_npc.rig, "Interact")
+			elif deal.over or int(deal.patience) < int(deal.max_patience):
+				Chars.one_shot(deal_npc.rig, "Idle_No")
+			else:
+				Chars.one_shot(deal_npc.rig, "Yes")
+			var gt := create_tween()
+			gt.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+			gt.tween_interval(1.7)
+			gt.tween_callback(_deal_anim_done)
+		deal_said = String(deal.speech)
+		var fem: bool = who.get("look", {}).get("female", false)
+		_mumble_burst((1.32 if fem else 0.86) + float(absi(String(who.name).hash()) % 20) / 100.0, clampi(int(deal_said.length() / 7.0), 2, 7))
+	# wskaźniki
+	var meters := K.hbox(18)
+	modal_body.add_child(meters)
+	var mood: float = deal.mood
+	_meter(meters, "smile" if mood > 60.0 else ("meh" if mood > 30.0 else "angry"), "Nastrój", mood, K.C_ACC if mood > 60.0 else (K.C_WARN if mood > 30.0 else K.C_BAD))
+	var ph := K.hbox(6)
+	ph.add_child(K.icon("timer", 15, K.C_BLUE))
+	ph.add_child(K.lbl("Cierpliwość", 11, K.C_DIM))
+	var pips := ""
+	for i in range(maxi(int(deal.max_patience), int(deal.patience))):
+		pips += "●" if i < int(deal.patience) else "○"
+	ph.add_child(K.lbl(pips, 14, K.C_BLUE))
+	meters.add_child(ph)
+	if G.has_skill("oko2"):
+		_meter(meters, "flame", "Głód", float(deal.st.get("hunger", 0.4)) * 100.0, K.C_BAD)
+	meters.add_child(K.spacer())
+	meters.add_child(K.rich("Chce: [b]%d g %s[/b]%s%s" % [int(deal.want), D.PRODUCTS[deal.product].name,
+		K.col("  (min. %d%%)" % int(who.minpur), K.C_WARN) if (int(deal.st.get("deals", 9)) >= 3 or not deal.st.has("deals")) else "",
+		K.col("   umówione: %d zł/g" % int(ctx.agreed), K.C_ACC) if ctx.get("agreed") != null else ""], 13))
+	cop_bar = null
+	if float(deal.cop_max) > 0.0 and not deal.over:
+		var cw := K.panel(K.sb(Color(0.27, 0.06, 0.06), 8, K.C_BAD, 1, 12))
+		modal_body.add_child(cw)
+		var cv := K.vbox(4)
+		cw.add_child(cv)
+		cv.add_child(K.icon_label("siren", "Policjant ma Was na oku! Kończ szybko!", 14, Color(1, 0.8, 0.8)))
+		cop_bar = K.bar(float(deal.cop_t), float(deal.cop_max), K.C_BAD, 6.0)
+		cv.add_child(cop_bar)
+	# wypowiedź
+	var sp := K.panel(K.sb(Color(0.06, 0.08, 0.125), 12, K.C_WARN, 1, 16))
+	modal_body.add_child(sp)
+	sp.add_child(K.rich(deal.speech, 17))
+	for n in deal.notes:
+		modal_body.add_child(K.lbl("• " + String(n), 11, K.C_DIM))
+	if deal.over:
+		modal_body.add_child(K.btn("Zamknij", close_all, "go"))
+		return
+	if deal.phase == "greet":
+		_deal_greet_ui()
+	else:
+		_deal_offer_ui()
+
+
+func _deal_greet_ui() -> void:
+	var known: Dictionary = deal.st.get("known", {})
+	modal_body.add_child(K.lbl("JAK ZACZNIESZ ROZMOWĘ?", 10, K.C_DIM))
+	var rowc := K.hbox(10)
+	modal_body.add_child(rowc)
+	var opts := [["luz", "Na luzie", "„Siema, co słychać? Dawno się nie widzieliśmy.”", "smile"], ["konkret", "Konkretnie", "„Mam to, o co prosiłeś. Przejdźmy do rzeczy.”", "handshake"], ["twardo", "Twardo", "„Kasa na wierzch i nie marnujmy czasu.”", "angry"]]
+	for o in opts:
+		var style: String = o[0]
+		var like: bool = known.get("like", "") == style
+		var hate: bool = known.get("hate", "") == style
+		var edge := K.C_ACC if like else (K.C_BAD if hate else Color(1, 1, 1, 0.1))
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 92)
+		b.add_theme_stylebox_override("normal", K.sb(Color(0.085, 0.102, 0.15), 10, edge, 1, 12))
+		b.add_theme_stylebox_override("hover", K.sb(Color(0.12, 0.15, 0.22), 10, K.C_ACC if not hate else K.C_BAD, 1, 12))
+		b.add_theme_stylebox_override("pressed", K.sb(Color(0.07, 0.085, 0.12), 10, K.C_ACC, 1, 12))
+		b.pressed.connect(func():
+			Sfx.play("click")
+			G.deal_greet(deal, style)
+			_render_deal())
+		var bv := K.vbox(3)
+		bv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12)
+		bv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(bv)
+		var th := K.hbox(6)
+		th.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		th.add_child(K.icon(o[3], 16, edge if (like or hate) else K.C_TXT))
+		th.add_child(K.head(String(o[1]).to_upper(), 18, K.C_TXT))
+		if like:
+			th.add_child(K.lbl("★ lubi", 11, K.C_ACC))
+		elif hate:
+			th.add_child(K.lbl("✕ nie znosi", 11, K.C_BAD))
+		bv.add_child(th)
+		var q := K.wrap(o[2], 13, K.C_DIM)
+		q.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bv.add_child(q)
+		rowc.add_child(b)
+	var foot := K.hbox(10)
+	modal_body.add_child(foot)
+	foot.add_child(K.wrap("Każdy klient lubi inny ton. Trafiony poprawia nastrój (lepsza cena, więcej cierpliwości), chybiony go psuje. Odkryte upodobania trafiają do Kontaktów.", 12, K.C_DIM))
+	foot.add_child(K.btn("Odejdź", _modal_close, "bad", true))
+
+
+func _deal_offer_ui() -> void:
+	var S: Dictionary = G.S
+	var who: Dictionary = deal.who
+	var ctx: Dictionary = deal.ctx
+	var live := G.stacks(S.inv, "pack")
+	if live.is_empty():
+		deal.over = true
+		deal.speech = "„Nie masz już towaru? No to nie ma o czym gadać.”"
+		G.deal_finish(deal, {"sold": 0})
+		_render_deal()
+		return
+	var sel: Dictionary = deal.sel
+	var have := int(S.inv.pack[sel.p].get(str(int(sel.pur)), 0))
+	if have <= 0:
+		deal.sel = live[0]
+		sel = deal.sel
+		have = int(sel.n)
+		deal.price = int(round(G.market_price(sel.p, sel.pur)))
+	var max_q: int = maxi(1, mini(have, int(deal.want) + int(deal.upsold)))
+	deal.qty = clampi(int(deal.qty), 1, max_q)
+	var cols := K.hbox(12)
+	modal_body.add_child(cols)
+	var left := K.panel(K.sb(K.C_CARD, 12, K.C_LINE, 1, 14))
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(left)
+	var lv := K.vbox(6)
+	left.add_child(lv)
+	lv.add_child(K.lbl("TWÓJ TOWAR", 10, K.C_DIM))
+	var sf := K.flow()
+	lv.add_child(sf)
+	for s in live:
+		var ss: Dictionary = s
+		var is_sel: bool = s.p == sel.p and int(s.pur) == int(sel.pur)
+		sf.add_child(K.btn("%s %d%% ×%d" % [D.PRODUCTS[s.p].name, int(s.pur), int(s.n)], func(): _deal_pick(ss), "go" if is_sel else "", true))
+	lv.add_child(K.rich("Wybrane: %s" % K.tier_bb(sel.pur), 13))
+	var ql := K.lbl("Ilość: %d g" % int(deal.qty), 14)
+	lv.add_child(ql)
+	var qs := HSlider.new()
+	qs.min_value = 1
+	qs.max_value = max_q
+	qs.step = 1
+	qs.value = int(deal.qty)
+	qs.focus_mode = Control.FOCUS_NONE
+	qs.editable = max_q > 1
+	lv.add_child(qs)
+	var right := K.panel(K.sb(K.C_CARD, 12, K.C_LINE, 1, 14))
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(right)
+	var rv := K.vbox(6)
+	right.add_child(rv)
+	var mk := G.market_price(sel.p, sel.pur)
+	var total_l := K.lbl("", 13, K.C_ACC)
+	var price_l := K.lbl("", 32, K.C_ACC)
+	price_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var acts := K.flow()
+	if not deal.haggle:
+		var ap := G.deal_agreed_price(deal)
+		rv.add_child(K.lbl("UMÓWIONA CENA ZA GRAM", 10, K.C_DIM))
+		price_l.text = G.money(ap) if ap > 0 else "—"
+		rv.add_child(price_l)
+		var note := "Tego towaru nie weźmie."
+		if ap > 0:
+			note = "Lepsza czystość, niż oczekiwał: mała premia." if int(sel.pur) > maxi(60, int(who.minpur)) else ("Za słaby towar: rabat." if int(sel.pur) < int(who.minpur) else "Zgodnie z umową.")
+		rv.add_child(K.lbl(note, 12, K.C_DIM))
+		total_l.text = "Razem: " + G.money(ap * int(deal.qty))
+		rv.add_child(total_l)
+		qs.value_changed.connect(func(v):
+			deal.qty = int(v)
+			ql.text = "Ilość: %d g" % int(v)
+			total_l.text = "Razem: " + G.money(ap * int(v)))
+		var ba := K.btn("Sprzedaj po umówionej cenie", func(): G.deal_sell_agreed(deal); _render_deal(), "go")
+		ba.disabled = ap <= 0
+		acts.add_child(ba)
+		acts.add_child(K.btn("Podbij cenę (ryzykowne)", func(): G.deal_haggle(deal); _render_deal(), "warn"))
+	else:
+		rv.add_child(K.lbl("TWOJA CENA ZA GRAM", 10, K.C_DIM))
+		price_l.text = G.money(deal.price)
+		rv.add_child(price_l)
+		var ps := HSlider.new()
+		ps.min_value = maxf(1.0, round(mk * 0.3))
+		ps.max_value = round(mk * 2.2)
+		ps.step = 1
+		ps.value = int(deal.price)
+		ps.focus_mode = Control.FOCUS_NONE
+		rv.add_child(ps)
+		var hint := G.deal_hint(deal)
+		var hint_txt := "Rynek: ok. %s" % G.money(mk)
+		if not hint.is_empty():
+			hint_txt += "   •   klient da ok. %s–%s" % [G.money(hint.lo), G.money(hint.hi)]
+		rv.add_child(K.lbl(hint_txt, 12, K.C_DIM))
+		total_l.text = "Razem: %s%s" % [G.money(int(deal.price) * int(deal.qty)), "  (połowa teraz, reszta na zeszyt)" if deal.credit else ""]
+		rv.add_child(total_l)
+		ps.value_changed.connect(func(v):
+			deal.price = int(v)
+			price_l.text = G.money(v)
+			total_l.text = "Razem: " + G.money(int(v) * int(deal.qty)))
+		qs.value_changed.connect(func(v):
+			deal.qty = int(v)
+			ql.text = "Ilość: %d g" % int(v)
+			total_l.text = "Razem: " + G.money(int(deal.price) * int(v)))
+		if deal.counter != null:
+			acts.add_child(K.btn("Przyjmij %s za gram" % G.money(deal.counter), func(): G.deal_accept(deal); _render_deal(), "go"))
+		acts.add_child(K.btn("Zaproponuj cenę", func(): G.deal_offer(deal); _render_deal(), "go"))
+	acts.add_child(K.btn("Odejdź", _modal_close, "bad"))
+	# taktyki
+	if not ctx.get("sting", false):
+		var tc := K.card(modal_body, 10)
+		tc.add_child(K.lbl("TAKTYKI (każda raz na rozmowę)", 10, K.C_DIM))
+		var tf := K.flow()
+		tc.add_child(tf)
+		for t in G.deal_tactics(deal):
+			var tid: String = t.id
+			if tid == "zeszyt" and not deal.haggle:
+				continue
+			var tb := K.btn(t.label, func(): G.deal_tactic(deal, tid); _render_deal(), "", true)
+			tb.disabled = not t.on
+			tb.tooltip_text = t.tip
+			tf.add_child(tb)
+	modal_body.add_child(acts)
+
+
+func _deal_pick(s: Dictionary) -> void:
+	deal.sel = s
+	if deal.haggle and deal.ctx.get("agreed") == null:
+		deal.price = int(round(G.market_price(s.p, s.pur)))
+	deal.counter = null
+	deal.qty = clampi(int(deal.qty), 1, int(s.n))
+	_render_deal()
+
+
+# ---------------------------------------------------------------- ekrany
+func _screen(title: String, title_color: Color, text: String, buttons: Array, extra := "") -> void:
+	K.clear(screen_box)
+	dialog_box.visible = false
+	modal.visible = false
+	skill_box.visible = false
+	phone.visible = false
+	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.66)
+	var t := K.lbl(title, 64, title_color)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	t.add_theme_constant_override("outline_size", 10)
+	screen_box.add_child(t)
+	if text != "":
+		var p := K.lbl(text, 17, Color(0.85, 0.87, 0.9))
+		p.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		p.custom_minimum_size = Vector2(720, 0)
+		p.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		screen_box.add_child(p)
+	var h := K.hbox(12)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	for b in buttons:
+		h.add_child(b)
+	screen_box.add_child(h)
+	if extra != "":
+		var e := K.rich("[center]%s[/center]" % extra, 13)
+		e.custom_minimum_size = Vector2(720, 0)
+		screen_box.add_child(e)
+	screen.visible = true
+
+
+func show_title() -> void:
+	hud.visible = false
+	K.clear(screen_box)
+	dialog_box.visible = false
+	modal.visible = false
+	skill_box.visible = false
+	phone.visible = false
+	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.42)
+	var bebas: Font = load("res://assets/fonts/bebas.ttf")
+	var spaced := FontVariation.new()
+	spaced.base_font = load("res://assets/fonts/barlowc.ttf")
+	spaced.spacing_glyph = 4
+	var t := Label.new()
+	t.text = "CZARNY RYNEK"
+	t.add_theme_font_override("font", bebas)
+	t.add_theme_font_size_override("font_size", 132)
+	t.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98))
+	t.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
+	t.add_theme_constant_override("shadow_offset_y", 2)
+	t.add_theme_constant_override("shadow_outline_size", 8)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_box.add_child(t)
+	var ln := ColorRect.new()
+	ln.color = K.C_ACC
+	ln.custom_minimum_size = Vector2(0, 4)
+	screen_box.add_child(ln)
+	var tag := Label.new()
+	tag.text = "SPŁAĆ DŁUG.  ZBUDUJ IMPERIUM.  NIE DAJ SIĘ ZŁAPAĆ."
+	tag.add_theme_font_override("font", spaced)
+	tag.add_theme_font_size_override("font_size", 21)
+	tag.add_theme_color_override("font_color", Color(0.84, 0.88, 0.92))
+	tag.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
+	tag.add_theme_constant_override("shadow_outline_size", 6)
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_box.add_child(tag)
+	screen_box.add_child(K.gap(10))
+	var bc := K.btn("Kontynuuj", func(): G.main.start_game(true))
+	bc.disabled = not G.has_save()
+	var h := K.hbox(12)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	for bt in [K.btn("Nowa gra", func(): G.main.start_game(false), "go"), bc, K.btn("Wyjdź", func(): get_tree().quit())]:
+		bt.custom_minimum_size = Vector2(150, 42)
+		bt.add_theme_font_size_override("font_size", 17)
+		h.add_child(bt)
+	screen_box.add_child(h)
+	screen_box.add_child(K.gap(6))
+	var card := K.panel(_hud_card())
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var e := K.rich("[center]%s[/center]" % help_text(), 13)
+	e.custom_minimum_size = Vector2(700, 0)
+	card.add_child(e)
+	screen_box.add_child(card)
+	var by := Label.new()
+	by.text = "A TEST GAME BY PIOTR PIŁKA"
+	by.add_theme_font_override("font", spaced)
+	by.add_theme_font_size_override("font_size", 14)
+	by.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	by.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_box.add_child(by)
+	var note := K.lbl("Fikcyjna gra. Wszystkie postacie i miejsca są zmyślone. Gra nie zachęca do łamania prawa ani zażywania narkotyków.", 11, Color(1, 1, 1, 0.38))
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen_box.add_child(note)
+	screen.visible = true
+	set_mode("title")
+
+
+func show_pause() -> void:
+	_screen("PAUZA", K.C_TXT, "", [K.btn("Wróć do gry", close_all, "go"), K.btn("Telefon", func(): screen.visible = false; open_phone()), K.btn("Zapisz", func(): G.save_game(true)), K.btn("Menu główne", func(): G.main.to_menu(), "bad")], help_text())
+	set_mode("pause")
+
+
+func show_ending(title: String, text: String, stats: String, can_continue := false) -> void:
+	hud.visible = false
+	var btns := [K.btn("Menu główne", func(): G.main.to_menu(), "go")]
+	if can_continue:
+		btns.push_front(K.btn("Graj dalej", func(): G.main.resume_free(), "go"))
+	_screen(title, K.C_WARN, text, btns, stats)
+	set_mode("end")
+
+
+# ---------------------------------------------------------------- pętla i HUD
+var prof_us := 0.0
+var prof_n := 0.0
+
+func _process(dt: float) -> void:
+	var pt0 := Time.get_ticks_usec()
+	_process_ui(dt)
+	prof_us += Time.get_ticks_usec() - pt0
+	prof_n += 1.0
+
+
+func _process_ui(dt: float) -> void:
+	if mode == "dialog" and not dlg.is_empty() and not dlg.done:
+		dlg.typed = float(dlg.typed) + dt * 55.0
+		d_text.visible_characters = int(dlg.typed)
+		# co kilka liter jedna sylaba mamrotania (narrator i gracz milczą)
+		var speaker := String(dlg.lines[dlg.i].n)
+		if int(dlg.typed) >= int(dlg.said) + 4 and speaker != "" and speaker != "Ty" and speaker != "Łóżko":
+			dlg.said = int(dlg.typed)
+			Sfx.mumble(float(dlg.voice))
+		if int(dlg.typed) >= String(dlg.lines[dlg.i].t).length():
+			_line_done()
+	if mode == "modal":
+		_fit_modal()
+	if mode == "skill":
+		if not sk.is_empty():
+			sk.flash = maxf(0.0, float(sk.flash) - dt * 4.0)
+		skill_bar.queue_redraw()
+	if mode == "modal" and not deal.is_empty() and float(deal.cop_t) > 0.0 and not deal.over:
+		deal.cop_t = float(deal.cop_t) - dt
+		if cop_bar != null and is_instance_valid(cop_bar):
+			cop_bar.value = float(deal.cop_t)
+		if float(deal.cop_t) <= 0.0:
+			var cop = deal.cop
+			G.deal_finish(deal, {"sold": 0, "interrupted": true})
+			close_all()
+			G.notify("Policjant zauważył transakcję!", "bad")
+			G.add_heat(18.0)
+			G.add_invest(4.0)
+			if cop != null and G.npcs.cops.has(cop):
+				cop.susp = 1.0
+				G.npcs.start_chase(cop)
+	if sms_t > 0.0:
+		sms_t -= dt
+		if sms_t <= 0.0:
+			sms_banner.visible = false
+	if zone_t > 0.0:
+		zone_t -= dt
+		l_zone.add_theme_color_override("font_color", Color(1, 1, 1, clampf(zone_t / 1.2, 0.0, 0.85)))
+		l_zone.add_theme_color_override("font_shadow_color", Color(0, 0, 0, clampf(zone_t / 1.2, 0.0, 0.7)))
+	if not G.running:
+		return
+	hud_t -= dt
+	if hud_t <= 0.0:
+		hud_t = 0.1
+		update_hud()
+	compass.queue_redraw()
+	waymark.queue_redraw()
+
+
+func update_hud() -> void:
+	var S: Dictionary = G.S
+	var P = G.player
+	if P == null:
+		return
+	var eh := G.eff_heat()
+	l_cash.text = G.money(S.cash)
+	l_time.text = G.clock()
+	l_day.text = "dzień %d" % G.day()
+	ic_weather.texture = K.tex("cloud_rain" if G.rain > 0.2 else ("moon" if G.night > 0.5 else "sun"))
+	ic_weather.modulate = K.C_BLUE if (G.rain > 0.2 or G.night > 0.5) else K.C_WARN
+	l_lvl.text = "POZ. %d  %s" % [int(S.lvl), G.level_title().to_upper()]
+	bar_xp.max_value = maxf(1.0, G.next_xp() - G.prev_xp())
+	bar_xp.value = float(S.xp) - G.prev_xp()
+	var ni := G.next_installment()
+	if float(S.credit) > 0.0 and (G.credit_overdue() or ni.is_empty() or float(S.credit_due) / 1440.0 + 1.0 < float(ni.day)):
+		l_next.text = "Zeszyt: %s do dnia %d" % [G.money(S.credit), int(float(S.credit_due) / 1440.0) + 1]
+		l_next.add_theme_color_override("font_color", K.C_BAD if G.credit_overdue() else K.C_WARN)
+		ic_next.texture = K.tex("notebook_pen")
+		ic_next.modulate = K.C_BAD if G.credit_overdue() else K.C_WARN
+	elif not ni.is_empty() and S.debt > 0.0:
+		l_next.text = "Rata: %s / %s do dnia %d" % [G.money(S.paid), G.money(ni.due), int(ni.day)]
+		var soon: bool = int(ni.day) - G.day() <= 1 and S.paid < float(ni.due)
+		l_next.add_theme_color_override("font_color", K.C_WARN if soon else K.C_DIM)
+		ic_next.texture = K.tex("calendar")
+		ic_next.modulate = K.C_WARN if soon else K.C_DIM
+	else:
+		l_next.text = "Dług spłacony" if S.debt <= 0.0 else ""
+	bar_stam.max_value = P.max_stamina()
+	bar_stam.value = P.stamina
+	var su: float = clampf(G.npcs.max_susp, 0.0, 1.0)
+	bar_susp.value = su
+	l_susp.text = "POLICJA CIĘ OBSERWUJE" if su > 0.3 else ""
+	bar_heat.value = eh
+	l_heat.text = ("śledztwo %d%%" % int(S.invest)) if S.invest >= 20.0 else ""
+	l_bag.text = "%s / %d  •  %d porcji" % [G.units(G.carry_total()), G.capacity(), G.packed_total(S.inv)]
+	bar_bag.max_value = float(G.capacity())
+	bar_bag.value = G.carry_total()
+	var st := G.cur_step()
+	l_obj_t.text = G.chapter().to_upper()
+	l_obj.text = st.text.call() if not st.is_empty() else ""
+	chase.visible = G.npcs.any_chase()
+	var lines := ""
+	if not nav_info.is_empty():
+		lines = "%s  %s • %d m" % [K.col("◆", nav_info.get("color", K.C_ACC)), nav_info.label, int(round(nav_info.dist))]
+	var nm = G.next_meeting()
+	if nm != null:
+		var left = float(nm.meet) - S.t
+		lines += ("\n" if lines != "" else "") + K.col("Spotkanie %s — %s" % [G.clock(nm.meet), ("za %d min" % int(left)) if left > 0.0 else ("klient czeka od %d min" % int(-left))], K.C_ACC if left > 0.0 else K.C_WARN)
+	l_nav.text = lines
+	l_zone_s.text = (G.zone_name.to_upper() if P.loc == "out" else String(D.ROOMS[P.loc].name).to_upper())
+	if G.zone_id != last_zone and P.loc == "out":
+		last_zone = G.zone_id
+		if G.zone_name != "":
+			l_zone.text = G.zone_name.to_upper()
+			zone_t = 3.2
+	minimap.queue_redraw()
+
+
+func set_prompt(text: String, progress := -1.0) -> void:
+	if text == "":
+		prompt.visible = false
+		return
+	var bb := "[b][color=#4ade80][E][/color][/b]  " + text
+	if l_prompt.text != bb:
+		l_prompt.text = bb
+	prompt_bar.visible = progress >= 0.0
+	prompt_bar.value = clampf(progress, 0.0, 1.0)
+	prompt.visible = true
+
+
+func set_build_hint(text: String) -> void:
+	build_hint.visible = text != ""
+	if text != "" and l_build.text != text:
+		l_build.text = text
+
+
+func _draw_way() -> void:
+	var M = G.main
+	if M == null or M.way.is_empty() or not G.running or mode != "" or G.player == null:
+		return
+	var cam: Camera3D = G.player.cam
+	var pos: Vector3 = M.way.pos
+	if float(M.way.dist) < 3.0 or cam.is_position_behind(pos):
+		return
+	var sp := cam.unproject_position(pos)
+	var vs := get_viewport().get_visible_rect().size
+	sp = Vector2(clampf(sp.x, 30.0, vs.x - 30.0), clampf(sp.y, 70.0, vs.y - 120.0))
+	var c: Color = M.way.color
+	var a := 0.9 if float(M.way.dist) > 12.0 else 0.55
+	waymark.draw_colored_polygon(PackedVector2Array([sp + Vector2(0, -9), sp + Vector2(7, 0), sp + Vector2(0, 9), sp + Vector2(-7, 0)]), Color(c.r, c.g, c.b, a))
+	waymark.draw_polyline(PackedVector2Array([sp + Vector2(0, -9), sp + Vector2(7, 0), sp + Vector2(0, 9), sp + Vector2(-7, 0), sp + Vector2(0, -9)]), Color(0, 0, 0, a), 1.5)
+	var font := ThemeDB.fallback_font
+	var txt := "%d m" % int(round(float(M.way.dist)))
+	waymark.draw_string_outline(font, sp + Vector2(-40, 26), txt, HORIZONTAL_ALIGNMENT_CENTER, 80, 13, 4, Color(0, 0, 0, 0.8))
+	waymark.draw_string(font, sp + Vector2(-40, 26), txt, HORIZONTAL_ALIGNMENT_CENTER, 80, 13, Color(1, 1, 1, a))
+
+
+func _draw_compass() -> void:
+	var P = G.player
+	if P == null or not G.running:
+		return
+	var w := compass.size.x
+	var h := compass.size.y
+	var font := ThemeDB.fallback_font
+	var f: Vector2 = P.forward()
+	var bearing := atan2(f.x, -f.y)
+	var half := 1.25
+	for i in range(24):
+		var a := i * TAU / 24.0
+		var rel := wrapf(a - bearing, -PI, PI)
+		if absf(rel) > half:
+			continue
+		var x := w * 0.5 + rel / half * w * 0.5
+		if i % 6 == 0:
+			var nm: String = ["N", "E", "S", "W"][int(i / 6.0)]
+			compass.draw_string_outline(font, Vector2(x - 20, 22), nm, HORIZONTAL_ALIGNMENT_CENTER, 40, 15, 4, Color(0, 0, 0, 0.7))
+			compass.draw_string(font, Vector2(x - 20, 22), nm, HORIZONTAL_ALIGNMENT_CENTER, 40, 15, Color(1, 1, 1, 0.95) if nm == "N" else Color(1, 1, 1, 0.75))
+		else:
+			compass.draw_line(Vector2(x + 1, 13 if i % 3 == 0 else 16), Vector2(x + 1, 22), Color(0, 0, 0, 0.5), 1.0)
+			compass.draw_line(Vector2(x, 12 if i % 3 == 0 else 15), Vector2(x, 21), Color(1, 1, 1, 0.75 if i % 3 == 0 else 0.45), 1.0)
+	compass.draw_line(Vector2(w * 0.5, 0), Vector2(w * 0.5, 6), Color.WHITE, 2.0)
+	for t in G.main.targets():
+		if P.loc != "out" and t.loc == "out":
+			continue
+		var pp: Vector3 = P.global_position
+		var rel2 := wrapf(atan2(float(t.x) - pp.x, -(float(t.z) - pp.z)) - bearing, -PI, PI)
+		var x2 := clampf(w * 0.5 + rel2 / half * w * 0.5, 8.0, w - 8.0)
+		var c: Color = t.color
+		compass.draw_colored_polygon(PackedVector2Array([Vector2(x2, h - 2), Vector2(x2 - 6, h - 11), Vector2(x2 + 6, h - 11)]), c)
+		compass.draw_circle(Vector2(x2, 7), 4.0, c)
+
+
+func _draw_mini() -> void:
+	if G.player == null or not G.running:
+		return
+	var pp: Vector3 = G.player.global_position
+	draw_map(minimap, Vector2(pp.x, pp.z), 90.0, false)
+
+
+## wspólne rysowanie mapy (minimapa i aplikacja Mapa)
+func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
+	var w: float = cv.size.x
+	var hgt: float = cv.size.y
+	var k := w / span
+	var S: Dictionary = G.S
+	var P = G.player
+	var W = G.world
+	var half := Vector2(w * 0.5, hgt * 0.5)
+	var tr := func(x: float, z: float) -> Vector2: return (Vector2(x, z) - center) * k + half
+	var font := ThemeDB.fallback_font
+	cv.draw_rect(Rect2(0, 0, w, hgt), Color(0.03, 0.035, 0.05))
+	if P.loc != "out" and not big:
+		cv.draw_string(font, Vector2(0, hgt * 0.5), String(D.ROOMS[P.loc].name).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, w, 15, K.C_TXT)
+		cv.draw_string(font, Vector2(0, hgt * 0.5 + 20), "wyjście: drzwi za plecami", HORIZONTAL_ALIGNMENT_CENTER, w, 11, K.C_DIM)
+		return
+	if W.map_tex != null:
+		var src := Rect2((center.x - span * 0.5) * W.INV - W.X0, (center.y - (hgt / k) * 0.5) * W.INV - W.Z0, span * W.INV, hgt / k * W.INV)
+		cv.draw_texture_rect_region(W.map_tex, Rect2(0, 0, w, hgt), src)
+	# „gorące” strefy
+	for zn in D.ZONES:
+		var hz := float(S.zheat.get(zn.id, 0.0))
+		if hz >= 8.0:
+			var a: Vector2 = tr.call(zn.x0, zn.z0)
+			var b: Vector2 = tr.call(zn.x1, zn.z1)
+			cv.draw_rect(Rect2(a, b - a), Color(0.94, 0.27, 0.27, minf(0.28, hz / 300.0)))
+	# trasa
+	var path: Array = G.main.nav.path
+	if S.nav_on and path.size() > 1 and P.loc == "out":
+		var pts := PackedVector2Array()
+		for p in path:
+			pts.append(tr.call(p.x, p.y))
+		cv.draw_polyline(pts, nav_info.get("color", K.C_ACC), 3.0, true)
+	# drzwi
+	for id in D.DOORS:
+		var dd: Dictionary = D.DOORS[id]
+		if dd.has("prop") and not G.owns(dd.prop) and not big:
+			continue
+		var dp: Vector2 = tr.call(dd.x, dd.z)
+		var dc := K.C_WARN if not dd.has("prop") else (K.C_BLUE if G.owns(dd.prop) else Color(0.5, 0.5, 0.55))
+		cv.draw_rect(Rect2(dp - Vector2(3.5, 3.5), Vector2(7, 7)), dc)
+		if big:
+			cv.draw_string(font, dp + Vector2(-50, -7), {"safe": "Dom", "shop": "Sklep", "garage": "Garaż 14", "basement": "Piwnica"}.get(id, ""), HORIZONTAL_ALIGNMENT_CENTER, 100, 10, Color(0.99, 0.92, 0.6))
+	if big:
+		for e in [[-181.0, -1.0, "Cop Corner"], [-26.0, 128.0, "Club Neon"], [70.0, -52.0, "Pawilon"], [-122.0, 104.0, "The Hill"], [74.0, 84.0, "Garage Row"], [190.0, -82.0, "Dead Mill"], [145.0, -110.0, "The Tracks"], [10.0, -110.0, "Steel Blocks"], [-30.0, 0.0, "Old Town"]]:
+			var lp: Vector2 = tr.call(e[0] * D.SC, e[1] * D.SC)
+			cv.draw_string(font, lp + Vector2(-50, 4), e[2], HORIZONTAL_ALIGNMENT_CENTER, 100, 10, Color(0.75, 0.8, 0.9, 0.8))
+		for d in S.drops:
+			if d.state == "ready":
+				var dd2 := G.drop_def(d.spot)
+				var p2: Vector2 = tr.call(dd2.x, dd2.z)
+				cv.draw_circle(p2, 5.0, K.C_PINK)
+	if P.loc == "out":
+		var pp: Vector3 = P.global_position
+		var see_all := G.has_skill("teren")
+		for c in G.npcs.cops:
+			var dist := Vector2(c.x - pp.x, c.z - pp.z).length()
+			if c.state != "patrol" or (see_all and dist < 60.0) or big:
+				cv.draw_circle(tr.call(c.x, c.z), 4.0, K.C_BAD if c.state == "chase" else (K.C_WARN if c.state != "patrol" else K.C_BLUE))
+		var car: Dictionary = G.npcs.car
+		if not car.is_empty() and (see_all or car.alarm or big or Vector2(car.x - pp.x, car.z - pp.z).length() < 45.0):
+			var cp: Vector2 = tr.call(car.x, car.z)
+			cv.draw_rect(Rect2(cp - Vector2(4, 4), Vector2(8, 8)), K.C_BAD if car.alarm else K.C_BLUE)
+		for c in G.npcs.citizens:
+			if c.icon.visible:
+				cv.draw_circle(tr.call(c.x, c.z), 2.6, Color(0.98, 0.8, 0.08))
+	for c in G.npcs.customers:
+		if c.node == null:
+			continue
+		var cpos: Vector2 = tr.call(c.x, c.z)
+		cv.draw_circle(cpos, 5.0, K.C_ACC)
+		cv.draw_string(font, cpos + Vector2(-50, -8), String(c.def.name).split(" ")[0], HORIZONTAL_ALIGNMENT_CENTER, 100, 10, Color(0.75, 0.97, 0.82))
+	for t in G.main.targets():
+		var tp: Vector2 = tr.call(t.x, t.z)
+		tp = Vector2(clampf(tp.x, 6.0, w - 6.0), clampf(tp.y, 6.0, hgt - 6.0))
+		var tc: Color = t.color
+		cv.draw_colored_polygon(PackedVector2Array([tp + Vector2(0, -7), tp + Vector2(6, 0), tp + Vector2(0, 7), tp + Vector2(-6, 0)]), tc)
+		cv.draw_polyline(PackedVector2Array([tp + Vector2(0, -7), tp + Vector2(6, 0), tp + Vector2(0, 7), tp + Vector2(-6, 0), tp + Vector2(0, -7)]), Color.BLACK, 1.0)
+	# gracz
+	var gx: float = P.global_position.x
+	var gz: float = P.global_position.z
+	if P.loc != "out":
+		gx = D.DOORS[P.loc].x
+		gz = D.DOORS[P.loc].z
+	var c0: Vector2 = tr.call(gx, gz)
+	c0 = Vector2(clampf(c0.x, 6.0, w - 6.0), clampf(c0.y, 6.0, hgt - 6.0))
+	var f: Vector2 = P.forward()
+	var r := Vector2(-f.y, f.x)
+	cv.draw_colored_polygon(PackedVector2Array([c0 + f * 9.0, c0 - f * 6.0 + r * 5.5, c0 - f * 2.5, c0 - f * 6.0 - r * 5.5]), Color.WHITE)
+
+
+func _input(event: InputEvent) -> void:
+	if G.test_mode:
+		return
+	if event is InputEventMouseButton and event.pressed and mode == "" and G.running and not G.busy and G.main.build_active():
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			G.main.build_confirm()
+			get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			G.main.build_cancel()
+			get_viewport().set_input_as_handled()
+		return
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	var kc: int = event.physical_keycode
+	if kc == KEY_F11:
+		G.main.set_fullscreen(not G.main.is_fullscreen())
+		get_viewport().set_input_as_handled()
+		return
+	var used := true
+	match mode:
+		"dialog":
+			if kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER or kc == KEY_E:
+				advance()
+			elif kc >= KEY_1 and kc <= KEY_9:
+				pick_choice(kc - KEY_1)
+			else:
+				used = false
+		"skill":
+			if kc == KEY_SPACE:
+				_skill_press()
+			else:
+				used = false
+		"phone":
+			if kc == KEY_TAB:
+				close_all()
+			elif kc == KEY_ESCAPE or kc == KEY_BACKSPACE:
+				phone.back()
+			else:
+				used = false
+		"modal":
+			if kc == KEY_ESCAPE:
+				_modal_close()
+			else:
+				used = false
+		"inv":
+			if kc == KEY_ESCAPE or kc == KEY_I or kc == KEY_TAB:
+				close_all()
+			elif kc == KEY_1 or kc == KEY_2 or kc == KEY_3:
+				inv.tab = ["inv", "char", "org"][kc - KEY_1]
+				inv.sel = {}
+				inv.render()
+			else:
+				used = false
+		"pause":
+			if kc == KEY_ESCAPE:
+				close_all()
+			else:
+				used = false
+		"":
+			if not G.running or G.busy:
+				return
+			if G.main.build_active():
+				match kc:
+					KEY_R: G.main.build_rotate()
+					KEY_E, KEY_ENTER: G.main.build_confirm()
+					KEY_ESCAPE, KEY_B: G.main.build_cancel()
+					_: used = false
+			else:
+				match kc:
+					KEY_TAB: open_phone("sms" if G.unread_total() > 0 else "")
+					KEY_ESCAPE: show_pause()
+					KEY_I: open_inventory("")
+					KEY_E: G.main.interact()
+					KEY_F: G.main.toggle_flash()
+					KEY_N: G.main.toggle_nav()
+					KEY_Q: G.main.cycle_track()
+					KEY_B: G.main.build_menu()
+					KEY_M:
+						Sfx.set_muted(not Sfx.muted)
+						G.main.save_settings()
+						G.notify("Dźwięk wył." if Sfx.muted else "Dźwięk wł.")
+					_: used = false
+		_:
+			used = false
+	if used:
+		get_viewport().set_input_as_handled()

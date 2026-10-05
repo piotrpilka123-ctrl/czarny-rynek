@@ -1,0 +1,833 @@
+extends Control
+## Ekran ekwipunku: zawartość plecaka z rozmiarem i wagą każdej rzeczy, podgląd postaci
+## ze slotami, skrytka albo kosz po prawej. Przeciągnij i upuść albo kliknij i przenieś.
+
+const K = preload("res://scripts/uikit.gd")
+const Chars = preload("res://scripts/chars.gd")
+
+const W_SIDE := 432.0
+const W_MID := 300.0
+const H_BODY := 548.0
+const TABS := [["inv", "EKWIPUNEK", "backpack"], ["char", "POSTAĆ", "user"], ["org", "ORGANIZER", "notebook_pen"]]
+
+var ui
+var room := ""
+var tab := "inv"
+var sel := {}               # zaznaczona pozycja: {side, kind, p, pur, id}
+var tabs_box: HBoxContainer
+var l_cash: Label
+var l_clock: Label
+var content: Control
+var hint: Label
+var vp: SubViewport
+var vpc: SubViewportContainer
+var rig := {}
+var pivot: Node3D
+var bag_mesh: MeshInstance3D
+var spin := 0.0
+var spin_drag := false
+
+
+func build(ui_ref) -> void:
+	ui = ui_ref
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visible = false
+	var dim := ColorRect.new()
+	dim.color = Color(0.012, 0.016, 0.026, 0.86)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(dim)
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(cc)
+	var v := K.vbox(10)
+	cc.add_child(v)
+	# pasek z zakładkami
+	var top := K.hbox(6)
+	top.custom_minimum_size = Vector2(W_SIDE * 2.0 + W_MID + 24.0, 40)
+	v.add_child(top)
+	tabs_box = K.hbox(4)
+	top.add_child(tabs_box)
+	top.add_child(K.spacer())
+	var cash_box := K.hbox(6)
+	cash_box.add_child(K.icon("banknote", 18, K.C_ACC))
+	l_cash = K.head("0 zł", 22, K.C_ACC)
+	cash_box.add_child(l_cash)
+	top.add_child(cash_box)
+	top.add_child(K.gap(0))
+	var sep := K.lbl("  ", 12)
+	top.add_child(sep)
+	top.add_child(K.icon("clock", 15, K.C_DIM))
+	l_clock = K.head("09:00", 17, K.C_TXT)
+	top.add_child(l_clock)
+	top.add_child(K.lbl("   ", 12))
+	top.add_child(K.btn("Zamknij  [Esc]", func(): ui.close_all(), "", true))
+	var line := ColorRect.new()
+	line.color = Color(1, 1, 1, 0.08)
+	line.custom_minimum_size = Vector2(0, 1)
+	v.add_child(line)
+	content = Control.new()
+	content.custom_minimum_size = Vector2(W_SIDE * 2.0 + W_MID + 24.0, H_BODY)
+	v.add_child(content)
+	hint = K.lbl("", 12, K.C_DIM)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(hint)
+	_build_viewport()
+
+
+# ---------------------------------------------------------------- podgląd postaci
+func _build_viewport() -> void:
+	vp = SubViewport.new()
+	vp.own_world_3d = true
+	vp.transparent_bg = true
+	vp.size = Vector2i(600, 880)
+	vp.msaa_3d = Viewport.MSAA_2X
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(vp)
+	var we := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0, 0, 0, 0)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.55, 0.6, 0.72)
+	env.ambient_light_energy = 0.55
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	we.environment = env
+	vp.add_child(we)
+	var key := DirectionalLight3D.new()
+	key.rotation_degrees = Vector3(-38, 35, 0)
+	key.light_energy = 1.5
+	key.light_color = Color(1.0, 0.93, 0.82)
+	vp.add_child(key)
+	var rim := DirectionalLight3D.new()
+	rim.rotation_degrees = Vector3(-20, -150, 0)
+	rim.light_energy = 1.1
+	rim.light_color = Color(0.45, 0.7, 1.0)
+	vp.add_child(rim)
+	var cam := Camera3D.new()
+	cam.fov = 30.0
+	cam.position = Vector3(0, 0.98, 3.75)
+	cam.look_at_from_position(cam.position, Vector3(0, 0.93, 0))
+	vp.add_child(cam)
+	pivot = Node3D.new()
+	vp.add_child(pivot)
+	rig = Chars.make(D.PLAYER_LOOK)
+	pivot.add_child(rig.root)
+	Chars.animate(rig, 0.0, 0.0, "")
+	# plecak na plecach (widoczny po zakupie)
+	bag_mesh = MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.3, 0.4, 0.16)
+	bag_mesh.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.16, 0.2, 0.17)
+	mat.roughness = 0.9
+	bag_mesh.material_override = mat
+	var skel: Skeleton3D = rig.skel
+	var bone := ""
+	for cand in ["spine_03", "spine_02", "Spine2", "Chest", "spine_01"]:
+		if skel.find_bone(cand) >= 0:
+			bone = cand
+			break
+	if bone != "":
+		var ba := BoneAttachment3D.new()
+		ba.bone_name = bone
+		skel.add_child(ba)
+		ba.add_child(bag_mesh)
+		bag_mesh.position = Vector3(0, 0.02, -0.17)
+	else:
+		rig.root.add_child(bag_mesh)
+		bag_mesh.position = Vector3(0, 1.2, -0.2)
+
+
+func _char_view(w: float, h: float) -> Control:
+	if vpc != null and is_instance_valid(vpc):
+		vpc.queue_free()
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(w, h)
+	var glow := ColorRect.new()
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	glow.color = Color(0, 0, 0, 0)
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(glow)
+	var tr := TextureRect.new()
+	tr.texture = vp.get_texture()
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tr.mouse_filter = Control.MOUSE_FILTER_STOP
+	tr.mouse_default_cursor_shape = Control.CURSOR_DRAG
+	tr.gui_input.connect(_spin_input)
+	holder.add_child(tr)
+	return holder
+
+
+func _spin_input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+		spin_drag = ev.pressed
+	elif ev is InputEventMouseMotion and spin_drag:
+		spin += ev.relative.x * 0.012
+
+
+func _process(dt: float) -> void:
+	if not visible:
+		return
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		spin_drag = false
+	if not spin_drag:
+		spin = lerpf(spin, sin(Time.get_ticks_msec() * 0.0005) * 0.35, minf(1.0, dt * 1.2))
+	pivot.rotation.y = spin
+
+
+# ---------------------------------------------------------------- otwieranie
+func open(room_id := "", start_tab := "inv") -> void:
+	room = room_id
+	tab = start_tab
+	sel = {}
+	visible = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	bag_mesh.visible = G.upg("plecak1")
+	(bag_mesh.mesh as BoxMesh).size = Vector3(0.34, 0.5, 0.2) if G.upg("plecak2") else Vector3(0.3, 0.4, 0.16)
+	modulate.a = 0.0
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(self, "modulate:a", 1.0, 0.14)
+	render()
+
+
+func close() -> void:
+	visible = false
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+
+
+func has_stash() -> bool:
+	return room != "" and G.S.stash.has(room) and G.stash_cap(room) > 0
+
+
+func render() -> void:
+	var S: Dictionary = G.S
+	l_cash.text = G.money(S.cash)
+	l_clock.text = "%s  •  dzień %d" % [G.clock(), G.day()]
+	K.clear(tabs_box)
+	for t in TABS:
+		var id: String = t[0]
+		var on := id == tab
+		var b := Button.new()
+		b.text = "  " + String(t[1])
+		b.icon = K.tex(t[2])
+		b.add_theme_constant_override("icon_max_width", 18)
+		b.add_theme_constant_override("h_separation", 2)
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_override("font", load("res://assets/fonts/barlowc.ttf"))
+		b.add_theme_font_size_override("font_size", 19)
+		var st := K.sb(Color(0.16, 0.6, 0.33, 0.22) if on else Color(1, 1, 1, 0.03), 8, K.C_ACC if on else Color(1, 1, 1, 0.08), 1, 14)
+		b.add_theme_stylebox_override("normal", st)
+		b.add_theme_stylebox_override("hover", K.sb(Color(0.16, 0.6, 0.33, 0.3) if on else Color(1, 1, 1, 0.08), 8, K.C_ACC if on else Color(1, 1, 1, 0.16), 1, 14))
+		b.add_theme_stylebox_override("pressed", st)
+		b.add_theme_color_override("font_color", Color.WHITE if on else K.C_DIM)
+		for cn in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
+			b.add_theme_color_override(cn, K.C_ACC if on else K.C_DIM)
+		b.pressed.connect(func():
+			Sfx.play("click")
+			tab = id
+			sel = {}
+			render())
+		tabs_box.add_child(b)
+	K.clear(content)
+	match tab:
+		"char": _tab_char()
+		"org": _tab_org()
+		_: _tab_inv()
+
+
+func _frame(w: float, h: float, pad := 14) -> PanelContainer:
+	var p := K.panel(K.sb(Color(0.05, 0.062, 0.088, 0.96), 12, Color(1, 1, 1, 0.09), 1, pad))
+	p.custom_minimum_size = Vector2(w, h)
+	return p
+
+
+func _title(parent: Node, ic: String, text: String, right := "", rcol := K.C_TXT) -> void:
+	var h := K.hbox(8)
+	h.add_child(K.icon(ic, 18, K.C_ACC))
+	h.add_child(K.head(text, 19, K.C_TXT))
+	h.add_child(K.spacer())
+	if right != "":
+		h.add_child(K.head(right, 19, rcol))
+	parent.add_child(h)
+
+
+# ---------------------------------------------------------------- zakładka: ekwipunek
+func _tab_inv() -> void:
+	var S: Dictionary = G.S
+	var row := K.hbox(12)
+	content.add_child(row)
+	# --- lewa strona: plecak
+	var cap := float(G.capacity())
+	var used := G.carry_total()
+	var left := _frame(W_SIDE, H_BODY)
+	row.add_child(left)
+	var lv := K.vbox(8)
+	left.add_child(lv)
+	_title(lv, "backpack", G.bag_name().to_upper(), "%s / %d" % [G.units(used), int(cap)], K.C_BAD if used > cap - 0.5 else K.C_TXT)
+	_list(lv, S.inv, "bag", "Pusto. Towar zamówisz u Wiktora (telefon → Hurt).")
+	lv.add_child(_cap_bar(used, cap, K.C_BLUE))
+	lv.add_child(_foot("Waga: %s" % G.weight_text(G.store_weight(S.inv)), "Przy zatrzymaniu tracisz wszystko, co masz przy sobie."))
+	left.set_drag_forwarding(Callable(), _can_drop.bind("bag"), _drop.bind("bag"))
+	# --- środek: postać i szczegóły
+	var mid := K.vbox(8)
+	mid.custom_minimum_size = Vector2(W_MID, H_BODY)
+	row.add_child(mid)
+	var view := _char_view(W_MID, 318.0)
+	mid.add_child(view)
+	_slot(view, 0, 0, "backpack", "NOSISZ", G.bag_name(), "%d miejsc" % int(cap))
+	_slot(view, 1, 0, "scale", "WAGA", "Jubilerska" if G.upg("waga") else "Kuchenna", "dokładniejsza" if G.upg("waga") else "zwykła")
+	_slot(view, 0, 1, "banknote", "PORTFEL", G.money(S.cash), "gotówka")
+	_slot(view, 1, 1, "phone", "TELEFON", "Burner ×%d" % G.item("burner") if G.item("burner") > 0 else "Własny numer", "na kartę" if G.item("burner") > 0 else "znany policji")
+	mid.add_child(_detail())
+	# --- prawa strona: skrytka albo kosz
+	if has_stash():
+		var st: Dictionary = S.stash[room]
+		var scap := float(G.stash_cap(room))
+		var sused := G.store_total(st)
+		var right := _frame(W_SIDE, H_BODY)
+		row.add_child(right)
+		var rv := K.vbox(8)
+		right.add_child(rv)
+		_title(rv, "warehouse", "SKRYTKA — " + String(D.ROOMS[room].name).to_upper(), "%s / %d" % [G.units(sused), int(scap)])
+		_list(rv, st, "stash", "Skrytka jest pusta. Przeciągnij tu rzeczy z plecaka.")
+		rv.add_child(_cap_bar(sused, scap, K.C_GOLD))
+		rv.add_child(_cash_row(st))
+		right.set_drag_forwarding(Callable(), _can_drop.bind("stash"), _drop.bind("stash"))
+		hint.text = "Przeciągnij rzecz na drugą stronę, żeby przenieść całość   •   PPM — 1 szt.   •   Shift + PPM — 5 szt.   •   LPM — szczegóły"
+	else:
+		var right2 := K.vbox(10)
+		right2.custom_minimum_size = Vector2(W_SIDE, H_BODY)
+		row.add_child(right2)
+		var bin := _DropBox.new()
+		bin.custom_minimum_size = Vector2(W_SIDE, 250)
+		bin.set_drag_forwarding(Callable(), _can_drop.bind("bin"), _drop.bind("bin"))
+		right2.add_child(bin)
+		var info := _frame(W_SIDE, 0)
+		info.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		right2.add_child(info)
+		var iv := K.vbox(8)
+		info.add_child(iv)
+		_title(iv, "info", "JAK TO DZIAŁA")
+		iv.add_child(K.rich("• Każda rzecz zajmuje [b]miejsce[/b] — porcja i gram luzem po 1, woreczki prawie nic, telefon na kartę aż 2.\n• Rzeczy tego samego rodzaju [b]układają się w stos[/b].\n• W kryjówce podejdź do [b]skrytki[/b] — otworzy się po prawej i przeciągniesz do niej towar oraz gotówkę.\n• Podczas pościgu przytrzymaj [b][X][/b], żeby wyrzucić cały towar. Przepada, ale przy kontroli jesteś czysty.", 13))
+		iv.add_child(K.spacer())
+		var nb := _nearest_stash()
+		if nb != "":
+			iv.add_child(K.rich(K.col("Najbliższa skrytka: ", K.C_DIM) + "[b]%s[/b]" % nb, 13))
+		hint.text = "Przeciągnij rzecz do kosza, żeby ją wyrzucić   •   LPM — szczegóły   •   skrytki są w kryjówkach"
+
+
+func _nearest_stash() -> String:
+	var names := []
+	for r in G.S.stash:
+		if G.stash_cap(r) > 0 and (r == "safe" or G.room_owned(r)):
+			names.append(String(D.ROOMS[r].name))
+	return ", ".join(names)
+
+
+func _cap_bar(used: float, cap: float, color: Color) -> Control:
+	var full := used > cap - 0.5 and cap > 0.0
+	var b := K.bar(used, maxf(1.0, cap), K.C_BAD if full else color, 6.0)
+	return b
+
+
+func _foot(left: String, right: String) -> Control:
+	var h := K.hbox(8)
+	h.add_child(K.lbl(left, 12, K.C_TXT))
+	h.add_child(K.spacer())
+	h.add_child(K.lbl(right, 11, K.C_DIM))
+	return h
+
+
+func _cash_row(st: Dictionary) -> Control:
+	var S: Dictionary = G.S
+	var v := K.vbox(6)
+	var h := K.hbox(6)
+	h.add_child(K.icon("banknote", 16, K.C_ACC))
+	h.add_child(K.rich("Gotówka w skrytce: [b]%s[/b]" % G.money(st.cash), 13))
+	v.add_child(h)
+	var hb := K.hbox(6)
+	var b1 := K.btn("Wpłać 500", func(): G.move_cash(room, true, 500.0); render(), "", true)
+	b1.disabled = S.cash < 1.0
+	var b2 := K.btn("Wpłać wszystko", func(): G.move_cash(room, true, 1e12); render(), "", true)
+	b2.disabled = S.cash < 1.0
+	var b3 := K.btn("Wypłać 500", func(): G.move_cash(room, false, 500.0); render(), "", true)
+	b3.disabled = float(st.cash) < 1.0
+	var b4 := K.btn("Wypłać wszystko", func(): G.move_cash(room, false, 1e12); render(), "", true)
+	b4.disabled = float(st.cash) < 1.0
+	for b in [b1, b2, b3, b4]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hb.add_child(b)
+	v.add_child(hb)
+	return v
+
+
+## slot wyposażenia przy postaci (kolumna 0/1, wiersz 0/1)
+func _slot(view: Control, cx: int, cy: int, ic: String, cap: String, val: String, sub: String) -> void:
+	var p := K.panel(K.sb(Color(0.05, 0.062, 0.088, 0.9), 9, Color(1, 1, 1, 0.1), 1, 8))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.custom_minimum_size = Vector2(112, 0)
+	view.add_child(p)
+	p.anchor_left = float(cx)
+	p.anchor_right = float(cx)
+	p.anchor_top = float(cy)
+	p.anchor_bottom = float(cy)
+	p.grow_horizontal = Control.GROW_DIRECTION_END if cx == 0 else Control.GROW_DIRECTION_BEGIN
+	p.grow_vertical = Control.GROW_DIRECTION_END if cy == 0 else Control.GROW_DIRECTION_BEGIN
+	var v := K.vbox(1)
+	p.add_child(v)
+	var h := K.hbox(5)
+	h.add_child(K.icon(ic, 13, K.C_ACC))
+	h.add_child(K.lbl(cap, 9, K.C_DIM))
+	v.add_child(h)
+	v.add_child(K.head(val, 15, K.C_TXT))
+	v.add_child(K.lbl(sub, 10, K.C_DIM))
+
+
+# ---------------------------------------------------------------- lista pozycji
+func _list(parent: Node, st: Dictionary, side: String, empty: String) -> void:
+	var hd := K.hbox(0)
+	var c1 := K.lbl("PRZEDMIOT", 10, K.C_DIM)
+	c1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hd.add_child(c1)
+	for e in [["ILOŚĆ", 74.0], ["MIEJSCE", 58.0], ["WAGA", 58.0]]:
+		var l := K.lbl(e[0], 10, K.C_DIM)
+		l.custom_minimum_size = Vector2(e[1], 0)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		hd.add_child(l)
+	hd.add_child(K.gap(0))
+	var hm := MarginContainer.new()
+	hm.add_theme_constant_override("margin_left", 8)
+	hm.add_theme_constant_override("margin_right", 12)
+	hm.add_child(hd)
+	parent.add_child(hm)
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.set_drag_forwarding(Callable(), _can_drop.bind(side), _drop.bind(side))
+	parent.add_child(sc)
+	var rows := K.vbox(4)
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rows.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rows.set_drag_forwarding(Callable(), _can_drop.bind(side), _drop.bind(side))
+	rows.mouse_filter = Control.MOUSE_FILTER_PASS
+	sc.add_child(rows)
+	var list := G.entries(st)
+	if list.is_empty():
+		var l2 := K.wrap(empty, 13, K.C_DIM)
+		l2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var mg := MarginContainer.new()
+		mg.add_theme_constant_override("margin_left", 8)
+		mg.add_theme_constant_override("margin_top", 10)
+		mg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mg.add_child(l2)
+		rows.add_child(mg)
+	for e in list:
+		rows.add_child(_row(e, side))
+
+
+func _is_sel(e: Dictionary, side: String) -> bool:
+	return not sel.is_empty() and sel.side == side and sel.kind == e.kind and sel.p == e.p and int(sel.pur) == int(e.pur) and sel.id == e.id
+
+
+func _ecolor(e: Dictionary) -> Color:
+	if int(e.tier) >= 0:
+		return Color("#" + String(D.TIER_COLOR[int(e.tier)]))
+	return Color(0.62, 0.66, 0.74)
+
+
+func _row(e: Dictionary, side: String) -> Control:
+	var on := _is_sel(e, side)
+	var col := _ecolor(e)
+	var p := K.panel(K.sb(Color(0.13, 0.17, 0.24) if on else Color(0.085, 0.102, 0.15), 9, K.C_ACC if on else Color(1, 1, 1, 0.06), 1, 8))
+	p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	p.mouse_entered.connect(func():
+		if not _is_sel(e, side):
+			p.add_theme_stylebox_override("panel", K.sb(Color(0.11, 0.135, 0.2), 9, Color(1, 1, 1, 0.16), 1, 8)))
+	p.mouse_exited.connect(func():
+		if not _is_sel(e, side):
+			p.add_theme_stylebox_override("panel", K.sb(Color(0.085, 0.102, 0.15), 9, Color(1, 1, 1, 0.06), 1, 8)))
+	var h := K.hbox(10)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(h)
+	var ib := K.panel(K.sb(Color(col.r, col.g, col.b, 0.16), 8, Color(col.r, col.g, col.b, 0.55), 1, 0))
+	ib.custom_minimum_size = Vector2(36, 36)
+	ib.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ic := K.icon(e.icon, 20, col)
+	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ib.add_child(ic)
+	h.add_child(ib)
+	var nv := K.vbox(0)
+	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var nl := K.lbl(e.name, 14, K.C_TXT)
+	nl.clip_text = true
+	nv.add_child(nl)
+	var sub := String(e.sub)
+	if int(e.tier) >= 0:
+		sub = "%s %d%%%s  •  %s" % [D.TIER_NAMES[int(e.tier)], int(e.pur), " (mieszanka)" if int(e.pur) < 65 else "", e.sub]
+	elif sub == "":
+		sub = "przedmiot"
+	nv.add_child(K.lbl(sub, 11, col if int(e.tier) >= 0 else K.C_DIM))
+	h.add_child(nv)
+	for cell in [[e.qty, 74.0, K.C_TXT, 16], [G.units(e.size), 58.0, K.C_DIM, 14], [G.weight_text(e.weight), 58.0, K.C_DIM, 14]]:
+		var l := K.head(String(cell[0]), int(cell[3]), cell[2])
+		l.custom_minimum_size = Vector2(cell[1], 0)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(l)
+	p.gui_input.connect(_row_input.bind(e, side))
+	p.set_drag_forwarding(_drag.bind(e, side), _can_drop.bind(side), _drop.bind(side))
+	return p
+
+
+func _row_input(ev: InputEvent, e: Dictionary, side: String) -> void:
+	if not (ev is InputEventMouseButton) or ev.pressed:
+		return
+	if ev.button_index == MOUSE_BUTTON_LEFT:
+		Sfx.play("click")
+		if ev.double_click:
+			_move(e, side, 1e9)
+			return
+		sel = {"side": side, "kind": e.kind, "p": e.p, "pur": int(e.pur), "id": e.id}
+		render()
+	elif ev.button_index == MOUSE_BUTTON_RIGHT:
+		_move(e, side, 5.0 if ev.shift_pressed else 1.0)
+
+
+# ---------------------------------------------------------------- przenoszenie
+func _move(e: Dictionary, side: String, amount: float) -> void:
+	if not has_stash():
+		return
+	var moved := G.move_entry(room, e, side == "bag", minf(amount, float(e.n)))
+	if moved > 0.0:
+		Sfx.play("select")
+	render()
+
+
+func _discard(e: Dictionary, amount: float) -> void:
+	G.discard_entry(e, minf(amount, float(e.n)))
+	Sfx.play("drop")
+	sel = {}
+	render()
+
+
+func _drag(_at: Vector2, e: Dictionary, side: String) -> Variant:
+	var col := _ecolor(e)
+	var pv := K.panel(K.sb(Color(0.09, 0.11, 0.16, 0.95), 9, K.C_ACC, 1, 8))
+	var h := K.hbox(8)
+	pv.add_child(h)
+	h.add_child(K.icon(e.icon, 20, col))
+	h.add_child(K.lbl("%s  •  %s" % [e.name, e.qty], 14, K.C_TXT))
+	var holder := Control.new()
+	holder.add_child(pv)
+	pv.position = Vector2(12, 8)
+	holder.z_index = 100
+	set_drag_preview(holder)
+	return {"e": e, "side": side}
+
+
+func _can_drop(_at: Vector2, data: Variant, side: String) -> bool:
+	if not (data is Dictionary) or not data.has("e"):
+		return false
+	if side == "bin":
+		return data.side == "bag"
+	return data.side != side and has_stash()
+
+
+func _drop(_at: Vector2, data: Variant, side: String) -> void:
+	var e: Dictionary = data.e
+	if side == "bin":
+		_discard(e, float(e.n))
+	else:
+		_move(e, data.side, float(e.n))
+
+
+func _find_sel() -> Dictionary:
+	if sel.is_empty():
+		return {}
+	var st: Dictionary = G.S.inv if sel.side == "bag" else G.S.stash.get(room, {})
+	if st.is_empty():
+		return {}
+	for e in G.entries(st):
+		if _is_sel(e, sel.side):
+			return e
+	return {}
+
+
+## karta szczegółów zaznaczonej rzeczy
+func _detail() -> Control:
+	var p := _frame(W_MID, 0, 12)
+	p.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var v := K.vbox(6)
+	p.add_child(v)
+	var e := _find_sel()
+	if e.is_empty():
+		v.add_child(K.lbl("SZCZEGÓŁY", 10, K.C_DIM))
+		v.add_child(K.wrap("Kliknij rzecz na liście, żeby zobaczyć szczegóły i przenieść wybraną ilość.", 13, K.C_DIM))
+		return p
+	var col := _ecolor(e)
+	var side: String = sel.side
+	var h := K.hbox(8)
+	h.add_child(K.icon(e.icon, 22, col))
+	var nm := K.head(e.name, 20, K.C_TXT)
+	nm.clip_text = true
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(nm)
+	v.add_child(h)
+	if int(e.tier) >= 0:
+		v.add_child(K.rich("%s  •  %s" % [K.tier_bb(e.pur), e.sub], 12))
+	v.add_child(K.wrap(e.desc, 12, K.C_DIM))
+	v.add_child(K.rich("Ilość [b]%s[/b]   Miejsce [b]%s[/b]   Waga [b]%s[/b]" % [e.qty, G.units(e.size), G.weight_text(e.weight)], 12))
+	v.add_child(K.spacer())
+	var bh := K.hbox(5)
+	v.add_child(bh)
+	if has_stash():
+		bh.add_child(K.lbl("Do skrytki:" if side == "bag" else "Do plecaka:", 12, K.C_DIM))
+		for a in [1.0, 5.0, 1e9]:
+			var amt: float = a
+			if amt < 1e8 and float(e.n) < amt:
+				continue
+			var b := K.btn("Wszystko" if amt > 1e8 else str(int(amt)), func(): _move(e, side, amt), "go" if amt > 1e8 else "", true)
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			bh.add_child(b)
+	if side == "bag":
+		if e.kind == "item" and e.id == "burner":
+			var ub := K.btn("Użyj", func(): G.use_burner(); render(), "go", true)
+			ub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			bh.add_child(ub)
+		var db := K.btn("Wyrzuć", func(): _discard(e, 1e9), "bad", true)
+		if not has_stash():
+			db.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bh.add_child(db)
+	return p
+
+
+# ---------------------------------------------------------------- zakładka: postać
+func _stat(parent: Node, ic: String, name: String, val: String, color := K.C_TXT) -> void:
+	var h := K.hbox(8)
+	h.add_child(K.icon(ic, 15, K.C_DIM))
+	h.add_child(K.lbl(name, 13, K.C_DIM))
+	h.add_child(K.spacer())
+	h.add_child(K.head(val, 16, color))
+	parent.add_child(h)
+
+
+func _tab_char() -> void:
+	var S: Dictionary = G.S
+	var row := K.hbox(12)
+	content.add_child(row)
+	var left := K.vbox(8)
+	left.custom_minimum_size = Vector2(W_MID + 60.0, H_BODY)
+	row.add_child(left)
+	var view := _char_view(W_MID + 60.0, 430.0)
+	left.add_child(view)
+	var idc := _frame(W_MID + 60.0, 0, 12)
+	idc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(idc)
+	var iv := K.vbox(4)
+	idc.add_child(iv)
+	var lvl := int(S.lvl)
+	iv.add_child(K.head("KUBA", 26, K.C_TXT))
+	iv.add_child(K.lbl("poz. %d  •  %s" % [lvl, D.LEVEL_TITLES[mini(lvl - 1, D.LEVEL_TITLES.size() - 1)]], 13, K.C_GOLD))
+	var lo := float(D.XP_LEVELS[mini(lvl - 1, D.XP_LEVELS.size() - 1)])
+	var hi := float(D.XP_LEVELS[mini(lvl, D.XP_LEVELS.size() - 1)])
+	iv.add_child(K.bar(float(S.xp) - lo, maxf(1.0, hi - lo), K.C_GOLD, 6.0))
+	iv.add_child(K.lbl("%d / %d PD" % [int(S.xp), int(hi)], 11, K.C_DIM))
+	# środek: statystyki
+	var mid := _frame(W_SIDE - 30.0, H_BODY)
+	row.add_child(mid)
+	var mv := K.vbox(7)
+	mid.add_child(mv)
+	_title(mv, "trending_up", "DOROBEK")
+	_stat(mv, "banknote", "Zarobione", G.money(S.stats.earned), K.C_ACC)
+	_stat(mv, "receipt", "Wydane", G.money(S.stats.spent))
+	_stat(mv, "handshake", "Transakcje", str(int(S.stats.deals)))
+	_stat(mv, "weight", "Sprzedane gramy", str(int(S.stats.sold)))
+	_stat(mv, "star", "Najlepsza transakcja", G.money(S.stats.best))
+	_stat(mv, "users", "Klienci", "%d / %d" % [G.client_count(), D.CLIENTS.size()])
+	mv.add_child(K.gap(4))
+	_title(mv, "footprints", "ULICA")
+	_stat(mv, "route", "Przebyte", ("%.1f km" % (float(S.stats.get("dist", 0.0)) / 1000.0)).replace(".", ","))
+	_stat(mv, "frown", "Zerwane rozmowy", str(int(S.stats.walked)))
+	_stat(mv, "package_open", "Odebrane paczki", str(int(S.stats.pickups)))
+	_stat(mv, "scale", "Zaporcjowane / rozsypane", "%d / %d g" % [int(S.stats.packed), int(S.stats.wasted)])
+	_stat(mv, "sprout", "Wyhodowane", "%d g" % int(S.stats.grown))
+	mv.add_child(K.gap(4))
+	_title(mv, "siren", "POLICJA")
+	_stat(mv, "flame", "Gorąco", "%d%%" % int(S.heat), K.C_BAD if float(S.heat) > 60.0 else K.C_TXT)
+	_stat(mv, "search", "Śledztwo", "%d%%" % int(S.invest), K.C_BAD if float(S.invest) > 60.0 else K.C_TXT)
+	_stat(mv, "shield_alert", "Zatrzymania", "%d / %d" % [int(S.strikes), D.MAX_STRIKES], K.C_WARN if int(S.strikes) > 0 else K.C_TXT)
+	_stat(mv, "wind", "Udane ucieczki", str(int(S.stats.escapes)))
+	# prawa: umiejętności i wyposażenie
+	var right := _frame(W_SIDE - 30.0, H_BODY)
+	row.add_child(right)
+	var rv := K.vbox(7)
+	right.add_child(rv)
+	_title(rv, "brain", "UMIEJĘTNOŚCI", "%d pkt" % int(S.sp) if int(S.sp) > 0 else "", K.C_GOLD)
+	var any := false
+	for sk in D.SKILLS:
+		if G.has_skill(sk.id):
+			any = true
+			rv.add_child(K.rich("[b]%s[/b]  %s\n%s" % [sk.name, K.col(sk.branch, K.C_DIM), K.col(sk.desc, K.C_DIM)], 12))
+	if not any:
+		rv.add_child(K.wrap("Jeszcze żadnej. Punkty dostajesz za poziomy — wydasz je w telefonie, w aplikacji Rozwój.", 13, K.C_DIM))
+	rv.add_child(K.gap(4))
+	_title(rv, "wrench", "WYPOSAŻENIE")
+	var anyu := false
+	for u in D.UPGRADES:
+		if G.upg(u.id):
+			anyu = true
+			rv.add_child(K.rich("[b]%s[/b]\n%s" % [u.name, K.col(u.desc, K.C_DIM)], 12))
+	if not anyu:
+		rv.add_child(K.wrap("Nic. Plecak, lepszą wagę i skrytkę w podłodze kupisz w Sklepie u Stasia.", 13, K.C_DIM))
+	rv.add_child(K.spacer())
+	rv.add_child(K.btn("Otwórz drzewko umiejętności", func(): ui.open_phone("rozwoj"), "", true))
+	hint.text = "Przeciągnij postać myszą, żeby ją obrócić"
+
+
+# ---------------------------------------------------------------- zakładka: organizer
+func _note(parent: Node, ic: String, color: Color, title: String, text: String, right := "") -> void:
+	var p := K.panel(K.sb(Color(0.085, 0.102, 0.15), 9, Color(1, 1, 1, 0.06), 1, 9))
+	parent.add_child(p)
+	var h := K.hbox(10)
+	p.add_child(h)
+	var ib := K.panel(K.sb(Color(color.r, color.g, color.b, 0.16), 8, Color(color.r, color.g, color.b, 0.5), 1, 0))
+	ib.custom_minimum_size = Vector2(34, 34)
+	ib.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var icn := K.icon(ic, 18, color)
+	icn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ib.add_child(icn)
+	h.add_child(ib)
+	var v := K.vbox(0)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_child(K.lbl(title, 14, K.C_TXT))
+	v.add_child(K.wrap(text, 11, K.C_DIM))
+	h.add_child(v)
+	if right != "":
+		h.add_child(K.head(right, 18, color))
+
+
+func _tab_org() -> void:
+	var S: Dictionary = G.S
+	var row := K.hbox(12)
+	content.add_child(row)
+	var colw := (W_SIDE * 2.0 + W_MID) / 3.0
+	# --- spotkania
+	var a := _frame(colw, H_BODY)
+	row.add_child(a)
+	var av := K.vbox(7)
+	a.add_child(av)
+	_title(av, "calendar", "SPOTKANIA")
+	var meets := []
+	for o in S.orders:
+		if o.status == "accepted" or o.status == "new":
+			meets.append(o)
+	meets.sort_custom(func(x, y): return float(x.meet) < float(y.meet))
+	if meets.is_empty():
+		av.add_child(K.wrap("Nic umówionego. Klienci piszą sami — zaglądaj do Wiadomości.", 13, K.C_DIM))
+	for o in meets:
+		var cd := G.cust_def(o.cust)
+		var ok: bool = o.status == "accepted"
+		var left := int(float(o.meet) - S.t)
+		var when := "za %d min" % left if left > 0 else "TERAZ"
+		var price := (" • %s/g" % G.money(o.agreed)) if o.get("agreed") != null else ""
+		_note(av, "handshake" if ok else "message_circle", K.C_ACC if ok else K.C_WARN, "%s — %d g %s" % [cd.name, int(o.grams), D.PRODUCTS[o.product].name],
+			"%s%s • %s" % [G.spot_def(o.spot).get("name", "?"), price, ("umówione, " + when) if ok else "czeka na odpowiedź"], G.clock(o.meet))
+	# --- zeszyt
+	var b := _frame(colw, H_BODY)
+	row.add_child(b)
+	var bv := K.vbox(7)
+	b.add_child(bv)
+	_title(bv, "notebook_pen", "ZESZYT")
+	var ni := G.next_installment()
+	if float(S.debt) > 0.0:
+		var txt := "Spłacono %s." % G.money(S.paid)
+		if not ni.is_empty():
+			var dl := int(ni.day) - G.day()
+			txt = "Rata: łącznie %s do końca dnia %d (%s)." % [G.money(ni.due), int(ni.day), "za %d dni" % dl if dl > 0 else ("DZIŚ" if dl == 0 else "PO TERMINIE")]
+		_note(bv, "skull", K.C_BAD, "Dług brata", txt, G.money(S.debt))
+	else:
+		_note(bv, "circle_check", K.C_ACC, "Dług brata", "Spłacony co do złotówki.", "0 zł")
+	if float(S.credit) > 0.0:
+		_note(bv, "truck", K.C_WARN, "Towar na zeszyt u Wiktora", "Oddaj do końca dnia %d. Limit: %s." % [int(float(S.credit_due) / 1440.0) + 1, G.money(G.credit_limit())], G.money(S.credit))
+	else:
+		_note(bv, "truck", K.C_DIM, "Towar na zeszyt u Wiktora", "Nic nie wisisz. Limit: %s." % G.money(G.credit_limit()), "0 zł")
+	_note(bv, "house", K.C_DIM, "Koszty życia", "Czynsz i jedzenie schodzą co noc.", G.money(D.LIVING_COST))
+	bv.add_child(K.gap(2))
+	_title(bv, "package", "PACZKI")
+	if S.drops.is_empty():
+		bv.add_child(K.wrap("Żadnej paczki w drodze. Zamów towar: telefon → Hurt.", 13, K.C_DIM))
+	for d in S.drops:
+		var spot := "?"
+		for ds in D.DROPS:
+			if ds.id == d.spot:
+				spot = ds.name
+		var rdy: bool = d.state == "ready" or float(d.ready) <= S.t
+		_note(bv, "package_open" if rdy else "timer", K.C_ACC if rdy else K.C_BLUE, "%d g %s" % [int(d.g), D.PRODUCTS[d.p].name],
+			"%s • %s" % [spot, "czeka na odbiór" if rdy else "będzie o %s" % G.clock(d.ready)], "na zeszyt" if d.credit else G.money(d.cost))
+	# --- notatki o klientach
+	var c := _frame(colw, H_BODY)
+	row.add_child(c)
+	var cv := K.vbox(7)
+	c.add_child(cv)
+	_title(cv, "contact", "NOTATKI O KLIENTACH")
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cv.add_child(sc)
+	var list := K.vbox(6)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(list)
+	var anyc := false
+	for cdef in D.CLIENTS:
+		var cs: Dictionary = S.cust[cdef.id]
+		if not cs.unlocked:
+			continue
+		anyc = true
+		var known: Dictionary = cs.get("known", {})
+		var bits := []
+		if known.has("like"):
+			bits.append("lubi ton: " + String(D.STYLE_NAMES.get(known.like, known.like)).to_lower())
+		if known.has("hate"):
+			bits.append("nie znosi: " + String(D.STYLE_NAMES.get(known.hate, known.hate)).to_lower())
+		if known.has("max"):
+			bits.append("płaci do ok. %s/g" % G.money(known.max))
+		if bits.is_empty():
+			bits.append("jeszcze go nie rozgryzłeś")
+		_note(list, "user", K.C_BLUE, "%s  •  %d transakcji" % [cdef.name, int(cs.get("deals", 0))], ", ".join(bits))
+	if not anyc:
+		list.add_child(K.wrap("Nie masz jeszcze żadnego klienta.", 13, K.C_DIM))
+	hint.text = "Organizer zbiera to, co łatwo przegapić: godziny spotkań, długi i paczki do odbioru"
+
+
+## kosz: przerywana ramka, na którą upuszcza się rzeczy do wyrzucenia
+class _DropBox:
+	extends Control
+	const KK = preload("res://scripts/uikit.gd")
+
+	func _ready() -> void:
+		var v := KK.vbox(6)
+		v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(v)
+		var ic := KK.icon("trash_2", 44, Color(0.94, 0.3, 0.3, 0.85))
+		ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		v.add_child(ic)
+		var t := KK.head("WYRZUĆ", 26, Color(0.9, 0.91, 0.94))
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(t)
+		var s := KK.lbl("Przeciągnij tutaj rzecz, której chcesz się pozbyć.\nNie da się jej potem odzyskać.", 12, Color(0.56, 0.59, 0.66))
+		s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(s)
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.062, 0.088, 0.7), true)
+		var col := Color(0.94, 0.3, 0.3, 0.55)
+		var r := Rect2(Vector2(1, 1), size - Vector2(2, 2))
+		for seg in [[r.position, Vector2(r.end.x, r.position.y)], [Vector2(r.end.x, r.position.y), r.end], [r.end, Vector2(r.position.x, r.end.y)], [Vector2(r.position.x, r.end.y), r.position]]:
+			draw_dashed_line(seg[0], seg[1], col, 2.0, 10.0)

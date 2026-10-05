@@ -1,0 +1,2 @@
+Wrzuć tutaj własne pliki MP3. Gra odtworzy je przy klubie Neon
+(im bliżej, tym głośniej). Gdy folder jest pusty, gra wbudowany bit klubowy.

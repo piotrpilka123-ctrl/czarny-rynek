@@ -1,0 +1,1290 @@
+extends Node3D
+## Scena główna: składa świat, gracza, postacie i interfejs; pętla rozgrywki,
+## przejścia między lokacjami, skrytki, pościgi, nawigacja, meblowanie kryjówek.
+
+const WorldScript = preload("res://scripts/world.gd")
+const EnvScript = preload("res://scripts/env.gd")
+const PlayerScript = preload("res://scripts/player.gd")
+const NavScript = preload("res://scripts/nav.gd")
+const NpcScript = preload("res://scripts/npc.gd")
+const UiScript = preload("res://scripts/ui.gd")
+const LoadingScript = preload("res://scripts/loading.gd")
+const Models = preload("res://scripts/models.gd")
+
+const C_ORDER := Color(0.29, 0.87, 0.5)
+const C_STORY := Color(0.98, 0.75, 0.14)
+const C_PLACE := Color(0.38, 0.65, 0.98)
+const C_DROP := Color(0.93, 0.35, 0.8)
+const TITLE_POS := Vector3(-14.0 * 0.56, 0.0, -58.0 * 0.56)
+const TITLE_YAW := -2.2
+const TITLE_HOUR := 18.8
+
+var world: Node3D
+var env: Node3D
+var player: CharacterBody3D
+var nav: Node3D
+var npcs: Node3D
+var ui: CanvasLayer
+var beacon: Node3D
+var beacon_mat: StandardMaterial3D
+var cur_inter = null
+var hold_inter = null
+var hold_t := 0.0
+var slow_t := 0.0
+var nav_t := 0.0
+var nav_force := true
+var nav_last := Vector2(1e9, 1e9)
+var nav_goal := Vector2(1e9, 1e9)
+var cop_t := 0.0
+var title_t := 0.0
+var args := {}
+var cine: Camera3D = null
+var prof := [0, 0, 0, 0]
+var ditch_hold := 0.0
+var way := {}                 # znacznik celu na ekranie: {pos, color, dist}
+var build := {}               # tryb ustawiania mebla: {fid, room, r, ghost, mark, valid, x, z}
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	for a in OS.get_cmdline_user_args():
+		var kv := String(a).trim_prefix("--").split("=", true, 1)
+		args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	G.main = self
+	G.test_mode = args.has("shot") or args.has("test") or args.has("rec") or args.has("tour") or args.has("trailer")
+	if G.test_mode or args.has("mute"):
+		Sfx.set_muted(true)
+	if G.test_mode:
+		# okno testowe nie zabiera klawiatury użytkownikowi
+		get_window().unfocusable = true
+
+	load_settings()
+	# ekran ładowania (pomijany w testach, żeby start pozostał synchroniczny)
+	var loader = null
+	if not G.test_mode and not args.has("noload"):
+		loader = LoadingScript.new()
+		add_child(loader)
+		loader.build()
+		await get_tree().process_frame
+		await get_tree().process_frame
+	world = WorldScript.new()
+	world.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(world)
+	G.world = world
+	await world.build(loader)
+	if loader != null:
+		await loader.step(80.0, "Setting the sun")
+	env = EnvScript.new()
+	env.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(env)
+	G.env = env
+	env.quality = String(args.get("quality", settings.get("quality", "med")))
+	env.build(world.noise_tex)
+	get_window().size_changed.connect(env.apply_scale)
+	_light_ranges(world)
+	player = PlayerScript.new()
+	player.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(player)
+	G.player = player
+	nav = NavScript.new()
+	nav.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(nav)
+	if loader != null:
+		await loader.step(86.0, "Waking up the neighbours")
+	npcs = NpcScript.new()
+	npcs.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(npcs)
+	G.npcs = npcs
+	npcs.build()
+	if loader != null:
+		await loader.step(95.0, "Charging your phone")
+	ui = UiScript.new()
+	add_child(ui)
+	G.ui = ui
+	ui.build()
+	_build_beacon()
+	G.nav_dirty.connect(func(): nav_force = true)
+
+	if args.has("autostart"):
+		start_game(args.has("load"))
+		_apply_test_args()
+	else:
+		to_title()
+	if loader != null:
+		await loader.finish()
+		if args.has("loadshot"):
+			get_tree().quit()
+			return
+	if args.has("trailer"):
+		var tr: Node = load("res://scripts/trailer.gd").new()
+		tr.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(tr)
+		return
+	if args.has("tour"):
+		G.test_mode = true
+		_tour()
+		return
+	if args.has("shot"):
+		_shot()
+	if args.has("rec"):
+		_record()
+	if args.has("test"):
+		var t: Node = load("res://scripts/selftest.gd").new()
+		t.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(t)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and G.running and not G.test_mode:
+		G.save_game(false)
+
+
+# ================================================================ start / menu / koniec
+func to_title() -> void:
+	if G.running and not G.test_mode:
+		G.save_game(false)
+	build_cancel()
+	G.running = false
+	G.busy = false
+	G.arresting = false
+	G.S.wanted = false
+	Sfx.siren(false)
+	npcs.clear_customers()
+	ui.close_all()
+	player.loc = "out"
+	player.flash.light_energy = 0.0
+	player.place(TITLE_POS, TITLE_YAW)
+	_show_loc("out")
+	nav.clear_path()
+	beacon.visible = false
+	ui.set_prompt("")
+	ui.show_title()
+
+
+## światła punktowe gasną z odległością, a cienie rzucają tylko te najbliższe
+func _light_ranges(n: Node) -> void:
+	if n is OmniLight3D or n is SpotLight3D:
+		var l: Light3D = n
+		l.distance_fade_enabled = true
+		l.distance_fade_begin = 46.0
+		l.distance_fade_length = 12.0
+		l.distance_fade_shadow = 24.0
+	for c in n.get_children():
+		_light_ranges(c)
+
+
+# ================================================================ ustawienia (osobny plik, niezależny od zapisu gry)
+const SETTINGS_PATH := "user://ustawienia.json"
+var settings := {"quality": "med", "fullscreen": true, "muted": false}
+
+
+func load_settings() -> void:
+	if G.test_mode:
+		return
+	if FileAccess.file_exists(SETTINGS_PATH):
+		var f := FileAccess.open(SETTINGS_PATH, FileAccess.READ)
+		if f != null:
+			var d = JSON.parse_string(f.get_as_text())
+			f.close()
+			if typeof(d) == TYPE_DICTIONARY:
+				for k in d:
+					settings[k] = d[k]
+	if not args.has("window"):
+		set_fullscreen(bool(settings.fullscreen), false)
+	if bool(settings.muted):
+		Sfx.set_muted(true)
+
+
+func save_settings() -> void:
+	if G.test_mode:
+		return
+	settings.quality = env.quality
+	settings.muted = Sfx.muted
+	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(settings))
+		f.close()
+
+
+func is_fullscreen() -> bool:
+	return get_window().mode == Window.MODE_FULLSCREEN or get_window().mode == Window.MODE_EXCLUSIVE_FULLSCREEN
+
+
+func set_fullscreen(on: bool, store := true) -> void:
+	var w := get_window()
+	if on:
+		w.mode = Window.MODE_FULLSCREEN
+	else:
+		w.mode = Window.MODE_WINDOWED
+		# okno na ok. 80% ekranu, wyśrodkowane
+		var scr := DisplayServer.screen_get_usable_rect(w.current_screen)
+		var hgt := int(scr.size.y * 0.8)
+		var sz := Vector2i(int(hgt * 16.0 / 9.0), hgt)
+		if sz.x > scr.size.x * 0.95:
+			sz = Vector2i(int(scr.size.x * 0.9), int(scr.size.x * 0.9 * 9.0 / 16.0))
+		w.size = sz
+		w.position = scr.position + (scr.size - sz) / 2
+	settings.fullscreen = on
+	if store:
+		save_settings()
+
+
+func to_menu() -> void:
+	to_title()
+
+
+func start_game(from_save: bool) -> void:
+	cine_off()
+	var loaded := from_save and G.load_game()
+	if not loaded:
+		G.S = G.new_state()
+	G.running = true
+	G.busy = false
+	G.arresting = false
+	G.wanted_grace = 0.0
+	G.now = 0.0
+	Sfx.siren(false)
+	npcs.clear_customers()
+	for o in G.S.orders:
+		if o.status == "accepted":
+			npcs.spawn_customer(o)
+	ui.close_all()
+	ui.hud.visible = true
+	ui.nav_info = {}
+	ui.last_zone = ""
+	for room in ["garage", "basement"]:
+		world.refresh_furniture(room)
+	var R: Dictionary = D.ROOMS.safe
+	if loaded and G.S.pos != null:
+		teleport(String(G.S.pos.loc), Vector3(float(G.S.pos.x), 0.0, float(G.S.pos.z)), float(G.S.pos.yaw))
+	else:
+		teleport("safe", Vector3(float(R.cx) - 0.6, 0.0, 1.2), 0.0)
+		if not args.has("autostart"):
+			_intro()
+		else:
+			_intro_sms()
+	nav_force = true
+
+
+func _intro() -> void:
+	ui.dialog({"name": "Nieznany numer", "lines": [
+		"Kuba? Tu Wiktor. Znałem twojego brata.",
+		"Siwy zniknął i zostawił po sobie dwadzieścia pięć tysięcy długu. A u nas długi się dziedziczy.",
+		{"n": "Ty", "t": "Nie mam takich pieniędzy. Nie mam żadnych pieniędzy."},
+		"Wiem. Dlatego dam ci zarobić. Towar dostaniesz ode mnie, pierwszego klienta masz po bracie. Resztę zbudujesz sam — albo nie.",
+		"Pierwsza rata za pięć dni. Szczegóły wysyłam SMS-em. Nie zawiedź mnie.",
+	], "on_end": _intro_sms})
+
+
+func _intro_sms() -> void:
+	G.chat("mama", "Kubuś, rozgość się u brata. I błagam, nie pakuj się w nic głupiego.", false, true)
+	G.chat("wiktor", "Pierwsza paczka czeka w skrytce za altanką śmietnikową przy parkingu. 5 g na zeszyt — 105 zł oddasz po sprzedaży. W szafce po bracie masz wagę i woreczki: zaporcjuj towar i czekaj na wiadomość od klienta.")
+
+
+func ending(kind: String) -> void:
+	if not G.running:
+		return
+	build_cancel()
+	G.running = false
+	G.busy = false
+	Sfx.siren(false)
+	if not G.test_mode and kind != "wolnosc":
+		G.delete_save()
+	var S: Dictionary = G.S
+	var stats := "Dni: [b]%d[/b] • Poziom: [b]%d[/b] • Zarobiono: [b]%s[/b] • Sprzedano: [b]%d g[/b] • Zatrzymania: [b]%d[/b] • Ucieczki: [b]%d[/b]" % [G.day(), int(S.lvl), G.money(S.stats.earned), int(S.stats.sold), int(S.arrests), int(S.stats.escapes)]
+	ui.set_prompt("")
+	match kind:
+		"wolnosc":
+			ui.show_ending("KWITA", "Ostatnia rata wpłacona. Wiktor przysłał jedno słowo: „Kwita”. Dług brata zniknął — ale interes, który zbudowałeś, został. Co z nim zrobisz?", stats, true)
+		"wyrok":
+			ui.show_ending("WYROK", "Piąte zatrzymanie. Tym razem prokurator nie miał litości — a dług nie zniknął, tylko czeka pod bramą.", stats)
+		_:
+			ui.show_ending("DŁUG WYGRAŁ", "Trzy razy zawiodłeś Wiktora. Jego ludzie nie mają poczucia humoru.", stats)
+
+
+func resume_free() -> void:
+	G.running = true
+	ui.close_all()
+	ui.hud.visible = true
+	G.notify("Jesteś wolny. Gra toczy się dalej — bez długu.", "level")
+
+
+# ================================================================ lokacje
+func _show_loc(loc: String) -> void:
+	var room_nodes: Array = world.rooms.values()
+	for c in world.get_children():
+		if not (c is Node3D):
+			continue
+		if room_nodes.has(c):
+			c.visible = world.rooms.get(loc) == c
+		else:
+			c.visible = loc == "out"
+
+
+func teleport(loc: String, pos: Vector3, yaw: float) -> void:
+	build_cancel()
+	player.loc = loc
+	_show_loc(loc)
+	player.place(pos, yaw)
+	nav_force = true
+
+
+func enter(id: String) -> void:
+	if G.busy:
+		return
+	var dd: Dictionary = D.DOORS[id]
+	if dd.has("prop") and not G.owns(dd.prop):
+		ui.open_property(dd.prop)
+		return
+	var pp: Vector3 = player.global_position
+	if G.S.wanted:
+		for c in npcs.cops:
+			if c.state == "chase" and c.sees and Vector2(c.x - pp.x, c.z - pp.z).length() < 12.0:
+				G.notify("Policja jest za blisko — nie zdążysz się schować!", "bad")
+				return
+		G.add_invest(5.0 if id == "safe" else 2.0)
+	G.busy = true
+	Sfx.play("door")
+	await ui.fade(true)
+	var R: Dictionary = D.ROOMS[id]
+	teleport(id, Vector3(float(R.cx), 0.0, float(R.d) * 0.5 - 1.5), 0.0)
+	await ui.fade(false)
+	G.busy = false
+
+
+func exit_room() -> void:
+	if G.busy or player.loc == "out":
+		return
+	var id: String = player.loc
+	var dd: Dictionary = D.DOORS[id]
+	G.busy = true
+	Sfx.play("door_close")
+	await ui.fade(true)
+	teleport("out", Vector3(dd.x, 0.0, float(dd.z) + float(dd.dz) * 1.2), PI if float(dd.dz) > 0.0 else 0.0)
+	await ui.fade(false)
+	G.busy = false
+
+
+func sleep() -> void:
+	if G.S.wanted:
+		G.notify("Nie zaśniesz, gdy szuka Cię policja.", "warn")
+		return
+	var accepted := 0
+	for o in G.S.orders:
+		if o.status == "accepted":
+			accepted += 1
+	var to_morning: float = fmod(7.0 - G.hour() + 24.0, 24.0) * 60.0
+	if to_morning < 60.0:
+		to_morning += 1440.0
+	var line := "Położyć się? Sen zapisuje grę, a czas płynie."
+	if accepted > 0:
+		line = "Masz umówionych klientów (%d). Jeśli zaśpisz, nie będą czekać." % accepted
+	elif G.ready_drop() != null:
+		line = "W skrytce czeka paczka od Wiktora. Jeśli przepadnie, i tak za nią zapłacisz."
+	ui.dialog({"name": "Łóżko", "lines": [line], "choices": [
+		{"label": "Śpij do 7:00 (%d h)" % int(round(to_morning / 60.0)), "kind": "go", "act": func(): _do_sleep(to_morning)},
+		{"label": "Drzemka — 3 godziny", "act": func(): _do_sleep(180.0)},
+		{"label": "Jeszcze nie"},
+	]})
+
+
+func _do_sleep(minutes: float) -> void:
+	G.busy = true
+	await ui.fade(true)
+	G.mods["sleeping"] = true
+	G.add_minutes(minutes)
+	G.mods.erase("sleeping")
+	if G.running:
+		G.S.heat = maxf(0.0, G.S.heat - minutes / 60.0 * 2.5)
+		world.update_stations()
+		G.save_game(false)
+		G.notify("Dzień %d, %s. Gra zapisana." % [G.day(), G.clock()], "good")
+	await get_tree().create_timer(0.5).timeout
+	await ui.fade(false)
+	G.busy = false
+
+
+func talk_stasiu() -> void:
+	if not G.flag("met_stasiu"):
+		ui.dialog({"name": "Wujek Staś", "lines": [
+			"Kuba! Chłopcze… Słyszałem o Siwym. Przykro mi. Twój brat był dla mnie jak syn.",
+			"Wiem, w co się wpakowałeś, i nie będę cię pouczał. U mnie kupisz woreczki, plecak, porządną wagę — a o nic nie pytam.",
+			"Jedna rada od starego: nie noś przy sobie więcej, niż sprzedasz. I nie handluj pod nosem policji — radiowóz kręci się po Hutniczej i po osiedlu.",
+		], "on_end": _stasiu_met})
+		return
+	ui.dialog({"name": "Wujek Staś", "lines": [["Co podać?", "Znowu ty. Czego potrzebujesz?", "Interes się kręci?"].pick_random()], "choices": [
+		{"label": "Pokaż, co masz", "kind": "go", "act": func(): ui.open_shop()},
+		{"label": "Masz jakąś radę?", "act": func(): ui.dialog({"name": "Wujek Staś", "lines": [D.HINTS.pick_random()]})},
+		{"label": "Na razie nic."},
+	]})
+
+
+func _stasiu_met() -> void:
+	G.S.flags["met_stasiu"] = true
+	G.S.items["woreczki"] = G.item("woreczki") + 10
+	G.notify("Staś dorzucił Ci 10 woreczków „na dobry początek”.", "good")
+	G.add_xp(10.0)
+	ui.open_shop()
+
+
+# ================================================================ interakcje
+func _drop_inter() -> Variant:
+	if player.loc != "out":
+		return null
+	var pp: Vector3 = player.global_position
+	for d in G.S.drops:
+		if d.state != "ready":
+			continue
+		var dd := G.drop_def(d.spot)
+		if Vector2(float(dd.x) - pp.x, float(dd.z) - pp.z).length() < 2.3:
+			var drop: Dictionary = d
+			var why := String(G.pickup_block(drop))
+			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "range": 2.3, "hold": 1.5, "id": "drop",
+				"label": func(): return ("Skrytka: zabierz paczkę (przytrzymaj)" if why == "" else "Skrytka: " + why), "act": func(): _take_drop(drop)}
+	return null
+
+
+func _take_drop(d: Dictionary) -> void:
+	if not G.pickup_drop(d):
+		return
+	# odbiór na oczach policji
+	var pp: Vector3 = player.global_position
+	for c in npcs.cops:
+		if c.sees and Vector2(c.x - pp.x, c.z - pp.z).length() < 16.0:
+			c.susp = minf(1.0, float(c.susp) + 0.6)
+			G.add_heat(8.0)
+			G.notify("Policjant widział, jak grzebiesz w skrytce!", "bad")
+			break
+
+
+func _find_interact() -> Variant:
+	var pp: Vector3 = player.global_position
+	var f: Vector2 = player.forward()
+	var best = _drop_inter()
+	var bd := 1e9 if best == null else 0.5
+	var lists: Array = [world.inter]
+	if world.inter_dyn.has(player.loc):
+		lists.append(world.inter_dyn[player.loc])
+	for lst in lists:
+		for it in lst:
+			if it.loc != player.loc:
+				continue
+			var dx: float = it.x - pp.x
+			var dz: float = it.z - pp.z
+			var d := sqrt(dx * dx + dz * dz)
+			if d > float(it.range):
+				continue
+			if d > 1.2 and (dx * f.x + dz * f.y) / d < 0.2:
+				continue
+			if d < bd:
+				bd = d
+				best = it
+	var n = npcs.nearest_interact(pp.x, pp.z, f, player.loc)
+	if n != null and Vector2(n.x - pp.x, n.z - pp.z).length() < bd + 0.6:
+		best = n.interact
+	return best
+
+
+func interact() -> void:
+	cur_inter = _find_interact()
+	if cur_inter == null:
+		return
+	if cur_inter.has("hold"):
+		hold_inter = cur_inter
+		hold_t = 0.0
+		return
+	cur_inter.act.call()
+
+
+func toggle_flash() -> void:
+	player.flash.light_energy = 0.0 if player.flash.light_energy > 0.0 else 5.0
+	Sfx.play("toggle")
+
+
+# ================================================================ cele i trasa
+func _order_target(o: Dictionary) -> Dictionary:
+	var spot := G.spot_def(o.spot)
+	return {"id": int(o.id), "label": "%s  %s — %s" % [G.clock(o.meet), String(G.cust_def(o.cust).name), spot.name], "loc": "out", "x": float(spot.x), "z": float(spot.z), "color": C_ORDER}
+
+
+func _place_target(id: String) -> Dictionary:
+	if id == "home" or id == "shop":
+		var room := "safe" if id == "home" else "shop"
+		return {"id": id, "label": "Kawalerka" if id == "home" else "Sklep u Stasia", "loc": room, "x": float(D.ROOMS[room].cx), "z": 0.0, "color": C_PLACE}
+	var pid := id.trim_prefix("prop:")
+	var p := G.prop_def(pid)
+	if p.is_empty() or String(p.room) == "":
+		return {}
+	var dd: Dictionary = D.DOORS[p.room]
+	if G.owns(pid):
+		return {"id": id, "label": String(p.name), "loc": String(p.room), "x": float(D.ROOMS[p.room].cx), "z": 0.0, "color": C_PLACE}
+	return {"id": id, "label": String(p.name), "loc": "out", "x": float(dd.x), "z": float(dd.z), "color": C_PLACE}
+
+
+func _drop_target() -> Dictionary:
+	var d = G.ready_drop()
+	if d == null:
+		return {}
+	var dd := G.drop_def(d.spot)
+	return {"id": "drop", "label": "Skrytka: " + String(dd.name), "loc": "out", "x": float(dd.x), "z": float(dd.z), "color": C_DROP}
+
+
+func _story_target() -> Dictionary:
+	var st := G.cur_step()
+	if st.has("marker"):
+		var m = st.marker.call()
+		if m != null:
+			return {"id": "story", "label": "Cel", "loc": m.loc, "x": float(m.x), "z": float(m.z), "color": C_STORY}
+	return {}
+
+
+func cur_target() -> Dictionary:
+	var S: Dictionary = G.S
+	var t = S.track
+	if t is int or t is float:
+		var o = G.find_order(t)
+		if o != null and o.status == "accepted":
+			return _order_target(o)
+		S.track = null
+		t = null
+	if t is String:
+		if t == "drop":
+			var dt := _drop_target()
+			if not dt.is_empty():
+				return dt
+			S.track = null
+		elif t == "home" or t == "shop" or String(t).begins_with("prop:"):
+			var pt := _place_target(t)
+			if not pt.is_empty():
+				return pt
+			S.track = null
+	var st := _story_target()
+	if not st.is_empty():
+		return st
+	for o in S.orders:
+		if o.status == "accepted":
+			return _order_target(o)
+	return _drop_target()
+
+
+## lista celów do wyboru w telefonie
+func nav_targets() -> Array:
+	var out := []
+	if not _story_target().is_empty():
+		out.append({"id": "story", "label": "Cel fabularny"})
+	for o in G.S.orders:
+		if o.status == "accepted":
+			var t := _order_target(o)
+			out.append({"id": t.id, "label": "Klient: " + String(t.label)})
+	var dt := _drop_target()
+	if not dt.is_empty():
+		out.append({"id": "drop", "label": String(dt.label)})
+	out.append({"id": "home", "label": "Kawalerka"})
+	out.append({"id": "shop", "label": "Sklep u Stasia"})
+	for p in D.PROPERTIES:
+		if G.owns(p.id):
+			out.append({"id": "prop:" + String(p.id), "label": String(p.name)})
+	return out
+
+
+## cele rysowane na mapie i kompasie (aktualnie prowadzony)
+func targets() -> Array:
+	var t := cur_target()
+	if t.is_empty():
+		return []
+	if t.loc != "out":
+		if t.loc == player.loc:
+			return [t]
+		var dd: Dictionary = D.DOORS[t.loc]
+		t = t.duplicate()
+		t.x = float(dd.x)
+		t.z = float(dd.z)
+		t.loc = "out"
+	return [t]
+
+
+func track_key() -> String:
+	var t := cur_target()
+	return "" if t.is_empty() else str(t.id)
+
+
+func set_track(id) -> void:
+	G.S.track = null if (id is String and id == "story") else id
+	G.S.nav_on = true
+	nav_force = true
+	if G.running:
+		refresh_nav()
+
+
+func toggle_nav() -> void:
+	G.S.nav_on = not G.S.nav_on
+	nav_force = true
+	G.notify("Trasa: " + ("włączona" if G.S.nav_on else "wyłączona"))
+
+
+func cycle_track() -> void:
+	var list := nav_targets()
+	if list.is_empty():
+		return
+	var key := track_key()
+	var idx := -1
+	for i in range(list.size()):
+		if str(list[i].id) == key:
+			idx = i
+	var nx: Dictionary = list[(idx + 1) % list.size()]
+	set_track(nx.id)
+	G.notify("Prowadzę do: " + String(nx.label))
+
+
+func refresh_nav() -> void:
+	nav_t = 0.5
+	var T := cur_target()
+	if T.is_empty() or not G.running:
+		nav.clear_path()
+		ui.nav_info = {}
+		way = {}
+		nav_force = false
+		return
+	var pp: Vector3 = player.global_position
+	var goal := Vector2(T.x, T.z)
+	var indoor: bool = player.loc != "out"
+	if T.loc != player.loc:
+		if indoor:
+			var R: Dictionary = D.ROOMS[player.loc]
+			goal = Vector2(float(R.cx), float(R.d) * 0.5 - 0.8)
+		else:
+			var dd: Dictionary = D.DOORS[T.loc]
+			goal = Vector2(float(dd.x), float(dd.z))
+	var here := Vector2(pp.x, pp.z)
+	var direct := here.distance_to(goal)
+	if not way.is_empty():
+		way.dist = direct
+	if not nav_force and here.distance_to(nav_last) < 1.5 and goal.distance_to(nav_goal) < 1.0:
+		return
+	nav_force = false
+	nav_last = here
+	nav_goal = goal
+	var pts: Array = [here, goal] if indoor else nav.find(here.x, here.y, goal.x, goal.y)
+	var dist := 0.0
+	for i in range(pts.size() - 1):
+		dist += (pts[i + 1] as Vector2).distance_to(pts[i])
+	if G.S.nav_on and direct > 2.0:
+		nav.set_path(pts, T.color, indoor)
+	else:
+		nav.clear_path()
+	ui.nav_info = {"label": T.label, "dist": dist, "color": T.color}
+	way = {"pos": Vector3(goal.x, (0.0 if indoor else world.height(goal.x, goal.y)) + 1.5, goal.y), "color": T.color, "dist": direct}
+
+
+func _build_beacon() -> void:
+	beacon = Node3D.new()
+	beacon.visible = false
+	add_child(beacon)
+	beacon_mat = StandardMaterial3D.new()
+	beacon_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	beacon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	beacon_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	beacon_mat.albedo_color = Color(0.3, 1.0, 0.5, 0.28)
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.08
+	cm.bottom_radius = 0.3
+	cm.height = 34.0
+	cm.radial_segments = 10
+	cm.rings = 1
+	var mi := MeshInstance3D.new()
+	mi.mesh = cm
+	mi.position = Vector3(0, 17.0, 0)
+	mi.material_override = beacon_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	beacon.add_child(mi)
+
+
+# ================================================================ meblowanie kryjówek
+func build_active() -> bool:
+	return not build.is_empty()
+
+
+func build_menu() -> void:
+	if build_active():
+		build_cancel()
+		return
+	var loc: String = player.loc
+	if loc == "safe":
+		G.notify("Kawalerka jest za mała na przemeblowanie. Kup własną kryjówkę (telefon → Lokale).", "warn")
+	elif loc == "garage" or loc == "basement":
+		ui.open_build(loc)
+	else:
+		G.notify("Meblować możesz tylko we własnej kryjówce.", "warn")
+
+
+func build_begin(fid: String) -> void:
+	build_cancel()
+	var loc: String = player.loc
+	if not world.furn.has(loc):
+		return
+	var f := G.furn_def(fid)
+	var ghost: Node3D = world.furn_model(fid)
+	add_child(ghost)
+	var mm := StandardMaterial3D.new()
+	mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mm.albedo_color = Color(0.3, 1.0, 0.5, 0.3)
+	var mark := Models.box(ghost, Vector3(float(f.size[0]), 0.04, float(f.size[1])), Vector3(0, 0.03, 0), mm, Vector3.ZERO, false)
+	build = {"fid": fid, "room": loc, "r": 0, "ghost": ghost, "mark": mark, "mat": mm, "valid": false, "x": 0.0, "z": 0.0}
+
+
+func build_rotate() -> void:
+	if build_active():
+		build.r = (int(build.r) + 1) % 4
+		Sfx.play("tick")
+
+
+func build_cancel() -> void:
+	if build.is_empty():
+		return
+	if is_instance_valid(build.ghost):
+		build.ghost.queue_free()
+	build = {}
+	if ui != null:
+		ui.set_build_hint("")
+
+
+func build_confirm() -> void:
+	if not build_active():
+		return
+	if not build.valid:
+		Sfx.play("error")
+		G.notify("Tu się nie zmieści.", "warn")
+		return
+	var fid: String = build.fid
+	var room: String = build.room
+	if G.furn_place(room, fid, float(build.x), float(build.z), int(build.r)):
+		G.notify("Ustawiono: " + String(G.furn_def(fid).name), "good")
+	build_cancel()
+
+
+func _build_tick() -> void:
+	var room: String = build.room
+	if player.loc != room:
+		build_cancel()
+		return
+	var f := G.furn_def(build.fid)
+	var pp: Vector3 = player.global_position
+	var fw: Vector2 = player.forward()
+	var reach: float = 1.5 + maxf(float(f.size[0]), float(f.size[1])) * 0.5 + clampf(-player.pitch, -0.4, 0.8) * 1.2
+	var cx: float = D.ROOMS[room].cx
+	var x := snappedf(pp.x + fw.x * reach - cx, 0.25)
+	var z := snappedf(pp.z + fw.y * reach, 0.25)
+	build.x = x
+	build.z = z
+	build.valid = G.furn_valid(room, build.fid, x, z, int(build.r))
+	var g: Node3D = build.ghost
+	g.position = Vector3(cx + x, 0.0, z)
+	g.rotation.y = int(build.r) * PI / 2.0
+	build.mat.albedo_color = Color(0.3, 1.0, 0.5, 0.32) if build.valid else Color(1.0, 0.25, 0.25, 0.4)
+	ui.set_build_hint("[b]%s[/b] — %s      %s      [b][LPM / E][/b] postaw   [b][R][/b] obróć   [b][PPM / Esc][/b] anuluj" % [
+		f.name, G.money(f.price), "[color=#4ade80]pasuje[/color]" if build.valid else "[color=#f05050]nie zmieści się[/color]"])
+
+
+# ================================================================ pętla
+func _process(dt: float) -> void:
+	if ui == null:
+		return
+	if ui.mode == "title":
+		title_t += dt
+		# powolny przelot kamery nad miastem o zmierzchu
+		var ang := 4.04 + title_t * 0.01
+		var cp := _cine_pt(sin(ang) * 196.0, cos(ang) * -158.0, 40.0)
+		cine_cam(cp, _cine_pt(0.0, 0.0, 10.0), 54.0)
+		env.update(TITLE_HOUR, dt, "out", cp, world)
+		npcs.susp_mult = 0.0
+		npcs.update(dt)
+		world.tick_train(dt, G.night)
+		return
+	if get_tree().paused or not G.running:
+		return
+	_tick(dt)
+
+
+func _tick(dt: float) -> void:
+	# po dłuższym przycięciu (uśpienie Maca, przeciągnięcie okna) czas gry nie może skoczyć o godziny
+	dt = minf(dt, 0.25)
+	var S: Dictionary = G.S
+	G.now += dt
+	if not G.busy:
+		G.add_minutes(dt * D.TIME_SCALE)
+		if not G.running:
+			return
+	var w = S.weather
+	env.rain_target = float(w.power) if (w != null and S.t >= float(w.start) and S.t < float(w.end)) else 0.0
+	var t0 := Time.get_ticks_usec()
+	env.update(G.hour(), dt, player.loc, player.cam.global_position, world)
+	if not G.test_mode:
+		env.auto_scale(dt)
+	var t1 := Time.get_ticks_usec()
+	npcs.susp_mult = 0.0 if G.busy else G.compute_susp()
+	npcs.update(dt)
+	var t2 := Time.get_ticks_usec()
+	world.tick_train(dt, G.night)
+	prof[0] += t1 - t0
+	prof[1] += t2 - t1
+	prof[2] += 1
+	if S.wanted:
+		_wanted_tick(dt)
+	else:
+		S.heat = maxf(0.0, S.heat - dt * (0.25 if player.loc != "out" else 0.1))
+	slow_t -= dt
+	if slow_t <= 0.0:
+		slow_t = 0.25
+		_slow()
+	nav_t -= dt
+	if nav_force or nav_t <= 0.0:
+		refresh_nav()
+	if build_active():
+		_build_tick()
+		ui.set_prompt("")
+		return
+	if G.busy:
+		ui.set_prompt("")
+		hold_inter = null
+		return
+	cur_inter = _find_interact()
+	if hold_inter != null:
+		if cur_inter == null or cur_inter.get("id", "") != hold_inter.get("id", "?") or not Input.is_physical_key_pressed(KEY_E):
+			hold_inter = null
+		else:
+			hold_t += dt
+			if hold_t >= float(hold_inter.hold):
+				var act: Callable = hold_inter.act
+				hold_inter = null
+				act.call()
+				return
+	if cur_inter != null:
+		ui.set_prompt(cur_inter.label.call(), (hold_t / float(hold_inter.hold)) if hold_inter != null else -1.0)
+	else:
+		ui.set_prompt("")
+
+
+func _wanted_tick(dt: float) -> void:
+	if Input.is_physical_key_pressed(KEY_X) and G.carry_goods() > 0.01 and not G.arresting and not ui.is_open():
+		ditch_hold += dt
+		ui.set_prompt("Wyrzucasz towar…", ditch_hold / 0.9)
+		if ditch_hold >= 0.9:
+			ditch_hold = 0.0
+			if G.ditch_goods():
+				Sfx.play("drop")
+	else:
+		ditch_hold = 0.0
+	var chasing := false
+	var seen := false
+	for c in npcs.cops:
+		if c.state == "chase":
+			chasing = true
+			if c.sees:
+				seen = true
+	if player.loc != "out":
+		G.wanted_grace += dt * 1.5
+	elif not chasing:
+		G.wanted_grace += dt
+	elif not seen:
+		G.wanted_grace += dt * 0.25
+	else:
+		G.wanted_grace = 0.0
+	if G.wanted_grace > 6.0 and not G.arresting:
+		G.S.wanted = false
+		G.wanted_grace = 0.0
+		npcs.end_chase()
+		Sfx.siren(false)
+		G.S.stats.escapes = int(G.S.stats.escapes) + 1
+		G.add_invest(2.0)
+		G.add_xp(8.0)
+		G.notify("Zgubiłeś policję. Przez jakiś czas lepiej się nie wychylaj.", "good")
+
+
+func _slow() -> void:
+	var pp: Vector3 = player.global_position
+	G.zone_name = ""
+	G.zone_id = ""
+	if player.loc == "out":
+		var zn := G.zone_at(pp.x, pp.z)
+		if not zn.is_empty():
+			G.zone_name = zn.name
+			G.zone_id = zn.id
+	G.story_tick()
+	world.update_stations()
+	world.club_tick()
+	var club_d := pp.distance_to(world.club_door) if player.loc == "out" else 999.0
+	Sfx.set_club_open(clampf(1.0 - (club_d - 3.0) / 16.0, 0.0, 1.0))
+	Sfx.ambient(player.loc == "out", G.night, G.rain)
+	cop_t -= 0.25
+	if cop_t <= 0.0:
+		cop_t = 4.0
+		_cop_population()
+
+
+## liczba patroli rośnie z uwagą policji; przy zaawansowanym śledztwie
+## jeden funkcjonariusz obserwuje wejście do bloku
+func _cop_population() -> void:
+	var S: Dictionary = G.S
+	var pp: Vector3 = player.global_position
+	var want: int = clampi(2 + int(S.heat / 25.0) + (1 if G.is_night() else 0), 2, 6)
+	var cnt := 0
+	var post = null
+	for c in npcs.cops:
+		if c.post:
+			post = c
+		elif not c.get("temp", false):
+			cnt += 1
+	if cnt < want:
+		npcs.spawn_cop(true)
+	elif cnt > want and not S.wanted:
+		for c in npcs.cops:
+			if not c.post and not c.get("temp", false) and c.state == "patrol" and (player.loc != "out" or Vector2(c.x - pp.x, c.z - pp.z).length() > 70.0):
+				npcs.remove_cop(c)
+				break
+	if S.invest >= 60.0 and post == null and not S.wanted:
+		var c: Dictionary = npcs.spawn_cop(false)
+		c.post = true
+		c.state = "post"
+		c.x = 15.5 * D.SC
+		c.z = -69.5 * D.SC
+		c.node.rotation.y = atan2(float(D.DOORS.safe.x) - float(c.x), float(D.DOORS.safe.z) - float(c.z))
+		G.chat("stas", "Kuba, uważaj. Pod twoją klatką stoi mundurowy i się rozgląda. Nie wynoś nic, póki nie odpuszczą.")
+	elif S.invest < 45.0 and post != null and post.state == "post":
+		npcs.remove_cop(post)
+		G.notify("Policja zdjęła obserwację Twojego bloku.", "good")
+
+
+# ================================================================ narzędzia testowe
+## argumenty po „--”: --autostart --loc=out --pos=x,z --yaw=stopnie --hour=22 --shot=plik.png …
+## kamera filmowa (zwiastun, zrzuty): punkt w układzie projektu + wysokość nad terenem
+func _cine_pt(x: float, z: float, h: float) -> Vector3:
+	return Vector3(x * D.SC, world.height(x * D.SC, z * D.SC) + h, z * D.SC)
+
+
+func cine_cam(pos: Vector3, target: Vector3, fov := 62.0) -> void:
+	if cine == null:
+		cine = Camera3D.new()
+		cine.far = 700.0
+		cine.near = 0.08
+		add_child(cine)
+	cine.fov = fov
+	cine.global_position = pos
+	if pos.distance_to(target) > 0.01:
+		cine.look_at(target, Vector3.UP if absf((target - pos).normalized().y) < 0.99 else Vector3.FORWARD)
+	cine.current = true
+
+
+func cine_off() -> void:
+	if cine != null:
+		cine.current = false
+		player.cam.current = true
+
+
+func _apply_test_args() -> void:
+	var S: Dictionary = G.S
+	if args.has("hour"):
+		S.t = float(args.hour) * 60.0
+	if args.has("cash"):
+		S.cash = float(args.cash)
+	if args.has("heat"):
+		S.heat = float(args.heat)
+	if args.has("lvl"):
+		S.lvl = int(args.lvl)
+		S.xp = float(D.XP_LEVELS[int(args.lvl) - 1]) + 5.0
+		S.sp = int(args.lvl) - 1
+	if args.has("step"):
+		S.step = int(args.step)
+		S.flags["read_wiktor"] = true
+		S.flags["got_first"] = true
+		S.flags["hurt_on"] = true
+		S.flags["met_stasiu"] = true
+		S.cust.dominik.unlocked = true
+	if args.has("give"):
+		G.add_pack(S.inv, "dym", 80, int(args.give))
+		G.add_bulk(S.inv, "dym", 75, 6.0)
+	if args.has("own"):
+		S.props["garaz"] = true
+		S.hide.garage.items = [{"f": "stol", "x": -1.6, "z": -3.6, "r": 0}, {"f": "regal", "x": 2.3, "z": -3.9, "r": 0}, {"f": "namiot", "x": 2.2, "z": -1.2, "r": 0}, {"f": "kanapa", "x": -2.4, "z": 0.6, "r": 1}, {"f": "lampa", "x": 0.2, "z": -4.1, "r": 0}]
+		world.refresh_furniture("garage")
+	if args.has("rain"):
+		S.weather = {"start": 0.0, "end": 1e12, "power": float(args.rain)}
+		env.rain = float(args.rain)
+		env.wet = 1.0
+	var loc := String(args.get("loc", player.loc))
+	if args.has("pos") or args.has("loc"):
+		var pos := player.global_position
+		if args.has("pos"):
+			var p := String(args.pos).split(",")
+			pos = Vector3(float(p[0]) * D.SC, 0.0, float(p[1]) * D.SC)
+		elif loc == "out":
+			pos = Vector3(float(D.DOORS.safe.x), 0.0, float(D.DOORS.safe.z) + 2.0)
+		else:
+			pos = Vector3(float(D.ROOMS[loc].cx), 0.0, float(D.ROOMS[loc].d) * 0.5 - 1.5)
+		teleport(loc, pos, deg_to_rad(float(args.get("yaw", "0"))))
+	elif args.has("yaw"):
+		player.place(player.global_position, deg_to_rad(float(args.yaw)))
+	if args.has("pitch"):
+		player.pitch = deg_to_rad(float(args.pitch))
+	if args.has("flash"):
+		player.flash.light_energy = 5.0
+	# strojenie grafiki z wiersza poleceń (pomiary wydajności)
+	var vp0 := get_viewport()
+	if args.has("scale"):
+		vp0.scaling_3d_scale = float(args.scale)
+	if args.has("fsr"):
+		vp0.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if int(args.fsr) == 1 else Viewport.SCALING_3D_MODE_BILINEAR
+	if args.has("msaa"):
+		vp0.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][clampi(int(args.msaa), 0, 2)]
+	if args.has("fxaa"):
+		vp0.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if int(args.fxaa) == 1 else Viewport.SCREEN_SPACE_AA_DISABLED
+	if args.has("ssao"):
+		env.env.ssao_enabled = int(args.ssao) == 1
+	if args.has("vfog"):
+		env.env.volumetric_fog_enabled = int(args.vfog) == 1
+	if args.has("glow"):
+		env.env.glow_enabled = int(args.glow) == 1
+	if args.has("splits"):
+		env.sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if int(args.splits) == 4 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	if args.has("sunshadow"):
+		env.sun.shadow_enabled = int(args.sunshadow) == 1
+	if args.has("nolights") or args.has("nolabels") or args.has("noparticles") or args.has("nomm"):
+		var st3: Array = [self]
+		while not st3.is_empty():
+			var nd3: Node = st3.pop_back()
+			if args.has("nolights") and nd3 is Light3D and not (nd3 is DirectionalLight3D):
+				nd3.visible = false
+			if args.has("nolabels") and nd3 is Label3D:
+				nd3.visible = false
+			if args.has("noparticles") and nd3 is GPUParticles3D:
+				nd3.visible = false
+			if args.has("nomm") and nd3 is MultiMeshInstance3D:
+				nd3.visible = false
+			for ch3 in nd3.get_children():
+				st3.append(ch3)
+	if args.has("noanim"):
+		var st2: Array = [self]
+		while not st2.is_empty():
+			var nd2: Node = st2.pop_back()
+			if nd2 is AnimationPlayer:
+				nd2.process_mode = Node.PROCESS_MODE_DISABLED
+			for ch2 in nd2.get_children():
+				st2.append(ch2)
+	if args.has("cam"):
+		var c := String(args.cam).split(",")
+		cine_cam(_cine_pt(float(c[0]), float(c[1]), float(c[2])), _cine_pt(float(c[3]), float(c[4]), float(c[5])), float(args.get("fov", "62")))
+	if args.has("nohud"):
+		G.test_hide_hud = true
+		ui.hud.visible = false
+	if args.has("train"):
+		world.train.wait = 0.0
+		world.tick_train(0.01, env.night if "night" in env else 0.0)
+		world.train.x = float(args.train) * float(world.train.dir)
+	if args.has("chars"):
+		var Chars = load("res://scripts/chars.gd")
+		var pp := player.global_position
+		var f: Vector2 = player.forward()
+		var r := Vector2(-f.y, f.x)
+		var defs := [
+			{"kind": "dres", "top": "101114", "top2": "e8e6e0", "bottom": "101114", "stripes": true, "hair": "hair_buzzed", "seed": 1},
+			{"kind": "hoodie", "top": "3a3f4a", "bottom": "1b2538", "hat": "beanie", "beard": true, "seed": 2},
+			{"female": true, "kind": "jacket", "top": "5a2f52", "bottom": "101114", "seed": 3},
+			{"kind": "police", "top": "c8e020", "top2": "141c30", "bottom": "141c30", "shoes": "0c0c0e", "hat": "police", "seed": 4},
+			{"kind": "tshirt", "top": "c9c4b8", "bottom": "2e3440", "hat": "cap", "seed": 5, "build": 1.15},
+			{"female": true, "kind": "hoodie", "top": "23402e", "bottom": "232a36", "hair": "hair_buns", "seed": 6},
+		]
+		var poses := ["", "arms", "phone", "arms", "talk", ""]
+		for i in range(defs.size()):
+			var rig: Dictionary = Chars.make(defs[i])
+			add_child(rig.root)
+			var off := (i - 2.5) * 0.85
+			var p2 := Vector2(pp.x, pp.z) + f * (float(args.chars) + absf(off) * 0.2) + r * off
+			rig.root.position = Vector3(p2.x, world.height(p2.x, p2.y), p2.y)
+			rig.root.rotation.y = atan2(pp.x - p2.x, pp.z - p2.y)
+			Chars.animate(rig, 0.0, 0.0, poses[i])
+
+
+func _test_order(cid: String, accept := true) -> Dictionary:
+	G.unlock_client(cid)
+	var o: Dictionary = G.make_order(G.cust_def(cid))
+	if accept:
+		G.reply_order(o.id, "accept")
+	return o
+
+
+func _test_ui(what: String) -> void:
+	match what:
+		"home": ui.open_phone("")
+		"sms":
+			_test_order("dominik", false)
+			ui.open_phone("sms")
+		"chat":
+			_test_order("dominik", false)
+			ui.open_phone("sms")
+			ui.phone.chat_id = "dominik"
+			ui.phone.render()
+		"kontakty":
+			G.unlock_client("seba")
+			G.S.cust.dominik.deals = 4
+			G.S.cust.dominik.known = {"like": "luz"}
+			ui.open_phone("kontakty")
+			ui.phone.contact_id = "dominik"
+			ui.phone.render()
+		"mapa", "hurt", "portfel", "rozwoj", "zadania", "lokale", "plecak", "ustawienia": ui.open_phone(what)
+		"bench": ui.open_pack(player.loc if player.loc != "out" else "safe")
+		"stash": ui.open_stash("safe")
+		"inv": ui.open_inventory("")
+		"invsel":
+			ui.open_stash("safe")
+			ui.inv.sel = {"side": "bag", "kind": "pack", "p": "dym", "pur": 80, "id": ""}
+			ui.inv.render()
+		"char": ui.open_inventory("", "char")
+		"org":
+			_test_order("dominik")
+			ui.open_inventory("", "org")
+		"shop": ui.open_shop()
+		"build": ui.open_build("garage")
+		"ghost": build_begin("regal")
+		"pause": ui.show_pause()
+		"skill": ui.skill_check("Ważenie: 5 g Green", 1.0, func(_h): pass)
+		"dialog": talk_stasiu()
+		"property": ui.open_property("garaz")
+		"deal", "deal2":
+			var o := _test_order("dominik")
+			var n: Dictionary = npcs.customers[0]
+			if n.node == null:
+				npcs._customer_enter(n, true)
+				var fw: Vector2 = player.forward()
+				n.x = player.global_position.x + fw.x * 1.9
+				n.z = player.global_position.z + fw.y * 1.9
+				n.node.position = Vector3(n.x, world.height(n.x, n.z), n.z)
+			var who: Dictionary = n.def.duplicate()
+			who["st"] = G.S.cust[n.def.id]
+			ui.open_deal({"who": who, "product": "dym", "grams": int(o.grams), "order": o, "street": true, "npc": n, "agreed": null})
+			if what == "deal2" and not ui.deal.is_empty():
+				G.deal_greet(ui.deal, "luz")
+				ui.deal.price = 70
+				G.deal_offer(ui.deal)
+				ui._render_deal()
+
+
+## seria kadrów kamery filmowej w jednym uruchomieniu (do wybierania ujęć zwiastuna)
+func _tour() -> void:
+	var f := FileAccess.open(String(args.tour), FileAccess.READ)
+	var list = JSON.parse_string(f.get_as_text())
+	f.close()
+	var dir := String(args.get("out", "user://tour"))
+	DirAccess.make_dir_recursive_absolute(dir)
+	G.test_hide_hud = true
+	ui.hud.visible = false
+	for i in range(30):
+		await get_tree().process_frame
+	for e in list:
+		var c: Array = e.cam
+		G.S.t = float(e.get("hour", 14.0)) * 60.0
+		var r := float(e.get("rain", 0.0))
+		G.S.weather = {"start": 0.0, "end": 1e12, "power": r} if r > 0.0 else null
+		env.rain = r
+		env.wet = 1.0 if r > 0.0 else 0.0
+		teleport("out", Vector3(float(c[0]) * D.SC, 0.0, float(c[1]) * D.SC), 0.0)
+		cine_cam(_cine_pt(float(c[0]), float(c[1]), float(c[2])), _cine_pt(float(c[3]), float(c[4]), float(c[5])), float(e.get("fov", 60.0)))
+		if e.has("train"):
+			world.train.active = false
+			world.train.wait = 0.0
+			world.tick_train(0.01, G.night)
+			world.train.x = float(e.train) * float(world.train.dir)
+		for i in range(int(e.get("frames", 50))):
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		img.resize(640, int(640.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
+		img.save_jpg("%s/%s.jpg" % [dir, String(e.name)], 0.85)
+		print("TOUR ", e.name)
+	get_tree().quit()
+
+
+func _shot() -> void:
+	var frames := int(args.get("frames", "150"))
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+	for i in range(frames):
+		await get_tree().process_frame
+		if i == 30 and args.has("ui"):
+			_test_ui(String(args.ui))
+	await RenderingServer.frame_post_draw
+	if args.has("dbg"):
+		var ph = ui.phone
+		print("DBG screen=", ph.screen.size, " sv=", ph.sv.size, " svmin=", ph.sv.get_combined_minimum_size(), " pos=", ph.sv.position)
+		for c in ph.sv.get_children():
+			print("DBG   ", c.get_class(), " min=", (c as Control).get_combined_minimum_size(), " size=", (c as Control).size)
+		for c in ph.body.get_children():
+			print("DBG     body ", c.get_class(), " min=", (c as Control).get_combined_minimum_size())
+		for c in ph.footer.get_children():
+			print("DBG     foot ", c.get_class(), " min=", (c as Control).get_combined_minimum_size())
+	var img := get_viewport().get_texture().get_image()
+	print("RAW ", img.get_width(), "x", img.get_height(), " win=", get_window().size, " screen=", DisplayServer.window_get_current_screen(), " scale=", DisplayServer.screen_get_scale())
+	if img.get_width() > 2000:
+		img.resize(int(img.get_width() / 2.0), int(img.get_height() / 2.0), Image.INTERPOLATE_LANCZOS)
+	img.save_png(String(args.shot))
+	var vp_rid := get_viewport().get_viewport_rid()
+	print("RENDER cpu_ms=%.2f gpu_ms=%.2f" % [RenderingServer.viewport_get_measured_render_time_cpu(vp_rid) + RenderingServer.get_frame_setup_time_cpu(), RenderingServer.viewport_get_measured_render_time_gpu(vp_rid)])
+	var cnt := {"anim": 0, "anim_on": 0, "cpu_part": 0, "gpu_part": 0, "nodes": 0, "lights": 0, "lights_shadow": 0, "label3d": 0}
+	var stack: Array = [get_tree().root]
+	while not stack.is_empty():
+		var nd: Node = stack.pop_back()
+		cnt.nodes += 1
+		if nd is AnimationPlayer:
+			cnt.anim += 1
+			if (nd as AnimationPlayer).is_playing() and nd.can_process():
+				cnt.anim_on += 1
+		elif nd is CPUParticles3D:
+			cnt.cpu_part += 1
+		elif nd is GPUParticles3D:
+			cnt.gpu_part += 1
+		elif nd is Label3D:
+			cnt.label3d += 1
+		elif nd is Light3D and (nd as Light3D).visible:
+			cnt.lights += 1
+			if (nd as Light3D).shadow_enabled:
+				cnt.lights_shadow += 1
+		for ch in nd.get_children():
+			stack.append(ch)
+	print("COUNT ", cnt)
+	if prof[2] > 0:
+		print("PROF env_ms=%.3f npc_ms=%.3f ui_ms=%.3f (średnio na klatkę)" % [prof[0] / 1000.0 / prof[2], prof[1] / 1000.0 / prof[2], ui.prof_us / 1000.0 / maxf(1.0, ui.prof_n)])
+	print("SHOT ", args.shot, " fps=", Engine.get_frames_per_second(), " draw_calls=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		" objects=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+		" tris=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
+		" process_ms=%.2f physics_ms=%.2f" % [Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
+	get_tree().quit()
+
+
+## nagranie pokazu telefonu jako sekwencji klatek PNG (uruchamiać z --fixed-fps 30)
+func _record() -> void:
+	var dir := String(args.rec)
+	DirAccess.make_dir_recursive_absolute(dir)
+	var o := _test_order("dominik", false)
+	var plan := {20: "open", 70: "sms", 110: "chat", 170: "reply", 240: "back", 265: "home", 290: "hurt", 350: "home", 372: "rozwoj", 430: "home", 452: "mapa", 505: "home", 527: "kontakty", 570: "end"}
+	var n := 0
+	for i in range(575):
+		await get_tree().process_frame
+		if plan.has(i):
+			match String(plan[i]):
+				"open": ui.open_phone("")
+				"chat":
+					ui.phone._dir = 1.0
+					ui.phone.chat_id = "dominik"
+					ui.phone.render()
+				"reply": ui.phone._reply(int(o.id), "accept")
+				"back": ui.phone.back()
+				"home": ui.phone.go("")
+				"end": break
+				_: ui.phone.go(String(plan[i]))
+		if i >= 14 and i % 2 == 0:
+			await RenderingServer.frame_post_draw
+			var img := get_viewport().get_texture().get_image()
+			if img.get_width() > 1400:
+				img.resize(1280, int(1280.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
+			img.save_png("%s/f_%04d.png" % [dir, n])
+			n += 1
+	print("REC ", n, " klatek")
+	get_tree().quit()

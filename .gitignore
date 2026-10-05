@@ -1,6 +1,15 @@
 .DS_Store
 __pycache__/
 *.pyc
-# własna muzyka gracza nie trafia do repozytorium
-muzyka/*
-!muzyka/CZYTAJ.txt
+
+# pamięć podręczna importu Godota — odtwarza się sama przy pierwszym uruchomieniu
+godot/.godot/
+
+# własna muzyka gracza nigdy nie trafia do repozytorium
+godot/muzyka/*
+!godot/muzyka/CZYTAJ.txt
+game/muzyka/*
+!game/muzyka/CZYTAJ.txt
+
+# zwiastun 1080p przekracza limit GitHuba (100 MB na plik); w repo jest wersja 720p
+zwiastun/czarny-rynek-zwiastun.mp4

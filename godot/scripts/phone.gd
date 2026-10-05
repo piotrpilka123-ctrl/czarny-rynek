@@ -1,0 +1,935 @@
+extends Control
+## Telefon gracza: ekran główny z aplikacjami (Wiadomości, Kontakty, Mapa, Hurt,
+## Portfel, Rozwój, Zadania, Lokale, Plecak, Ustawienia).
+
+const K = preload("res://scripts/uikit.gd")
+
+const APPS := [
+	["sms", "Wiadomości", "message_circle", Color(0.2, 0.72, 0.38)],
+	["kontakty", "Kontakty", "users", Color(0.25, 0.5, 0.9)],
+	["mapa", "Mapa", "map", Color(0.15, 0.6, 0.62)],
+	["hurt", "Hurt", "package", Color(0.62, 0.2, 0.2)],
+	["portfel", "Portfel", "wallet", Color(0.8, 0.62, 0.15)],
+	["rozwoj", "Rozwój", "brain", Color(0.55, 0.35, 0.85)],
+	["zadania", "Zadania", "list_checks", Color(0.85, 0.45, 0.15)],
+	["lokale", "Lokale", "building_2", Color(0.35, 0.42, 0.55)],
+	["plecak", "Plecak", "backpack", Color(0.5, 0.38, 0.25)],
+	["ustawienia", "Ustawienia", "settings", Color(0.35, 0.37, 0.42)],
+]
+const AV_COLORS := [Color(0.25, 0.5, 0.9), Color(0.75, 0.35, 0.3), Color(0.3, 0.65, 0.45), Color(0.7, 0.55, 0.2), Color(0.55, 0.35, 0.8), Color(0.2, 0.6, 0.65), Color(0.8, 0.4, 0.6)]
+
+var ui
+var app := ""
+var chat_id := ""
+var contact_id := ""
+var skill_sel := ""
+var hurt := {"p": "dym", "g": 5, "high": false, "credit": false}
+var l_clock: Label
+var screen: Control
+var head: HBoxContainer
+var l_title: Label
+var scroll: ScrollContainer
+var body: VBoxContainer
+var footer: VBoxContainer
+var home: Control
+var cc: CenterContainer
+var dim: ColorRect
+var sv: VBoxContainer
+var wall: TextureRect
+var _dir := 1.0
+var nego := -1
+var nego_price := 0
+var retime := -1
+
+
+func build(ui_ref) -> void:
+	ui = ui_ref
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visible = false
+	dim = ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.5)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(dim)
+	cc = CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(cc)
+	var bezel := K.panel(K.sb(Color(0.02, 0.02, 0.025), 34, Color(0.22, 0.23, 0.26), 2, 12))
+	cc.add_child(bezel)
+	var v := K.vbox(0)
+	bezel.add_child(v)
+	# pasek stanu
+	var sbar := K.hbox(6)
+	sbar.custom_minimum_size = Vector2(372, 26)
+	v.add_child(sbar)
+	sbar.add_child(K.gap(0))
+	l_clock = K.lbl("09:00", 13, K.C_TXT)
+	sbar.add_child(l_clock)
+	sbar.add_child(K.lbl("POLTEL", 11, K.C_DIM))
+	sbar.add_child(K.spacer())
+	sbar.add_child(K.icon("signal", 14, K.C_TXT))
+	sbar.add_child(K.icon("wifi", 14, K.C_TXT))
+	sbar.add_child(K.icon("battery_medium", 16, K.C_TXT))
+	# ekran
+	var sp := K.panel(K.sb(Color(0.05, 0.06, 0.085), 18, Color(0, 0, 0, 0), 0, 0))
+	sp.custom_minimum_size = Vector2(372, 600)
+	sp.clip_contents = true
+	v.add_child(sp)
+	screen = Control.new()
+	screen.clip_contents = true
+	sp.add_child(screen)
+	# tapeta ekranu głównego
+	var gr := Gradient.new()
+	gr.set_color(0, Color(0.16, 0.1, 0.24))
+	gr.set_color(1, Color(0.03, 0.05, 0.09))
+	gr.add_point(0.45, Color(0.07, 0.12, 0.2))
+	var gt := GradientTexture2D.new()
+	gt.gradient = gr
+	gt.fill_from = Vector2(0.2, 0.0)
+	gt.fill_to = Vector2(0.8, 1.0)
+	gt.width = 64
+	gt.height = 128
+	wall = TextureRect.new()
+	wall.texture = gt
+	wall.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	wall.stretch_mode = TextureRect.STRETCH_SCALE
+	wall.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wall.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	screen.add_child(wall)
+	sv = K.vbox(0)
+	sv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	screen.add_child(sv)
+	var hp := K.panel(K.sb(Color(0.07, 0.085, 0.12), 0, Color(0, 0, 0, 0), 0, 10))
+	sv.add_child(hp)
+	head = K.hbox(8)
+	hp.add_child(head)
+	l_title = K.lbl("", 17)
+	scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sv.add_child(scroll)
+	var mc := MarginContainer.new()
+	mc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right", "top", "bottom"]:
+		mc.add_theme_constant_override("margin_" + side, 10)
+	scroll.add_child(mc)
+	body = K.vbox(8)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mc.add_child(body)
+	var fm := MarginContainer.new()
+	for side in ["left", "right", "bottom"]:
+		fm.add_theme_constant_override("margin_" + side, 10)
+	sv.add_child(fm)
+	footer = K.vbox(6)
+	fm.add_child(footer)
+	# pasek nawigacji
+	var nav := K.hbox(0)
+	nav.custom_minimum_size = Vector2(0, 40)
+	nav.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(nav)
+	var bb := K.btn("", back, "flat")
+	bb.icon = K.tex("chevron_left")
+	bb.custom_minimum_size = Vector2(90, 34)
+	bb.expand_icon = true
+	nav.add_child(bb)
+	var hb := K.btn("", func(): go(""), "flat")
+	hb.icon = K.tex("house")
+	hb.custom_minimum_size = Vector2(90, 34)
+	hb.expand_icon = true
+	nav.add_child(hb)
+	var xb := K.btn("", func(): ui.close_all(), "flat")
+	xb.icon = K.tex("x")
+	xb.custom_minimum_size = Vector2(90, 34)
+	xb.expand_icon = true
+	nav.add_child(xb)
+
+
+func _tw() -> Tween:
+	var t := create_tween()
+	t.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	return t
+
+
+## wysunięcie telefonu od dołu
+func _anim_open() -> void:
+	cc.offset_top = 520.0
+	cc.offset_bottom = 520.0
+	cc.modulate.a = 0.0
+	dim.modulate.a = 0.0
+	var t := _tw().set_parallel(true)
+	t.tween_property(cc, "offset_top", 0.0, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(cc, "offset_bottom", 0.0, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(cc, "modulate:a", 1.0, 0.18)
+	t.tween_property(dim, "modulate:a", 1.0, 0.25)
+
+
+## przejście między ekranami: wsunięcie z boku i rozjaśnienie
+func _anim_screen() -> void:
+	sv.offset_left = 46.0 * _dir
+	sv.offset_right = 46.0 * _dir
+	sv.offset_top = 0.0
+	sv.offset_bottom = 0.0
+	sv.modulate.a = 0.0
+	var t := _tw().set_parallel(true)
+	t.tween_property(sv, "offset_left", 0.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(sv, "offset_right", 0.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(sv, "modulate:a", 1.0, 0.16)
+
+
+func _pop(c: Control, delay: float, from := 0.6) -> void:
+	c.scale = Vector2(from, from)
+	c.modulate.a = 0.0
+	var t := _tw().set_parallel(true)
+	t.tween_property(c, "scale", Vector2.ONE, 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(delay)
+	t.tween_property(c, "modulate:a", 1.0, 0.14).set_delay(delay)
+
+
+func open(a := "") -> void:
+	var was := visible
+	visible = true
+	if not was:
+		_anim_open()
+	_dir = 1.0
+	app = a
+	if a != "sms":
+		chat_id = ""
+	if a != "kontakty":
+		contact_id = ""
+	render()
+
+
+func go(a: String) -> void:
+	_dir = 1.0 if a != "" else -1.0
+	app = a
+	chat_id = ""
+	contact_id = ""
+	skill_sel = ""
+	render()
+
+
+func back() -> void:
+	_dir = -1.0
+	if app == "sms" and chat_id != "":
+		chat_id = ""
+		render()
+	elif app == "kontakty" and contact_id != "":
+		contact_id = ""
+		render()
+	elif app != "":
+		go("")
+	else:
+		ui.close_all()
+
+
+func refresh() -> void:
+	if visible:
+		render()
+
+
+func _header(title: String, sub := "") -> void:
+	K.clear(head)
+	head.get_parent().visible = true
+	var v := K.vbox(0)
+	v.add_child(K.lbl(title, 17))
+	if sub != "":
+		v.add_child(K.lbl(sub, 11, K.C_DIM))
+	head.add_child(v)
+
+
+func render() -> void:
+	K.clear(body)
+	K.clear(footer)
+	l_clock.text = G.clock()
+	scroll.scroll_vertical = 0
+	wall.visible = app == ""
+	_anim_screen()
+	match app:
+		"sms":
+			if chat_id != "":
+				_chat()
+			else:
+				_sms_list()
+		"kontakty":
+			if contact_id != "":
+				_contact()
+			else:
+				_contacts()
+		"mapa": _map()
+		"hurt": _hurt()
+		"portfel": _wallet()
+		"rozwoj": _skills()
+		"zadania": _tasks()
+		"lokale": _props()
+		"plecak":
+			app = ""
+			ui.open_inventory("")
+			return
+		"ustawienia": _settings()
+		_: _home()
+
+
+# ---------------------------------------------------------------- ekran główny
+func _badge(a: String) -> int:
+	match a:
+		"sms": return G.unread_total()
+		"rozwoj": return int(G.S.sp)
+		"hurt":
+			var n := 0
+			for d in G.S.drops:
+				if d.state == "ready":
+					n += 1
+			return n
+	return 0
+
+
+func _home() -> void:
+	head.get_parent().visible = false
+	body.add_child(K.gap(14))
+	var t := K.lbl(G.clock(), 54)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_child(t)
+	var dl := K.lbl("Dzień %d • %s" % [G.day(), "deszcz" if G.rain > 0.2 else ("noc" if G.night > 0.6 else "pochmurno")], 13, K.C_DIM)
+	dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_child(dl)
+	body.add_child(K.gap(18))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 16)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(grid)
+	for a in APPS:
+		var id: String = a[0]
+		var cell := K.vbox(4)
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(62, 62)
+		var c: Color = a[3]
+		b.add_theme_stylebox_override("normal", K.sb(c, 16, c.lightened(0.15), 1, 12))
+		b.add_theme_stylebox_override("hover", K.sb(c.lightened(0.12), 16, c.lightened(0.3), 1, 12))
+		b.add_theme_stylebox_override("pressed", K.sb(c.darkened(0.15), 16, c, 1, 12))
+		b.icon = K.tex(a[2])
+		b.expand_icon = true
+		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.pressed.connect(func():
+			Sfx.play("select")
+			go(id))
+		var holder := Control.new()
+		holder.custom_minimum_size = Vector2(62, 62)
+		holder.add_child(b)
+		b.pivot_offset = Vector2(31, 31)
+		_pop(b, 0.03 * grid.get_child_count())
+		var n := _badge(id)
+		if n > 0:
+			var bp := K.panel(K.sb(K.C_BAD, 9, Color(0.05, 0.06, 0.085), 2, 5))
+			bp.position = Vector2(42, -6)
+			bp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bp.add_child(K.lbl(str(n), 11, Color.WHITE))
+			holder.add_child(bp)
+		cell.add_child(holder)
+		var l := K.lbl(a[1], 11, K.C_TXT)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell.add_child(l)
+		grid.add_child(cell)
+	body.add_child(K.gap(10))
+	var st := G.cur_step()
+	if not st.is_empty():
+		var c2 := K.card(body, 10, Color(0.08, 0.1, 0.14, 0.9))
+		c2.add_child(K.lbl(G.chapter().to_upper(), 10, K.C_ACC))
+		c2.add_child(K.wrap(st.text.call(), 12, K.C_TXT))
+
+
+# ---------------------------------------------------------------- wiadomości
+func _avatar(cid: String, size := 38.0) -> Control:
+	var p := K.panel(K.sb(AV_COLORS[absi(cid.hash()) % AV_COLORS.size()] if cid != "wiktor" else Color(0.25, 0.08, 0.08), int(size / 2.0), Color(0, 0, 0, 0), 0, 0))
+	p.custom_minimum_size = Vector2(size, size)
+	var l := K.lbl(G.contact_name(cid).substr(0, 1), int(size * 0.45), Color.WHITE)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	p.add_child(l)
+	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return p
+
+
+func _sms_list() -> void:
+	_header("Wiadomości")
+	var ids := []
+	for cid in G.S.chats:
+		if not G.S.chats[cid].is_empty():
+			ids.append(cid)
+	ids.sort_custom(func(a, b): return float(G.S.chats[a][-1].t) > float(G.S.chats[b][-1].t))
+	if ids.is_empty():
+		body.add_child(K.lbl("Brak wiadomości.", 13, K.C_DIM))
+	for cid in ids:
+		var id: String = cid
+		var last: Dictionary = G.S.chats[cid][-1]
+		var unread := int(G.S.unread.get(cid, 0))
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(0, 58)
+		b.add_theme_stylebox_override("normal", K.sb(K.C_CARD if unread == 0 else Color(0.09, 0.14, 0.13), 12, K.C_LINE, 1, 8))
+		b.add_theme_stylebox_override("hover", K.sb(K.C_CARD2, 12, K.C_LINE, 1, 8))
+		b.pressed.connect(func():
+			Sfx.play("click")
+			_dir = 1.0
+			chat_id = id
+			render())
+		var h := K.hbox(10)
+		h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(h)
+		h.add_child(_avatar(cid))
+		var v := K.vbox(1)
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var top := K.hbox(6)
+		top.add_child(K.lbl(G.contact_name(cid), 14, Color.WHITE if unread > 0 else K.C_TXT))
+		top.add_child(K.spacer())
+		top.add_child(K.lbl("%s" % last.time, 10, K.C_DIM))
+		v.add_child(top)
+		var pv := K.lbl(("Ty: " if last.me else "") + String(last.text), 12, K.C_TXT if unread > 0 else K.C_DIM)
+		pv.clip_text = true
+		pv.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		pv.custom_minimum_size = Vector2(230, 0)
+		v.add_child(pv)
+		h.add_child(v)
+		if unread > 0:
+			var bp := K.panel(K.sb(K.C_ACC, 9, Color(0, 0, 0, 0), 0, 6))
+			bp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			bp.add_child(K.lbl(str(unread), 11, Color(0.02, 0.1, 0.04)))
+			h.add_child(bp)
+		body.add_child(b)
+
+
+func _chat() -> void:
+	var def := G.cust_def(chat_id)
+	_header(G.contact_name(chat_id), ("„%s”" % def.nick) if not def.is_empty() else ("Kontakt z Grupy" if chat_id == "wiktor" else ""))
+	G.mark_read(chat_id)
+	var msgs: Array = G.S.chats.get(chat_id, [])
+	var last_day := -1
+	for m in msgs:
+		if int(m.day) != last_day:
+			last_day = int(m.day)
+			var dl := K.lbl("Dzień %d" % last_day, 10, K.C_DIM)
+			dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			body.add_child(dl)
+		var row := K.hbox(0)
+		var me: bool = m.me
+		var p := K.panel(K.sb(Color(0.12, 0.42, 0.26) if me else Color(0.13, 0.15, 0.2), 14, Color(0, 0, 0, 0), 0, 10))
+		var txt := String(m.text)
+		var l := K.lbl(txt, 13, Color.WHITE if me else K.C_TXT)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(minf(250.0, 24.0 + txt.length() * 7.4), 0)
+		var pv := K.vbox(1)
+		pv.add_child(l)
+		var tl := K.lbl(String(m.time), 9, Color(1, 1, 1, 0.45))
+		tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		pv.add_child(tl)
+		p.add_child(pv)
+		if me:
+			row.add_child(K.spacer())
+		row.add_child(p)
+		if not me:
+			row.add_child(K.spacer())
+		body.add_child(row)
+		if msgs.size() - msgs.find(m) <= 2:
+			p.pivot_offset = Vector2(250.0 if me else 0.0, 20.0)
+			_pop(p, 0.12 + 0.12 * (2 - (msgs.size() - msgs.find(m))), 0.7)
+	# odpowiedzi: krótkie przyciski pod rozmową
+	var order = null
+	for o in G.S.orders:
+		if o.cust == chat_id:
+			order = o
+	if order != null:
+		var oid := int(order.id)
+		var left: float = float(order.meet) - G.S.t
+		var when := ("za %dh %02dm" % [int(left / 60.0), int(left) % 60]) if left > 0.0 else "czeka!"
+		var info := K.lbl("%d g %s • %s • %s (%s)" % [int(order.grams), D.PRODUCTS[order.product].name, G.spot_def(order.spot).name, G.clock(order.meet), when], 11, K.C_WARN)
+		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		footer.add_child(info)
+		if retime == oid:
+			footer.add_child(K.lbl("Nowa godzina spotkania:", 11, K.C_DIM))
+			var trow := K.hbox(4)
+			for add in [30, 60, 120]:
+				var tm := int(float(order.meet) + add)
+				var tb := _chip(G.clock(tm), func(): retime = -1; _reply(oid, "time", tm), "")
+				tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				trow.add_child(tb)
+			footer.add_child(trow)
+			footer.add_child(_chip("Wróć", func(): retime = -1; _dir = 0.0; render(), "flat"))
+		elif nego == oid and order.status == "new":
+			footer.add_child(K.lbl("Klient daje %d zł/g. Twoja cena:" % int(order.stated), 11, K.C_DIM))
+			var nrow := K.hbox(4)
+			nrow.alignment = BoxContainer.ALIGNMENT_CENTER
+			for step in [-5, -1]:
+				var st: int = step
+				nrow.add_child(_chip(str(st), func(): nego_price = maxi(1, nego_price + st); _dir = 0.0; render(), ""))
+			var pl := K.lbl("%d zł/g" % nego_price, 18, K.C_ACC)
+			pl.custom_minimum_size = Vector2(96, 0)
+			pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			nrow.add_child(pl)
+			for step in [1, 5]:
+				var st2: int = step
+				nrow.add_child(_chip("+" + str(st2), func(): nego_price += st2; _dir = 0.0; render(), ""))
+			footer.add_child(nrow)
+			footer.add_child(_pair(_chip("Wyślij", func(): nego = -1; _reply(oid, "price", nego_price), "go"), _chip("Wróć", func(): nego = -1; _dir = 0.0; render(), "")))
+		elif order.status == "new":
+			if order.counter != null:
+				footer.add_child(K.lbl("Kontroferta: %d zł za gram" % int(order.counter), 12, K.C_TXT))
+				footer.add_child(_pair(_chip("Zgoda", func(): _reply(oid, "counterok"), "go"), _chip("Anuluj", func(): _reply(oid, "decline"), "bad")))
+			else:
+				footer.add_child(_pair(_chip("Zgoda", func(): _reply(oid, "accept"), "go"), _chip("Negocjuj", func(): nego = oid; nego_price = int(order.stated) + 3; _dir = 0.0; render(), "")))
+				footer.add_child(_pair(_chip("Zmień godzinę", func(): retime = oid; _dir = 0.0; render(), ""), _chip("Anuluj", func(): _reply(oid, "decline"), "bad")))
+		else:
+			footer.add_child(K.lbl("Umówione: %d zł za gram" % int(order.agreed) if order.agreed != null else "Cena do ustalenia na miejscu", 12, K.C_ACC))
+			footer.add_child(_pair(_chip("Prowadź", func(): G.main.set_track(oid); ui.close_all(), "go"), _chip("Zmień godzinę", func(): retime = oid; _dir = 0.0; render(), "")))
+			footer.add_child(_chip("Anuluj", func(): _reply(oid, "decline"), "bad"))
+	elif chat_id == "wiktor" and G.flag("hurt_on"):
+		footer.add_child(K.btn("Otwórz Hurt", func(): go("hurt"), "", true))
+	_scroll_end()
+
+
+func _pair(a: Button, b: Button) -> HBoxContainer:
+	var h := K.hbox(4)
+	a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(a)
+	h.add_child(b)
+	return h
+
+
+func _chip(text: String, cb: Callable, kind: String) -> Button:
+	var b := K.btn(text, cb, kind, true)
+	b.custom_minimum_size = Vector2(0, 30)
+	return b
+
+
+func _reply(oid: int, kind: String, price := 0) -> void:
+	G.reply_order(oid, kind, price)
+	_dir = 0.0
+	render()
+
+
+func _scroll_end() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(scroll):
+		scroll.scroll_vertical = 999999
+
+
+# ---------------------------------------------------------------- kontakty
+func _contacts() -> void:
+	_header("Kontakty", "Stali klienci: %d / %d" % [G.client_count(), G.client_cap()])
+	var locked := 0
+	for d in D.CLIENTS:
+		var st: Dictionary = G.S.cust[d.id]
+		if not st.unlocked:
+			locked += 1
+			continue
+		var id: String = d.id
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(0, 62)
+		b.add_theme_stylebox_override("normal", K.sb(K.C_CARD, 12, K.C_LINE, 1, 8))
+		b.add_theme_stylebox_override("hover", K.sb(K.C_CARD2, 12, K.C_LINE, 1, 8))
+		b.pressed.connect(func():
+			Sfx.play("click")
+			contact_id = id
+			render())
+		var h := K.hbox(10)
+		h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(h)
+		h.add_child(_avatar(d.id))
+		var v := K.vbox(2)
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(K.lbl("%s  „%s”" % [d.name, d.nick], 14))
+		var sat: float = st.sat
+		var row := K.hbox(6)
+		row.add_child(K.icon("smile" if sat > 60.0 else ("meh" if sat > 30.0 else "frown"), 13, K.C_ACC if sat > 60.0 else (K.C_WARN if sat > 30.0 else K.C_BAD)))
+		row.add_child(K.lbl("%d%%" % int(sat), 11, K.C_DIM))
+		row.add_child(K.icon("heart", 13, K.C_PINK))
+		row.add_child(K.lbl("%d" % int(st.loy), 11, K.C_DIM))
+		if float(st.owes) > 0.0:
+			row.add_child(K.lbl("wisi %s" % G.money(st.owes), 11, K.C_WARN))
+		v.add_child(row)
+		h.add_child(v)
+		body.add_child(b)
+	if locked > 0:
+		body.add_child(K.wrap("Nieznane kontakty: %d. Nowi klienci przychodzą z polecenia zadowolonych, z poziomem — albo trzeba ich znaleźć na mieście." % locked, 12, K.C_DIM))
+
+
+func _contact() -> void:
+	var d := G.cust_def(contact_id)
+	var st: Dictionary = G.S.cust[contact_id]
+	_header(d.name, "„%s”" % d.nick)
+	var c := K.card(body)
+	c.add_child(K.wrap(d.bio, 13, K.C_DIM))
+	var c2 := K.card(body)
+	for e in [["Zadowolenie", float(st.sat), K.C_ACC if float(st.sat) > 55.0 else K.C_WARN], ["Lojalność", float(st.loy), K.C_PINK]]:
+		var h := K.hbox(8)
+		var l := K.lbl(e[0], 12, K.C_DIM)
+		l.custom_minimum_size = Vector2(96, 0)
+		h.add_child(l)
+		h.add_child(K.bar(e[1], 100.0, e[2]))
+		c2.add_child(h)
+	if G.has_skill("oko2"):
+		var h2 := K.hbox(8)
+		var l2 := K.lbl("Głód", 12, K.C_DIM)
+		l2.custom_minimum_size = Vector2(96, 0)
+		h2.add_child(l2)
+		h2.add_child(K.bar(float(st.hunger) * 100.0, 100.0, K.C_BAD))
+		c2.add_child(h2)
+	var c3 := K.card(body)
+	c3.add_child(K.lbl("NOTATKI", 10, K.C_DIM))
+	var known: Dictionary = st.known
+	var deals := int(st.deals)
+	var notes := "Transakcje: [b]%d[/b] • sprzedane: [b]%d g[/b]\n" % [deals, int(st.grams)]
+	notes += "Bierze: [b]%s[/b], zwykle %d–%d g\n" % [D.PRODUCTS[d.prod].name, int(d.grams[0]), int(d.grams[1])]
+	notes += "Charakter: %s\n" % (("[b]%s[/b]" % D.TYPE_NAMES[d.type]) if deals >= 2 else K.col("? (poznasz po 2 transakcjach)", K.C_DIM))
+	notes += "Lubi rozmowę: %s\n" % (("[b]%s[/b]" % D.STYLE_NAMES[known.like]) if known.has("like") else K.col("? (odkryj przy powitaniu)", K.C_DIM))
+	if known.has("hate"):
+		notes += "Nie znosi: [b]%s[/b]\n" % D.STYLE_NAMES[known.hate]
+	notes += "Minimalna czystość: %s\n" % (("[b]%d%%[/b]" % int(d.minpur)) if deals >= 3 else K.col("? (po 3 transakcjach)", K.C_DIM))
+	if known.has("budget"):
+		var mx := G.max_price(d, st, d.prod, maxi(int(d.minpur), 70), int(d.grams[0]))
+		notes += "Zwykle płaci do ok. [b]%s[/b] za gram\n" % G.money(mx)
+	if float(st.owes) > 0.0:
+		notes += K.col("Wisi Ci %s" % G.money(st.owes), K.C_WARN)
+	c3.add_child(K.rich(notes.strip_edges(), 13))
+	var id := contact_id
+	footer.add_child(K.btn("Napisz", func(): app = "sms"; chat_id = id; render(), "go"))
+
+
+# ---------------------------------------------------------------- mapa
+func _map() -> void:
+	_header("Mapa", "Steel Blocks i okolice")
+	var cv := Control.new()
+	cv.custom_minimum_size = Vector2(350, 285)
+	cv.clip_contents = true
+	cv.draw.connect(func(): ui.draw_map(cv, Vector2(0.0, 0.0), 420.0 * D.SC, true))
+	body.add_child(cv)
+	body.add_child(K.lbl("PROWADŹ DO", 10, K.C_DIM))
+	for t in G.main.nav_targets():
+		var tid = t.id
+		var b := K.btn(t.label, func(): G.main.set_track(tid); render(), "go" if G.main.track_key() == str(tid) else "", true)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		body.add_child(b)
+	body.add_child(K.btn("Trasa na ziemi: " + ("włączona" if G.S.nav_on else "wyłączona"), func(): G.main.toggle_nav(); render(), "", true))
+
+
+# ---------------------------------------------------------------- hurt (Wiktor)
+func _hurt() -> void:
+	var S: Dictionary = G.S
+	_header("Hurt", "Szyfrowany kanał • Wiktor")
+	if not G.flag("hurt_on"):
+		var c0 := K.card(body)
+		c0.add_child(K.icon("lock", 28, K.C_DIM))
+		c0.add_child(K.wrap("Wiktor jeszcze Ci nie ufa. Odbierz pierwszą paczkę, sprzedaj towar i spłać zeszyt — wtedy pozwoli Ci zamawiać samodzielnie.", 13, K.C_DIM))
+	# zeszyt
+	var c := K.card(body)
+	c.add_child(K.lbl("ZESZYT (KREDYT)", 10, K.C_DIM))
+	var due := ""
+	if float(S.credit) > 0.0:
+		due = ("  •  " + K.col("PO TERMINIE", K.C_BAD)) if G.credit_overdue() else ("  •  do dnia %d" % (int(float(S.credit_due) / 1440.0) + 1))
+	c.add_child(K.rich("[b]%s[/b] / %s%s" % [K.col(G.money(S.credit), K.C_WARN if float(S.credit) > 0.0 else K.C_TXT), G.money(G.credit_limit()), due], 15))
+	c.add_child(K.bar(float(S.credit), G.credit_limit(), K.C_WARN))
+	if float(S.credit) > 0.0:
+		var f := K.flow(5)
+		c.add_child(f)
+		var b1 := K.btn("Spłać 100 zł", func(): G.pay_credit(100.0); render(), "", true)
+		b1.disabled = S.cash < 1.0
+		f.add_child(b1)
+		var b2 := K.btn("Spłać zeszyt (%s)" % G.money(minf(S.cash, float(S.credit))), func(): G.pay_credit(1e12); render(), "go", true)
+		b2.disabled = S.cash < 1.0
+		f.add_child(b2)
+	# paczki w drodze
+	if not S.drops.is_empty():
+		var cd := K.card(body)
+		cd.add_child(K.lbl("PACZKI", 10, K.C_DIM))
+		for d in S.drops:
+			var dd := G.drop_def(d.spot)
+			var txt := "[b]%d g %s[/b] (%d%%) — %s\n" % [int(d.g), D.PRODUCTS[d.p].name, int(d.pur), dd.name]
+			if d.state == "ready":
+				var left: float = maxf(0.0, float(d.expire) - S.t)
+				txt += K.col("Czeka w skrytce", K.C_ACC) + (" • zniknie za %dh" % int(left / 60.0) if left < 5000.0 else "")
+			else:
+				txt += K.col("W drodze, ok. %d min" % int(maxf(0.0, float(d.ready) - S.t)), K.C_DIM)
+			txt += "  •  %s" % ("na zeszyt" if d.credit else ("do zapłaty: " + G.money(d.cost)))
+			cd.add_child(K.rich(txt, 12))
+		cd.add_child(K.btn("Prowadź do skrytki", func(): G.main.set_track("drop"); ui.close_all(), "", true))
+	if not G.flag("hurt_on"):
+		return
+	# zamówienie
+	var co := K.card(body)
+	co.add_child(K.lbl("NOWE ZAMÓWIENIE", 10, K.C_DIM))
+	var pf := K.flow(5)
+	co.add_child(pf)
+	for p in D.PRODUCTS:
+		var pid: String = p
+		var locked: bool = int(S.lvl) < int(D.PRODUCTS[p].lvl)
+		var b := K.btn(D.PRODUCTS[p].name + ((" (poz. %d)" % int(D.PRODUCTS[p].lvl)) if locked else ""), func(): hurt.p = pid; render(), "go" if hurt.p == p else "", true)
+		b.disabled = locked
+		pf.add_child(b)
+	co.add_child(K.wrap(D.PRODUCTS[hurt.p].desc, 11, K.C_DIM))
+	var qf := K.flow(5)
+	co.add_child(qf)
+	for g in D.WHOLESALE_SIZES:
+		var gg: int = g
+		var b := K.btn("%d g" % g, func(): hurt.g = gg; render(), "go" if int(hurt.g) == g else "", true)
+		b.disabled = g > G.wholesale_max()
+		qf.add_child(b)
+	var mf := K.flow(5)
+	co.add_child(mf)
+	mf.add_child(K.btn("Standard ~%d%%" % D.PURITY_STD, func(): hurt.high = false; render(), "go" if not hurt.high else "", true))
+	var bh := K.btn("Czysty %d%% (+35%%)" % D.PURITY_HIGH, func(): hurt.high = true; render(), "go" if hurt.high else "", true)
+	bh.disabled = int(S.lvl) < 5
+	mf.add_child(bh)
+	var pm := K.flow(5)
+	co.add_child(pm)
+	pm.add_child(K.btn("Płacę przy odbiorze", func(): hurt.credit = false; render(), "go" if not hurt.credit else "", true))
+	pm.add_child(K.btn("Na zeszyt", func(): hurt.credit = true; render(), "go" if hurt.credit else "", true))
+	var cost := G.wholesale_price(hurt.p, int(hurt.g), hurt.high)
+	var disc := float(D.WHOLESALE_DISC.get(int(hurt.g), 0.0))
+	co.add_child(K.rich("Razem: [b]%s[/b]  (%s/g%s)\nCena uliczna: ok. %s/g" % [K.col(G.money(cost), K.C_WARN), G.money(cost / float(hurt.g)), (", rabat %d%%" % int(disc * 100.0)) if disc > 0.0 else "",
+		G.money(G.market_price(hurt.p, D.PURITY_HIGH if hurt.high else D.PURITY_STD))], 13))
+	var why := G.order_block(hurt.p, int(hurt.g), hurt.credit, hurt.high)
+	var ob := K.btn("Zamów" if why == "" else why, func(): G.order_goods(hurt.p, int(hurt.g), hurt.high, hurt.credit); render(), "go")
+	ob.disabled = why != ""
+	co.add_child(ob)
+	co.add_child(K.wrap("Wiktor zostawia towar w skrytce na mieście. Paczka czeka 16 godzin. Zeszyt trzeba spłacić w %d dni." % D.CREDIT_DAYS, 11, K.C_DIM))
+
+
+# ---------------------------------------------------------------- portfel
+func _wallet() -> void:
+	var S: Dictionary = G.S
+	_header("Portfel")
+	var c := K.card(body)
+	c.add_child(K.lbl("GOTÓWKA PRZY SOBIE", 10, K.C_DIM))
+	c.add_child(K.lbl(G.money(S.cash), 30, K.C_ACC))
+	var stash_cash := 0.0
+	for r in S.stash:
+		stash_cash += float(S.stash[r].cash)
+	c.add_child(K.rich("W skrytkach: [b]%s[/b]   •   Zeszyt u Wiktora: [b]%s[/b]" % [G.money(stash_cash), G.money(S.credit)], 12))
+	var cd := K.card(body)
+	cd.add_child(K.lbl("DŁUG BRATA", 10, K.C_DIM))
+	cd.add_child(K.rich("[b]%s[/b]   %s" % [K.col(G.money(S.debt), K.C_BAD), K.col("spłacono %s" % G.money(S.paid), K.C_DIM)], 17))
+	var ni := G.next_installment()
+	if not ni.is_empty() and S.debt > 0.0:
+		var left := int(ni.day) - G.day()
+		cd.add_child(K.rich("Najbliższa rata: łącznie [b]%s[/b] do końca dnia %d  (%s)" % [G.money(ni.due), int(ni.day), K.col("za %d dni" % left if left > 0 else ("DZIŚ" if left == 0 else "PO TERMINIE"), K.C_WARN if left <= 1 else K.C_DIM)], 12))
+		cd.add_child(K.bar(S.paid, float(ni.due), K.C_ACC))
+	var f := K.flow(5)
+	cd.add_child(f)
+	for a in [100, 500, 2000]:
+		var amt: float = a
+		var b := K.btn("Spłać %s" % G.money(minf(amt, S.cash)), func(): G.pay_debt(amt); refresh(), "", true)
+		b.disabled = S.cash < 1.0 or S.debt <= 0.0
+		f.add_child(b)
+	var ball := K.btn("Spłać ile się da", func(): G.pay_debt(1e12); refresh(), "go", true)
+	ball.disabled = S.cash < 1.0 or S.debt <= 0.0
+	f.add_child(ball)
+	cd.add_child(K.wrap("Odsetki 1%% co tydzień. Spóźniona rata = kara i wizyta ludzi Wiktora. Trzy wpadki i koniec (%d/%d)." % [int(S.strikes), D.MAX_STRIKES], 11, K.C_DIM))
+	var cs := K.card(body)
+	cs.add_child(K.lbl("HARMONOGRAM", 10, K.C_DIM))
+	var txt := ""
+	var d := G.day()
+	for r in D.DEBT_SCHEDULE:
+		var ok: bool = S.paid >= float(r.due)
+		var mark := K.col("✓", K.C_ACC) if ok else (K.col("zaległa", K.C_BAD) if d > int(r.day) else "")
+		txt += "Dzień %d: [b]%s[/b]  %s\n" % [int(r.day), G.money(r.due), mark]
+	cs.add_child(K.rich(txt.strip_edges(), 12))
+	var ct := K.card(body)
+	ct.add_child(K.lbl("BILANS", 10, K.C_DIM))
+	ct.add_child(K.rich("Zarobione: [b]%s[/b]\nWydane: [b]%s[/b]\nKoszty życia: %s dziennie\nNajlepsza transakcja: %s" % [G.money(S.stats.earned), G.money(S.stats.spent), G.money(D.LIVING_COST), G.money(S.stats.best)], 12))
+
+
+# ---------------------------------------------------------------- rozwój
+func _skills() -> void:
+	var S: Dictionary = G.S
+	_header("Rozwój", "Poziom %d — %s" % [int(S.lvl), G.level_title()])
+	var c := K.card(body, 10)
+	var h := K.hbox(8)
+	h.add_child(K.lbl("PD %d / %d" % [int(S.xp), int(G.next_xp())], 12, K.C_DIM))
+	h.add_child(K.spacer())
+	h.add_child(K.lbl("Punkty: %d" % int(S.sp), 13, K.C_GOLD if int(S.sp) > 0 else K.C_DIM))
+	c.add_child(h)
+	c.add_child(K.bar(float(S.xp) - G.prev_xp(), maxf(1.0, G.next_xp() - G.prev_xp()), K.C_GOLD))
+	if D.LEVEL_UNLOCKS.has(int(S.lvl) + 1):
+		c.add_child(K.wrap("Poziom %d: %s" % [int(S.lvl) + 1, D.LEVEL_UNLOCKS[int(S.lvl) + 1]], 11, K.C_DIM))
+	var grid := K.hbox(6)
+	grid.alignment = BoxContainer.ALIGNMENT_CENTER
+	body.add_child(grid)
+	var bcol := {"Handel": K.C_GOLD, "Ulica": K.C_BLUE, "Towar": K.C_ACC, "Kontakty": K.C_PINK}
+	for br in D.BRANCHES:
+		var col := K.vbox(0)
+		col.alignment = BoxContainer.ALIGNMENT_BEGIN
+		var bl := K.lbl(String(br).to_upper(), 10, bcol[br])
+		bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(bl)
+		col.add_child(K.gap(4))
+		var first := true
+		for row in range(5):
+			for s in D.SKILLS:
+				if s.branch != br or int(s.row) != row:
+					continue
+				var sid: String = s.id
+				var learned := G.has_skill(sid)
+				var can := G.can_learn(sid)
+				if not first:
+					var ln := ColorRect.new()
+					ln.color = bcol[br] if learned else K.C_LINE
+					ln.custom_minimum_size = Vector2(3, 12)
+					ln.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+					col.add_child(ln)
+				first = false
+				var b := Button.new()
+				b.focus_mode = Control.FOCUS_NONE
+				b.custom_minimum_size = Vector2(82, 50)
+				b.text = String(s.name)
+				b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				b.add_theme_font_size_override("font_size", 11)
+				var c0: Color = bcol[br]
+				var bg := c0.darkened(0.45) if learned else (Color(0.13, 0.16, 0.22) if can else Color(0.07, 0.08, 0.11))
+				var bd := c0 if (learned or skill_sel == sid) else (c0.darkened(0.3) if can else K.C_LINE)
+				b.add_theme_stylebox_override("normal", K.sb(bg, 10, bd, 2 if (skill_sel == sid or learned) else 1, 5))
+				b.add_theme_stylebox_override("hover", K.sb(bg.lightened(0.08), 10, c0, 2, 5))
+				b.add_theme_color_override("font_color", Color.WHITE if learned else (K.C_TXT if can else K.C_DIM))
+				b.pressed.connect(func():
+					Sfx.play("click")
+					skill_sel = sid
+					render())
+				col.add_child(b)
+		grid.add_child(col)
+	if skill_sel != "":
+		var s := G.skill_def(skill_sel)
+		footer.add_child(K.lbl(String(s.name), 14, bcol[s.branch]))
+		footer.add_child(K.wrap(s.desc, 12, K.C_TXT))
+		if G.has_skill(skill_sel):
+			footer.add_child(K.lbl("Opanowane", 12, K.C_ACC))
+		else:
+			var why := ""
+			if s.has("req") and not G.has_skill(s.req):
+				why = "Wymaga: " + String(G.skill_def(s.req).name)
+			elif int(S.lvl) < int(s.get("lvl", 1)):
+				why = "Wymaga poziomu %d" % int(s.lvl)
+			elif int(S.sp) <= 0:
+				why = "Brak punktów umiejętności"
+			var sid2 := skill_sel
+			var lb := K.btn("Naucz się (1 punkt)" if why == "" else why, func(): G.learn_skill(sid2); render(), "go")
+			lb.disabled = why != ""
+			footer.add_child(lb)
+	else:
+		footer.add_child(K.wrap("Punkt umiejętności dostajesz za każdy poziom. Wybierz umiejętność, żeby zobaczyć opis.", 11, K.C_DIM))
+
+
+# ---------------------------------------------------------------- zadania
+func _tasks() -> void:
+	_header("Zadania", G.chapter())
+	var cur := int(G.S.step)
+	var c := K.card(body)
+	for i in range(G.story.size()):
+		var st: Dictionary = G.story[i]
+		if st.has("ch"):
+			c.add_child(K.lbl(String(st.ch).to_upper(), 10, K.C_ACC if i <= cur else K.C_DIM))
+		if i > cur + 1:
+			continue
+		var h := K.hbox(8)
+		h.add_child(K.icon("circle_check" if i < cur else ("target" if i == cur else "lock"), 15, K.C_ACC if i < cur else (K.C_WARN if i == cur else K.C_DIM)))
+		var txt: String = st.text.call() if i <= cur else "???"
+		h.add_child(K.wrap(txt, 12, K.C_DIM if i < cur else (K.C_TXT if i == cur else K.C_DIM)))
+		c.add_child(h)
+	var cs := K.card(body)
+	cs.add_child(K.lbl("STATYSTYKI", 10, K.C_DIM))
+	var T: Dictionary = G.S.stats
+	cs.add_child(K.rich("Sprzedane: [b]%d g[/b] w %d transakcjach\nZaporcjowane: %d g (rozsypane: %d g)\nOdebrane paczki: %d • własny plon: %d g\nUcieczki: %d • zatrzymania: %d/%d" % [
+		int(T.sold), int(T.deals), int(T.packed), int(T.wasted), int(T.pickups), int(T.grown), int(T.escapes), int(G.S.arrests), D.MAX_ARRESTS], 12))
+	var ch := K.card(body)
+	ch.add_child(K.lbl("RADA NA DZIŚ", 10, K.C_DIM))
+	ch.add_child(K.wrap(D.HINTS[G.day() % D.HINTS.size()], 12, K.C_TXT))
+
+
+# ---------------------------------------------------------------- lokale
+func _props() -> void:
+	_header("Lokale", "Kryjówki i interesy")
+	var c0 := K.card(body, 10)
+	c0.add_child(K.rich("[b]Kawalerka w bloku 7[/b]  %s\nWaga, szafa-skrytka (%d miejsc), łóżko. Na więcej nie ma miejsca." % [K.col("Twoja", K.C_ACC), G.stash_cap("safe")], 12))
+	for p in D.PROPERTIES:
+		var pid: String = p.id
+		var c := K.card(body, 10)
+		var own := G.owns(pid)
+		var soon: bool = String(p.room) == ""
+		c.add_child(K.rich("[b]%s[/b]  %s" % [p.name, K.col("Kupione", K.C_ACC) if own else K.col(G.money(p.price), K.C_WARN)], 14))
+		c.add_child(K.lbl(p.where, 11, K.C_DIM))
+		c.add_child(K.wrap(p.desc, 12, K.C_TXT))
+		if own:
+			var room: String = p.room
+			c.add_child(K.rich("Meble: %d • skrytka: %s / %d" % [G.S.hide[room].items.size(), G.units(G.store_total(G.S.stash[room])), G.stash_cap(room)], 11))
+			c.add_child(K.btn("Prowadź", func(): G.main.set_track("prop:" + pid); ui.close_all(), "", true))
+		elif soon:
+			c.add_child(K.lbl("Od poziomu %d • w przygotowaniu" % int(p.lvl), 11, K.C_DIM))
+		else:
+			var why := ""
+			if int(G.S.lvl) < int(p.lvl):
+				why = "Wymaga poziomu %d" % int(p.lvl)
+			elif G.S.cash < float(p.price):
+				why = "Brakuje %s (gotówka przy sobie)" % G.money(float(p.price) - G.S.cash)
+			var f := K.flow(5)
+			c.add_child(f)
+			var b := K.btn("Kup" if why == "" else why, func(): G.buy_property(pid); render(), "go", true)
+			b.disabled = why != ""
+			f.add_child(b)
+			f.add_child(K.btn("Pokaż na mapie", func(): G.main.set_track("prop:" + pid); ui.close_all(), "", true))
+
+
+# ---------------------------------------------------------------- plecak
+func _bag() -> void:
+	var S: Dictionary = G.S
+	_header("Plecak", "%s / %d g" % [G.grams(G.carry_total()), G.capacity()])
+	body.add_child(K.bar(G.carry_total(), float(G.capacity()), K.C_BLUE))
+	var c := K.card(body)
+	c.add_child(K.lbl("ZAPORCJOWANE (gotowe do sprzedaży)", 10, K.C_DIM))
+	var ps := G.stacks(S.inv, "pack")
+	if ps.is_empty():
+		c.add_child(K.lbl("Nic. Zaporcjuj towar na wadze.", 12, K.C_DIM))
+	for s in ps:
+		c.add_child(K.rich("%s  %s   ×[b]%d g[/b]" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), int(s.n)], 13))
+	var c2 := K.card(body)
+	c2.add_child(K.lbl("LUZEM (do porcjowania)", 10, K.C_DIM))
+	var bs := G.stacks(S.inv, "bulk")
+	if bs.is_empty():
+		c2.add_child(K.lbl("Nic.", 12, K.C_DIM))
+	for s in bs:
+		c2.add_child(K.rich("%s  %s   [b]%s[/b]" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), G.grams(s.n)], 13))
+	var c3 := K.card(body)
+	c3.add_child(K.lbl("RZECZY", 10, K.C_DIM))
+	c3.add_child(K.rich("Woreczki strunowe: [b]%d[/b]\nMajeranek: [b]%d g[/b] • cukier puder: [b]%d g[/b]\nNasiona: [b]%d[/b]\nTelefony na kartę: [b]%d[/b]" % [G.item("woreczki"), G.item("majeranek"), G.item("cukier"), G.item("nasiona"), G.item("burner")], 13))
+	if G.item("burner") > 0:
+		c3.add_child(K.btn("Zmień numer (śledztwo −25)", func(): G.use_burner(); render(), "", true))
+	body.add_child(K.wrap("Przy zatrzymaniu tracisz cały towar z plecaka i część gotówki. To, co w skrytkach, jest bezpieczne.", 11, K.C_DIM))
+
+
+# ---------------------------------------------------------------- ustawienia
+func _settings() -> void:
+	_header("Ustawienia")
+	var c := K.card(body)
+	var f := K.flow(5)
+	c.add_child(f)
+	f.add_child(K.btn("Zapisz grę", func(): G.save_game(true), "", true))
+	f.add_child(K.btn("Dźwięk: " + ("wył." if Sfx.muted else "wł."), func(): Sfx.set_muted(not Sfx.muted); G.main.save_settings(); render(), "", true))
+	f.add_child(K.btn("Menu główne", func(): G.main.to_menu(), "bad", true))
+	var q := K.card(body)
+	q.add_child(K.lbl("JAKOŚĆ GRAFIKI", 10, K.C_DIM))
+	var qf := K.flow(5)
+	q.add_child(qf)
+	for e in [["high", "Wysoka"], ["med", "Średnia"], ["low", "Niska"]]:
+		var id: String = e[0]
+		qf.add_child(K.btn(e[1], func(): G.env.set_quality(id); G.main.save_settings(); render(), "go" if G.env.quality == id else "", true))
+	q.add_child(K.btn("Pełny ekran: " + ("wł." if G.main.is_fullscreen() else "wył.") + "   [F11]", func(): G.main.set_fullscreen(not G.main.is_fullscreen()); render(), "", true))
+	q.add_child(K.wrap("Jeśli gra się przycina, wybierz niższą jakość. Interfejs zawsze jest ostry — zmienia się tylko rozdzielczość obrazu 3D.", 11, K.C_DIM))
+	var m := K.card(body)
+	m.add_child(K.lbl("MUZYKA W KLUBIE NEON", 10, K.C_DIM))
+	m.add_child(K.rich("Teraz gra: [b]%s[/b]\nWłasna muzyka: wrzuć pliki MP3 do folderu [b]muzyka[/b] w folderze gry — klub będzie je odtwarzał." % Sfx.club_track_name(), 12))
+	var hc := K.card(body)
+	hc.add_child(K.lbl("STEROWANIE", 10, K.C_DIM))
+	hc.add_child(K.rich(ui.help_text(), 12))
