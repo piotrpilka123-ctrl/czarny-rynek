@@ -49,14 +49,14 @@ func _ready() -> void:
 		run()
 
 
-func pack_all(room: String, hits := 3) -> void:
+func pack_all(room: String, mode := 0) -> void:
 	for s in G.bench_bulk(room):
 		var left := int(floor(float(s.n) + 0.001))
 		var guard := 0
 		while left > 0 and G.item_at(room, "woreczki") > 0 and guard < 60:
 			guard += 1
-			var n: int = mini(left, G.pack_session_max())
-			var r: Dictionary = G.pack(room, s.p, int(s.pur), n, hits)
+			var n: int = mini(left, 20)
+			var r: Dictionary = G.pack(room, s.p, int(s.pur), n, mode)
 			if int(r.packed) + int(r.lost) <= 0:
 				break
 			left -= int(r.packed) + int(r.lost)
@@ -138,8 +138,21 @@ func run() -> void:
 	U.open_pack("safe")
 	await frames(3)
 	ok(U.mode == "modal", "stół roboczy otwarty")
-	var r: Dictionary = G.pack("safe", "dym", 80, 3, 3)
-	ok(int(r.packed) == 3 and G.item("woreczki") == 7, "zaporcjowane 3 g, ubyło 3 woreczków")
+	# stół roboczy: animowana robota gram po gramie (w teście przyspieszona)
+	var t_before: float = S.t
+	S.upg["waga"] = true
+	ok(G.pack_waste(0) == 0.0 and G.pack_waste(2) > G.pack_waste(1), "waga jubilerska: spokojna robota bez strat, pośpiech kosztuje towar")
+	var bv = U.bench.view
+	var got := [-1, -1]
+	bv.start(3, 0, 0.9, func() -> int: return G.pack_one("safe", "dym", 80, 0), func(a: int, b: int): got[0] = a; got[1] = b)
+	var bg := 0
+	while got[0] < 0 and bg < 400:
+		bg += 1
+		await frames(1)
+	S.upg.erase("waga")
+	ok(got[0] == 3 and got[1] == 0 and G.item("woreczki") == 7, "zaporcjowane 3 g, ubyło 3 woreczków")
+	ok(S.t - t_before >= 5.9, "porcjowanie zabiera czas gry (%.0f min)" % (S.t - t_before))
+	ok(G.pack_one("safe", "dym", 35, 1) == -1, "nie da się porcjować towaru, którego nie ma")
 	U.close_all()
 	G.story_tick()
 	G.story_tick()
@@ -235,6 +248,75 @@ func run() -> void:
 		var np: int = G.mix("safe", "dym", int(src.pur), float(src.n), 4)
 		ok(np < int(src.pur), "mieszanie obniża czystość (%d%% → %d%%)" % [int(src.pur), np])
 		ok(absf(G.goods_total(S.inv) + G.goods_total(S.stash.safe) - before - 4.0) < 0.2, "mieszanka waży o 4 g więcej")
+
+	# --- mieszanki nigdy nie układają się w jeden stos z czystym towarem
+	var keep_inv: Dictionary = S.inv
+	var keep_safe: Dictionary = S.stash.safe
+	var keep_items: Dictionary = S.items.duplicate()
+	S.inv = G.new_store()
+	S.stash.safe = G.new_store()
+	var both: Array = [S.inv, S.stash.safe]
+	S.items["majeranek"] = 400
+	S.items["woreczki"] = 60
+	var mix_ok := true
+	var mix_seen := 0
+	for base in [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50]:
+		for fg in [1, 2, 3, 5, 8]:
+			G.add_bulk(S.stash.safe, "dym", base, 12.0)
+			var np: int = G.mix("safe", "dym", base, 12.0, fg)
+			mix_seen += 1
+			if not G.is_mix(np) or np % 5 == 0 or G.qpure(np) == np or G.qpur(np) != np:
+				mix_ok = false
+	ok(mix_ok, "każda mieszanka dostaje znacznik (%d prób) i nie zaokrągla się do czystego kroku" % mix_seen)
+	var pure_g := 0.0
+	var mixed_g := 0.0
+	for st0 in both:
+		for k in st0.bulk.dym:
+			if G.is_mix(int(k)):
+				mixed_g += float(st0.bulk.dym[k])
+			else:
+				pure_g += float(st0.bulk.dym[k])
+	ok(pure_g < 0.01 and mixed_g > 100.0, "po mieszaniu nic nie trafia do „czystych” stosów (mieszanek %d g)" % int(mixed_g))
+	# czysty towar o podobnej mocy leży osobno
+	G.add_bulk(S.stash.safe, "dym", 75, 7.0)
+	ok(absf(float(S.stash.safe.bulk.dym.get("75", 0.0)) - 7.0) < 0.01, "czyste 75% nie zlało się z mieszanką 72/77%")
+	# ponowne rozrabianie mieszanki dalej daje mieszankę
+	var anyk := 0
+	for k in S.stash.safe.bulk.dym:
+		if G.is_mix(int(k)) and float(S.stash.safe.bulk.dym[k]) >= 6.0 and int(k) > anyk:
+			anyk = int(k)
+	var again: int = G.mix("safe", "dym", anyk, 6.0, 2)
+	ok(anyk > 0 and G.is_mix(again) and again < anyk, "rozrobiona mieszanka dalej jest mieszanką (%d%% → %d%%)" % [anyk, again])
+	# porcjowanie zachowuje znacznik, a woreczki z mieszanki nie mieszają się z czystymi
+	G.pack("safe", "dym", again, 3, 0)
+	G.pack("safe", "dym", 75, 3, 0)
+	var packs_pure := 0
+	var packs_mix := 0
+	var stack_n := 0
+	for st0 in both:
+		for st2 in G.stacks(st0, "pack"):
+			if G.is_mix(int(st2.pur)):
+				packs_mix += int(st2.n)
+			else:
+				packs_pure += int(st2.n)
+		stack_n += G.stacks(st0, "pack").size() + G.stacks(st0, "bulk").size()
+	ok(packs_mix >= 1 and packs_pure >= 1 and packs_mix + packs_pure <= 6, "woreczki: mieszanka (%d) i czysty (%d) w osobnych stosach" % [packs_mix, packs_pure])
+	var labels := 0
+	for st0 in both:
+		for e2 in G.entries(st0):
+			if e2.kind != "item":
+				labels += 1
+	ok(labels == stack_n and labels >= 4, "ekwipunek pokazuje każdy stos osobno (%d pozycji)" % labels)
+	# zapis i odczyt nie gubi znacznika
+	var mjs = JSON.parse_string(JSON.stringify(S.stash.safe))
+	var lost_mark := false
+	for k in mjs.bulk.dym:
+		if not S.stash.safe.bulk.dym.has(k):
+			lost_mark = true
+	ok(not lost_mark and mjs.bulk.dym.size() == S.stash.safe.bulk.dym.size(), "znacznik mieszanki przechodzi przez zapis gry")
+	S.inv = keep_inv
+	S.stash.safe = keep_safe
+	S.items = keep_items
 
 	# --- ekwipunek: przenoszenie do skrytki, zakładki
 	M.enter("safe")

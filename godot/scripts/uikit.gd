@@ -187,9 +187,16 @@ static func clear(n: Node) -> void:
 
 static func tex(name: String) -> Texture2D:
 	if not _ico.has(name):
+		# rysowane ikony przedmiotów (assets/items) mają pierwszeństwo przed prostymi ikonami interfejsu
+		var pi := "res://assets/items/%s.png" % name
 		var p := "res://assets/icons/%s.svg" % name
-		_ico[name] = load(p) if ResourceLoader.exists(p) else null
+		_ico[name] = load(pi) if ResourceLoader.exists(pi) else (load(p) if ResourceLoader.exists(p) else null)
 	return _ico[name]
+
+
+## czy to kolorowa ikona przedmiotu (nie barwimy jej)
+static func is_item(name: String) -> bool:
+	return ResourceLoader.exists("res://assets/items/%s.png" % name)
 
 
 static func icon(name: String, size := 18.0, color := C_TXT) -> TextureRect:
@@ -198,7 +205,9 @@ static func icon(name: String, size := 18.0, color := C_TXT) -> TextureRect:
 	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	t.custom_minimum_size = Vector2(size, size)
-	t.modulate = color
+	t.modulate = Color.WHITE if is_item(name) else color
+	if is_item(name):
+		t.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	return t
@@ -226,7 +235,7 @@ static func col(text: String, c: Color) -> String:
 
 static func tier_bb(pur) -> String:
 	var t: int = G.tier(pur)
-	return "[color=#%s]%s %d%%[/color]%s" % [D.TIER_COLOR[t], D.TIER_NAMES[t], int(pur), " [color=#c98a3a](mieszanka)[/color]" if int(pur) < 65 else ""]
+	return "[color=#%s]%s %d%%[/color]%s" % [D.TIER_COLOR[t], D.TIER_NAMES[t], int(pur), " [color=#c98a3a](mieszanka)[/color]" if G.is_mix(pur) else ""]
 
 
 static func icon_label(ic: String, text: String, size := 14, color := C_TXT, isize := 16.0) -> HBoxContainer:

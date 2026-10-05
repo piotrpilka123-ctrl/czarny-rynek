@@ -202,8 +202,27 @@ func add_minutes(m: float) -> void:
 
 
 # ================================================================ towar i ekwipunek
+## Czystość zapisujemy w krokach co 5%. Mieszanki (towar rozrobiony wypełniaczem) mają końcówkę 2 albo 7
+## (np. 62%, 67%) — dzięki temu NIGDY nie układają się w jeden stos z czystym towarem o podobnej mocy.
 static func qpur(pur) -> int:
+	var v := int(round(float(pur)))
+	if v % 5 == 2:
+		return clampi(v, 7, 97)
 	return clampi(int(round(float(pur) / 5.0)) * 5, 5, 100)
+
+
+## czystość towaru prosto od dostawcy albo z własnej produkcji (zawsze „czysty” krok)
+static func qpure(pur) -> int:
+	return clampi(int(round(float(pur) / 5.0)) * 5, 5, 100)
+
+
+## czystość mieszanki (z zachowaniem znacznika)
+static func qmix(pur) -> int:
+	return clampi(int(round((float(pur) - 2.0) / 5.0)) * 5 + 2, 7, 97)
+
+
+static func is_mix(pur) -> bool:
+	return int(round(float(pur))) % 5 == 2
 
 
 static func tier(pur) -> int:
@@ -322,7 +341,8 @@ func entries(st: Dictionary) -> Array:
 			var us: float = D.SIZE_PACK if kind == "pack" else D.SIZE_BULK
 			var uw: float = D.W_PACK if kind == "pack" else D.W_BULK
 			out.append({"kind": kind, "p": s.p, "pur": int(s.pur), "id": "", "n": float(s.n), "name": pd.name,
-				"sub": ("porcje 1 g" if kind == "pack" else "luzem"), "icon": D.PRODUCT_ICONS.get(s.p, "leaf"), "tier": tier(s.pur),
+				"sub": ("woreczki 1 g" if kind == "pack" else ("cegła" if float(s.n) >= 100.0 else "luzem")),
+				"icon": ("pack_" if kind == "pack" else ("brick_" if float(s.n) >= 100.0 else "bulk_")) + String(s.p), "tier": tier(s.pur),
 				"qty": ("%d szt." % int(s.n)) if kind == "pack" else grams(s.n), "usize": us, "uw": uw, "step": 1.0 if kind == "pack" else 0.5,
 				"unit": "szt." if kind == "pack" else "g", "size": half_up(float(s.n) * us), "weight": float(s.n) * uw,
 				"desc": ("Zaporcjowany towar gotowy do sprzedaży." if kind == "pack" else "Towar luzem. Zanim sprzedasz, zaporcjuj go na stole z wagą.")})
@@ -928,7 +948,7 @@ func make_order(c: Dictionary, force_g := 0) -> Dictionary:
 		"stated": stated, "noise": noise, "agreed": null, "counter": null, "countered": false, "resched": false, "t0": S.t, "text": "",
 	}
 	S.next_order = int(S.next_order) + 1
-	var pn: String = D.PRODUCTS[product].name
+	var pn: String = D.PRODUCT_GEN[product]
 	var sn: String = spot.name
 	var lines := {
 		"luzak": ["Siema, ogarniesz %d g %s? Dam %d za gram. %s, za godzinkę?" % [g, pn, stated, sn], "Ej, masz coś? %d g po %d zł. Mogę być za godzinę: %s." % [g, stated, sn]],
@@ -1381,7 +1401,7 @@ func deal_sell(d: Dictionary, price: float, line: String) -> void:
 	var pay := "[color=#4ade80]+%s[/color]" % money(res.paid)
 	if d.credit:
 		pay += " teraz, reszta (%s) na zeszyt" % money(res.owed)
-	d.speech = "%s\n[b]%s[/b] za %d g %s.%s" % [line, pay, int(d.qty), D.PRODUCTS[d.sel.p].name, fb]
+	d.speech = "%s\n[b]%s[/b] za %d g %s.%s" % [line, pay, int(d.qty), D.PRODUCT_GEN[d.sel.p], fb]
 	deal_finish(d, res)
 
 
@@ -1543,7 +1563,7 @@ func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, m
 	S.stats.deals = int(S.stats.deals) + 1
 	S.stats.best = maxf(float(S.stats.best), total)
 	Sfx.play("cash")
-	notify("+%s  (%d g %s)" % [money(paid), g, D.PRODUCTS[p].name], "good")
+	notify("+%s  (%d g %s)" % [money(paid), g, D.PRODUCT_GEN[p]], "good")
 	var xp := g * 3.4 * (0.8 + tier(pur) * 0.22) * (1.8 if p != "dym" else 1.0) + 2.0
 	if price >= mx * 0.9:
 		xp += 2.0
@@ -1633,7 +1653,7 @@ func order_block(p: String, g: int, on_credit: bool, high: bool) -> String:
 	if credit_overdue():
 		if rescue_order(p, g, on_credit, high):
 			return ""
-		return "Spłać zaległy zeszyt." if all_goods() >= 1.0 or not S.drops.is_empty() else "Zeszyt po terminie: Wiktor da najwyżej 5 g Greena na zeszyt, 25% drożej."
+		return "Spłać zaległy zeszyt." if all_goods() >= 1.0 or not S.drops.is_empty() else "Zeszyt po terminie: Wiktor da najwyżej 5 g marihuany na zeszyt, 25% drożej."
 	var cost := wholesale_price(p, g, high)
 	if on_credit and float(S.credit) + cost > credit_limit():
 		return "Przekroczysz limit zeszytu (%s)." % money(credit_limit())
@@ -1648,7 +1668,7 @@ func all_goods() -> float:
 	return n
 
 
-## deska ratunku: bez towaru, z zaległym zeszytem, Wiktor da 5 g Greena drożej — żeby gra się nie zakleszczyła
+## deska ratunku: bez towaru, z zaległym zeszytem, Wiktor da 5 g marihuany drożej — żeby gra się nie zakleszczyła
 func rescue_order(p: String, g: int, on_credit: bool, high: bool) -> bool:
 	return credit_overdue() and p == "dym" and g == 5 and on_credit and not high and all_goods() < 1.0 and S.drops.is_empty()
 
@@ -1673,7 +1693,7 @@ func order_goods(p: String, g: int, high: bool, on_credit: bool) -> bool:
 		"credit": on_credit, "ready": ready, "expire": ready + 16.0 * 60.0, "state": "wait"}
 	S.next_drop = int(S.next_drop) + 1
 	S.drops.append(d)
-	chat("wiktor", "Zamawiam: %d g %s%s, %s." % [g, D.PRODUCTS[p].name, " (czysty)" if high else "", "na zeszyt" if on_credit else "płatne przy odbiorze"], true)
+	chat("wiktor", "Zamawiam: %d g %s%s, %s." % [g, D.PRODUCT_GEN[p], " (czysty)" if high else "", "na zeszyt" if on_credit else "płatne przy odbiorze"], true)
 	if rescue:
 		chat("wiktor", "Wisisz mi, a chcesz jeszcze? Ostatni raz. Pięć gramów, ćwierć drożej. Sprzedaj i oddaj.", false, true)
 	chat("wiktor", "Przyjąłem. Skrytka: %s. Dam znać, jak paczka będzie na miejscu (ok. %d min)." % [spot.name, int((ready - S.t) / 10.0) * 10], false, true)
@@ -1719,7 +1739,7 @@ func pickup_drop(d: Dictionary) -> bool:
 	S.stats.pickups = int(S.stats.pickups) + 1
 	S.flags["got_first"] = true
 	Sfx.play("pickup")
-	notify("Zabrano: %d g %s (%d%%, %s)" % [int(d.g), D.PRODUCTS[d.p].name, int(d.pur), tier_name(d.pur)], "good")
+	notify("Zabrano: %d g %s (%d%%, %s)" % [int(d.g), D.PRODUCT_GEN[d.p], int(d.pur), tier_name(d.pur)], "good")
 	add_xp(6.0)
 	if S.track is String and S.track == "drop":
 		S.track = null
@@ -1751,39 +1771,78 @@ func bench_bulk(room: String) -> Array:
 	return m.values()
 
 
-func pack_session_max() -> int:
-	return 20 if has_skill("paczki") else 10
+## Tryby pracy przy stole. Nie ma tu zręcznościówki: wybierasz, czy wolisz stracić czas, czy towar.
+## min = minuty gry na jeden woreczek, waste = szansa, że gram się rozsypie, sec = czas animacji.
+const PACK_MODES := [
+	{"id": "dokladnie", "name": "Dokładnie", "min": 2.0, "waste": 0.02, "sec": 0.9, "desc": "Każdy gram dwa razy na wagę. Wolno, prawie bez strat."},
+	{"id": "normalnie", "name": "Normalnie", "min": 1.0, "waste": 0.06, "sec": 0.58, "desc": "Zwykłe tempo. Czasem coś się rozsypie."},
+	{"id": "szybko", "name": "Na szybko", "min": 0.5, "waste": 0.14, "sec": 0.34, "desc": "Na oko i do woreczka. Szybko, ale sporo ląduje na podłodze."},
+]
 
 
-## porcjuje `g` gramów; hits = trafienia na wadze (0..3)
-func pack(room: String, p: String, pur: int, g: int, hits: int) -> Dictionary:
-	var n: int = mini(g, item_at(room, "woreczki"))
+func pack_waste(mode: int) -> float:
+	var w := float(PACK_MODES[clampi(mode, 0, 2)].waste)
+	if upg("waga"):
+		w *= 0.4
+	if has_skill("reka"):
+		w *= 0.6
+	# na wadze jubilerskiej spokojna robota jest bezstratna
+	return 0.0 if (mode <= 0 and upg("waga")) else w
+
+
+func pack_minutes(mode: int) -> float:
+	return float(PACK_MODES[clampi(mode, 0, 2)].min) * (0.5 if has_skill("paczki") else 1.0)
+
+
+## ile gramów danego towaru da się teraz zaporcjować przy tym stole
+func pack_limit(room: String, p: String, pur: int) -> int:
 	var have := 0.0
 	for src in [S.inv, S.stash[room]]:
 		have += float(src.bulk[p].get(str(pur), 0.0))
-	n = mini(n, int(floor(have + 0.001)))
-	if n <= 0:
-		return {"packed": 0, "lost": 0}
-	var waste: float = [0.16, 0.08, 0.03, 0.0][clampi(hits, 0, 3)]
+	return mini(int(floor(have + 0.001)), item_at(room, "woreczki"))
+
+
+## porcjuje JEDEN gram: 1 = woreczek gotowy, 0 = gram rozsypany, -1 = nie ma z czego / w co
+func pack_one(room: String, p: String, pur: int, mode: int) -> int:
+	if pack_limit(room, p, pur) <= 0:
+		return -1
+	var from_inv: float = take_bulk(S.inv, p, pur, 1.0)
+	if from_inv < 0.999:
+		take_bulk(S.stash[room], p, pur, 1.0 - from_inv)
+	take_item(room, "woreczki", 1)
+	add_minutes(pack_minutes(mode))
+	if randf() < pack_waste(mode):
+		S.stats.wasted = int(S.stats.wasted) + 1
+		return 0
+	# woreczek wraca tam, skąd wzięto towar (plecak albo skrytka)
+	add_pack(S.inv if from_inv >= 0.5 else S.stash[room], p, pur, 1)
+	S.stats.packed = int(S.stats.packed) + 1
+	add_xp(0.3)
+	return 1
+
+
+## porcjuje `g` gramów naraz (testy, symulacje); przy stole robi to animacja, gram po gramie
+func pack(room: String, p: String, pur: int, g: int, mode: int) -> Dictionary:
+	var good := 0
 	var lost := 0
-	for i in range(n):
-		if randf() < waste:
+	for i in range(g):
+		var r := pack_one(room, p, pur, mode)
+		if r < 0:
+			break
+		if r == 1:
+			good += 1
+		else:
 			lost += 1
-	var from_inv: float = take_bulk(S.inv, p, pur, float(n))
-	take_bulk(S.stash[room], p, pur, float(n) - from_inv)
-	var good := n - lost
-	var to_inv: int = mini(good, int(round(from_inv)))
-	add_pack(S.inv, p, pur, to_inv)
-	add_pack(S.stash[room], p, pur, good - to_inv)
-	take_item(room, "woreczki", n)
-	S.stats.packed = int(S.stats.packed) + good
-	S.stats.wasted = int(S.stats.wasted) + lost
-	add_xp(good * 0.3)
+	if good + lost > 0:
+		pack_report(good, lost)
+	return {"packed": good, "lost": lost}
+
+
+func pack_report(good: int, lost: int) -> void:
 	if lost > 0:
 		notify("Zaporcjowano %d g, rozsypano %d g." % [good, lost], "warn")
-	else:
+	elif good > 0:
 		notify("Zaporcjowano %d g bez strat." % good, "good")
-	return {"packed": good, "lost": lost}
 
 
 func filler_for(p: String) -> String:
@@ -1801,7 +1860,7 @@ func mix(room: String, p: String, pur: int, g: float, filler_g: int) -> int:
 	if tot <= 0.0:
 		return pur
 	var eff := float(filler_g) * (0.8 if has_skill("mieszanie") else 1.0)
-	var np := qpur(float(pur) * tot / (tot + eff))
+	var np := qmix(float(pur) * tot / (tot + eff))
 	var share := from_inv / tot
 	take_item(room, fid, filler_g)
 	var inv_room := maxf(0.0, float(capacity()) - carry_total())
@@ -1840,11 +1899,11 @@ func grow_collect(room: String, idx: int) -> bool:
 	if j == null or S.t < float(j.end):
 		return false
 	var g: float = round(18.0 * (1.35 if has_skill("ogrodnik") else 1.0) * (0.8 + int(j.hits) * 0.1))
-	var pur := 60 + int(j.hits) * 8
+	var pur := qpure(60 + int(j.hits) * 8)
 	add_bulk(S.stash[room], "dym", pur, g)
 	S.hide[room].grow.erase(str(idx))
 	S.stats.grown = int(S.stats.grown) + int(g)
-	notify("Zebrano %s Greena (%d%%) — trafiło do skrytki w kryjówce." % [grams(g), qpur(pur)], "good")
+	notify("Zebrano %s marihuany (%d%%) — trafiło do skrytki w kryjówce." % [grams(g), qpur(pur)], "good")
 	add_xp(g * 0.5)
 	return true
 

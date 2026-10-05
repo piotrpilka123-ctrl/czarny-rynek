@@ -545,7 +545,7 @@ func _order_footer(order: Dictionary) -> void:
 	c2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	g2.add_child(c1)
 	g2.add_child(c2)
-	_fact(c1, D.PRODUCT_ICONS.get(order.product, "leaf"), "%d g %s" % [int(order.grams), D.PRODUCTS[order.product].name])
+	_fact(c1, D.PRODUCT_ICONS.get(order.product, "leaf"), "%d g %s" % [int(order.grams), D.PRODUCT_GEN[order.product]])
 	_fact(c1, "map_pin", String(G.spot_def(order.spot).name))
 	_fact(c2, "banknote", "%d zł/g  •  %s" % [price, G.money(price * int(order.grams))], K.C_ACC)
 	if accepted:
@@ -803,7 +803,7 @@ func _hurt() -> void:
 		cd.add_child(K.lbl("PACZKI", 10, K.C_DIM))
 		for d in S.drops:
 			var dd := G.drop_def(d.spot)
-			var txt := "[b]%d g %s[/b] (%d%%) — %s\n" % [int(d.g), D.PRODUCTS[d.p].name, int(d.pur), dd.name]
+			var txt := "[b]%d g %s[/b] (%d%%) — %s\n" % [int(d.g), D.PRODUCT_GEN[d.p], int(d.pur), dd.name]
 			if d.state == "ready":
 				var left: float = maxf(0.0, float(d.expire) - S.t)
 				txt += K.col("Czeka w skrytce", K.C_ACC) + (" • zniknie za %dh" % int(left / 60.0) if left < 5000.0 else "")

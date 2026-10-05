@@ -471,7 +471,7 @@ func _row(e: Dictionary, side: String) -> Control:
 	var ib := K.panel(K.sb(Color(col.r, col.g, col.b, 0.16), 8, Color(col.r, col.g, col.b, 0.55), 1, 0))
 	ib.custom_minimum_size = Vector2(36, 36)
 	ib.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var ic := K.icon(e.icon, 20, col)
+	var ic := K.icon(e.icon, 40 if K.is_item(e.icon) else 20, col)
 	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	ib.add_child(ic)
 	h.add_child(ib)
@@ -483,7 +483,7 @@ func _row(e: Dictionary, side: String) -> Control:
 	nv.add_child(nl)
 	var sub := String(e.sub)
 	if int(e.tier) >= 0:
-		sub = "%s %d%%%s  •  %s" % [D.TIER_NAMES[int(e.tier)], int(e.pur), " (mieszanka)" if int(e.pur) < 65 else "", e.sub]
+		sub = "%s %d%%%s  •  %s" % [D.TIER_NAMES[int(e.tier)], int(e.pur), " (mieszanka)" if (String(e.kind) != "item" and G.is_mix(e.pur)) else "", e.sub]
 	elif sub == "":
 		sub = "przedmiot"
 	nv.add_child(K.lbl(sub, 11, col if int(e.tier) >= 0 else K.C_DIM))
@@ -516,7 +516,7 @@ func _drag(_at: Vector2, e: Dictionary, side: String) -> Variant:
 	var pv := K.panel(K.sb(Color(0.09, 0.11, 0.16, 0.95), 9, K.C_ACC, 1, 8))
 	var h := K.hbox(8)
 	pv.add_child(h)
-	h.add_child(K.icon(e.icon, 20, col))
+	h.add_child(K.icon(e.icon, 40 if K.is_item(e.icon) else 20, col))
 	h.add_child(K.lbl("%s  •  %s" % [e.name, e.qty], 14, K.C_TXT))
 	var holder := Control.new()
 	holder.add_child(pv)
@@ -578,7 +578,7 @@ func ask_amount(e: Dictionary, from: String, to: String) -> void:
 	var hd := K.hbox(10)
 	var ib := K.panel(K.sb(Color(col.r, col.g, col.b, 0.16), 9, Color(col.r, col.g, col.b, 0.55), 1, 0))
 	ib.custom_minimum_size = Vector2(42, 42)
-	var ic := K.icon(e.icon, 24, col)
+	var ic := K.icon(e.icon, 40 if K.is_item(e.icon) else 24, col)
 	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	ib.add_child(ic)
 	hd.add_child(ib)
@@ -752,7 +752,7 @@ func _detail() -> Control:
 		return p
 	var col := _ecolor(e)
 	var h := K.hbox(8)
-	h.add_child(K.icon(e.icon, 22, col))
+	h.add_child(K.icon(e.icon, 40 if K.is_item(e.icon) else 22, col))
 	var nm := K.head(e.name, 20, K.C_TXT)
 	nm.clip_text = true
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -902,7 +902,7 @@ func _tab_org() -> void:
 		var left := int(float(o.meet) - S.t)
 		var when := "za %d min" % left if left > 0 else "TERAZ"
 		var price := (" • %s/g" % G.money(o.agreed)) if o.get("agreed") != null else ""
-		_note(av, "handshake" if ok else "message_circle", K.C_ACC if ok else K.C_WARN, "%s — %d g %s" % [cd.name, int(o.grams), D.PRODUCTS[o.product].name],
+		_note(av, "handshake" if ok else "message_circle", K.C_ACC if ok else K.C_WARN, "%s — %d g %s" % [cd.name, int(o.grams), D.PRODUCT_GEN[o.product]],
 			"%s%s • %s" % [G.spot_def(o.spot).get("name", "?"), price, ("umówione, " + when) if ok else "czeka na odpowiedź"], G.clock(o.meet) if ok else "?")
 	# --- zeszyt
 	var b := _frame(colw, H_BODY)
@@ -934,7 +934,7 @@ func _tab_org() -> void:
 			if ds.id == d.spot:
 				spot = ds.name
 		var rdy: bool = d.state == "ready" or float(d.ready) <= S.t
-		_note(bv, "package_open" if rdy else "timer", K.C_ACC if rdy else K.C_BLUE, "%d g %s" % [int(d.g), D.PRODUCTS[d.p].name],
+		_note(bv, "package_open" if rdy else "timer", K.C_ACC if rdy else K.C_BLUE, "%d g %s" % [int(d.g), D.PRODUCT_GEN[d.p]],
 			"%s • %s" % [spot, "czeka na odbiór" if rdy else "będzie o %s" % G.clock(d.ready)], "na zeszyt" if d.credit else G.money(d.cost))
 	# --- notatki o klientach
 	var c := _frame(colw, H_BODY)

@@ -30,11 +30,13 @@ const TIER_COLOR := ["9ca3af", "e5e7eb", "60a5fa", "fbbf24"]
 const TIER_MIN := [0, 50, 68, 84]
 
 const PRODUCTS := {
-	"dym": {"name": "Green", "base": 46, "cost": 21, "color": "4ade80", "lvl": 1, "desc": "Susz. Najpopularniejszy towar na osiedlu."},
-	"szron": {"name": "Speed", "base": 112, "cost": 58, "color": "e8dfb8", "lvl": 4, "desc": "Proszek dla tych, co nie śpią. Klub Neon bierze go najwięcej."},
-	"krysztal": {"name": "Blue", "base": 195, "cost": 108, "color": "60a5fa", "lvl": 7, "desc": "Niebieskie kryształki dla nocnej zmiany. Mocny towar, mocne ryzyko."},
-	"snieg": {"name": "Snow", "base": 330, "cost": 190, "color": "f3f6fb", "lvl": 9, "desc": "Najdroższy towar w mieście. Tylko dla klientów z grubym portfelem."},
+	"dym": {"name": "Marihuana", "base": 46, "cost": 21, "color": "6fbf4a", "lvl": 1, "form": "susz", "desc": "Suszone kwiaty konopi. Najpopularniejszy towar na osiedlu — bierze student i emeryt."},
+	"szron": {"name": "Amfetamina", "base": 112, "cost": 58, "color": "e8dfb8", "lvl": 4, "form": "proszek", "desc": "Biało-żółty proszek dla tych, co nie śpią. Klub Neon bierze go najwięcej."},
+	"krysztal": {"name": "Metamfetamina", "base": 195, "cost": 108, "color": "9ad0ff", "lvl": 7, "form": "kryształ", "desc": "Niebieskawe kryształki dla nocnej zmiany. Mocny towar, mocne ryzyko."},
+	"snieg": {"name": "Kokaina", "base": 330, "cost": 190, "color": "f3f6fb", "lvl": 9, "form": "proszek", "desc": "Najdroższy towar w mieście. Tylko dla klientów z grubym portfelem."},
 }
+## dopełniacz do zdań typu „5 g marihuany”
+const PRODUCT_GEN := {"dym": "marihuany", "szron": "amfetaminy", "krysztal": "metamfetaminy", "snieg": "kokainy"}
 
 ## hurt u Wiktora: ilości i rabaty
 const WHOLESALE_SIZES := [5, 10, 20, 50, 100, 250]
@@ -47,15 +49,15 @@ const PURITY_HIGH := 90
 ## sklep Wujka Stasia
 const SHOP := [
 	{"id": "woreczki", "name": "Woreczki strunowe (20 szt.)", "price": 12, "n": 20, "lvl": 1, "desc": "Bez nich nie zaporcjujesz towaru. 1 woreczek = 1 g."},
-	{"id": "majeranek", "name": "Majeranek (20 g)", "price": 6, "n": 20, "lvl": 1, "desc": "Przyprawa z półki. Domieszany do Greena podbija wagę, ale obniża czystość — powstaje mieszanka."},
+	{"id": "majeranek", "name": "Majeranek (20 g)", "price": 6, "n": 20, "lvl": 1, "desc": "Przyprawa z półki. Domieszany do marihuany podbija wagę, ale obniża czystość — powstaje mieszanka."},
 	{"id": "cukier", "name": "Cukier puder (20 g)", "price": 5, "n": 20, "lvl": 4, "desc": "Do rozrabiania proszków. Więcej gramów, gorszy towar."},
-	{"id": "nasiona", "name": "Nasiona Green (1 paczka)", "price": 70, "n": 1, "lvl": 5, "desc": "Do namiotu uprawowego w kryjówce."},
+	{"id": "nasiona", "name": "Nasiona konopi (1 paczka)", "price": 70, "n": 1, "lvl": 5, "desc": "Paczka na jeden stojak uprawowy (4 doniczki)."},
 	{"id": "burner", "name": "Telefon na kartę", "price": 420, "n": 1, "lvl": 2, "use": true, "desc": "Nowy numer: śledztwo policji spada o 25."},
 ]
 const UPGRADES := [
 	{"id": "plecak1", "name": "Plecak szkolny (40 miejsc)", "price": 380, "lvl": 2, "cap": 40, "desc": "Zamiast upychać towar po kieszeniach."},
 	{"id": "plecak2", "name": "Plecak turystyczny (90 miejsc)", "price": 1500, "lvl": 5, "cap": 90, "req": "plecak1", "desc": "Na poważniejsze kursy."},
-	{"id": "waga", "name": "Waga jubilerska", "price": 650, "lvl": 2, "desc": "Dokładniejsza: szersze zielone strefy przy porcjowaniu."},
+	{"id": "waga", "name": "Waga jubilerska", "price": 650, "lvl": 2, "desc": "Dużo mniej strat przy porcjowaniu, a spokojna robota jest całkiem bezstratna."},
 	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 150 miejsc zamiast 60."},
 ]
 ## czym rozrabia się dany towar
@@ -63,17 +65,17 @@ const FILLER := {"dym": "majeranek", "szron": "cukier", "krysztal": "cukier", "s
 const FILLER_NAMES := {"majeranek": "Majeranek", "cukier": "Cukier puder"}
 ## przedmioty: ile miejsca zajmuje jedna sztuka / gram i ile waży (w gramach)
 const ITEMS := {
-	"woreczki": {"name": "Woreczki strunowe", "icon": "package", "size": 0.05, "w": 0.6, "unit": "szt.", "desc": "Puste woreczki do porcjowania. 1 woreczek = 1 porcja."},
-	"majeranek": {"name": "Majeranek", "icon": "leaf", "size": 0.25, "w": 1.0, "unit": "g", "desc": "Przyprawa. Domieszana do Greena podbija wagę i psuje jakość."},
-	"cukier": {"name": "Cukier puder", "icon": "beaker", "size": 0.2, "w": 1.0, "unit": "g", "desc": "Wypełniacz do proszków. Więcej gramów, gorszy towar."},
-	"nasiona": {"name": "Nasiona Green", "icon": "sprout", "size": 0.5, "w": 4.0, "unit": "pacz.", "desc": "Paczka nasion do namiotu uprawowego."},
-	"burner": {"name": "Telefon na kartę", "icon": "phone", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
+	"woreczki": {"name": "Woreczki strunowe", "icon": "woreczki", "size": 0.05, "w": 0.6, "unit": "szt.", "desc": "Puste woreczki do porcjowania. 1 woreczek = 1 porcja."},
+	"majeranek": {"name": "Majeranek", "icon": "majeranek", "size": 0.25, "w": 1.0, "unit": "g", "desc": "Przyprawa. Domieszana do marihuany podbija wagę i psuje jakość."},
+	"cukier": {"name": "Cukier puder", "icon": "cukier", "size": 0.2, "w": 1.0, "unit": "g", "desc": "Wypełniacz do proszków. Więcej gramów, gorszy towar."},
+	"nasiona": {"name": "Nasiona konopi", "icon": "nasiona", "size": 0.5, "w": 4.0, "unit": "pacz.", "desc": "Paczka nasion na jeden stojak uprawowy."},
+	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
 }
 const SIZE_PACK := 1.0
 const SIZE_BULK := 1.0
 const W_PACK := 1.4
 const W_BULK := 1.0
-const PRODUCT_ICONS := {"dym": "leaf", "szron": "zap", "krysztal": "flask_conical", "snieg": "droplets"}
+const PRODUCT_ICONS := {"dym": "pack_dym", "szron": "pack_szron", "krysztal": "pack_krysztal", "snieg": "pack_snieg"}
 ## Postacie to gotowe modele ludzi (assets/people, Microsoft Rocketbox, MIT). Klienci i bohaterowie fabuły
 ## mają własne twarze; przechodnie losują z puli, żeby nikt nie chodził po osiedlu „w dwóch egzemplarzach”.
 const PEOPLE_M := ["m01", "m02", "m06", "m07", "m08", "m09", "m11", "m12", "m16", "mc2", "ms4"]
@@ -221,7 +223,7 @@ const FURNITURE := [
 	{"id": "stol", "name": "Stół roboczy z wagą", "price": 480, "model": "painted_wooden_table", "h": 0.86, "size": [1.9, 0.9], "func": "pack", "lvl": 1, "desc": "Porcjowanie i mieszanie towaru na miejscu."},
 	{"id": "regal", "name": "Regał magazynowy", "price": 340, "model": "steel_frame_shelves_01", "h": 1.95, "size": [1.05, 0.5], "func": "stash", "cap": 150, "lvl": 1, "desc": "+150 miejsc w skrytce w tej kryjówce."},
 	{"id": "skrzynia", "name": "Skrzynia", "price": 120, "model": "wooden_crate_02", "h": 0.5, "size": [0.6, 1.2], "func": "stash", "cap": 50, "lvl": 1, "desc": "+50 miejsc w skrytce."},
-	{"id": "namiot", "name": "Namiot uprawowy", "price": 1900, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "lvl": 5, "desc": "Uprawa Greena z nasion: ok. 18 g po 36 godzinach."},
+	{"id": "namiot", "name": "Namiot uprawowy", "price": 1900, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "lvl": 5, "desc": "Uprawa marihuany z nasion: ok. 18 g po 36 godzinach."},
 	{"id": "lozko", "name": "Stare łóżko", "price": 260, "model": "old_bed_frame", "h": 1.0, "size": [1.0, 2.05], "func": "bed", "lvl": 1, "desc": "Sen przewija czas i studzi gorąco na mieście."},
 	{"id": "laptop", "name": "Stolik z laptopem", "price": 420, "model": "", "h": 0.8, "size": [0.7, 0.6], "func": "save", "lvl": 1, "desc": "Zapis gry w tej kryjówce — bez wracania do kawalerki."},
 	{"id": "lampa", "name": "Świetlówka warsztatowa", "price": 110, "model": "", "h": 2.1, "size": [0.4, 0.4], "func": "light", "lvl": 1, "desc": "Porządne światło do pracy."},
@@ -240,12 +242,12 @@ const LEVEL_TITLES := ["Nikt", "Goniec", "Osiedlowy", "Diler", "Kombinator", "Gr
 const LEVEL_UNLOCKS := {
 	2: "Nowi klienci z polecenia, większe zamówienia u Wiktora (10 g), plecak u Stasia.",
 	3: "Zaczepianie przechodniów, do 4 stałych klientów.",
-	4: "Nowy towar: Speed. Możesz kupić Garaż nr 14.",
-	5: "Namiot uprawowy i nasiona — własny Green w kryjówce.",
+	4: "Nowy towar: amfetamina. Możesz kupić Garaż nr 14.",
+	5: "Stojaki uprawowe i nasiona — własna marihuana w kryjówce.",
 	6: "Klienci z klubu Neon. Piwnica w kamienicy na sprzedaż.",
-	7: "Nowy towar: Blue. Zamówienia hurtowe po 100 g.",
+	7: "Nowy towar: metamfetamina. Zamówienia hurtowe po 100 g.",
 	8: "Zamówienia hurtowe po 250 g.",
-	9: "Nowy towar: Snow — dla klientów z najgrubszym portfelem.",
+	9: "Nowy towar: kokaina — dla klientów z najgrubszym portfelem.",
 }
 ## drzewko umiejętności: 4 gałęzie, wymagania w „req”
 const SKILLS := [
@@ -261,10 +263,10 @@ const SKILLS := [
 	{"id": "kondycja2", "name": "Kondycja II", "branch": "Ulica", "row": 3, "req": "teren", "desc": "Sprint szybszy o 8%."},
 	{"id": "duch", "name": "Duch", "branch": "Ulica", "row": 4, "req": "kondycja2", "desc": "Nocą policja nabiera podejrzeń o 35% wolniej."},
 
-	{"id": "reka", "name": "Pewna ręka", "branch": "Towar", "row": 0, "desc": "Porcjowanie: szersze zielone strefy na wadze."},
+	{"id": "reka", "name": "Pewna ręka", "branch": "Towar", "row": 0, "desc": "Przy porcjowaniu rozsypujesz o 40% mniej towaru."},
 	{"id": "mieszanie", "name": "Dobra mieszanka", "branch": "Towar", "row": 1, "req": "reka", "desc": "Rozrabianie obniża czystość o 20% mniej."},
 	{"id": "czysta", "name": "Niewidoczny dodatek", "branch": "Towar", "row": 2, "req": "mieszanie", "desc": "Doświadczeni klienci o 30% rzadziej rozpoznają rozrobiony towar."},
-	{"id": "paczki", "name": "Szybkie palce", "branch": "Towar", "row": 3, "req": "czysta", "desc": "Porcjujesz dwa razy więcej gramów w jednej sesji."},
+	{"id": "paczki", "name": "Szybkie palce", "branch": "Towar", "row": 3, "req": "czysta", "desc": "Porcjujesz dwa razy szybciej — każdy woreczek zabiera połowę czasu."},
 	{"id": "ogrodnik", "name": "Ogrodnik", "branch": "Towar", "row": 4, "req": "paczki", "lvl": 5, "desc": "Namiot uprawowy daje o 35% większy plon."},
 
 	{"id": "slowo", "name": "Dobre słowo", "branch": "Kontakty", "row": 0, "desc": "Zadowoleni klienci szybciej polecają Cię dalej."},
@@ -295,7 +297,7 @@ const HINTS := [
 	"Nie handluj na oczach policji. Nocą jest mniej świadków, ale patrole są czujniejsze.",
 	"Towar w skrytce jest bezpieczny podczas zatrzymania. Noś przy sobie tylko tyle, ile sprzedasz.",
 	"Niedokładne porcjowanie marnuje towar. Trzy trafienia na wadze = zero strat.",
-	"Majeranek podbija wagę Greena, ale stali klienci, którzy biorą dużo, rozpoznają mieszankę i odmówią.",
+	"Majeranek podbija wagę marihuany, ale stali klienci, którzy biorą dużo, rozpoznają mieszankę i odmówią.",
 	"Umawiaj spotkania tak, żeby zdążyć dojść. Klient wychodzi z domu tuż przed godziną i czeka tylko godzinę.",
 	"Odbieraj paczki ze skrytek szybko — po 16 godzinach przepadają.",
 	"Sprzedawaj w różnych miejscach. Tam, gdzie handlujesz często, patroli jest więcej.",

@@ -1488,6 +1488,26 @@ func _test_ui(what: String) -> void:
 			ui.phone.render()
 		"mapa", "hurt", "portfel", "rozwoj", "zadania", "lokale", "plecak", "ustawienia": ui.open_phone(what)
 		"bench": ui.open_pack(player.loc if player.loc != "out" else "safe")
+		"bench_work", "bench_mix":
+			G.add_bulk(G.S.inv, "dym", 80, 18.0)
+			G.S.items["majeranek"] = 6
+			ui.open_pack(player.loc if player.loc != "out" else "safe")
+			if what == "bench_mix":
+				ui.bench.mixing = true
+				ui.bench.filler = 4
+				ui._render_bench()
+			var bv = ui.bench.view
+			bv.force_speed = 0.0
+			if what == "bench_mix":
+				bv.mix(4.0, func(): pass)
+				bv.mix_t = 0.45
+			else:
+				bv.start(8, 1, 0.58, func() -> int: return 1, func(_a: int, _b: int): pass)
+				bv.packs = [{"t": 1.0}, {"t": 1.0}, {"t": 1.0}, {"t": 1.0}, {"t": 0.45}]
+				bv.pile_g -= 5.0
+				bv.spills = [{"p": Vector2(380, 200), "r": 2.5}, {"p": Vector2(402, 208), "r": 2.0}, {"p": Vector2(520, 205), "r": 3.0}]
+				bv.job.t = 0.22
+				bv.reading = 0.0
 		"stash": ui.open_stash("safe")
 		"inv": ui.open_inventory("")
 		"invsel":
@@ -1509,7 +1529,7 @@ func _test_ui(what: String) -> void:
 		"build": ui.open_build("garage")
 		"ghost": build_begin("regal")
 		"pause": ui.show_pause()
-		"skill": ui.skill_check("Ważenie: 5 g Green", 1.0, func(_h): pass)
+		"skill": ui.skill_check("Ważenie: 5 g marihuany", 1.0, func(_h): pass)
 		"dialog": talk_stasiu()
 		"property": ui.open_property("garaz")
 		"deal", "deal2":

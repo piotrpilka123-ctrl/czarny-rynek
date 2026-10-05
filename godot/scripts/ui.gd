@@ -3,6 +3,8 @@ extends CanvasLayer
 ## skrytki, sklep, negocjacje, katalog mebli, ekrany tytułowy / pauzy / zakończenia.
 
 const K = preload("res://scripts/uikit.gd")
+const Trade = preload("res://scripts/trade.gd")
+const Bench = preload("res://scripts/bench.gd")
 const PhoneScript = preload("res://scripts/phone.gd")
 const InvScript = preload("res://scripts/inventory.gd")
 const OptsScript = preload("res://scripts/options.gd")
@@ -86,7 +88,7 @@ var screen_box: VBoxContainer
 var dlg := {}
 var deal := {}
 var sk := {}
-var bench := {"room": "", "sel": {}, "g": 5, "mixing": false, "filler": 1}
+var bench := {"room": "", "sel": {}, "g": 5, "mixing": false, "filler": 1, "mode": 1}
 var hud_t := 0.0
 var nav_info := {}
 var cop_bar: ProgressBar = null
@@ -861,119 +863,7 @@ func open_pack(room: String) -> void:
 
 
 func _render_bench() -> void:
-	var room: String = bench.room
-	_open_modal("Stół roboczy", "Waga, woreczki i towar. Luzem się nie sprzedaje — najpierw porcjuj.")
-	var S: Dictionary = G.S
-	var top := K.hbox(16)
-	modal_body.add_child(top)
-	top.add_child(K.icon_label("package", "Woreczki: %d" % G.item_at(room, "woreczki"), 14, K.C_TXT if G.item_at(room, "woreczki") > 0 else K.C_BAD))
-	top.add_child(K.icon_label("backpack", "%s: %s / %d" % [G.bag_name(), G.units(G.carry_total()), G.capacity()], 14))
-	top.add_child(K.icon_label("leaf", "Majeranek: %d g" % G.item_at(room, "majeranek"), 14))
-	if int(G.S.lvl) >= 4:
-		top.add_child(K.icon_label("beaker", "Cukier puder: %d g" % G.item_at(room, "cukier"), 14))
-	var stacks := G.bench_bulk(room)
-	var c := K.card(modal_body)
-	c.add_child(K.lbl("TOWAR LUZEM (plecak + skrytka)", 10, K.C_DIM))
-	if stacks.is_empty():
-		c.add_child(K.wrap("Nie masz towaru luzem. Zamów u Wiktora (telefon → Hurt) i odbierz paczkę ze skrytki.", 13, K.C_DIM))
-	for s in stacks:
-		var ss: Dictionary = s
-		var btns := [K.btn("Porcjuj…", func(): bench.sel = ss; bench.mixing = false; bench.g = mini(int(ss.n), 5); _render_bench(), "go", true)]
-		var mb := K.btn("Domieszaj…", func(): bench.sel = ss; bench.mixing = true; bench.filler = 1; _render_bench(), "warn", true)
-		mb.disabled = G.item_at(room, G.filler_for(ss.p)) <= 0
-		mb.tooltip_text = "Potrzebny dodatek ze sklepu: " + String(D.FILLER_NAMES[G.filler_for(ss.p)])
-		btns.append(mb)
-		_row(c, "%s  %s   [b]%s[/b]" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), G.grams(s.n)], btns)
-	if not bench.sel.is_empty():
-		var sel: Dictionary = bench.sel
-		var have := 0.0
-		for s in stacks:
-			if s.p == sel.p and int(s.pur) == int(sel.pur):
-				have = float(s.n)
-		if have < 0.99 and not bench.mixing:
-			bench.sel = {}
-		elif bench.mixing:
-			_bench_mix(room, sel, have)
-		else:
-			_bench_pack(room, sel, have)
-	var c2 := K.card(modal_body)
-	c2.add_child(K.lbl("ZAPORCJOWANE", 10, K.C_DIM))
-	var any := false
-	for src in [[S.inv, "plecak"], [S.stash[room], "skrytka"]]:
-		for s in G.stacks(src[0], "pack"):
-			any = true
-			c2.add_child(K.rich("%s  %s   ×[b]%d g[/b]   %s" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), int(s.n), K.col("(%s)" % src[1], K.C_DIM)], 13))
-	if not any:
-		c2.add_child(K.lbl("Jeszcze nic.", 12, K.C_DIM))
-	if G.item_at(room, "woreczki") <= 0:
-		modal_body.add_child(K.wrap("Brak woreczków — kup je w Sklepie u Stasia (ul. Hutnicza).", 12, K.C_WARN))
-
-
-func _bench_pack(room: String, sel: Dictionary, have: float) -> void:
-	var maxg: int = mini(mini(int(floor(have + 0.001)), G.item_at(room, "woreczki")), G.pack_session_max())
-	var c := K.card(modal_body, 12, K.C_CARD2)
-	c.add_child(K.rich("[b]Porcjowanie:[/b] %s %s" % [D.PRODUCTS[sel.p].name, K.tier_bb(sel.pur)], 14))
-	if maxg <= 0:
-		c.add_child(K.lbl("Potrzebujesz co najmniej 1 g towaru i 1 woreczka.", 12, K.C_WARN))
-		return
-	bench.g = clampi(int(bench.g), 1, maxg)
-	var gl := K.lbl("Ile gramów: %d" % int(bench.g), 14)
-	c.add_child(gl)
-	var sl := HSlider.new()
-	sl.min_value = 1
-	sl.max_value = maxg
-	sl.step = 1
-	sl.value = int(bench.g)
-	sl.focus_mode = Control.FOCUS_NONE
-	sl.editable = maxg > 1
-	sl.value_changed.connect(func(v):
-		bench.g = int(v)
-		gl.text = "Ile gramów: %d" % int(v))
-	c.add_child(sl)
-	c.add_child(K.wrap("Trzy ważenia. Każde trafienie w zieloną strefę to mniej rozsypanego towaru (0 trafień: ok. 16% strat, 3 trafienia: bez strat). Maks. %d g na sesję." % G.pack_session_max(), 12, K.C_DIM))
-	c.add_child(K.btn("Zacznij ważenie", func(): _start_pack(room, sel), "go"))
-
-
-func _start_pack(room: String, sel: Dictionary) -> void:
-	var g := int(bench.g)
-	var widen := 1.0 + (0.25 if G.upg("waga") else 0.0) + (0.22 if G.has_skill("reka") else 0.0)
-	skill_check("Ważenie: %d g %s" % [g, D.PRODUCTS[sel.p].name], widen, func(hits: int):
-		Sfx.play("pack")
-		G.pack(room, sel.p, int(sel.pur), g, hits)
-		bench.sel = sel
-		_render_bench())
-
-
-func _bench_mix(room: String, sel: Dictionary, have: float) -> void:
-	var c := K.card(modal_body, 12, K.C_CARD2)
-	var fid: String = G.filler_for(sel.p)
-	var fname: String = D.FILLER_NAMES[fid]
-	c.add_child(K.rich("[b]Mieszanka:[/b] %s %s — %s  +  %s" % [D.PRODUCTS[sel.p].name, K.tier_bb(sel.pur), G.grams(have), fname.to_lower()], 14))
-	var maxf_g: int = mini(G.item_at(room, fid), int(floor(have)))
-	if maxf_g <= 0:
-		c.add_child(K.lbl("Brak dodatku (%s) — kupisz go w sklepie u Stasia." % fname.to_lower(), 12, K.C_WARN))
-		return
-	bench.filler = clampi(int(bench.filler), 1, maxf_g)
-	var info := K.rich("", 13)
-	var upd := func(f: int):
-		var eff := float(f) * (0.8 if G.has_skill("mieszanie") else 1.0)
-		var np: int = G.qpur(float(sel.pur) * have / (have + eff))
-		info.text = "%s: [b]%d g[/b]  →  razem [b]%s[/b], czystość %s\nCena uliczna: %s → %s za gram" % [fname, f, G.grams(have + f), K.tier_bb(np), G.money(G.market_price(sel.p, sel.pur)), G.money(G.market_price(sel.p, np))]
-	upd.call(int(bench.filler))
-	c.add_child(info)
-	var sl := HSlider.new()
-	sl.min_value = 1
-	sl.max_value = maxf_g
-	sl.step = 1
-	sl.value = int(bench.filler)
-	sl.focus_mode = Control.FOCUS_NONE
-	sl.editable = maxf_g > 1
-	sl.value_changed.connect(func(v):
-		bench.filler = int(v)
-		upd.call(int(v)))
-	c.add_child(sl)
-	c.add_child(K.wrap("Więcej gramów to więcej pieniędzy — dopóki klienci nie poczują różnicy. Stali klienci, którzy biorą dużo, rozpoznają mieszankę i po prostu odmówią.", 12, K.C_DIM))
-	c.add_child(K.btn("Zmieszaj", func(): G.mix(room, sel.p, int(sel.pur), have, int(bench.filler)); bench.sel = {}; _render_bench(), "warn"))
+	Bench.build(self)
 
 
 # ---------------------------------------------------------------- minimap-gra: waga
@@ -1171,7 +1061,7 @@ func open_shop() -> void:
 
 # ---------------------------------------------------------------- namiot uprawowy
 func open_grow(room: String, idx: int) -> void:
-	_open_modal("Namiot uprawowy", "Własny Green — taniej niż u Wiktora, ale trzeba poczekać.")
+	_open_modal("Namiot uprawowy", "Własna marihuana — taniej niż u Wiktora, ale trzeba poczekać.")
 	var j = G.grow_job(room, idx)
 	var c := K.card(modal_body)
 	if j == null:
@@ -1193,7 +1083,7 @@ func open_grow(room: String, idx: int) -> void:
 
 
 func _grow_seed(room: String, idx: int) -> void:
-	skill_check("Sadzenie: Green", 1.0 + (0.22 if G.has_skill("reka") else 0.0), func(hits: int):
+	skill_check("Sadzenie: konopie", 1.0 + (0.22 if G.has_skill("reka") else 0.0), func(hits: int):
 		G.grow_start(room, idx, hits)
 		G.world.update_stations()
 		open_grow(room, idx))
@@ -1369,7 +1259,7 @@ func _render_deal() -> void:
 	if G.has_skill("oko2"):
 		_meter(meters, "flame", "Głód", float(deal.st.get("hunger", 0.4)) * 100.0, K.C_BAD)
 	meters.add_child(K.spacer())
-	meters.add_child(K.rich("Chce: [b]%d g %s[/b]%s%s" % [int(deal.want), D.PRODUCTS[deal.product].name,
+	meters.add_child(K.rich("Chce: [b]%d g %s[/b]%s%s" % [int(deal.want), D.PRODUCT_GEN[deal.product],
 		K.col("  (min. %d%%)" % int(who.minpur), K.C_WARN) if (int(deal.st.get("deals", 9)) >= 3 or not deal.st.has("deals")) else "",
 		K.col("   umówione: %d zł/g" % int(ctx.agreed), K.C_ACC) if ctx.get("agreed") != null else ""], 13))
 	cop_bar = null
@@ -1390,180 +1280,12 @@ func _render_deal() -> void:
 	if deal.over:
 		modal_body.add_child(K.btn("Zamknij", close_all, "go"))
 		return
-	if deal.phase == "greet":
-		_deal_greet_ui()
-	else:
-		_deal_offer_ui()
-
-
-func _deal_greet_ui() -> void:
-	var known: Dictionary = deal.st.get("known", {})
-	modal_body.add_child(K.lbl("JAK ZACZNIESZ ROZMOWĘ?", 10, K.C_DIM))
-	var rowc := K.hbox(10)
-	modal_body.add_child(rowc)
-	var opts := [["luz", "Na luzie", "„Siema, co słychać? Dawno się nie widzieliśmy.”", "smile"], ["konkret", "Konkretnie", "„Mam to, o co prosiłeś. Przejdźmy do rzeczy.”", "handshake"], ["twardo", "Twardo", "„Kasa na wierzch i nie marnujmy czasu.”", "angry"]]
-	for o in opts:
-		var style: String = o[0]
-		var like: bool = known.get("like", "") == style
-		var hate: bool = known.get("hate", "") == style
-		var edge := K.C_ACC if like else (K.C_BAD if hate else Color(1, 1, 1, 0.1))
-		var b := Button.new()
-		b.focus_mode = Control.FOCUS_NONE
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.custom_minimum_size = Vector2(0, 92)
-		b.add_theme_stylebox_override("normal", K.sb(Color(0.085, 0.102, 0.15), 10, edge, 1, 12))
-		b.add_theme_stylebox_override("hover", K.sb(Color(0.12, 0.15, 0.22), 10, K.C_ACC if not hate else K.C_BAD, 1, 12))
-		b.add_theme_stylebox_override("pressed", K.sb(Color(0.07, 0.085, 0.12), 10, K.C_ACC, 1, 12))
-		b.pressed.connect(func():
-			Sfx.play("click")
-			G.deal_greet(deal, style)
-			_render_deal())
-		var bv := K.vbox(3)
-		bv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12)
-		bv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(bv)
-		var th := K.hbox(6)
-		th.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		th.add_child(K.icon(o[3], 16, edge if (like or hate) else K.C_TXT))
-		th.add_child(K.head(String(o[1]).to_upper(), 18, K.C_TXT))
-		if like:
-			th.add_child(K.lbl("★ lubi", 11, K.C_ACC))
-		elif hate:
-			th.add_child(K.lbl("✕ nie znosi", 11, K.C_BAD))
-		bv.add_child(th)
-		var q := K.wrap(o[2], 13, K.C_DIM)
-		q.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bv.add_child(q)
-		rowc.add_child(b)
-	var foot := K.hbox(10)
-	modal_body.add_child(foot)
-	foot.add_child(K.wrap("Każdy klient lubi inny ton. Trafiony poprawia nastrój (lepsza cena, więcej cierpliwości), chybiony go psuje. Odkryte upodobania trafiają do Kontaktów.", 12, K.C_DIM))
-	_deal_exit_buttons(foot, true)
-
-
-func _deal_offer_ui() -> void:
-	var S: Dictionary = G.S
-	var who: Dictionary = deal.who
-	var ctx: Dictionary = deal.ctx
-	var live := G.stacks(S.inv, "pack")
-	if live.is_empty():
-		deal.over = true
-		deal.speech = "„Nie masz już towaru? No to nie ma o czym gadać.”"
-		G.deal_finish(deal, {"sold": 0})
-		_render_deal()
-		return
-	var sel: Dictionary = deal.sel
-	var have := int(S.inv.pack[sel.p].get(str(int(sel.pur)), 0))
-	if have <= 0:
-		deal.sel = live[0]
-		sel = deal.sel
-		have = int(sel.n)
-		deal.price = int(round(G.market_price(sel.p, sel.pur)))
-	var max_q: int = maxi(1, mini(have, int(deal.want) + int(deal.upsold)))
-	deal.qty = clampi(int(deal.qty), 1, max_q)
-	var cols := K.hbox(12)
-	modal_body.add_child(cols)
-	var left := K.panel(K.sb(K.C_CARD, 12, K.C_LINE, 1, 14))
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cols.add_child(left)
-	var lv := K.vbox(6)
-	left.add_child(lv)
-	lv.add_child(K.lbl("TWÓJ TOWAR", 10, K.C_DIM))
-	var sf := K.flow()
-	lv.add_child(sf)
-	for s in live:
-		var ss: Dictionary = s
-		var is_sel: bool = s.p == sel.p and int(s.pur) == int(sel.pur)
-		sf.add_child(K.btn("%s %d%% ×%d" % [D.PRODUCTS[s.p].name, int(s.pur), int(s.n)], func(): _deal_pick(ss), "go" if is_sel else "", true))
-	lv.add_child(K.rich("Wybrane: %s" % K.tier_bb(sel.pur), 13))
-	var ql := K.lbl("Ilość: %d g" % int(deal.qty), 14)
-	lv.add_child(ql)
-	var qs := HSlider.new()
-	qs.min_value = 1
-	qs.max_value = max_q
-	qs.step = 1
-	qs.value = int(deal.qty)
-	qs.focus_mode = Control.FOCUS_NONE
-	qs.editable = max_q > 1
-	lv.add_child(qs)
-	var right := K.panel(K.sb(K.C_CARD, 12, K.C_LINE, 1, 14))
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cols.add_child(right)
-	var rv := K.vbox(6)
-	right.add_child(rv)
-	var mk := G.market_price(sel.p, sel.pur)
-	var total_l := K.lbl("", 13, K.C_ACC)
-	var price_l := K.lbl("", 32, K.C_ACC)
-	price_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var acts := K.flow()
-	if not deal.haggle:
-		var ap := G.deal_agreed_price(deal)
-		rv.add_child(K.lbl("UMÓWIONA CENA ZA GRAM", 10, K.C_DIM))
-		price_l.text = G.money(ap) if ap > 0 else "—"
-		rv.add_child(price_l)
-		var note := "Tego towaru nie weźmie."
-		if ap > 0:
-			note = "Lepsza czystość, niż oczekiwał: mała premia." if int(sel.pur) > maxi(60, int(who.minpur)) else ("Za słaby towar: rabat." if int(sel.pur) < int(who.minpur) else "Zgodnie z umową.")
-		rv.add_child(K.lbl(note, 12, K.C_DIM))
-		total_l.text = "Razem: " + G.money(ap * int(deal.qty))
-		rv.add_child(total_l)
-		qs.value_changed.connect(func(v):
-			deal.qty = int(v)
-			ql.text = "Ilość: %d g" % int(v)
-			total_l.text = "Razem: " + G.money(ap * int(v)))
-		var ba := K.btn("Sprzedaj po umówionej cenie", func(): G.deal_sell_agreed(deal); _render_deal(), "go")
-		ba.disabled = ap <= 0
-		acts.add_child(ba)
-		acts.add_child(K.btn("Podbij cenę (ryzykowne)", func(): G.deal_haggle(deal); _render_deal(), "warn"))
-	else:
-		rv.add_child(K.lbl("TWOJA CENA ZA GRAM", 10, K.C_DIM))
-		price_l.text = G.money(deal.price)
-		rv.add_child(price_l)
-		var ps := HSlider.new()
-		ps.min_value = maxf(1.0, round(mk * 0.3))
-		ps.max_value = round(mk * 2.2)
-		ps.step = 1
-		ps.value = int(deal.price)
-		ps.focus_mode = Control.FOCUS_NONE
-		rv.add_child(ps)
-		var hint := G.deal_hint(deal)
-		var hint_txt := "Rynek: ok. %s" % G.money(mk)
-		if not hint.is_empty():
-			hint_txt += "   •   klient da ok. %s–%s" % [G.money(hint.lo), G.money(hint.hi)]
-		rv.add_child(K.lbl(hint_txt, 12, K.C_DIM))
-		total_l.text = "Razem: %s%s" % [G.money(int(deal.price) * int(deal.qty)), "  (połowa teraz, reszta na zeszyt)" if deal.credit else ""]
-		rv.add_child(total_l)
-		ps.value_changed.connect(func(v):
-			deal.price = int(v)
-			price_l.text = G.money(v)
-			total_l.text = "Razem: " + G.money(int(v) * int(deal.qty)))
-		qs.value_changed.connect(func(v):
-			deal.qty = int(v)
-			ql.text = "Ilość: %d g" % int(v)
-			total_l.text = "Razem: " + G.money(int(deal.price) * int(v)))
-		if deal.counter != null:
-			acts.add_child(K.btn("Przyjmij %s za gram" % G.money(deal.counter), func(): G.deal_accept(deal); _render_deal(), "go"))
-		acts.add_child(K.btn("Zaproponuj cenę", func(): G.deal_offer(deal); _render_deal(), "go"))
-	_deal_exit_buttons(acts)
-	# taktyki
-	if not ctx.get("sting", false):
-		var tc := K.card(modal_body, 10)
-		tc.add_child(K.lbl("TAKTYKI (każda raz na rozmowę)", 10, K.C_DIM))
-		var tf := K.flow()
-		tc.add_child(tf)
-		for t in G.deal_tactics(deal):
-			var tid: String = t.id
-			if tid == "zeszyt" and not deal.haggle:
-				continue
-			var tb := K.btn(t.label, func(): G.deal_tactic(deal, tid); _render_deal(), "", true)
-			tb.disabled = not t.on
-			tb.tooltip_text = t.tip
-			tf.add_child(tb)
-	modal_body.add_child(acts)
+	Trade.build(self)
 
 
 func _deal_pick(s: Dictionary) -> void:
 	deal.sel = s
+	deal.phase = "offer"
 	if deal.haggle and deal.ctx.get("agreed") == null:
 		deal.price = int(round(G.market_price(s.p, s.pur)))
 	deal.counter = null
