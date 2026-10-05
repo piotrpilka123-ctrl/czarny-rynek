@@ -99,37 +99,41 @@ void fragment() {
 	vec3 nrm = vec3(0.0);
 	float rgh = 0.0;
 	vec2 uv = wpos.xz;
+	// im dalej od kamery, tym gładsze próbkowanie: drobne jasne ziarna asfaltu i płyt
+	// nie „iskrzą” wtedy przy ruchu kamery
+	float vdist = length(VERTEX);
+	float lodb = 0.55 + smoothstep(2.0, 18.0, vdist) * 0.9;
 	if (w.r > 0.003) {
-		vec3 a = texture(a_asph, uv * 0.3).rgb;
+		vec3 a = texture(a_asph, uv * 0.3, lodb).rgb;
 		a *= 0.7 + mid * 0.5;
-		alb += a * w.r; nrm += texture(n_asph, uv * 0.3).rgb * w.r; rgh += 0.86 * w.r;
+		alb += a * w.r; nrm += texture(n_asph, uv * 0.3, lodb).rgb * w.r; rgh += 0.86 * w.r;
 	}
 	if (w.g > 0.003) {
-		vec3 a = texture(a_pave, uv * 0.42).rgb * (0.72 + mid * 0.4);
-		alb += a * w.g; nrm += texture(n_pave, uv * 0.42).rgb * w.g; rgh += 0.9 * w.g;
+		vec3 a = texture(a_pave, uv * 0.42, lodb).rgb * (0.72 + mid * 0.4);
+		alb += a * w.g; nrm += texture(n_pave, uv * 0.42, lodb).rgb * w.g; rgh += 0.9 * w.g;
 	}
 	if (w.b > 0.003) {
-		vec3 a = texture(a_conc, uv * 0.3).rgb * (0.7 + mid * 0.45);
-		alb += a * w.b; nrm += texture(n_conc, uv * 0.3).rgb * w.b; rgh += 0.88 * w.b;
+		vec3 a = texture(a_conc, uv * 0.3, lodb).rgb * (0.7 + mid * 0.45);
+		alb += a * w.b; nrm += texture(n_conc, uv * 0.3, lodb).rgb * w.b; rgh += 0.88 * w.b;
 	}
 	if (w.a > 0.003) {
-		vec3 a = texture(a_dirt, uv * 0.33).rgb * (0.75 + mid * 0.4);
-		alb += a * w.a; nrm += texture(n_dirt, uv * 0.33).rgb * w.a; rgh += 0.95 * w.a;
+		vec3 a = texture(a_dirt, uv * 0.33, lodb).rgb * (0.75 + mid * 0.4);
+		alb += a * w.a; nrm += texture(n_dirt, uv * 0.33, lodb).rgb * w.a; rgh += 0.95 * w.a;
 	}
 	if (wg > 0.003) {
-		vec3 a = texture(a_grav, uv * 0.4).rgb * (0.7 + mid * 0.3);
+		vec3 a = texture(a_grav, uv * 0.4, lodb).rgb * (0.7 + mid * 0.3);
 		alb += a * wg; nrm += vec3(0.5, 0.5, 1.0) * wg; rgh += 0.95 * wg;
 	}
 	if (grass > 0.003) {
-		vec3 g1 = texture(a_grass, uv * 0.31).rgb;
-		vec3 g2 = texture(a_grass2, uv * 0.27).rgb;
+		vec3 g1 = texture(a_grass, uv * 0.31, lodb).rgb;
+		vec3 g2 = texture(a_grass2, uv * 0.27, lodb).rgb;
 		vec3 a = mix(g1, g2, smoothstep(0.42, 0.62, big));
 		a = mix(vec3(dot(a, vec3(0.3, 0.5, 0.2))), a, 0.55) * vec3(0.92, 0.95, 0.8) * (0.6 + mid * 0.42);
 		float litter = smoothstep(0.25, 0.6, c2.b + (nz - 0.5) * 0.5 + (mid - 0.5) * 0.3);
-		vec3 lf = texture(a_leaf, uv * 0.36).rgb;
+		vec3 lf = texture(a_leaf, uv * 0.36, lodb).rgb;
 		lf = mix(vec3(dot(lf, vec3(0.33))), lf, 0.6) * 0.72;
 		a = mix(a, lf, litter * 0.9);
-		alb += a * grass; nrm += texture(n_grass, uv * 0.31).rgb * grass; rgh += 0.97 * grass;
+		alb += a * grass; nrm += texture(n_grass, uv * 0.31, lodb).rgb * grass; rgh += 0.97 * grass;
 	}
 	float tot = max(0.001, sum + grass);
 	alb /= tot; nrm /= tot; rgh /= tot;
@@ -143,8 +147,9 @@ void fragment() {
 	alb *= 1.0 - wet * 0.3 - puddle * 0.35;
 	ALBEDO = alb;
 	NORMAL_MAP = mix(nrm, vec3(0.5, 0.5, 1.0), puddle);
-	ROUGHNESS = mix(rgh - wet * 0.25, 0.06, puddle);
-	SPECULAR = 0.35 + puddle * 0.4;
+	NORMAL_MAP_DEPTH = mix(0.85, 0.2, smoothstep(2.5, 20.0, vdist));
+	ROUGHNESS = mix(min(1.0, rgh + 0.06) - wet * 0.25, 0.06, puddle);
+	SPECULAR = 0.2 + wet * 0.15 + puddle * 0.4;
 }
 """
 
@@ -925,7 +930,8 @@ func door(id: String) -> void:
 	li.omni_range = 5.0
 	li.position = Vector3(0, 2.5, dz * 1.0)
 	g.add_child(li)
-	inter.append({"loc": "out", "x": x, "z": dd.z, "range": 2.8, "id": "door_" + id, "label": func(): return G.door_label(id), "act": func(): G.main.enter(id)})
+	inter.append({"loc": "out", "x": x, "z": dd.z, "y0": 0.0, "y1": 2.3, "r": 1.3 if id == "garage" else 0.7, "reach": 2.7, "id": "door_" + id,
+		"label": func(): return G.door_label(id), "act": func(): G.main.enter(id)})
 
 
 # ---------------------------------------------------------------- budynki
@@ -1392,6 +1398,72 @@ func _garage_row_ew(x0: float, x1: float, z0: float, north: bool, first_no: int)
 
 
 ## mur lub płot z kolizją; kind: "mur" | "siatka" | "blacha"
+## Ogrodzenie z dziurami: `holes` to współrzędne (x dla płotu wschód–zachód, z dla północ–południe),
+## w których zostaje przejście szerokie na człowieka, z odgiętą siatką i wydeptaną ścieżką.
+func _fence_run(ax: float, az: float, bx: float, bz: float, kind: String, h: float, holes: Array) -> void:
+	var ew := absf(bx - ax) > absf(bz - az)
+	var lo := minf(ax, bx) if ew else minf(az, bz)
+	var hi := maxf(ax, bx) if ew else maxf(az, bz)
+	var gap := 1.35
+	var cuts: Array = holes.duplicate()
+	cuts.sort()
+	var from := lo
+	for c in cuts:
+		var cc := float(c)
+		if cc - gap <= from + 1.0 or cc + gap >= hi - 1.0:
+			continue
+		if ew:
+			_barrier(from, az, cc - gap, az, kind, h)
+		else:
+			_barrier(ax, from, ax, cc - gap, kind, h)
+		_fence_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
+		from = cc + gap
+	if ew:
+		_barrier(from, az, hi, az, kind, h)
+	else:
+		_barrier(ax, from, ax, hi, kind, h)
+
+
+func _fence_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: float) -> void:
+	var along := Vector2(1, 0) if ew else Vector2(0, 1)
+	var across := Vector2(0, 1) if ew else Vector2(1, 0)
+	var by := hd(x, z)
+	var steel := Models.mat("4a4f4a", 0.6, 0.5)
+	if kind == "mur":
+		# wyrwa w murze: poszarpane krawędzie i gruz
+		var cm := Props.pbr("dirty_concrete", 0.35, Color(0.7, 0.7, 0.68))
+		for sd in [-1.0, 1.0]:
+			var pp = Vector2(x, z) + along * sd * (gap + 0.25)
+			Models.box(city, Vector3(0.5, h * 0.55, 0.3) if ew else Vector3(0.3, h * 0.55, 0.5), Vector3(pp.x, by + h * 0.27 - 0.2, pp.y), cm, Vector3(0, 0, 0.08 * sd))
+		for k in range(4):
+			var rp := Vector2(x, z) + along * rng.randf_range(-gap, gap) + across * rng.randf_range(-1.6, 1.6)
+			_prop("cinderblock", rp.x, rp.y, rng.randf() * TAU, 0.2)
+	else:
+		# słupki po obu stronach i odgięty płat siatki / blachy
+		for sd in [-1.0, 1.0]:
+			var pp2 = Vector2(x, z) + along * sd * gap
+			Models.cyl(city, 0.03, 0.03, h, Vector3(pp2.x, by + h * 0.5, pp2.y), steel, Vector3(0, 0, 0.06 * sd), 5)
+		var flap_mat: Material
+		if kind == "siatka":
+			var fm := StandardMaterial3D.new()
+			fm.albedo_color = Color(0.45, 0.48, 0.45, 0.42)
+			fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			fm.cull_mode = BaseMaterial3D.CULL_DISABLED
+			fm.roughness = 0.6
+			fm.metallic = 0.4
+			flap_mat = fm
+		else:
+			flap_mat = Props.pbr("rusty_corrugated_iron", 0.5)
+		var fp := Vector2(x, z) + along * (gap - 0.1) + across * 0.55
+		var flap := Models.box(city, Vector3(1.6, h * 0.8, 0.02), Vector3(fp.x, by + h * 0.42, fp.y), flap_mat,
+			Vector3(0.18, (0.0 if ew else PI / 2.0) + 1.05, 0.0), false)
+		flap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# wydeptana ścieżka przez dziurę
+	var a := Vector2(x, z) - across * 4.5
+	var b := Vector2(x, z) + across * 4.5
+	_pl(3, a, b, 1.5)
+
+
 func _barrier(ax: float, az: float, bx: float, bz: float, kind := "mur", h := 2.0) -> void:
 	var a := Vector2(ax, az)
 	var b := Vector2(bx, bz)
@@ -1476,22 +1548,31 @@ func _dense() -> void:
 		add_col(x - 2.4, x + 2.4, z - 1.9, z + 1.9, 2.4)
 		rects.pop_back()
 	# --- mury i płoty: ciasne podwórka, mniej otwartej przestrzeni
-	for seg in [[-98.0, -34.0], [-20.0, 9.0], [15.0, 54.0], [66.0, 104.0]]:
-		_barrier(seg[0], -31.6, seg[1], -31.6, "siatka", 1.8)
+	# Płoty mają dziury: GPS prowadzi oficjalnymi przejściami (schody, tunel, bramy),
+	# ale kto zna teren, przejdzie na skróty przez wyrwę w siatce.
+	_fence_run(-98.0, -31.6, -34.0, -31.6, "siatka", 1.8, [-66.0])
+	_fence_run(-20.0, -31.6, 9.0, -31.6, "siatka", 1.8, [])
+	_fence_run(15.0, -31.6, 54.0, -31.6, "siatka", 1.8, [37.0])
+	_fence_run(66.0, -31.6, 104.0, -31.6, "siatka", 1.8, [88.0])
 	_barrier(-90.0, 57.6, -50.0, 57.6, "mur", 2.2)
 	_barrier(-44.0, 57.6, -9.0, 57.6, "mur", 2.2)
 	_barrier(8.0, 57.6, 40.0, 57.6, "mur", 2.2)
 	_barrier(46.0, 52.0, 68.0, 52.0, "blacha", 2.0)
 	_barrier(-48.5, 60.0, -48.5, 96.0, "siatka", 1.8)
-	_barrier(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8)
+	_fence_run(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8, [123.0])
 	_barrier(-92.0, -17.6, -62.0, -17.6, "mur", 2.0)
 	_barrier(-54.0, -17.6, -31.0, -17.6, "mur", 2.0)
 	_barrier(-23.0, -17.6, 8.0, -17.6, "mur", 2.0)
-	_barrier(16.0, -17.6, 46.0, -17.6, "mur", 2.0)
+	_fence_run(16.0, -17.6, 46.0, -17.6, "mur", 2.0, [31.0])
 	_barrier(40.0, 100.0, 40.0, 130.0, "blacha", 2.0)
-	_barrier(128.6, 32.0, 128.6, 120.0, "siatka", 1.8)
-	_barrier(128.6, -160.0, 128.6, -72.0, "siatka", 1.8)
-	_barrier(128.6, -60.0, 128.6, -20.0, "siatka", 1.8)
+	_fence_run(128.6, 32.0, 128.6, 120.0, "siatka", 1.8, [78.0])
+	_fence_run(128.6, -160.0, 128.6, -72.0, "siatka", 1.8, [-112.0])
+	_fence_run(128.6, -60.0, 128.6, -20.0, "siatka", 1.8, [-40.0])
+	# nowe ogrodzenia w miejscach, gdzie dało się biegać na przełaj
+	_fence_run(44.0, 127.0, 104.0, 127.0, "blacha", 2.0, [71.0])          # garaże / wysypisko
+	_fence_run(-146.0, 57.6, -113.0, 57.6, "siatka", 1.8, [-130.0])       # tyły kamienicy od strony parku
+	_fence_run(104.0, -60.0, 104.0, -34.0, "siatka", 1.8, [])             # skarpa przy nasypie
+	ctl1_tex.update(img1)
 	_barrier(-112.0, 52.0, -112.0, 60.0, "mur", 2.2)
 	_barrier(10.0, 80.0, 34.0, 80.0, "mur", 2.2)
 	# --- murale i graffiti
@@ -1680,9 +1761,9 @@ func _ground_details() -> void:
 		mi.multimesh = mm
 		mi.material_override = gmat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.visibility_range_end = 46.0
-		mi.visibility_range_end_margin = 6.0
-		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+		mi.visibility_range_end = 44.0
+		mi.visibility_range_end_margin = 2.0
+		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 		city.add_child(mi)
 
 
@@ -2100,7 +2181,8 @@ func _room(id: String, floor_tex: String, wall_tex: String, ceil_c: String, wall
 		Models.box(g, Vector3(1.0, 2.05, 0.08), Vector3(cx, 1.03, ez - 0.05), Props.pbr("wooden_garage_door", 0.6, Color(0.8, 0.75, 0.7)))
 		Models.box(g, Vector3(1.16, 0.08, 0.12), Vector3(cx, 2.1, ez - 0.06), Models.mat("3a3027", 0.8))
 		Models.cyl(g, 0.02, 0.02, 0.12, Vector3(cx + 0.38, 1.0, ez - 0.1), Models.mat("b8a070", 0.4, 0.8), Vector3(PI / 2.0, 0, 0), 6)
-	inter.append({"loc": id, "x": cx, "z": ez - 0.8, "range": 2.0, "id": "exit_" + id, "label": func(): return "Wyjdź", "act": func(): G.main.exit_room()})
+	inter.append({"loc": id, "x": cx, "z": ez - 0.06, "y0": 0.0, "y1": 2.1, "r": 1.4 if id == "garage" else 0.62, "reach": 2.6, "id": "exit_" + id,
+		"label": func(): return "Wyjdź", "act": func(): G.main.exit_room()})
 	return g
 
 
@@ -2139,32 +2221,39 @@ func _interiors() -> void:
 	Props._no_shadow(bulb)
 	_room_light(g, cx, 0.2, h, 1.5, Color(1.0, 0.82, 0.58), 8.0)
 	# dywan
-	Models.box(g, Vector3(2.6, 0.02, 1.8), Vector3(cx - 0.6, 0.011, 0.6), Props.pbr("dirty_carpet", 0.6, Color(0.8, 0.7, 0.65)), Vector3.ZERO, false)
+	Models.box(g, Vector3(2.6, 0.02, 1.8), Vector3(cx - 1.7, 0.011, 0.5), Props.pbr("dirty_carpet", 0.6, Color(0.8, 0.7, 0.65)), Vector3.ZERO, false)
 	# łóżko
 	_rp(g, "old_bed_frame", cx - w * 0.5 + 0.62, -d * 0.5 + 1.1, 0.0, 1.0, 0.0, 0.55, 1.05)
 	Models.box(g, Vector3(0.84, 0.16, 1.86), Vector3(cx - w * 0.5 + 0.62, 0.42, -d * 0.5 + 1.1), Models.mat("b9b4a6", 0.95))
 	Models.box(g, Vector3(0.8, 0.07, 1.2), Vector3(cx - w * 0.5 + 0.62, 0.52, -d * 0.5 + 1.4), Models.mat("3d4f66", 0.95))
 	Models.box(g, Vector3(0.55, 0.1, 0.36), Vector3(cx - w * 0.5 + 0.62, 0.54, -d * 0.5 + 0.42), Models.mat("d8d4c8", 0.95))
-	inter.append({"loc": "safe", "x": cx - w * 0.5 + 1.3, "z": -d * 0.5 + 1.2, "range": 1.9, "id": "bed", "label": func(): return "Łóżko — sen i zapis gry", "act": func(): G.main.sleep()})
+	inter.append({"loc": "safe", "x": cx - w * 0.5 + 0.62, "z": -d * 0.5 + 1.1, "y0": 0.1, "y1": 0.75, "r": 0.9, "reach": 2.5, "id": "bed",
+		"label": func(): return "Łóżko — sen", "act": func(): G.main.sleep()})
 	# stół roboczy z wagą (jedyne stanowisko w mieszkaniu)
 	var tx := cx + 0.9
 	var tz := -d * 0.5 + 0.62
 	_rp(g, "painted_wooden_table", tx, tz, 0.0, 0.8, 0.0, 1.0, 0.5)
 	_scale_set(g, Vector3(tx - 0.35, 0.8, tz))
 	_rp(g, "desk_lamp_arm_01", tx + 0.75, tz - 0.15, 0.6, 0.55, 0.8)
-	_rp(g, "cigarette_pack", tx + 0.3, tz + 0.22, 0.4, 0.09, 0.8)
+	_rp(g, "cigarette_pack", tx + 0.08, tz + 0.26, 0.4, 0.09, 0.8)
+	# laptop brata: jedyne miejsce zapisu gry w mieszkaniu
+	_rp(g, "classic_laptop", tx + 0.55, tz + 0.05, 0.0, 0.24, 0.8)
+	inter.append({"loc": "safe", "x": tx + 0.55, "z": tz + 0.05, "y0": 0.78, "y1": 1.08, "r": 0.3, "reach": 2.5, "id": "save_safe",
+		"label": func(): return "Laptop brata — zapisz grę", "act": func(): G.main.save_here()})
 	var dl := _room_light(g, tx + 0.4, tz + 0.1, 1.75, 0.8, Color(1.0, 0.9, 0.7), 2.6)
 	dl.shadow_enabled = false
 	_rp(g, "painted_wooden_chair_01", tx - 0.1, tz + 0.85, PI, 0.92)
-	inter.append({"loc": "safe", "x": tx, "z": tz + 0.9, "range": 2.0, "id": "pack_safe", "label": func(): return "Waga i woreczki — porcjowanie towaru", "act": func(): G.ui.open_pack("safe")})
+	inter.append({"loc": "safe", "x": tx - 0.38, "z": tz, "y0": 0.6, "y1": 1.05, "r": 0.5, "reach": 2.5, "id": "pack_safe",
+		"label": func(): return "Waga i woreczki — porcjowanie towaru", "act": func(): G.ui.open_pack("safe")})
 	# skrytka: szafa
 	_rp(g, "painted_wooden_cabinet", cx + w * 0.5 - 0.42, 0.6, -PI / 2.0, 1.75, 0.0, 0.4, 0.65)
-	inter.append({"loc": "safe", "x": cx + w * 0.5 - 1.1, "z": 0.6, "range": 1.9, "id": "stash_safe", "label": func(): return "Skrytka w szafie", "act": func(): G.ui.open_stash("safe")})
+	inter.append({"loc": "safe", "x": cx + w * 0.5 - 0.42, "z": 0.6, "y0": 0.1, "y1": 1.7, "r": 0.62, "reach": 2.5, "id": "stash_safe",
+		"label": func(): return "Skrytka w szafie", "act": func(): G.ui.open_stash("safe")})
 	# kanapa, TV
-	_rp(g, "sofa_02", cx - 0.6, d * 0.5 - 0.55, PI, 0.72, 0.0, 0.95, 0.45)
-	_rp(g, "side_table_01", cx - w * 0.5 + 0.45, 1.3, PI / 2.0, 0.5, 0.0, 0.3, 0.3)
-	_rp(g, "television_02", cx - w * 0.5 + 0.45, 1.3, PI / 2.0, 0.42, 0.5)
-	var tvl := _room_light(g, cx - w * 0.5 + 0.9, 1.3, 1.3, 0.35, Color(0.5, 0.65, 1.0), 3.0)
+	_rp(g, "sofa_02", cx - 2.05, d * 0.5 - 0.55, PI, 0.72, 0.0, 0.95, 0.45)
+	_rp(g, "side_table_01", cx - 1.55, -d * 0.5 + 0.4, 0.0, 0.5, 0.0, 0.3, 0.3)
+	_rp(g, "television_02", cx - 1.55, -d * 0.5 + 0.4, 0.0, 0.42, 0.5)
+	var tvl := _room_light(g, cx - 1.55, -d * 0.5 + 0.9, 1.3, 0.35, Color(0.5, 0.65, 1.0), 3.0)
 	tvl.shadow_enabled = false
 	tvl.set_meta("tv", true)
 	lamps.append(tvl)
@@ -2304,6 +2393,11 @@ func furn_model(fid: String) -> Node3D:
 			_scale_set(n, Vector3(-0.3, f.h, 0.0))
 	else:
 		n = Node3D.new()
+		if fid == "laptop":
+			n.add_child(Props.make("side_table_01", 0.5))
+			var lap := Props.make("classic_laptop", 0.24)
+			lap.position.y = 0.5
+			n.add_child(lap)
 		if fid == "namiot":
 			var fr := Models.mat("15161a", 0.5, 0.5)
 			for sx in [-0.62, 0.62]:
@@ -2383,15 +2477,24 @@ func refresh_furniture(room: String) -> void:
 		var idx := i
 		var ix: float = cx + float(it.x)
 		var iz: float = float(it.z)
+		var aim := {"loc": room, "x": ix, "z": iz, "y0": 0.1, "y1": maxf(0.6, float(f.h)), "reach": 2.6, "id": "furn_%d" % idx,
+			"r": clampf(maxf(float(f.size[0]), float(f.size[1])) * 0.5, 0.45, 1.0)}
 		match String(f["func"]):
 			"pack":
-				inter_dyn[room].append({"loc": room, "x": ix, "z": iz, "range": 2.1, "label": func(): return "Stół roboczy — porcjowanie", "act": func(): G.ui.open_pack(room)})
+				aim.merge({"label": func(): return "Stół roboczy — porcjowanie", "act": func(): G.ui.open_pack(room)})
+				inter_dyn[room].append(aim)
 			"stash":
-				inter_dyn[room].append({"loc": room, "x": ix, "z": iz, "range": 2.0, "label": func(): return "Skrytka: " + String(f.name), "act": func(): G.ui.open_stash(room)})
+				aim.merge({"label": func(): return "Skrytka: " + String(f.name), "act": func(): G.ui.open_stash(room)})
+				inter_dyn[room].append(aim)
 			"bed":
-				inter_dyn[room].append({"loc": room, "x": ix, "z": iz, "range": 2.1, "label": func(): return "Łóżko — sen i zapis gry", "act": func(): G.main.sleep()})
+				aim.merge({"label": func(): return "Łóżko — sen", "act": func(): G.main.sleep()})
+				inter_dyn[room].append(aim)
+			"save":
+				aim.merge({"label": func(): return "Laptop — zapisz grę", "act": func(): G.main.save_here()})
+				inter_dyn[room].append(aim)
 			"grow":
-				inter_dyn[room].append({"loc": room, "x": ix, "z": iz, "range": 2.1, "label": func(): return G.grow_label(room, idx), "act": func(): G.ui.open_grow(room, idx)})
+				aim.merge({"label": func(): return G.grow_label(room, idx), "act": func(): G.ui.open_grow(room, idx)})
+				inter_dyn[room].append(aim)
 				grow_nodes[room][idx] = n.get_node_or_null("Plants")
 	update_stations()
 

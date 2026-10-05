@@ -78,10 +78,10 @@ func money(n) -> String:
 
 
 func grams(g) -> String:
-	var f := float(g)
+	var f := snappedf(float(g), 0.5)
 	if absf(f - round(f)) < 0.05:
 		return "%d g" % int(round(f))
-	return "%.1f g" % f
+	return ("%.1f g" % f).replace(".", ",")
 
 
 func flag(k: String) -> bool:
@@ -210,7 +210,7 @@ func store_total(st: Dictionary) -> float:
 	var its := store_items(st)
 	for id in its:
 		if D.ITEMS.has(id):
-			n += float(its[id]) * float(D.ITEMS[id].size)
+			n += half_up(float(its[id]) * float(D.ITEMS[id].size))
 	return n
 
 
@@ -239,15 +239,22 @@ func carry_goods() -> float:
 
 
 func units(v) -> String:
-	var f := float(v)
+	var f := half_up(float(v))
 	if absf(f - round(f)) < 0.05:
 		return str(int(round(f)))
 	return ("%.1f" % f).replace(".", ",")
 
 
+## zaokrąglenie w górę do połówki: miejsce w plecaku liczymy „1, 1,5, 2…”, bez ułamków typu 0,7
+static func half_up(v: float) -> float:
+	return ceil(v * 2.0 - 0.0001) / 2.0
+
+
 func weight_text(g: float) -> String:
 	if g >= 1000.0:
 		return ("%.2f kg" % (g / 1000.0)).replace(".", ",")
+	if g < 50.0 and absf(g * 2.0 - round(g * 2.0)) < 0.05 and absf(g - round(g)) > 0.2:
+		return ("%.1f g" % g).replace(".", ",")
 	return "%d g" % int(round(g))
 
 
@@ -269,7 +276,8 @@ func entries(st: Dictionary) -> Array:
 			var uw: float = D.W_PACK if kind == "pack" else D.W_BULK
 			out.append({"kind": kind, "p": s.p, "pur": int(s.pur), "id": "", "n": float(s.n), "name": pd.name,
 				"sub": ("porcje 1 g" if kind == "pack" else "luzem"), "icon": D.PRODUCT_ICONS.get(s.p, "leaf"), "tier": tier(s.pur),
-				"qty": ("%d szt." % int(s.n)) if kind == "pack" else grams(s.n), "usize": us, "size": float(s.n) * us, "weight": float(s.n) * uw,
+				"qty": ("%d szt." % int(s.n)) if kind == "pack" else grams(s.n), "usize": us, "uw": uw, "step": 1.0 if kind == "pack" else 0.5,
+				"unit": "szt." if kind == "pack" else "g", "size": half_up(float(s.n) * us), "weight": float(s.n) * uw,
 				"desc": ("Zaporcjowany towar gotowy do sprzedaży." if kind == "pack" else "Towar luzem. Zanim sprzedasz, zaporcjuj go na stole z wagą.")})
 	var its := store_items(st)
 	for id in D.ITEMS:
@@ -278,7 +286,8 @@ func entries(st: Dictionary) -> Array:
 			continue
 		var d: Dictionary = D.ITEMS[id]
 		out.append({"kind": "item", "p": "", "pur": 0, "id": id, "n": float(n), "name": d.name, "sub": "", "icon": d.icon, "tier": -1,
-			"qty": "%d %s" % [n, d.unit], "usize": float(d.size), "size": n * float(d.size), "weight": n * float(d.w), "desc": d.desc})
+			"qty": "%d %s" % [n, d.unit], "usize": float(d.size), "uw": float(d.w), "step": 1.0, "unit": d.unit,
+			"size": half_up(n * float(d.size)), "weight": n * float(d.w), "desc": d.desc})
 	return out
 
 
@@ -289,15 +298,27 @@ func move_entry(room: String, e: Dictionary, to_stash: bool, amount: float) -> f
 	var from: Dictionary = store_items(S.inv if to_stash else S.stash[room])
 	var to: Dictionary = store_items(S.stash[room] if to_stash else S.inv)
 	var id: String = e.id
-	var usz := float(D.ITEMS[id].size)
-	var space: float = (float(stash_cap(room)) - store_total(S.stash[room])) if to_stash else (float(capacity()) - carry_total())
-	var n: int = mini(mini(int(amount), int(from.get(id, 0))), int(floor(maxf(0.0, space) / usz + 0.001)))
+	var n: int = mini(mini(int(amount), int(from.get(id, 0))), int(move_limit(room, e, to_stash)))
 	if n <= 0:
 		notify("Brak miejsca w %s." % ("skrytce" if to_stash else "plecaku"), "warn")
 		return 0.0
 	from[id] = int(from.get(id, 0)) - n
 	to[id] = int(to.get(id, 0)) + n
 	return float(n)
+
+
+## ile najwięcej tej pozycji da się przenieść (ogranicza wolne miejsce po drugiej stronie)
+func move_limit(room: String, e: Dictionary, to_stash: bool) -> float:
+	var space: float = (float(stash_cap(room)) - store_total(S.stash[room])) if to_stash else (float(capacity()) - carry_total())
+	var step: float = e.get("step", 1.0)
+	var fit := floorf(maxf(0.0, space) / maxf(0.001, float(e.usize)) / step + 0.001) * step
+	if e.kind == "item":
+		# dokładanie do istniejącego stosu może nie zająć nowej połówki miejsca
+		var its := store_items(S.stash[room] if to_stash else S.inv)
+		var have := float(its.get(e.id, 0))
+		var slack := half_up(have * float(e.usize)) - have * float(e.usize)
+		fit = floorf((maxf(0.0, space) + slack) / maxf(0.001, float(e.usize)) + 0.001)
+	return minf(float(e.n), fit)
 
 
 ## wyrzuca pozycję z plecaka (bezpowrotnie)
@@ -395,7 +416,9 @@ func stacks(st: Dictionary, kind: String) -> Array:
 	return out
 
 
+## towar luzem liczymy w połówkach grama (1 g, 2,5 g, 10 g…), nigdy 0,7 g
 func add_bulk(st: Dictionary, p: String, pur, g: float) -> void:
+	g = snappedf(g, 0.5)
 	if g <= 0.0:
 		return
 	var k := str(qpur(pur))
@@ -405,11 +428,11 @@ func add_bulk(st: Dictionary, p: String, pur, g: float) -> void:
 func take_bulk(st: Dictionary, p: String, pur, g: float) -> float:
 	var k := str(qpur(pur))
 	var have := float(st.bulk[p].get(k, 0.0))
-	var n: float = minf(have, g)
+	var n: float = minf(have, snappedf(g, 0.5))
 	if n <= 0.0:
 		return 0.0
-	st.bulk[p][k] = have - n
-	if float(st.bulk[p][k]) < 0.001:
+	st.bulk[p][k] = snappedf(have - n, 0.5)
+	if float(st.bulk[p][k]) < 0.25:
 		st.bulk[p].erase(k)
 	return n
 
@@ -520,7 +543,7 @@ func chat(cid: String, text: String, me := false, quiet := false) -> void:
 
 func mark_read(cid: String) -> void:
 	S.unread[cid] = 0
-	if cid == "wiktor":
+	if cid == "wiktor" and flag("wiktor_sms"):
 		S.flags["read_wiktor"] = true
 
 
@@ -721,7 +744,7 @@ func on_hour() -> void:
 	for id in S.cust:
 		var cs2: Dictionary = S.cust[id]
 		if cs2.unlocked:
-			cs2.hunger = clampf(float(cs2.hunger) + 0.035, 0.0, 1.0)
+			cs2.hunger = clampf(float(cs2.hunger) + 0.012, 0.0, 1.0)
 	if h == 8:
 		daily_costs()
 	if not mods.get("sleeping", false) and h >= 10 and h <= 20 and int(S.mom_day) != day() and randf() < 0.1 and day() > 1:
@@ -786,7 +809,6 @@ func on_day() -> void:
 	add_invest(-4.0 if S.heat < 25.0 else -1.0)
 	S.heat = maxf(0.0, S.heat - 6.0)
 	check_unlocks()
-	save_game(false)
 
 
 func missed_payment(short: float, why: String) -> void:
@@ -828,7 +850,7 @@ func max_price(def: Dictionary, st: Dictionary, p: String, pur, g: int, o := {})
 	m *= 0.88 + float(st.get("hunger", 0.4)) * 0.28
 	if float(pur) < float(o.get("minpur", def.get("minpur", 0))):
 		m *= 0.72
-	m *= 1.0 - minf(0.18, (g - 1) * 0.02)
+	m *= 1.0 - minf(0.12, (g - 1) * 0.008)
 	if has_skill("twarda"):
 		m *= 1.06
 	if o.has("mood"):
@@ -850,24 +872,24 @@ func make_order(c: Dictionary, force_g := 0) -> Dictionary:
 	var noise := randf_range(0.94, 1.06)
 	var mx := max_price(c, st, product, maxi(int(c.minpur), 60), g, {"noise": noise})
 	var stated: int = maxi(5, int(round(mx * float(c.honesty) * randf_range(0.86, 0.95))))
-	# spotkanie o konkretnej godzinie: za 1,5–4 h, zaokrąglone do pół godziny
-	var meet: float = ceil((S.t + randf_range(90.0, 240.0)) / 30.0) * 30.0
+	# klient nie narzuca godziny: będzie na miejscu ok. godzinę po potwierdzeniu
+	# (chyba że gracz zaproponuje inną porę — wtedy `fixed` = true)
+	var meet: float = default_meet()
 	var o := {
 		"id": int(S.next_order), "cust": c.id, "product": product, "grams": g, "minpur": int(c.minpur), "spot": spot.id,
-		"meet": meet, "deadline": meet + 60.0, "respond_by": minf(meet - 25.0, S.t + 120.0), "status": "new",
+		"meet": meet, "fixed": false, "deadline": meet + 60.0, "respond_by": S.t + 180.0, "status": "new",
 		"stated": stated, "noise": noise, "agreed": null, "counter": null, "countered": false, "resched": false, "t0": S.t, "text": "",
 	}
 	S.next_order = int(S.next_order) + 1
 	var pn: String = D.PRODUCTS[product].name
-	var at := clock(meet)
 	var sn: String = spot.name
 	var lines := {
-		"luzak": ["Siema, ogarniesz %d g %s? Dam %d za gram. %s, o %s." % [g, pn, stated, sn, at], "Ej, masz coś? %d g po %d zł. Będę: %s, %s." % [g, stated, sn, at]],
-		"twardziel": ["%d g. %d za gram. %s, %s." % [g, stated, sn, at], "Potrzebuję %d g. Daję %d. %s o %s. Nie spóźnij się." % [g, stated, sn, at]],
-		"gadula": ["Dzień dobry, panie kolego! Potrzebowałbym %d g, po %d złotych. Spotkajmy się: %s, godzina %s." % [g, stated, sn, at]],
-		"konkret": ["%d g %s, %d zł/g. Miejsce: %s. Godzina: %s. Potwierdź." % [g, pn, stated, sn, at]],
-		"cwaniak": ["Słuchaj, biorę %d g, ale więcej niż %d za gram nie dam, bo krucho. %s, o %s." % [g, stated, sn, at]],
-		"impulsywny": ["%d g! %d zł/g. %s, %s. Bądź!!" % [g, stated, sn, at]],
+		"luzak": ["Siema, ogarniesz %d g %s? Dam %d za gram. %s, za godzinkę?" % [g, pn, stated, sn], "Ej, masz coś? %d g po %d zł. Mogę być za godzinę: %s." % [g, stated, sn]],
+		"twardziel": ["%d g. %d za gram. %s. Potwierdź, będę za godzinę." % [g, stated, sn], "Potrzebuję %d g. Daję %d. %s, godzina od twojego „ok”. Nie spóźnij się." % [g, stated, sn]],
+		"gadula": ["Dzień dobry, panie kolego! Potrzebowałbym %d g, po %d złotych. Spotkajmy się: %s — będę godzinę po pańskiej odpowiedzi." % [g, stated, sn]],
+		"konkret": ["%d g %s, %d zł/g. Miejsce: %s. Czas: godzina od potwierdzenia." % [g, pn, stated, sn]],
+		"cwaniak": ["Słuchaj, biorę %d g, ale więcej niż %d za gram nie dam, bo krucho. %s, godzinę po twoim „ok”." % [g, stated, sn]],
+		"impulsywny": ["%d g! %d zł/g. %s. Odpisz, to lecę!!" % [g, stated, sn]],
 	}
 	var opts: Array = lines.get(c.type, lines.luzak)
 	o.text = opts.pick_random()
@@ -877,9 +899,21 @@ func make_order(c: Dictionary, force_g := 0) -> Dictionary:
 	return o
 
 
+## domyślna pora spotkania: ok. godzinę od teraz, zaokrąglona w górę do 5 minut
+func default_meet() -> float:
+	return ceil((S.t + 58.0) / 5.0) * 5.0
+
+
+## pora spotkania, jaka wyjdzie po potwierdzeniu zamówienia w tej chwili
+func meet_if_accepted(o: Dictionary) -> float:
+	if o.get("fixed", false) and float(o.meet) > S.t + 12.0:
+		return float(o.meet)
+	return default_meet()
+
+
 func next_gap(c: Dictionary, st: Dictionary) -> float:
 	var gap := randf_range(float(c.every[0]), float(c.every[1])) * 60.0
-	gap *= 1.0 - minf(100.0, float(st.loy)) / 250.0
+	gap *= 1.0 - minf(100.0, float(st.loy)) / 600.0
 	if has_skill("siec"):
 		gap *= 0.85
 	return gap
@@ -909,9 +943,11 @@ func reply_order(id, kind: String, value := 0) -> void:
 	var def := cust_def(o.cust)
 	var st: Dictionary = S.cust[o.cust]
 	if kind == "accept":
+		o.meet = meet_if_accepted(o)
 		chat(o.cust, "Pasuje. %d zł za gram, będę o %s." % [int(o.stated), clock(o.meet)], true)
 		_accept_order(o, int(o.stated), ["Ok, czekam.", "Dobra. Do zobaczenia.", "Super, będę."].pick_random())
 	elif kind == "counterok":
+		o.meet = meet_if_accepted(o)
 		chat(o.cust, "Niech będzie %d zł za gram." % int(o.counter), true)
 		_accept_order(o, o.counter, "Stoi, %d za gram. Czekam o %s." % [int(o.counter), clock(o.meet)])
 	elif kind == "price":
@@ -920,7 +956,8 @@ func reply_order(id, kind: String, value := 0) -> void:
 		# przez telefon klient jest mniej skłonny do ustępstw niż twarzą w twarz
 		var mx := max_price(def, st, o.product, maxi(int(o.minpur), 60), int(o.grams), {"noise": o.noise}) * 0.94
 		if price <= mx:
-			_accept_order(o, price, ["Ok, %d za gram. Czekam." % price, "Niech będzie %d. Do zobaczenia." % price].pick_random())
+			o.meet = meet_if_accepted(o)
+			_accept_order(o, price, ["Ok, %d za gram. Będę o %s." % [price, clock(o.meet)], "Niech będzie %d. Do zobaczenia o %s." % [price, clock(o.meet)]].pick_random())
 		elif price <= mx * 1.2 and not o.countered:
 			o.counter = maxi(int(o.stated), int(round(mx * randf_range(0.93, 0.99))))
 			o.countered = true
@@ -931,7 +968,8 @@ func reply_order(id, kind: String, value := 0) -> void:
 			chat(o.cust, ["Chyba żartujesz. Szukam gdzie indziej.", "Za takie pieniądze? Nie, dzięki."].pick_random())
 	elif kind == "time":
 		var meet := float(value)
-		chat(o.cust, "Możemy o %s zamiast o %s?" % [clock(meet), clock(o.meet)], true)
+		var was_new: bool = o.status == "new"
+		chat(o.cust, ("Możemy się spotkać o %s?" % clock(meet)) if was_new else ("Możemy o %s zamiast o %s?" % [clock(meet), clock(o.meet)]), true)
 		var odds := {"impulsywny": 0.35, "konkret": 0.55, "twardziel": 0.6, "cwaniak": 0.7}
 		var p: float = odds.get(def.type, 0.85)
 		if o.resched:
@@ -939,15 +977,16 @@ func reply_order(id, kind: String, value := 0) -> void:
 		o.resched = true
 		if randf() < p:
 			o.meet = meet
+			o["fixed"] = true
 			o.deadline = meet + 60.0
-			o.respond_by = maxf(float(o.respond_by), minf(meet - 25.0, S.t + 120.0))
+			o.respond_by = maxf(float(o.respond_by), minf(meet - 10.0, S.t + 120.0))
 			chat(o.cust, ["Ok, %s." % clock(meet), "Dobra, niech będzie %s." % clock(meet)].pick_random())
 			if npcs != null:
 				npcs.reschedule(int(o.id))
 			nav_dirty.emit()
 		else:
 			st.sat = maxf(0.0, float(st.sat) - 2.0)
-			chat(o.cust, "Nie da rady. O %s albo wcale." % clock(o.meet))
+			chat(o.cust, "Nie da rady. Godzinę po twoim „ok” albo wcale." if was_new else ("Nie da rady. O %s albo wcale." % clock(o.meet)))
 	elif kind == "decline":
 		chat(o.cust, "Nie tym razem." if o.status == "new" else "Muszę odwołać. Sorry.", true)
 		var was_accepted: bool = o.status == "accepted"
@@ -964,6 +1003,7 @@ func _accept_order(o: Dictionary, agreed, line: String) -> void:
 	var def := cust_def(o.cust)
 	o.status = "accepted"
 	o.agreed = agreed
+	o.deadline = float(o.meet) + 60.0
 	o.counter = null
 	o.t0 = S.t
 	S.cust[o.cust].declines = 0
@@ -1082,6 +1122,13 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 			continue
 		if best == null or (int(s.pur) >= int(who.minpur) and (int(best.pur) < int(who.minpur) or int(s.pur) < int(best.pur))):
 			best = s
+	if o != null and o.has("hold"):
+		var hm: Dictionary = o.hold
+		d.mood = clampf(float(hm.mood), 5.0, 95.0)
+		d.patience = maxi(1, int(hm.patience))
+		d.max_patience = maxi(int(d.max_patience), int(d.patience))
+		d.used = hm.used.duplicate()
+		d.notes.append("Wróciłeś do rozmowy — klient pamięta, na czym stanęło.")
 	d.sel = best if best != null else st_list[0]
 	d.qty = clampi(int(d.want), 1, int(d.sel.n))
 	d.price = int(ctx.agreed) if ctx.get("agreed") != null else int(round(market_price(d.sel.p, d.sel.pur)))
@@ -1396,6 +1443,29 @@ func deal_tactic(d: Dictionary, id: String) -> void:
 	_deal_check_walk(d)
 
 
+## „Zaraz wracam”: klient zostaje na miejscu i czeka, zamówienie nie przepada.
+## Rozmowa zostaje zapamiętana (nastrój trochę siada), więc wyjście nie resetuje targów.
+func deal_pause(d: Dictionary) -> void:
+	var o = d.ctx.get("order")
+	if o == null or d.over:
+		deal_leave(d)
+		return
+	o["hold"] = {"mood": float(d.mood) - 4.0, "patience": int(d.patience), "used": d.used.duplicate()}
+	o.deadline = maxf(float(o.deadline), S.t + 45.0)
+	d.over = true
+	notify("%s: „Dobra, czekam. Tylko się streszczaj.”" % String(d.who.name))
+	deal_finish(d, {"sold": 0, "left": true, "paused": true})
+
+
+## rezygnacja z transakcji w trakcie rozmowy: zamówienie przepada, klient jest zły
+func deal_cancel(d: Dictionary) -> void:
+	var o = d.ctx.get("order")
+	d.over = true
+	deal_finish(d, {"sold": 0, "left": true})
+	if o != null and find_order(o.id) != null:
+		reply_order(o.id, "decline")
+
+
 func deal_leave(d: Dictionary) -> void:
 	if not d.over:
 		d.over = true
@@ -1443,7 +1513,9 @@ func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, m
 		ds += clampf((pur - int(def.minpur)) / 6.0, -8.0, 5.0)
 		cs.sat = clampf(float(cs.sat) + ds, 0.0, 100.0)
 		cs.hunger = 0.05
-		cs.next = maxf(float(cs.next), S.t + 120.0)
+		# po zakupie klient odzywa się najwcześniej za ok. 5 godzin (spotkania są teraz godzinę
+		# po potwierdzeniu, więc bez tej przerwy zamawiałby dużo częściej niż dawniej)
+		cs.next = maxf(float(cs.next), S.t + 240.0)
 		if int(cs.deals) >= 5:
 			cs.known["budget"] = true
 		if int(o.grams) <= 0:
@@ -1687,7 +1759,7 @@ func mix(room: String, p: String, pur: int, g: float, filler_g: int) -> int:
 	var share := from_inv / tot
 	take_item(room, fid, filler_g)
 	var inv_room := maxf(0.0, float(capacity()) - carry_total())
-	var to_inv: float = minf(snappedf((tot + filler_g) * share, 0.1), inv_room)
+	var to_inv: float = minf(snappedf((tot + filler_g) * share, 0.5), floorf(inv_room * 2.0) / 2.0)
 	add_bulk(S.inv, p, np, to_inv)
 	add_bulk(S.stash[room], p, np, tot + filler_g - to_inv)
 	notify("Mieszanka: %s → %s, czystość %d%% (%s)." % [grams(tot), grams(tot + filler_g), np, tier_name(np)], "warn" if np < 60 else "good")
@@ -1741,6 +1813,8 @@ func move_stack(room: String, to_stash: bool, kind: String, p: String, pur: int,
 	n = minf(n, maxf(0.0, space))
 	if kind == "pack":
 		n = floor(n + 0.001)
+	else:
+		n = floorf(n * 2.0 + 0.001) / 2.0
 	if n <= 0.0:
 		notify("Brak miejsca w %s." % ("skrytce" if to_stash else "plecaku"), "warn")
 		return 0.0
@@ -1948,7 +2022,14 @@ func next_installment() -> Dictionary:
 # ================================================================ fabuła
 func _build_story() -> void:
 	story = [
-		{"ch": "Rozdział 1: Dług brata", "id": "phone", "text": func(): return "Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
+		# najpierw oprowadzenie po kawalerce: zapis gry, skrytka, waga — dopiero potem pierwsza paczka
+		{"ch": "Rozdział 1: Dług brata", "id": "room_save", "text": func(): return "Rozejrzyj się po kawalerce brata. Podejdź do laptopa na stole, naceluj na niego i naciśnij [E] — tylko tak zapisujesz grę.",
+			"done": func(): return flag("tut_save"), "marker": _laptop_marker},
+		{"id": "room_stash", "text": func(): return "Szafa pod ścianą to Twoja skrytka — towar i gotówka są w niej bezpieczne. Otwórz ją [E].",
+			"done": func(): return flag("tut_stash"), "marker": _stash_marker},
+		{"id": "room_bench", "text": func(): return "Na stole stoi waga po bracie. To tu porcjuje się towar — obejrzyj ją [E].",
+			"done": func(): return flag("tut_bench"), "marker": _bench_marker, "on_done": _on_tour_done},
+		{"id": "phone", "text": func(): return "Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
 			"done": func(): return flag("read_wiktor"), "on_done": _on_phone_done},
 		{"id": "drop1", "text": func(): return "Idź do skrytki za altanką śmietnikową i zabierz paczkę (przytrzymaj [E]).",
 			"done": func(): return flag("got_first"), "marker": _drop_marker},
@@ -1979,6 +2060,33 @@ func _has_furn(room: String, fn: String) -> bool:
 		if furn_def(it.f)["func"] == fn:
 			return true
 	return false
+
+
+## liczba kroków oprowadzenia przed krokiem „phone” (do przeliczania starych numerów kroków)
+const TOUR_STEPS := 3
+
+
+func _laptop_marker() -> Variant:
+	return {"loc": "safe", "x": float(D.ROOMS.safe.cx) + 1.45, "z": -float(D.ROOMS.safe.d) * 0.5 + 0.67}
+
+
+func _stash_marker() -> Variant:
+	return {"loc": "safe", "x": float(D.ROOMS.safe.cx) + float(D.ROOMS.safe.w) * 0.5 - 0.42, "z": 0.6}
+
+
+## po obejrzeniu pokoju odzywa się Wiktor z pierwszą paczką
+func _on_tour_done() -> void:
+	if flag("wiktor_sms"):
+		return
+	S.flags["wiktor_sms"] = true
+	chat("wiktor", "Pierwsza paczka czeka w skrytce za altanką śmietnikową przy parkingu. 5 g na zeszyt — 105 zł oddasz po sprzedaży. Wagę i woreczki po bracie już widziałeś: zaporcjuj towar i czekaj na wiadomość od klienta.")
+
+
+func last_save_text() -> String:
+	if not S.has("saved_at"):
+		return "jeszcze nie zapisano"
+	var t := float(S.saved_at)
+	return "dzień %d, %s" % [int(floor(t / 1440.0)) + 1, clock(t)]
 
 
 func _on_phone_done() -> void:
@@ -2058,7 +2166,10 @@ func story_tick() -> void:
 
 
 # ================================================================ zapis
+## Zapis jest możliwy tylko przy laptopie w kryjówce (main.save_here). Nie ma zapisów automatycznych.
 func save_game(manual := true) -> void:
+	S.flags["tut_save"] = true
+	S["saved_at"] = S.t
 	if test_mode:
 		return
 	if player != null:
@@ -2101,6 +2212,12 @@ func load_game() -> bool:
 	for k in ["woreczki", "majeranek", "cukier", "nasiona", "burner"]:
 		if not base.items.has(k):
 			base.items[k] = 0
+	if not base.flags.has("tut_save") and (int(base.step) > 0 or base.flags.has("read_wiktor")):
+		base.step = int(base.step) + TOUR_STEPS
+		base.flags["wiktor_sms"] = true
+	for k in ["tut_save", "tut_stash", "tut_bench"]:
+		if int(base.step) >= TOUR_STEPS:
+			base.flags[k] = true
 	base.wanted = false
 	S = base
 	return true

@@ -26,6 +26,13 @@ var pivot: Node3D
 var bag_mesh: MeshInstance3D
 var spin := 0.0
 var spin_drag := false
+var ask := {}                # otwarte okno wyboru ilości: {e, from, to, max, step, v}
+var ask_box: Control = null
+var ask_big: Label
+var ask_sub: Label
+var ask_slider: HSlider
+var ask_edit: LineEdit
+var ask_go: Button
 
 
 func build(ui_ref) -> void:
@@ -110,7 +117,9 @@ func _build_viewport() -> void:
 	vp.add_child(cam)
 	pivot = Node3D.new()
 	vp.add_child(pivot)
-	rig = Chars.make(D.PLAYER_LOOK)
+	var look: Dictionary = D.PLAYER_LOOK.duplicate()
+	look["no_blob"] = true
+	rig = Chars.make(look)
 	pivot.add_child(rig.root)
 	Chars.animate(rig, 0.0, 0.0, "")
 	# plecak na plecach (widoczny po zakupie)
@@ -195,6 +204,7 @@ func open(room_id := "", start_tab := "inv") -> void:
 
 
 func close() -> void:
+	ask_close()
 	visible = false
 	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
@@ -297,7 +307,7 @@ func _tab_inv() -> void:
 		rv.add_child(_cap_bar(sused, scap, K.C_GOLD))
 		rv.add_child(_cash_row(st))
 		right.set_drag_forwarding(Callable(), _can_drop.bind("stash"), _drop.bind("stash"))
-		hint.text = "Przeciągnij rzecz na drugą stronę, żeby przenieść całość   •   PPM — 1 szt.   •   Shift + PPM — 5 szt.   •   LPM — szczegóły"
+		hint.text = "Przeciągnij rzecz na drugą stronę i wybierz ilość suwakiem   •   kliknięcie — opis   •   dwuklik — szybkie przeniesienie"
 	else:
 		var right2 := K.vbox(10)
 		right2.custom_minimum_size = Vector2(W_SIDE, H_BODY)
@@ -317,7 +327,7 @@ func _tab_inv() -> void:
 		var nb := _nearest_stash()
 		if nb != "":
 			iv.add_child(K.rich(K.col("Najbliższa skrytka: ", K.C_DIM) + "[b]%s[/b]" % nb, 13))
-		hint.text = "Przeciągnij rzecz do kosza, żeby ją wyrzucić   •   LPM — szczegóły   •   skrytki są w kryjówkach"
+		hint.text = "Przeciągnij rzecz do kosza, żeby ją wyrzucić (wybierzesz ilość)   •   kliknięcie — opis   •   skrytki są w kryjówkach"
 
 
 func _nearest_stash() -> String:
@@ -485,36 +495,17 @@ func _row(e: Dictionary, side: String) -> Control:
 
 
 func _row_input(ev: InputEvent, e: Dictionary, side: String) -> void:
-	if not (ev is InputEventMouseButton) or ev.pressed:
+	if not (ev is InputEventMouseButton) or ev.pressed or ev.button_index != MOUSE_BUTTON_LEFT:
 		return
-	if ev.button_index == MOUSE_BUTTON_LEFT:
-		Sfx.play("click")
-		if ev.double_click:
-			_move(e, side, 1e9)
-			return
-		sel = {"side": side, "kind": e.kind, "p": e.p, "pur": int(e.pur), "id": e.id}
-		render()
-	elif ev.button_index == MOUSE_BUTTON_RIGHT:
-		_move(e, side, 5.0 if ev.shift_pressed else 1.0)
-
-
-# ---------------------------------------------------------------- przenoszenie
-func _move(e: Dictionary, side: String, amount: float) -> void:
-	if not has_stash():
+	Sfx.play("click")
+	if ev.double_click and has_stash():
+		ask_amount(e, side, "stash" if side == "bag" else "bag")
 		return
-	var moved := G.move_entry(room, e, side == "bag", minf(amount, float(e.n)))
-	if moved > 0.0:
-		Sfx.play("select")
+	sel = {"side": side, "kind": e.kind, "p": e.p, "pur": int(e.pur), "id": e.id}
 	render()
 
 
-func _discard(e: Dictionary, amount: float) -> void:
-	G.discard_entry(e, minf(amount, float(e.n)))
-	Sfx.play("drop")
-	sel = {}
-	render()
-
-
+# ---------------------------------------------------------------- przenoszenie: przeciągnij i wybierz ilość
 func _drag(_at: Vector2, e: Dictionary, side: String) -> Variant:
 	var col := _ecolor(e)
 	var pv := K.panel(K.sb(Color(0.09, 0.11, 0.16, 0.95), 9, K.C_ACC, 1, 8))
@@ -539,11 +530,188 @@ func _can_drop(_at: Vector2, data: Variant, side: String) -> bool:
 
 
 func _drop(_at: Vector2, data: Variant, side: String) -> void:
-	var e: Dictionary = data.e
-	if side == "bin":
-		_discard(e, float(e.n))
+	ask_amount(data.e, data.side, side)
+
+
+func _fmt_amount(e: Dictionary, v: float) -> String:
+	if String(e.unit) == "g":
+		return G.grams(v)
+	return "%d %s" % [int(round(v)), e.unit]
+
+
+## Okno wyboru ilości po upuszczeniu przedmiotu: suwak, pole do wpisania liczby
+## oraz podgląd, ile to waży i ile miejsca zajmie. `to` = "stash" | "bag" | "bin".
+func ask_amount(e: Dictionary, from: String, to: String) -> void:
+	var step: float = e.get("step", 1.0)
+	var limit: float = float(e.n) if to == "bin" else G.move_limit(room, e, to == "stash")
+	if limit < step - 0.001:
+		G.notify("Brak miejsca w %s." % ("skrytce" if to == "stash" else "plecaku"), "warn")
+		Sfx.play("error")
+		return
+	if float(e.n) <= step + 0.001:
+		_apply_move(e, to, float(e.n))
+		return
+	ask_close()
+	ask = {"e": e, "from": from, "to": to, "max": limit, "step": step, "v": limit}
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.62)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(dim)
+	ask_box = dim
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.add_child(cc)
+	var col := _ecolor(e)
+	var bin := to == "bin"
+	var edge := K.C_BAD if bin else K.C_ACC
+	var p := K.panel(K.sb(Color(0.055, 0.068, 0.096, 0.99), 16, Color(edge.r, edge.g, edge.b, 0.7), 1, 22))
+	p.custom_minimum_size = Vector2(520, 0)
+	cc.add_child(p)
+	var v := K.vbox(10)
+	p.add_child(v)
+	# co i dokąd
+	var hd := K.hbox(10)
+	var ib := K.panel(K.sb(Color(col.r, col.g, col.b, 0.16), 9, Color(col.r, col.g, col.b, 0.55), 1, 0))
+	ib.custom_minimum_size = Vector2(42, 42)
+	var ic := K.icon(e.icon, 24, col)
+	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ib.add_child(ic)
+	hd.add_child(ib)
+	var hv := K.vbox(-2)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hv.add_child(K.head(e.name, 22, K.C_TXT))
+	var sub := String(e.sub)
+	if int(e.tier) >= 0:
+		sub = "%s %d%%  •  %s" % [D.TIER_NAMES[int(e.tier)], int(e.pur), e.sub]
+	hv.add_child(K.lbl(sub if sub != "" else "przedmiot", 12, col if int(e.tier) >= 0 else K.C_DIM))
+	hd.add_child(hv)
+	var route := K.hbox(6)
+	route.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var names := {"bag": G.bag_name(), "stash": "Skrytka", "bin": "Kosz"}
+	route.add_child(K.lbl(String(names[from]), 12, K.C_DIM))
+	route.add_child(K.icon("chevron_right", 14, edge))
+	route.add_child(K.lbl(String(names[to]), 13, edge))
+	hd.add_child(route)
+	v.add_child(hd)
+	# wybrana ilość, a pod nią waga i miejsce
+	ask_big = K.head("", 46, Color.WHITE)
+	ask_big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(ask_big)
+	ask_sub = K.lbl("", 14, K.C_DIM)
+	ask_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(ask_sub)
+	# suwak z przyciskami − / + i polem do wpisania liczby
+	var row := K.hbox(8)
+	v.add_child(row)
+	var minus := K.btn("−", func(): _ask_set(float(ask.v) - step), "", true)
+	minus.custom_minimum_size = Vector2(36, 34)
+	row.add_child(minus)
+	ask_slider = HSlider.new()
+	ask_slider.min_value = step
+	ask_slider.max_value = limit
+	ask_slider.step = step
+	ask_slider.value = limit
+	ask_slider.focus_mode = Control.FOCUS_NONE
+	ask_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ask_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ask_slider.custom_minimum_size = Vector2(0, 26)
+	ask_slider.value_changed.connect(func(val): _ask_set(val, false))
+	row.add_child(ask_slider)
+	var plus := K.btn("+", func(): _ask_set(float(ask.v) + step), "", true)
+	plus.custom_minimum_size = Vector2(36, 34)
+	row.add_child(plus)
+	ask_edit = LineEdit.new()
+	ask_edit.custom_minimum_size = Vector2(84, 34)
+	ask_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ask_edit.max_length = 6
+	ask_edit.select_all_on_focus = true
+	ask_edit.tooltip_text = "Wpisz ilość"
+	ask_edit.add_theme_stylebox_override("normal", K.sb(Color(0.03, 0.04, 0.06), 8, Color(1, 1, 1, 0.18), 1, 8))
+	ask_edit.add_theme_stylebox_override("focus", K.sb(Color(0.03, 0.04, 0.06), 8, K.C_ACC, 1, 8))
+	ask_edit.text_changed.connect(_ask_typed)
+	ask_edit.text_submitted.connect(func(_t): ask_ok())
+	row.add_child(ask_edit)
+	var mm := K.hbox(0)
+	mm.add_child(K.lbl(_fmt_amount(e, step), 11, K.C_DIM))
+	mm.add_child(K.spacer())
+	var cap_note := "wszystko" if limit >= float(e.n) - 0.001 else "tyle się zmieści"
+	mm.add_child(K.lbl("%s  (%s)" % [_fmt_amount(e, limit), cap_note], 11, K.C_DIM if limit >= float(e.n) - 0.001 else K.C_WARN))
+	v.add_child(mm)
+	v.add_child(K.lbl("Przesuń suwak albo wpisz liczbę.  Enter — zatwierdź,  Esc — anuluj.", 11, Color(1, 1, 1, 0.35)))
+	var bh := K.hbox(8)
+	v.add_child(bh)
+	var bc := K.btn("Anuluj", ask_close)
+	bc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bh.add_child(bc)
+	ask_go = K.btn("", ask_ok, "bad" if bin else "go")
+	ask_go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bh.add_child(ask_go)
+	_ask_set(limit)
+	Sfx.play("open")
+	p.pivot_offset = Vector2(260, 120)
+	p.scale = Vector2(0.94, 0.94)
+	dim.modulate.a = 0.0
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.set_parallel(true)
+	tw.tween_property(dim, "modulate:a", 1.0, 0.12)
+	tw.tween_property(p, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func asking() -> bool:
+	return not ask.is_empty()
+
+
+func _ask_set(val: float, move_slider := true, from_edit := false) -> void:
+	if ask.is_empty():
+		return
+	var step: float = ask.step
+	var v2 := clampf(snappedf(val, step), step, float(ask.max))
+	ask.v = v2
+	var e: Dictionary = ask.e
+	ask_big.text = _fmt_amount(e, v2)
+	ask_sub.text = "waga %s   •   miejsce %s" % [G.weight_text(v2 * float(e.uw)), G.units(v2 * float(e.usize))]
+	var verb := "Wyrzuć" if ask.to == "bin" else "Przenieś"
+	ask_go.text = "%s %s" % [verb, _fmt_amount(e, v2)]
+	if move_slider and absf(ask_slider.value - v2) > 0.001:
+		ask_slider.set_value_no_signal(v2)
+	if not from_edit:
+		ask_edit.text = G.units(v2) if step < 1.0 else str(int(v2))
+
+
+func _ask_typed(t: String) -> void:
+	var clean := t.strip_edges().replace(",", ".")
+	if clean.is_valid_float():
+		_ask_set(clean.to_float(), true, true)
+
+
+func ask_ok() -> void:
+	if ask.is_empty():
+		return
+	var e: Dictionary = ask.e
+	var to: String = ask.to
+	var amount: float = ask.v
+	ask_close()
+	_apply_move(e, to, amount)
+
+
+func ask_close() -> void:
+	ask = {}
+	if ask_box != null and is_instance_valid(ask_box):
+		ask_box.queue_free()
+	ask_box = null
+
+
+func _apply_move(e: Dictionary, to: String, amount: float) -> void:
+	if to == "bin":
+		G.discard_entry(e, amount)
+		Sfx.play("drop")
+		sel = {}
 	else:
-		_move(e, data.side, float(e.n))
+		var moved := G.move_entry(room, e, to == "stash", amount)
+		if moved > 0.0:
+			Sfx.play("select")
+	render()
 
 
 func _find_sel() -> Dictionary:
@@ -558,19 +726,26 @@ func _find_sel() -> Dictionary:
 	return {}
 
 
-## karta szczegółów zaznaczonej rzeczy
+## Karta pod postacią: bez przycisków przenoszenia. Pokazuje opis klikniętej rzeczy
+## albo podsumowanie tego, co gracz ma przy sobie.
 func _detail() -> Control:
 	var p := _frame(W_MID, 0, 12)
 	p.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var v := K.vbox(6)
+	var v := K.vbox(5)
 	p.add_child(v)
+	var S: Dictionary = G.S
 	var e := _find_sel()
 	if e.is_empty():
-		v.add_child(K.lbl("SZCZEGÓŁY", 10, K.C_DIM))
-		v.add_child(K.wrap("Kliknij rzecz na liście, żeby zobaczyć szczegóły i przenieść wybraną ilość.", 13, K.C_DIM))
+		v.add_child(K.lbl("CO MASZ PRZY SOBIE", 10, K.C_DIM))
+		var goods := G.carry_goods()
+		_stat(v, "banknote", "Wartość towaru na ulicy", "ok. " + G.money(G.carry_value()), K.C_ACC if goods > 0.0 else K.C_DIM)
+		_stat(v, "package", "Porcje gotowe do sprzedaży", str(G.packed_total(S.inv)))
+		_stat(v, "weight", "Waga ładunku", G.weight_text(G.store_weight(S.inv)))
+		_stat(v, "shield_alert", "Przy kontroli stracisz", G.grams(goods) if goods > 0.0 else "nic", K.C_WARN if goods > 0.0 else K.C_ACC)
+		v.add_child(K.spacer())
+		v.add_child(K.wrap("Przeciągnij rzecz na drugą stronę — pojawi się suwak z wyborem ilości. Kliknięcie pokazuje opis.", 11, K.C_DIM))
 		return p
 	var col := _ecolor(e)
-	var side: String = sel.side
 	var h := K.hbox(8)
 	h.add_child(K.icon(e.icon, 22, col))
 	var nm := K.head(e.name, 20, K.C_TXT)
@@ -581,28 +756,15 @@ func _detail() -> Control:
 	if int(e.tier) >= 0:
 		v.add_child(K.rich("%s  •  %s" % [K.tier_bb(e.pur), e.sub], 12))
 	v.add_child(K.wrap(e.desc, 12, K.C_DIM))
-	v.add_child(K.rich("Ilość [b]%s[/b]   Miejsce [b]%s[/b]   Waga [b]%s[/b]" % [e.qty, G.units(e.size), G.weight_text(e.weight)], 12))
+	_stat(v, "layers", "Ilość", String(e.qty))
+	_stat(v, "box", "Miejsce / waga", "%s  /  %s" % [G.units(e.size), G.weight_text(e.weight)])
+	if e.kind != "item":
+		_stat(v, "banknote", "Na ulicy", "ok. %s/g" % G.money(G.market_price(e.p, e.pur)), K.C_ACC)
 	v.add_child(K.spacer())
-	var bh := K.hbox(5)
-	v.add_child(bh)
-	if has_stash():
-		bh.add_child(K.lbl("Do skrytki:" if side == "bag" else "Do plecaka:", 12, K.C_DIM))
-		for a in [1.0, 5.0, 1e9]:
-			var amt: float = a
-			if amt < 1e8 and float(e.n) < amt:
-				continue
-			var b := K.btn("Wszystko" if amt > 1e8 else str(int(amt)), func(): _move(e, side, amt), "go" if amt > 1e8 else "", true)
-			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			bh.add_child(b)
-	if side == "bag":
-		if e.kind == "item" and e.id == "burner":
-			var ub := K.btn("Użyj", func(): G.use_burner(); render(), "go", true)
-			ub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			bh.add_child(ub)
-		var db := K.btn("Wyrzuć", func(): _discard(e, 1e9), "bad", true)
-		if not has_stash():
-			db.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		bh.add_child(db)
+	if sel.side == "bag" and e.kind == "item" and e.id == "burner":
+		v.add_child(K.btn("Użyj — zmień numer", func(): G.use_burner(); render(), "go", true))
+	else:
+		v.add_child(K.wrap("Przeciągnij na skrytkę%s, żeby wybrać ilość." % ("" if has_stash() else " (w kryjówce)") if sel.side == "bag" else "Przeciągnij do plecaka, żeby wybrać ilość.", 11, K.C_DIM))
 	return p
 
 
@@ -736,7 +898,7 @@ func _tab_org() -> void:
 		var when := "za %d min" % left if left > 0 else "TERAZ"
 		var price := (" • %s/g" % G.money(o.agreed)) if o.get("agreed") != null else ""
 		_note(av, "handshake" if ok else "message_circle", K.C_ACC if ok else K.C_WARN, "%s — %d g %s" % [cd.name, int(o.grams), D.PRODUCTS[o.product].name],
-			"%s%s • %s" % [G.spot_def(o.spot).get("name", "?"), price, ("umówione, " + when) if ok else "czeka na odpowiedź"], G.clock(o.meet))
+			"%s%s • %s" % [G.spot_def(o.spot).get("name", "?"), price, ("umówione, " + when) if ok else "czeka na odpowiedź"], G.clock(o.meet) if ok else "?")
 	# --- zeszyt
 	var b := _frame(colw, H_BODY)
 	row.add_child(b)

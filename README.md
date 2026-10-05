@@ -24,16 +24,26 @@ Obraz 3D skaluje się automatycznie, żeby utrzymać ok. 60 kl./s na MacBooku z 
 
 ## O co chodzi
 
-Brat zniknął i zostawił Ci kawalerkę oraz 25 000 zł długu u Wiktora. Wiktor daje towar na zeszyt i pierwszego klienta.
+Brata zabrała policja. Zostawił Ci kawalerkę oraz 25 000 zł długu u Wiktora. Wiktor daje towar na zeszyt i pierwszego klienta.
 Resztę budujesz sam: klienci z polecenia, własna kryjówka, uprawa, kolejne towary (Green → Speed → Blue → Snow).
 Raty rosną co cztery dni — trzy wpadki i koniec gry. Spłata całości zajmuje ok. 45 dni gry (1 godzina gry = 60 s).
 
+Nowa gra zaczyna się krótkim wstępem (zatrzymanie brata, „trzy tygodnie później”), a samouczek najpierw oprowadza
+po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierwszą paczkę.
+
 - **Towar**: zamawiasz w telefonie (Hurt), odbierasz ze skrytki w mieście, porcjujesz na wadze, możesz rozrobić
   (większa waga, niższa czystość — doświadczeni klienci rozpoznają mieszankę i odmówią).
-- **Klienci**: piszą SMS-y z godziną i miejscem. Odpowiadasz: Zgoda / Negocjuj / Zmień godzinę / Anuluj.
-  Klient wychodzi z domu i idzie na miejsce. Na spotkaniu wybierasz ton rozmowy i taktyki.
-- **Ekwipunek** (I): rzeczy mają rozmiar i wagę, układają się w stosy; przeciągasz je między plecakiem a skrytką.
-- **Policja**: patrole piesze i radiowóz, gorąco w dzielnicach, śledztwo. W pościgu przytrzymaj X, żeby wyrzucić towar.
+- **Klienci**: każdy odzywa się mniej więcej raz dziennie. Odpowiadasz kaflami: Zgoda / Negocjuj / Zmień godzinę / Anuluj.
+  Po potwierdzeniu spotkanie jest za ok. godzinę (chyba że ustalisz inną porę); klient wychodzi z domu i idzie na miejsce.
+  Na spotkaniu wybierasz ton rozmowy i taktyki. „Zaraz wracam” zostawia klienta na miejscu, „Rezygnuję” odwołuje transakcję.
+- **Ekwipunek** (I): rzeczy mają rozmiar i wagę, układają się w stosy. Przeciągasz je między plecakiem a skrytką,
+  a ilość wybierasz suwakiem albo wpisujesz. Sztuki są całe, gramy liczone w połówkach.
+- **Zapis gry**: tylko przy laptopie w kryjówce (w kawalerce stoi na stole; do garażu i piwnicy kupisz stolik z laptopem).
+  Nie ma zapisów automatycznych — niezapisany postęp przepada.
+- **Interakcje** (E): trzeba nacelować na drzwi, mebel albo osobę z bliska; celownik zmienia się wtedy w zielony pierścień.
+- **Policja**: patrole piesze i radiowóz, gorąco w dzielnicach, śledztwo. Policjant widzi przed siebie i trochę na boki,
+  nie za plecy (stożki widać na mapie). W pościgu przytrzymaj X, żeby wyrzucić towar.
+- **Miasto**: GPS prowadzi ulicami i ścieżkami, ale w płotach są dziury — kto zna teren, pójdzie na skróty.
 - **Kryjówki**: garaż i piwnica do kupienia; meblujesz je sam (B) — stół z wagą, regały, namiot uprawowy.
 
 ## Sterowanie
@@ -42,7 +52,7 @@ Raty rosną co cztery dni — trzy wpadki i koniec gry. Spłata całości zajmuj
 |---|---|
 | WASD, mysz | ruch i rozglądanie |
 | Shift | sprint |
-| E | interakcja (przytrzymaj przy skrytce) |
+| E | interakcja z tym, na co celujesz (przytrzymaj przy skrytce w mieście) |
 | Tab | telefon |
 | I | ekwipunek |
 | N / Q | trasa do celu / następny cel |

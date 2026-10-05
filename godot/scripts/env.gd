@@ -167,7 +167,7 @@ func set_quality(q: String) -> void:
 		return
 	var high := q == "high"
 	env.ssao_enabled = q != "low"
-	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_MEDIUM if high else RenderingServer.ENV_SSAO_QUALITY_VERY_LOW, true, 0.5, 2, 50.0, 300.0)
+	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_MEDIUM if high else RenderingServer.ENV_SSAO_QUALITY_LOW, true, 0.5, 3, 50.0, 300.0)
 	env.glow_enabled = true
 	env.volumetric_fog_enabled = q != "low"
 	env.ssr_enabled = false
@@ -214,7 +214,9 @@ func apply_scale() -> void:
 	var sc := clampf(float(TARGET_H.get(quality, 940.0)) * dyn / h, 0.35, 1.0)
 	vp.scaling_3d_scale = sc
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if sc < 0.97 else Viewport.SCALING_3D_MODE_BILINEAR
-	vp.fsr_sharpness = 0.35
+	# łagodne wyostrzanie i lekko dodatnie przesunięcie mipmap: mniej „piasku” na drobnych teksturach w ruchu
+	vp.fsr_sharpness = 1.5
+	vp.texture_mipmap_bias = 0.35 if sc < 0.97 else 0.1
 
 
 static func _dir(az_deg: float, el_deg: float) -> Vector3:

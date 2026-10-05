@@ -35,6 +35,8 @@ var _siren: AudioStreamWAV = null
 var _train: AudioStreamWAV = null
 var _syll: Array = []
 var voice_player: AudioStreamPlayer
+var _intro: AudioStreamWAV = null
+var intro_player: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -58,8 +60,11 @@ func _ready() -> void:
 	rain_player.volume_db = -60.0
 	add_child(rain_player)
 	voice_player = AudioStreamPlayer.new()
-	voice_player.volume_db = -13.0
+	voice_player.volume_db = -19.0
 	add_child(voice_player)
+	intro_player = AudioStreamPlayer.new()
+	intro_player.volume_db = -5.0
+	add_child(intro_player)
 	_build_bus()
 	for k in FILES:
 		sounds[k] = []
@@ -146,12 +151,106 @@ func siren(on: bool) -> void:
 		siren_player.stop()
 
 
+## podkład wstępu fabularnego (groza + syreny); gotowy chwilę po starcie gry
+func intro_ready() -> bool:
+	return _intro != null
+
+
+func intro_play(from := 0.0) -> void:
+	if muted or _intro == null or from >= _intro.get_length() - 0.2:
+		return
+	intro_player.stream = _intro
+	intro_player.volume_db = -5.0
+	intro_player.play(maxf(0.0, from))
+
+
+func intro_stop(fade := 1.0) -> void:
+	if not intro_player.playing:
+		return
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(intro_player, "volume_db", -60.0, fade)
+	tw.tween_callback(intro_player.stop)
+
+
+func _set_intro(st: AudioStreamWAV) -> void:
+	_intro = st
+
+
+## Muzyka wstępu, 27 s: niski dron z dysonansem, „bicie serca”, zbliżająca się syrena,
+## cisza po zatrzymaniu, narastający szum i uderzenie na planszę „trzy tygodnie później”.
+func _gen_intro() -> PackedFloat32Array:
+	var dur := 27.0
+	var n := int(dur * RATE)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 540
+	var ph_s := 0.0          # syrena
+	var lp_s := 0.0
+	var lp_n := 0.0          # szum
+	var ph_i := 0.0          # uderzenie
+	var hit := 21.5
+	for i in range(n):
+		if _abort and i % 2048 == 0:
+			return b
+		var t := float(i) / RATE
+		# dron: D1 + D2 z powolnym falowaniem, od 4 s dochodzi mała sekunda (napięcie)
+		var trem := 0.8 + 0.2 * sin(t * TAU * 0.13)
+		var dr := sin(t * TAU * 36.71) * 0.3 + sin(t * TAU * 73.42 + sin(t * TAU * 0.21) * 1.4) * 0.16 + sin(t * TAU * 110.0) * 0.045
+		var ten := clampf((t - 4.0) / 6.0, 0.0, 1.0)
+		dr += (sin(t * TAU * 146.83) + sin(t * TAU * 155.56)) * 0.035 * ten * (0.7 + 0.3 * sin(t * TAU * 0.31))
+		var v := dr * trem * minf(1.0, t / 1.5)
+		# bicie serca: dwa stłumione uderzenia co 1,25 s, coraz wyraźniejsze
+		var hb := fmod(t, 1.25)
+		var hk := 0.0
+		if hb < 0.22:
+			hk = sin(hb * TAU * (62.0 - hb * 110.0)) * exp(-hb * 22.0)
+		elif hb > 0.3 and hb < 0.52:
+			hk = sin((hb - 0.3) * TAU * (54.0 - (hb - 0.3) * 100.0)) * exp(-(hb - 0.3) * 24.0) * 0.7
+		v += hk * (0.14 + 0.2 * clampf(t / 20.0, 0.0, 1.0)) * (1.0 if t < hit else maxf(0.0, 1.0 - (t - hit)))
+		# syrena policyjna: nadjeżdża (1–9,5 s), gaśnie przy zatrzymaniu; potem druga, odjeżdżająca (13–20 s)
+		var sa := 0.0
+		var fsh := 1.0
+		if t > 1.0 and t < 9.8:
+			var kk := (t - 1.0) / 8.5
+			sa = kk * kk * 0.2 * clampf((9.8 - t) / 0.35, 0.0, 1.0)
+			fsh = 1.0 + 0.03 * (1.0 - kk)
+		elif t > 13.0 and t < 20.5:
+			var k2 := (t - 13.0) / 7.5
+			sa = (1.0 - k2) * (1.0 - k2) * 0.11 * clampf((t - 13.0) / 0.6, 0.0, 1.0)
+			fsh = 0.965
+		if sa > 0.0:
+			var sw := 0.5 + 0.5 * sin(t * TAU * 0.62)
+			var fq := (620.0 + 520.0 * sw * sw) * fsh
+			ph_s += fq / RATE
+			var raw := sin(ph_s * TAU) * 0.7 + sin(ph_s * TAU * 2.0) * 0.2 + sin(ph_s * TAU * 3.0) * 0.1
+			lp_s += (raw - lp_s) * (0.12 + 0.3 * sa * 4.0)
+			v += lp_s * sa
+		# narastający szum przed uderzeniem
+		if t > 18.2 and t < hit:
+			var kr := (t - 18.2) / (hit - 18.2)
+			lp_n += (rng.randf_range(-1.0, 1.0) - lp_n) * (0.02 + 0.4 * kr * kr)
+			v += lp_n * 0.3 * kr * kr
+		# uderzenie
+		if t >= hit:
+			var ti := t - hit
+			ph_i += (34.0 + 70.0 * exp(-ti * 8.0)) / RATE
+			v += sin(ph_i * TAU) * exp(-ti * 1.5) * 0.85
+			if ti < 0.5:
+				v += rng.randf_range(-1.0, 1.0) * exp(-ti * 18.0) * 0.25
+		# wyciszenie końca
+		v *= clampf((dur - t) / 3.2, 0.0, 1.0)
+		b[i] = clampf(v, -1.0, 1.0)
+	return b
+
+
 ## mamrotanie rozmówcy (jak w Simsach): jedna „sylaba” o wysokości głosu postaci
 func mumble(voice := 1.0) -> void:
 	if muted or _syll.is_empty():
 		return
 	voice_player.stream = _syll.pick_random()
-	voice_player.pitch_scale = clampf(voice * randf_range(0.94, 1.07), 0.5, 2.0)
+	voice_player.pitch_scale = clampf(voice * randf_range(0.97, 1.04), 0.6, 1.7)
 	voice_player.play()
 
 
@@ -215,6 +314,11 @@ func _noise_loop(dur: float, smooth: float, wobble: float) -> PackedFloat32Array
 
 
 func _generate() -> void:
+	# najpierw podkład wstępu — może być potrzebny zaraz po kliknięciu „Nowa gra”
+	var ib := _gen_intro()
+	if _abort:
+		return
+	_set_intro.call_deferred(_wav(ib))
 	# syrena: miękka, odległa
 	var n := int(3.0 * RATE)
 	var sb := PackedFloat32Array()
@@ -255,30 +359,27 @@ func _generate() -> void:
 		var kf := float(i) / xf
 		tb[i] = tb[i] * kf + tb[tn - xf + i] * (1.0 - kf)
 	var s4 := _wav(tb.slice(0, tn - xf), true)
-	# sylaby do mamrotania: impuls krtaniowy + dwa formanty samogłoski
-	var vowels := [[700.0, 1150.0], [520.0, 1750.0], [320.0, 2200.0], [480.0, 900.0], [360.0, 760.0], [620.0, 1400.0], [430.0, 1100.0], [560.0, 1000.0]]
+	# głos rozmówcy: krótkie, ciepłe „pyknięcia” (miękki atak, szybkie wybrzmienie, lekki zjazd tonu)
+	# zamiast brzęczących sylab — dużo mniej męczące przy dłuższych rozmowach
+	var tones := [196.0, 220.0, 174.6, 207.7, 185.0, 233.1, 164.8, 246.9]
 	var syl: Array = []
-	for vi in range(vowels.size()):
+	for vi in range(tones.size()):
 		if _abort:
 			return
-		var dur := 0.1 + 0.02 * (vi % 4)
+		var dur := 0.085 + 0.01 * (vi % 3)
 		var sn := int(dur * RATE)
 		var sbuf := PackedFloat32Array()
 		sbuf.resize(sn)
-		var f0 := 118.0 + (vi % 3) * 9.0
-		var period := int(RATE / f0)
-		var f1: float = vowels[vi][0]
-		var f2: float = vowels[vi][1]
+		var f0: float = tones[vi]
+		var vph := 0.0
 		var soft := 0.0
 		for i in range(sn):
-			var tp := float(i % period) / RATE
-			var e := exp(-tp * 420.0)
-			var v := (sin(tp * TAU * f1) * 0.8 + sin(tp * TAU * f2) * 0.35) * e
-			if vi % 3 == 0 and i < int(0.018 * RATE):
-				v += randf_range(-0.5, 0.5) * (1.0 - float(i) / (0.018 * RATE))
-			var a := minf(1.0, float(i) / (0.012 * RATE)) * minf(1.0, float(sn - i) / (0.03 * RATE))
-			soft += (v - soft) * 0.42
-			sbuf[i] = soft * a * 0.85
+			var tt := float(i) / RATE
+			vph += f0 * (1.0 - 0.07 * tt / dur) / RATE
+			var v := sin(vph * TAU) + sin(vph * TAU * 2.0) * 0.22 + sin(vph * TAU * 3.0) * 0.06
+			var a := sin(minf(1.0, tt / 0.012) * PI * 0.5) * exp(-tt * 30.0) * minf(1.0, float(sn - i) / (0.015 * RATE))
+			soft += (v - soft) * 0.5
+			sbuf[i] = soft * a * 0.7
 		syl.append(_wav(sbuf))
 	_set_voice.call_deferred(s4, syl)
 	if club_files.is_empty() and not _abort:

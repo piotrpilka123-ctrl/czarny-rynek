@@ -143,7 +143,7 @@ const SHOES := ["e6e4de", "151517", "2a2c33", "7a4a2a", "b8b8b8", "3a1c1c"]
 const HAIR_M := ["hair_buzzed", "hair_simpleparted", "hair_buzzed", "hair_simpleparted", ""]
 const HAIR_F := ["hair_long", "hair_buns", "hair_long", "hair_buzzedfemale", "hair_long"]
 ## naturalna prędkość animacji (m/s) do synchronizacji kroków
-const ANIM_SPEED := {"Walk": 0.97, "Walk_Formal": 0.97, "Jog_Fwd": 5.36, "Sprint": 8.25, "Zombie_Walk_Fwd": 1.05, "Walk_Carry": 0.65, "Crouch_Fwd": 0.75}
+const ANIM_SPEED := {"Walk_Swagger": 0.97, "Walk_Hunched": 0.9, "Walk_Phone": 0.97, "Walk_Folded": 0.97, "Walk_Stiff": 0.97, "Walk_Loose": 0.97, "Walk": 0.97, "Walk_Formal": 0.97, "Jog_Fwd": 5.36, "Sprint": 8.25, "Zombie_Walk_Fwd": 1.05, "Walk_Carry": 0.65, "Crouch_Fwd": 0.75}
 const POSES := {"": "Idle", "phone": "Idle_TalkingPhone", "talk": "Idle_Talking", "arms": "Idle_FoldArms", "lean": "Idle_Rail", "smoke": "Idle",
 	"sit": "Sitting_Idle", "sit_talk": "Sitting_Talking", "dance": "Dance", "junkie": "Zombie_Idle", "kneel": "Fixing_Kneeling", "no": "Idle_No",
 	"crouch": "Crouch_Idle", "handsup": "Idle", "lantern": "Idle_Lantern", "drive": "Driving"}
@@ -227,8 +227,139 @@ static func _library(female: bool) -> AnimationLibrary:
 				lib.add_animation(nm, a)
 		inst.free()
 	tgt.free()
+	_walk_variants(lib)
 	_lib[key] = lib
 	return lib
+
+
+# ---------------------------------------------------------------- odmiany chodu
+## Z jednego cyklu „Walk” powstaje kilka charakterów: kołysanie się dresa, przygarbiony emeryt,
+## spacer z telefonem przy uchu, ze skrzyżowanymi rękami, sztywny krok i miękki chód z biodra.
+## Nogi i miednica zostają z oryginału, zmienia się góra ciała — stopy dalej trafiają w ziemię.
+const WALKS := ["Walk", "Walk_Formal", "Walk_Swagger", "Walk_Hunched", "Walk_Phone", "Walk_Folded", "Walk_Stiff", "Walk_Loose"]
+const ARMS := ["clavicle_l", "upperarm_l", "lowerarm_l", "hand_l", "clavicle_r", "upperarm_r", "lowerarm_r", "hand_r"]
+const TORSO := ["spine_02", "spine_03", "neck_01", "Head"]
+
+static func _bone(a: Animation, t: int) -> String:
+	return String(a.track_get_path(t)).get_slice(":", 1)
+
+
+static func _rot_track(a: Animation, bone: String) -> int:
+	for t in range(a.get_track_count()):
+		if a.track_get_type(t) == Animation.TYPE_ROTATION_3D and _bone(a, t) == bone:
+			return t
+	return -1
+
+
+## wzmacnia (f > 1) albo tłumi (f < 1) ruch kości wokół jej średniego ustawienia
+static func _scale_motion(a: Animation, bones: Array, f: float) -> void:
+	for bone in bones:
+		var t := _rot_track(a, bone)
+		if t < 0 or a.track_get_key_count(t) < 2:
+			continue
+		var first: Quaternion = a.track_get_key_value(t, 0)
+		var acc := Vector4.ZERO
+		for k in range(a.track_get_key_count(t)):
+			var q: Quaternion = a.track_get_key_value(t, k)
+			if q.dot(first) < 0.0:
+				q = -q
+			acc += Vector4(q.x, q.y, q.z, q.w)
+		var mean := Quaternion(acc.x, acc.y, acc.z, acc.w).normalized()
+		for k in range(a.track_get_key_count(t)):
+			var q2: Quaternion = a.track_get_key_value(t, k)
+			var d := (mean.inverse() * q2).normalized()
+			if d.w < 0.0:
+				d = -d
+			var ang := d.get_angle()
+			if ang > 0.0005:
+				d = Quaternion(d.get_axis().normalized(), ang * f)
+			a.track_set_key_value(t, k, (mean * d).normalized())
+
+
+## kości (i wszystkie palce po danej stronie) przejmują ustawienie z innej animacji; w = siła mieszania
+static func _take_pose(a: Animation, src: Animation, bones: Array, side: String, at: float, w := 1.0) -> void:
+	for t in range(a.get_track_count()):
+		if a.track_get_type(t) != Animation.TYPE_ROTATION_3D:
+			continue
+		var bone := _bone(a, t)
+		var finger := side != "" and bone.ends_with(side) and not ARMS.has(bone) and not LEGS.has(bone)
+		if not bones.has(bone) and not finger:
+			continue
+		var ts := _rot_track(src, bone)
+		if ts < 0:
+			continue
+		var pose: Quaternion = src.rotation_track_interpolate(ts, minf(at, src.length))
+		for k in range(a.track_get_key_count(t)):
+			var q: Quaternion = a.track_get_key_value(t, k)
+			a.track_set_key_value(t, k, q.slerp(pose, w).normalized())
+
+
+## miesza klatka po klatce z innym cyklem chodu (czas przeskalowany do długości cyklu)
+static func _mix_cycle(a: Animation, src: Animation, bones: Array, w: float) -> void:
+	for bone in bones:
+		var t := _rot_track(a, bone)
+		var ts := _rot_track(src, bone)
+		if t < 0 or ts < 0:
+			continue
+		for k in range(a.track_get_key_count(t)):
+			var tt := a.track_get_key_time(t, k) / maxf(0.01, a.length) * src.length
+			var q: Quaternion = a.track_get_key_value(t, k)
+			a.track_set_key_value(t, k, q.slerp(src.rotation_track_interpolate(ts, tt), w).normalized())
+
+
+static func _walk_variants(lib: AnimationLibrary) -> void:
+	if not lib.has_animation("Walk"):
+		return
+	var base: Animation = lib.get_animation("Walk")
+	var made := {}
+	for nm in ["Walk_Swagger", "Walk_Hunched", "Walk_Phone", "Walk_Folded", "Walk_Stiff", "Walk_Loose"]:
+		var a: Animation = base.duplicate(true)
+		a.loop_mode = Animation.LOOP_LINEAR
+		made[nm] = a
+	# dres: szerokie barki, mocne kołysanie tułowia i rąk
+	_scale_motion(made["Walk_Swagger"], ["spine_02", "spine_03", "clavicle_l", "clavicle_r"], 1.9)
+	_scale_motion(made["Walk_Swagger"], ["upperarm_l", "upperarm_r"], 1.35)
+	_scale_motion(made["Walk_Swagger"], ["pelvis"], 1.4)
+	# przygarbiony: plecy i głowa pochylone jak w „zombie”, ręce prawie nie pracują
+	if lib.has_animation("Zombie_Walk_Fwd"):
+		_mix_cycle(made["Walk_Hunched"], lib.get_animation("Zombie_Walk_Fwd"), TORSO, 0.5)
+	_scale_motion(made["Walk_Hunched"], ARMS, 0.45)
+	# z telefonem przy uchu: prawa ręka i głowa z rozmowy telefonicznej
+	if lib.has_animation("Idle_TalkingPhone"):
+		var ph: Animation = lib.get_animation("Idle_TalkingPhone")
+		_take_pose(made["Walk_Phone"], ph, ["clavicle_r", "upperarm_r", "lowerarm_r", "hand_r"], "_r", 0.6)
+		_take_pose(made["Walk_Phone"], ph, ["neck_01", "Head"], "", 0.6, 0.6)
+		_scale_motion(made["Walk_Phone"], ["upperarm_l", "lowerarm_l"], 0.7)
+	# ze skrzyżowanymi rękami (zimno, nieufność)
+	if lib.has_animation("Idle_FoldArms"):
+		var fa: Animation = lib.get_animation("Idle_FoldArms")
+		_take_pose(made["Walk_Folded"], fa, ["clavicle_l", "upperarm_l", "lowerarm_l", "hand_l"], "_l", 0.4)
+		_take_pose(made["Walk_Folded"], fa, ["clavicle_r", "upperarm_r", "lowerarm_r", "hand_r"], "_r", 0.4)
+		_scale_motion(made["Walk_Folded"], ["spine_02", "spine_03"], 0.7)
+	# sztywny krok: ręce przy ciele, mało ruchu w barkach
+	_scale_motion(made["Walk_Stiff"], ARMS, 0.18)
+	_scale_motion(made["Walk_Stiff"], ["spine_02", "spine_03"], 0.6)
+	# miękki chód z biodra
+	_scale_motion(made["Walk_Loose"], ["pelvis"], 1.7)
+	_scale_motion(made["Walk_Loose"], ["spine_02", "spine_03"], 1.35)
+	_scale_motion(made["Walk_Loose"], ["upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r"], 0.8)
+	for nm in made:
+		if not lib.has_animation(nm):
+			lib.add_animation(nm, made[nm])
+
+
+## dobiera chód do postaci (los z ziarna, z uwzględnieniem płci i ubrania)
+static func pick_walk(rng: RandomNumberGenerator, female: bool, kind: String) -> String:
+	var pool: Array = ["Walk", "Walk", "Walk_Formal", "Walk_Stiff", "Walk_Phone", "Walk_Folded"]
+	if female:
+		pool += ["Walk_Loose", "Walk_Loose", "Walk_Formal"]
+	else:
+		pool += ["Walk_Swagger"]
+		if kind == "dres" or kind == "hoodie":
+			pool += ["Walk_Swagger", "Walk_Swagger"]
+	if kind == "jacket":
+		pool += ["Walk_Hunched"]
+	return pool[rng.randi_range(0, pool.size() - 1)]
 
 
 static func _body_material(female: bool) -> ShaderMaterial:
@@ -375,6 +506,43 @@ static func _hat(kind: String, color: Color) -> Node3D:
 	return g
 
 
+static var _blob_tex: GradientTexture2D = null
+
+static func _set_layer(n: Node, layer_bits: int) -> void:
+	if n is VisualInstance3D:
+		(n as VisualInstance3D).layers = layer_bits
+	for c in n.get_children():
+		_set_layer(c, layer_bits)
+
+
+## Miękka plama cienia rzutowana na ziemię pod postacią. Dzięki niej ludzie „stoją” na ulicy
+## także w cieniu budynków i nocą, kiedy słońce nie daje wyraźnego cienia.
+static func _blob(width := 1.0) -> Decal:
+	if _blob_tex == null:
+		var g := Gradient.new()
+		g.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+		g.colors = PackedColorArray([Color(0, 0, 0, 0.62), Color(0, 0, 0, 0.34), Color(0, 0, 0, 0.0)])
+		_blob_tex = GradientTexture2D.new()
+		_blob_tex.gradient = g
+		_blob_tex.width = 128
+		_blob_tex.height = 128
+		_blob_tex.fill = GradientTexture2D.FILL_RADIAL
+		_blob_tex.fill_from = Vector2(0.5, 0.5)
+		_blob_tex.fill_to = Vector2(0.5, 0.0)
+	var d := Decal.new()
+	d.texture_albedo = _blob_tex
+	d.size = Vector3(1.05 * width, 1.4, 0.95 * width)
+	d.position = Vector3(0, 0.35, 0)
+	d.upper_fade = 0.2
+	d.lower_fade = 0.2
+	d.normal_fade = 0.4
+	d.cull_mask = 1
+	d.distance_fade_enabled = true
+	d.distance_fade_begin = 30.0
+	d.distance_fade_length = 8.0
+	return d
+
+
 ## Buduje postać. Opcje: female, skin (0..1), kind, top, top2, bottom, shoes, hair (nazwa lub ""),
 ## hair_color, beard, hat ("cap" | "beanie" | "police"), hat_color, height, build, stripes, logo, sleeve, shorts, seed
 static func make(o: Dictionary = {}) -> Dictionary:
@@ -453,8 +621,12 @@ static func make(o: Dictionary = {}) -> Dictionary:
 	inst.add_child(ap)
 	ap.add_animation_library("", _library(female))
 	ap.playback_default_blend_time = 0.28
+	# postać rysuje się na osobnej warstwie, żeby jej własny cień-plama nie przyciemniał butów
+	_set_layer(inst, 2)
+	if not o.get("no_blob", false):
+		root.add_child(_blob(sx))
 	var rig := {"root": root, "model": inst, "skel": skel, "body": body, "anim": ap, "height": height, "cur": "", "female": female, "phase": rng.randf(),
-		"walk": o.get("walk", "Walk"), "idle_t": 0.0}
+		"walk": o.get("walk", pick_walk(rng, female, kind_name)), "idle_t": 0.0}
 	play(rig, "Idle")
 	ap.seek(rng.randf() * 3.0, true)
 	return rig

@@ -10,6 +10,7 @@ const NpcScript = preload("res://scripts/npc.gd")
 const UiScript = preload("res://scripts/ui.gd")
 const LoadingScript = preload("res://scripts/loading.gd")
 const Models = preload("res://scripts/models.gd")
+const Chars = preload("res://scripts/chars.gd")
 
 const C_ORDER := Color(0.29, 0.87, 0.5)
 const C_STORY := Color(0.98, 0.75, 0.14)
@@ -27,7 +28,11 @@ var npcs: Node3D
 var ui: CanvasLayer
 var beacon: Node3D
 var beacon_mat: StandardMaterial3D
+var cut_skip := false          # gracz pominął przerywnik
+var cut_hour := -1.0           # godzina wymuszona na czas przerywnika (-1 = czas gry)
+var cut_nodes: Array = []
 var cur_inter = null
+var aim_hints: Array = []
 var hold_inter = null
 var hold_t := 0.0
 var slow_t := 0.0
@@ -115,6 +120,26 @@ func _ready() -> void:
 		if args.has("loadshot"):
 			get_tree().quit()
 			return
+	if args.has("mapdump"):
+		# zrzut danych mapy do planowania (obraz minimapy + graf ścieżek + przeszkody)
+		var md := String(args.mapdump)
+		DirAccess.make_dir_recursive_absolute(md)
+		world.map_tex.get_image().save_png(md + "/map.png")
+		var edges := []
+		for n in world.wp:
+			for j in n.links:
+				if int(j) > int(n.i):
+					edges.append([n.x / D.SC, n.z / D.SC, world.wp[j].x / D.SC, world.wp[j].z / D.SC])
+		var rc := []
+		for c in world.rects:
+			if float(c.x0) < 400.0:
+				rc.append([c.x0 / D.SC, c.z0 / D.SC, c.x1 / D.SC, c.z1 / D.SC, c.h])
+		var mf := FileAccess.open(md + "/map.json", FileAccess.WRITE)
+		mf.store_string(JSON.stringify({"edges": edges, "rects": rc, "x0": world.X0, "z0": world.Z0}))
+		mf.close()
+		print("MAPDUMP ok")
+		get_tree().quit()
+		return
 	if args.has("trailer"):
 		var tr: Node = load("res://scripts/trailer.gd").new()
 		tr.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -134,15 +159,8 @@ func _ready() -> void:
 		add_child(t)
 
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST and G.running and not G.test_mode:
-		G.save_game(false)
-
-
 # ================================================================ start / menu / koniec
 func to_title() -> void:
-	if G.running and not G.test_mode:
-		G.save_game(false)
 	build_cancel()
 	G.running = false
 	G.busy = false
@@ -259,26 +277,187 @@ func start_game(from_save: bool) -> void:
 		teleport(String(G.S.pos.loc), Vector3(float(G.S.pos.x), 0.0, float(G.S.pos.z)), float(G.S.pos.yaw))
 	else:
 		teleport("safe", Vector3(float(R.cx) - 0.6, 0.0, 1.2), 0.0)
-		if not args.has("autostart"):
-			_intro()
+		if not args.has("autostart") or args.has("intro"):
+			intro_cutscene()
 		else:
 			_intro_sms()
 	nav_force = true
 
 
+# ================================================================ wstęp fabularny
+const CUT_LINES := [
+	[1.3, "Po Siwego przyjechali o świcie. Syreny obudziły całe osiedle."],
+	[6.6, "Sąsiedzi patrzyli zza firanek. Nikt nie był zdziwiony."],
+	[13.4, "Mama zadzwoniła jeszcze tego samego dnia. „Jedź, Kubuś. Przypilnuj mieszkania brata.”"],
+	[17.6, "Nie powiedziała tylko, co jeszcze po nim zostało."],
+]
+const CUT_ARREST_END := 12.3
+const CUT_TITLE := 21.5
+const CUT_END := 25.4
+
+
+func _cut_actor(look: Dictionary) -> Dictionary:
+	var rig: Dictionary = Chars.make(look)
+	add_child(rig.root)
+	cut_nodes.append(rig.root)
+	return rig
+
+
+## czeka zadany czas (albo krócej, jeśli gracz pominie przerywnik)
+func _cut_clear() -> void:
+	for n in cut_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	cut_nodes.clear()
+
+
+## Wstęp: świt pod blokiem, policja wyprowadza brata; potem plansza „trzy tygodnie później”
+## i gracz budzi się w kawalerce. Spacja / Enter / Esc pomija całość.
+func intro_cutscene() -> void:
+	G.busy = true
+	cut_skip = false
+	ui.fade_rect.color.a = 1.0
+	ui.cut_begin()
+	cut_hour = 5.75
+	var SC: float = D.SC
+	var door := Vector2(float(D.DOORS.safe.x), float(D.DOORS.safe.z))          # już w metrach świata
+	var p_start := door + Vector2(0.0, 0.5)
+	var p_end := door + Vector2(3.6, 5.2)
+	var car_pos := door + Vector2(4.9, 6.4)
+	# radiowóz z migającymi światłami
+	var car: Node3D = Models.car("sedan", "ffffff", true)
+	add_child(car)
+	cut_nodes.append(car)
+	car.position = Vector3(car_pos.x, world.height(car_pos.x, car_pos.y), car_pos.y)
+	car.rotation.y = 2.5
+	var flashes: Array = []
+	for c in [Color(0.15, 0.35, 1.0), Color(1.0, 0.12, 0.1)]:
+		var li := OmniLight3D.new()
+		li.light_color = c
+		li.omni_range = 17.0
+		li.light_energy = 0.0
+		li.shadow_enabled = false
+		li.position = car.position + Vector3(0, 1.75, 0)
+		add_child(li)
+		cut_nodes.append(li)
+		flashes.append(li)
+	# brat, dwóch policjantów i sąsiad, który wyszedł popatrzeć
+	var bro := _cut_actor({"kind": "jacket", "top": "2b3a2e", "bottom": "232a36", "hair": "hair_buzzed", "hair_color": "9a9a9a", "seed": 51, "build": 1.0, "walk": "Walk_Stiff"})
+	# przechodnie z okolicy klatki idą gdzie indziej, żeby nikt nie wszedł w kadr tuż przed kamerą
+	for cz in npcs.citizens:
+		if Vector2(cz.x - door.x, cz.z - door.y).length() < 32.0:
+			for _try in range(12):
+				var wi = randi() % world.wp.size()
+				var wn: Dictionary = world.wp[wi]
+				if Vector2(wn.x - door.x, wn.z - door.y).length() > 55.0:
+					cz.x = wn.x
+					cz.z = wn.z
+					cz.tx = wn.x
+					cz.tz = wn.z
+					cz.wi = wi
+					cz.pi = -1
+					break
+	var cop_look := {"kind": "police", "top": "c8e020", "top2": "141c30", "bottom": "141c30", "shoes": "0c0c0e", "hat": "police", "seed": 4}
+	var cop1 := _cut_actor(cop_look)
+	var cop2 := _cut_actor(cop_look)
+	var watcher := _cut_actor(D.CLIENTS[2].look)
+	var wpos := door + Vector2(-5.6, 2.6)
+	watcher.root.position = Vector3(wpos.x, world.height(wpos.x, wpos.y), wpos.y)
+	watcher.root.rotation.y = atan2(p_end.x - wpos.x, p_end.y - wpos.y)
+	Chars.animate(watcher, 0.0, 0.0, "arms")
+	var walk_dir := (p_end - p_start).normalized()
+	var side := Vector2(-walk_dir.y, walk_dir.x)
+	var walk_len := p_start.distance_to(p_end)
+	var cam_a := Vector3(door.x - 3.4, 0.0, door.y + 10.6)
+	var cam_b := Vector3(door.x - 1.6, 0.0, door.y + 9.6)
+	teleport("out", Vector3(cam_a.x, 0.0, cam_a.z), 0.0)
+
+	var t := 0.0
+	var music := false
+	var faded_in := false
+	var faded_out := false
+	var title := false
+	var line := 0
+	while t < CUT_END and not cut_skip:
+		if not music and Sfx.intro_ready():
+			music = true
+			Sfx.intro_play(t)
+		if t < CUT_ARREST_END + 1.2:
+			# marsz od klatki do radiowozu (1–9,5 s), potem stoją przy aucie
+			var k := clampf((t - 1.0) / 8.5, 0.0, 1.0)
+			var speed := (walk_len / 8.5) if (k > 0.0 and k < 1.0) else 0.0
+			var bp := p_start.lerp(p_end, k)
+			var who := [[bro, bp, ""], [cop1, bp - walk_dir * 0.55 + side * 0.62, "arms"], [cop2, bp - walk_dir * 0.6 - side * 0.62, ""]]
+			for w in who:
+				var rig: Dictionary = w[0]
+				var pp: Vector2 = w[1]
+				rig.root.position = Vector3(pp.x, world.height(pp.x, pp.y), pp.y)
+				rig.root.rotation.y = atan2(walk_dir.x, walk_dir.y) if k < 1.0 else atan2(car_pos.x - pp.x, car_pos.y - pp.y)
+				Chars.animate(rig, 0.016, speed, w[2])
+			var e := clampf(t / CUT_ARREST_END, 0.0, 1.0)
+			var cp := cam_a.lerp(cam_b, e * e * (3.0 - 2.0 * e))
+			cp.y = world.height(cp.x, cp.z) + 1.55
+			var look_at_pt := Vector3(bp.x, world.height(bp.x, bp.y) + 1.2, bp.y).lerp(car.position + Vector3(0, 1.0, 0), 0.3)
+			cine_cam(cp, look_at_pt, 50.0)
+			for i in range(flashes.size()):
+				var fl: OmniLight3D = flashes[i]
+				fl.light_energy = 7.5 if (int(t / 0.3) % 2 == i) else 0.25
+		if not faded_in and t >= 0.5:
+			faded_in = true
+			ui.fade_to(0.0, 1.6)
+		if not faded_out and t >= CUT_ARREST_END:
+			faded_out = true
+			ui.fade_to(1.0, 0.9)
+		if line < CUT_LINES.size() and t >= float(CUT_LINES[line][0]):
+			ui.cut_line(String(CUT_LINES[line][1]))
+			line += 1
+		if not title and t >= CUT_TITLE:
+			title = true
+			ui.cut_line("")
+			ui.cut_title("TRZY TYGODNIE PÓŹNIEJ", "KAWALERKA BRATA  •  BLOK 7, KLATKA B")
+		await get_tree().process_frame
+		t += get_process_delta_time()
+
+	# koniec albo pominięcie: czarny ekran, sprzątanie, kawalerka
+	if cut_skip:
+		Sfx.intro_stop(0.6)
+		await ui.fade_to(1.0, 0.25)
+	ui.cut_line("")
+	ui.cut_title("")
+	_cut_clear()
+	cut_hour = -1.0
+	cine_off()
+	var R: Dictionary = D.ROOMS.safe
+	teleport("safe", Vector3(float(R.cx) - 0.6, 0.0, 1.2), 0.0)
+	await get_tree().create_timer(0.45).timeout
+	ui.cut_end()
+	await ui.fade_to(0.0, 1.1)
+	G.busy = false
+	if G.running:
+		_intro()
+
+
 func _intro() -> void:
 	ui.dialog({"name": "Nieznany numer", "lines": [
 		"Kuba? Tu Wiktor. Znałem twojego brata.",
-		"Siwy zniknął i zostawił po sobie dwadzieścia pięć tysięcy długu. A u nas długi się dziedziczy.",
+		"Siwy siedzi i prędko nie wyjdzie. A wisi mi dwadzieścia pięć tysięcy. U nas długi się dziedziczy.",
 		{"n": "Ty", "t": "Nie mam takich pieniędzy. Nie mam żadnych pieniędzy."},
 		"Wiem. Dlatego dam ci zarobić. Towar dostaniesz ode mnie, pierwszego klienta masz po bracie. Resztę zbudujesz sam — albo nie.",
-		"Pierwsza rata za pięć dni. Szczegóły wysyłam SMS-em. Nie zawiedź mnie.",
+		"Pierwsza rata za pięć dni. Rozgość się, a ja zaraz wyślę ci SMS-em, co dalej. Nie zawiedź mnie.",
 	], "on_end": _intro_sms})
 
 
 func _intro_sms() -> void:
 	G.chat("mama", "Kubuś, rozgość się u brata. I błagam, nie pakuj się w nic głupiego.", false, true)
-	G.chat("wiktor", "Pierwsza paczka czeka w skrytce za altanką śmietnikową przy parkingu. 5 g na zeszyt — 105 zł oddasz po sprzedaży. W szafce po bracie masz wagę i woreczki: zaporcjuj towar i czekaj na wiadomość od klienta.")
+
+
+## zapis gry przy laptopie w kryjówce — jedyny sposób zapisu
+func save_here() -> void:
+	if G.S.wanted or npcs.any_chase():
+		G.notify("Nie teraz — policja depcze Ci po piętach.", "warn")
+		return
+	G.save_game(true)
+	Sfx.play("good")
 
 
 func ending(kind: String) -> void:
@@ -376,7 +555,7 @@ func sleep() -> void:
 	var to_morning: float = fmod(7.0 - G.hour() + 24.0, 24.0) * 60.0
 	if to_morning < 60.0:
 		to_morning += 1440.0
-	var line := "Położyć się? Sen zapisuje grę, a czas płynie."
+	var line := "Położyć się? Czas popłynie, a gorąco na mieście opadnie. (Grę zapisujesz przy laptopie.)"
 	if accepted > 0:
 		line = "Masz umówionych klientów (%d). Jeśli zaśpisz, nie będą czekać." % accepted
 	elif G.ready_drop() != null:
@@ -397,8 +576,7 @@ func _do_sleep(minutes: float) -> void:
 	if G.running:
 		G.S.heat = maxf(0.0, G.S.heat - minutes / 60.0 * 2.5)
 		world.update_stations()
-		G.save_game(false)
-		G.notify("Dzień %d, %s. Gra zapisana." % [G.day(), G.clock()], "good")
+		G.notify("Dzień %d, %s." % [G.day(), G.clock()], "good")
 	await get_tree().create_timer(0.5).timeout
 	await ui.fade(false)
 	G.busy = false
@@ -436,10 +614,10 @@ func _drop_inter() -> Variant:
 		if d.state != "ready":
 			continue
 		var dd := G.drop_def(d.spot)
-		if Vector2(float(dd.x) - pp.x, float(dd.z) - pp.z).length() < 2.3:
+		if Vector2(float(dd.x) - pp.x, float(dd.z) - pp.z).length() < 3.6:
 			var drop: Dictionary = d
 			var why := String(G.pickup_block(drop))
-			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "range": 2.3, "hold": 1.5, "id": "drop",
+			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "hold": 1.5, "id": "drop", "y0": 0.0, "y1": 1.2, "r": 0.85, "reach": 2.8,
 				"label": func(): return ("Skrytka: zabierz paczkę (przytrzymaj)" if why == "" else "Skrytka: " + why), "act": func(): _take_drop(drop)}
 	return null
 
@@ -457,32 +635,74 @@ func _take_drop(d: Dictionary) -> void:
 			break
 
 
-func _find_interact() -> Variant:
+## Interakcja wymaga nacelowania: promień wzroku musi przejść przez obiekt z normalnej odległości.
+## Każdy obiekt to pionowy „słupek” (x, z, y0..y1) o promieniu r; reach = zasięg ręki.
+const AIM_REACH := 2.6
+
+## zwraca (odległość promienia od osi obiektu, odległość wzdłuż promienia)
+func _aim_at(o: Vector3, d: Vector3, x: float, z: float, y0: float, y1: float) -> Vector2:
+	var b := Vector3(x, y0, z)
+	var hgt := maxf(0.01, y1 - y0)
+	var w0 := o - b
+	var den := 1.0 - d.y * d.y
+	var t := clampf((w0.y - d.y * d.dot(w0)) / den, 0.0, hgt) if den > 0.0001 else clampf(w0.y, 0.0, hgt)
+	var sdist := maxf(0.0, (b + Vector3(0, t, 0) - o).dot(d))
+	var q := o + d * sdist
+	t = clampf(q.y - y0, 0.0, hgt)
+	return Vector2(q.distance_to(b + Vector3(0, t, 0)), sdist)
+
+
+## wszystkie obiekty w zasięgu kilku metrów: [{it, pos (punkt celowania), miss, dist, hit}]
+func _aim_scan() -> Array:
+	var out := []
+	var cam: Camera3D = player.cam
+	var o := cam.global_position
+	var dir := -cam.global_transform.basis.z
 	var pp: Vector3 = player.global_position
-	var f: Vector2 = player.forward()
-	var best = _drop_inter()
-	var bd := 1e9 if best == null else 0.5
-	var lists: Array = [world.inter]
+	var outside: bool = player.loc == "out"
+	var cands: Array = []
+	var di = _drop_inter()
+	if di != null:
+		cands.append(di)
+	for it in world.inter:
+		if it.loc == player.loc:
+			cands.append(it)
 	if world.inter_dyn.has(player.loc):
-		lists.append(world.inter_dyn[player.loc])
-	for lst in lists:
-		for it in lst:
-			if it.loc != player.loc:
-				continue
-			var dx: float = it.x - pp.x
-			var dz: float = it.z - pp.z
-			var d := sqrt(dx * dx + dz * dz)
-			if d > float(it.range):
-				continue
-			if d > 1.2 and (dx * f.x + dz * f.y) / d < 0.2:
-				continue
-			if d < bd:
-				bd = d
-				best = it
-	var n = npcs.nearest_interact(pp.x, pp.z, f, player.loc)
-	if n != null and Vector2(n.x - pp.x, n.z - pp.z).length() < bd + 0.6:
-		best = n.interact
-	return best
+		for it in world.inter_dyn[player.loc]:
+			cands.append(it)
+	for n in npcs.all:
+		if n.has("interact") and n.loc == player.loc and n.node != null and n.node.visible:
+			var ni: Dictionary = n.interact
+			cands.append({"x": n.x, "z": n.z, "y0": 0.0, "y1": 1.85, "r": 0.5, "reach": minf(float(ni.get("range", 2.9)), 3.0), "label": ni.label, "act": ni.act, "id": "npc"})
+	for it in cands:
+		var ax: float = it.get("ax", it.x)
+		var az: float = it.get("az", it.z)
+		if absf(ax - pp.x) > 5.0 or absf(az - pp.z) > 5.0:
+			continue
+		var gy: float = world.height(ax, az) if outside else 0.0
+		var y0: float = gy + float(it.get("y0", 0.0))
+		var y1: float = gy + float(it.get("y1", 1.9))
+		var res := _aim_at(o, dir, ax, az, y0, y1)
+		var reach: float = it.get("reach", AIM_REACH)
+		out.append({"it": it, "pos": Vector3(ax, (y0 + y1) * 0.5, az), "miss": res.x, "dist": res.y,
+			"hit": res.x <= float(it.get("r", 0.6)) and res.y <= reach, "near": Vector2(ax - pp.x, az - pp.z).length() <= reach + 1.4})
+	return out
+
+
+func _find_interact() -> Variant:
+	var best = null
+	var bd := 1e9
+	var scan := _aim_scan()
+	for c in scan:
+		if c.hit and float(c.dist) < bd:
+			bd = c.dist
+			best = c
+	# znaczniki pobliskich obiektów: gracz widzi, na co może nacelować
+	aim_hints.clear()
+	for c in scan:
+		if c.near:
+			aim_hints.append({"pos": c.pos, "on": best != null and is_same(c, best)})
+	return best.it if best != null else null
 
 
 func interact() -> void:
@@ -504,7 +724,7 @@ func toggle_flash() -> void:
 # ================================================================ cele i trasa
 func _order_target(o: Dictionary) -> Dictionary:
 	var spot := G.spot_def(o.spot)
-	return {"id": int(o.id), "label": "%s  %s — %s" % [G.clock(o.meet), String(G.cust_def(o.cust).name), spot.name], "loc": "out", "x": float(spot.x), "z": float(spot.z), "color": C_ORDER}
+	return {"id": int(o.id), "label": "%s  %s — %s" % [G.clock(o.meet) if o.status == "accepted" else "?", String(G.cust_def(o.cust).name), spot.name], "loc": "out", "x": float(spot.x), "z": float(spot.z), "color": C_ORDER}
 
 
 func _place_target(id: String) -> Dictionary:
@@ -818,7 +1038,8 @@ func _tick(dt: float) -> void:
 	var w = S.weather
 	env.rain_target = float(w.power) if (w != null and S.t >= float(w.start) and S.t < float(w.end)) else 0.0
 	var t0 := Time.get_ticks_usec()
-	env.update(G.hour(), dt, player.loc, player.cam.global_position, world)
+	var eye: Vector3 = cine.global_position if (cine != null and cine.current) else player.cam.global_position
+	env.update(cut_hour if cut_hour >= 0.0 else G.hour(), dt, player.loc, eye, world)
 	if not G.test_mode:
 		env.auto_scale(dt)
 	var t1 := Time.get_ticks_usec()
@@ -843,12 +1064,17 @@ func _tick(dt: float) -> void:
 	if build_active():
 		_build_tick()
 		ui.set_prompt("")
+		aim_hints.clear()
+		ui.set_aim(false)
 		return
 	if G.busy:
 		ui.set_prompt("")
 		hold_inter = null
+		aim_hints.clear()
+		ui.set_aim(false)
 		return
 	cur_inter = _find_interact()
+	ui.set_aim(cur_inter != null)
 	if hold_inter != null:
 		if cur_inter == null or cur_inter.get("id", "") != hold_inter.get("id", "?") or not Input.is_physical_key_pressed(KEY_E):
 			hold_inter = null
@@ -994,7 +1220,9 @@ func _apply_test_args() -> void:
 		S.xp = float(D.XP_LEVELS[int(args.lvl) - 1]) + 5.0
 		S.sp = int(args.lvl) - 1
 	if args.has("step"):
-		S.step = int(args.step)
+		S.step = int(args.step) + G.TOUR_STEPS
+		for fk in ["tut_save", "tut_stash", "tut_bench", "wiktor_sms"]:
+			S.flags[fk] = true
 		S.flags["read_wiktor"] = true
 		S.flags["got_first"] = true
 		S.flags["hurt_on"] = true
@@ -1080,6 +1308,24 @@ func _apply_test_args() -> void:
 		world.train.wait = 0.0
 		world.tick_train(0.01, env.night if "night" in env else 0.0)
 		world.train.x = float(args.train) * float(world.train.dir)
+	if args.has("walkers"):
+		var fw: Vector2 = player.forward()
+		var rt := Vector2(-fw.y, fw.x)
+		var pp0 := player.global_position
+		var looks := [{"kind": "dres", "top": "101114", "top2": "e8e6e0", "bottom": "101114", "stripes": true, "seed": 1}, {"kind": "jacket", "top": "6b5a45", "bottom": "3b3630", "seed": 2},
+			{"female": true, "kind": "jacket", "top": "3a3f4a", "bottom": "101114", "seed": 3}, {"kind": "hoodie", "top": "3a3f4a", "bottom": "1b2538", "seed": 4},
+			{"kind": "tshirt", "top": "c9c4b8", "bottom": "2e3440", "seed": 5}, {"female": true, "kind": "hoodie", "top": "5a2f52", "bottom": "232a36", "seed": 6}, {"kind": "jacket", "top": "23402e", "bottom": "45423c", "seed": 7}]
+		var wl := ["Walk_Swagger", "Walk_Hunched", "Walk_Phone", "Walk_Folded", "Walk_Stiff", "Walk_Loose", "Walk"]
+		for i in range(wl.size()):
+			var lk: Dictionary = looks[i].duplicate()
+			lk["walk"] = wl[i]
+			var wr: Dictionary = Chars.make(lk)
+			add_child(wr.root)
+			var p3 := Vector2(pp0.x, pp0.z) + fw * float(args.walkers) + rt * (i - 3.0) * 0.95
+			wr.root.position = Vector3(p3.x, world.height(p3.x, p3.y), p3.y)
+			wr.root.rotation.y = atan2(pp0.x - p3.x, pp0.z - p3.y) + 0.5
+			Chars.animate(wr, 0.0, 1.2, "")
+			wr.anim.seek(0.35 + i * 0.07, true)
 	if args.has("chars"):
 		var Chars = load("res://scripts/chars.gd")
 		var pp := player.global_position
@@ -1123,6 +1369,23 @@ func _test_ui(what: String) -> void:
 			ui.open_phone("sms")
 			ui.phone.chat_id = "dominik"
 			ui.phone.render()
+		"mapa_route":
+			var mo := _test_order("dominik")
+			if args.has("spot"):
+				mo.spot = String(args.spot)
+			set_track(int(mo.id))
+			refresh_nav()
+			ui.open_phone("mapa")
+		"chat_nego", "chat_time", "chat_ok":
+			var co := _test_order("dominik", what == "chat_ok")
+			ui.open_phone("sms")
+			ui.phone.chat_id = "dominik"
+			if what == "chat_nego":
+				ui.phone.nego = int(co.id)
+				ui.phone.nego_price = int(co.stated) + 4
+			elif what == "chat_time":
+				ui.phone.retime = int(co.id)
+			ui.phone.render()
 		"kontakty":
 			G.unlock_client("seba")
 			G.S.cust.dominik.deals = 4
@@ -1138,6 +1401,13 @@ func _test_ui(what: String) -> void:
 			ui.open_stash("safe")
 			ui.inv.sel = {"side": "bag", "kind": "pack", "p": "dym", "pur": 80, "id": ""}
 			ui.inv.render()
+		"invask":
+			G.add_bulk(G.S.inv, "dym", 75, 3.5)
+			ui.open_stash("safe")
+			for te in G.entries(G.S.inv):
+				if te.kind == "bulk":
+					ui.inv.ask_amount(te, "bag", "stash")
+					ui.inv._ask_set(5.5)
 		"char": ui.open_inventory("", "char")
 		"org":
 			_test_order("dominik")
@@ -1222,7 +1492,7 @@ func _shot() -> void:
 			print("DBG     foot ", c.get_class(), " min=", (c as Control).get_combined_minimum_size())
 	var img := get_viewport().get_texture().get_image()
 	print("RAW ", img.get_width(), "x", img.get_height(), " win=", get_window().size, " screen=", DisplayServer.window_get_current_screen(), " scale=", DisplayServer.screen_get_scale())
-	if img.get_width() > 2000:
+	if img.get_width() > 2000 and not args.has("raw"):
 		img.resize(int(img.get_width() / 2.0), int(img.get_height() / 2.0), Image.INTERPOLATE_LANCZOS)
 	img.save_png(String(args.shot))
 	var vp_rid := get_viewport().get_viewport_rid()

@@ -40,6 +40,7 @@ var _dir := 1.0
 var nego := -1
 var nego_price := 0
 var retime := -1
+var hot: Array = []          # akcje kafli pod rozmową (klawisze 1–4)
 
 
 func build(ui_ref) -> void:
@@ -434,58 +435,211 @@ func _chat() -> void:
 		if msgs.size() - msgs.find(m) <= 2:
 			p.pivot_offset = Vector2(250.0 if me else 0.0, 20.0)
 			_pop(p, 0.12 + 0.12 * (2 - (msgs.size() - msgs.find(m))), 0.7)
-	# odpowiedzi: krótkie przyciski pod rozmową
+	# odpowiedzi: karta zamówienia i duże kafle pod rozmową
+	hot = []
 	var order = null
 	for o in G.S.orders:
 		if o.cust == chat_id:
 			order = o
 	if order != null:
-		var oid := int(order.id)
-		var left: float = float(order.meet) - G.S.t
-		var when := ("za %dh %02dm" % [int(left / 60.0), int(left) % 60]) if left > 0.0 else "czeka!"
-		var info := K.lbl("%d g %s • %s • %s (%s)" % [int(order.grams), D.PRODUCTS[order.product].name, G.spot_def(order.spot).name, G.clock(order.meet), when], 11, K.C_WARN)
-		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		footer.add_child(info)
-		if retime == oid:
-			footer.add_child(K.lbl("Nowa godzina spotkania:", 11, K.C_DIM))
-			var trow := K.hbox(4)
-			for add in [30, 60, 120]:
-				var tm := int(float(order.meet) + add)
-				var tb := _chip(G.clock(tm), func(): retime = -1; _reply(oid, "time", tm), "")
-				tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				trow.add_child(tb)
-			footer.add_child(trow)
-			footer.add_child(_chip("Wróć", func(): retime = -1; _dir = 0.0; render(), "flat"))
-		elif nego == oid and order.status == "new":
-			footer.add_child(K.lbl("Klient daje %d zł/g. Twoja cena:" % int(order.stated), 11, K.C_DIM))
-			var nrow := K.hbox(4)
-			nrow.alignment = BoxContainer.ALIGNMENT_CENTER
-			for step in [-5, -1]:
-				var st: int = step
-				nrow.add_child(_chip(str(st), func(): nego_price = maxi(1, nego_price + st); _dir = 0.0; render(), ""))
-			var pl := K.lbl("%d zł/g" % nego_price, 18, K.C_ACC)
-			pl.custom_minimum_size = Vector2(96, 0)
-			pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			nrow.add_child(pl)
-			for step in [1, 5]:
-				var st2: int = step
-				nrow.add_child(_chip("+" + str(st2), func(): nego_price += st2; _dir = 0.0; render(), ""))
-			footer.add_child(nrow)
-			footer.add_child(_pair(_chip("Wyślij", func(): nego = -1; _reply(oid, "price", nego_price), "go"), _chip("Wróć", func(): nego = -1; _dir = 0.0; render(), "")))
-		elif order.status == "new":
-			if order.counter != null:
-				footer.add_child(K.lbl("Kontroferta: %d zł za gram" % int(order.counter), 12, K.C_TXT))
-				footer.add_child(_pair(_chip("Zgoda", func(): _reply(oid, "counterok"), "go"), _chip("Anuluj", func(): _reply(oid, "decline"), "bad")))
-			else:
-				footer.add_child(_pair(_chip("Zgoda", func(): _reply(oid, "accept"), "go"), _chip("Negocjuj", func(): nego = oid; nego_price = int(order.stated) + 3; _dir = 0.0; render(), "")))
-				footer.add_child(_pair(_chip("Zmień godzinę", func(): retime = oid; _dir = 0.0; render(), ""), _chip("Anuluj", func(): _reply(oid, "decline"), "bad")))
-		else:
-			footer.add_child(K.lbl("Umówione: %d zł za gram" % int(order.agreed) if order.agreed != null else "Cena do ustalenia na miejscu", 12, K.C_ACC))
-			footer.add_child(_pair(_chip("Prowadź", func(): G.main.set_track(oid); ui.close_all(), "go"), _chip("Zmień godzinę", func(): retime = oid; _dir = 0.0; render(), "")))
-			footer.add_child(_chip("Anuluj", func(): _reply(oid, "decline"), "bad"))
+		_order_footer(order)
 	elif chat_id == "wiktor" and G.flag("hurt_on"):
 		footer.add_child(K.btn("Otwórz Hurt", func(): go("hurt"), "", true))
 	_scroll_end()
+
+
+## wiersz karty zamówienia: ikona + tekst
+func _fact(parent: Node, ic: String, text: String, color := K.C_TXT) -> void:
+	var h := K.hbox(6)
+	h.add_child(K.icon(ic, 14, K.C_DIM))
+	var l := K.lbl(text, 13, color)
+	l.clip_text = true
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(l)
+	parent.add_child(h)
+
+
+## duży kafel odpowiedzi: ikona w kółku, nazwa (maks. 2 słowa) i krótka liczba/podpowiedź pod spodem
+func _tile(ic: String, label: String, sub: String, color: Color, cb: Callable, key := 0) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(0, 50)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_stylebox_override("normal", K.sb(Color(color.r, color.g, color.b, 0.13), 12, Color(color.r, color.g, color.b, 0.5), 1, 8))
+	b.add_theme_stylebox_override("hover", K.sb(Color(color.r, color.g, color.b, 0.26), 12, color, 1, 8))
+	b.add_theme_stylebox_override("pressed", K.sb(Color(color.r, color.g, color.b, 0.36), 12, color, 1, 8))
+	b.pressed.connect(func():
+		Sfx.play("click")
+		cb.call())
+	var h := K.hbox(8)
+	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(h)
+	var dot := K.panel(K.sb(Color(color.r, color.g, color.b, 0.22), 15, Color(0, 0, 0, 0), 0, 0))
+	dot.custom_minimum_size = Vector2(30, 30)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var i := K.icon(ic, 16, color.lightened(0.25))
+	i.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	dot.add_child(i)
+	h.add_child(dot)
+	var v := K.vbox(-2)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := K.lbl(label, 14, Color.WHITE)
+	l.clip_text = true
+	v.add_child(l)
+	if sub != "":
+		var sl := K.lbl(sub, 11, color.lightened(0.35))
+		sl.clip_text = true
+		v.add_child(sl)
+	h.add_child(v)
+	if key > 0:
+		var kl := K.lbl(str(key), 10, Color(1, 1, 1, 0.3))
+		kl.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		kl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(kl)
+		while hot.size() < key:
+			hot.append(Callable())
+		hot[key - 1] = cb
+	return b
+
+
+## skrót klawiszowy 1–4 do kafli pod rozmową
+func hotkey(n: int) -> bool:
+	if app != "sms" or chat_id == "" or n < 1 or n > hot.size() or not (hot[n - 1] as Callable).is_valid():
+		return false
+	Sfx.play("click")
+	(hot[n - 1] as Callable).call()
+	return true
+
+
+func _order_footer(order: Dictionary) -> void:
+	var oid := int(order.id)
+	var S: Dictionary = G.S
+	var accepted: bool = order.status == "accepted"
+	var price: int = int(order.agreed) if (accepted and order.agreed != null) else (int(order.counter) if order.counter != null else int(order.stated))
+	# --- karta: co, za ile, gdzie, kiedy
+	var edge := K.C_ACC if accepted else K.C_WARN
+	var card := K.panel(K.sb(Color(0.075, 0.09, 0.13), 14, Color(edge.r, edge.g, edge.b, 0.55), 1, 10))
+	footer.add_child(card)
+	var cv := K.vbox(4)
+	card.add_child(cv)
+	var top := K.hbox(6)
+	top.add_child(K.icon("circle_check" if accepted else "package", 14, edge))
+	top.add_child(K.lbl("UMÓWIONE" if accepted else "ZAMÓWIENIE", 10, edge))
+	top.add_child(K.spacer())
+	if not accepted:
+		var rl := int(float(order.respond_by) - S.t)
+		top.add_child(K.lbl("czeka na odpowiedź jeszcze %d min" % maxi(0, rl), 10, K.C_DIM))
+	cv.add_child(top)
+	var g2 := GridContainer.new()
+	g2.columns = 2
+	g2.add_theme_constant_override("h_separation", 10)
+	g2.add_theme_constant_override("v_separation", 3)
+	cv.add_child(g2)
+	var c1 := K.vbox(3)
+	c1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var c2 := K.vbox(3)
+	c2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	g2.add_child(c1)
+	g2.add_child(c2)
+	_fact(c1, D.PRODUCT_ICONS.get(order.product, "leaf"), "%d g %s" % [int(order.grams), D.PRODUCTS[order.product].name])
+	_fact(c1, "map_pin", String(G.spot_def(order.spot).name))
+	_fact(c2, "banknote", "%d zł/g  •  %s" % [price, G.money(price * int(order.grams))], K.C_ACC)
+	if accepted:
+		var left: float = float(order.meet) - S.t
+		_fact(c2, "clock", "%s  •  %s" % [G.clock(order.meet), ("za %d min" % int(left)) if left > 0.0 else "czeka!"], K.C_TXT if left > 10.0 else K.C_WARN)
+	elif order.get("fixed", false) and float(order.meet) > S.t + 12.0:
+		_fact(c2, "clock", "%s  •  ustalone" % G.clock(order.meet))
+	else:
+		_fact(c2, "clock", "ok. %s  •  za godzinę" % G.clock(G.default_meet()))
+
+	# --- wybór nowej godziny
+	if retime == oid:
+		footer.add_child(K.lbl("KIEDY CHCESZ SIĘ SPOTKAĆ?", 10, K.C_DIM))
+		var opts: Array = []
+		if accepted:
+			var m: float = order.meet
+			if m - 30.0 > S.t + 20.0:
+				opts.append([m - 30.0, "30 min wcześniej"])
+			opts.append([m + 30.0, "30 min później"])
+			opts.append([m + 60.0, "godzinę później"])
+			opts.append([m + 120.0, "2 godz. później"])
+		else:
+			for e in [[30.0, "za pół godziny"], [90.0, "za 1,5 godz."], [120.0, "za 2 godz."], [180.0, "za 3 godz."]]:
+				opts.append([ceil((S.t + float(e[0])) / 5.0) * 5.0, e[1]])
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 6)
+		grid.add_theme_constant_override("v_separation", 6)
+		footer.add_child(grid)
+		var k := 1
+		for e in opts.slice(0, 4):
+			var tm := int(e[0])
+			grid.add_child(_tile("clock", G.clock(tm), String(e[1]), K.C_BLUE, func(): retime = -1; _reply(oid, "time", tm), k))
+			k += 1
+		footer.add_child(_chip("Wróć", func(): retime = -1; _dir = 0.0; render(), "flat"))
+		return
+
+	# --- negocjacja ceny
+	if nego == oid and not accepted:
+		var base := int(order.stated)
+		var up := (float(nego_price) / maxf(1.0, float(base)) - 1.0) * 100.0
+		var risk := "raczej się zgodzi" if up <= 8.0 else ("może odbić kontrofertą" if up <= 28.0 else "może zerwać rozmowę")
+		var rc := K.C_ACC if up <= 8.0 else (K.C_WARN if up <= 28.0 else K.C_BAD)
+		footer.add_child(K.lbl("TWOJA CENA ZA GRAM", 10, K.C_DIM))
+		var nrow := K.hbox(6)
+		nrow.alignment = BoxContainer.ALIGNMENT_CENTER
+		for step in [-5, -1]:
+			var st: int = step
+			var mb := _chip(str(st), func(): nego_price = maxi(base, nego_price + st); _dir = 0.0; render(), "")
+			mb.custom_minimum_size = Vector2(44, 34)
+			nrow.add_child(mb)
+		var pv := K.vbox(-3)
+		pv.custom_minimum_size = Vector2(118, 0)
+		var pl := K.head("%d zł" % nego_price, 26, K.C_ACC)
+		pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		pv.add_child(pl)
+		var dl := K.lbl("klient daje %d zł  (%+d%%)" % [base, int(round(up))], 10, K.C_DIM)
+		dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		pv.add_child(dl)
+		nrow.add_child(pv)
+		for step in [1, 5]:
+			var st2: int = step
+			var pb := _chip("+" + str(st2), func(): nego_price += st2; _dir = 0.0; render(), "")
+			pb.custom_minimum_size = Vector2(44, 34)
+			nrow.add_child(pb)
+		footer.add_child(nrow)
+		var rl2 := K.lbl(risk, 11, rc)
+		rl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		footer.add_child(rl2)
+		var row := K.hbox(6)
+		row.add_child(_tile("send", "Wyślij", "%d zł/g" % nego_price, K.C_ACC, func(): nego = -1; _reply(oid, "price", nego_price), 1))
+		row.add_child(_tile("arrow_left", "Wróć", "", Color(0.6, 0.64, 0.72), func(): nego = -1; _dir = 0.0; render(), 2))
+		footer.add_child(row)
+		return
+
+	# --- cztery odpowiedzi
+	var grid2 := GridContainer.new()
+	grid2.columns = 2
+	grid2.add_theme_constant_override("h_separation", 6)
+	grid2.add_theme_constant_override("v_separation", 6)
+	footer.add_child(grid2)
+	if accepted:
+		grid2.add_child(_tile("navigation", "Prowadź", "trasa na mapie", K.C_ACC, func(): G.main.set_track(oid); ui.close_all(), 1))
+		grid2.add_child(_tile("clock", "Zmień godzinę", "teraz %s" % G.clock(order.meet), K.C_BLUE, func(): retime = oid; _dir = 0.0; render(), 2))
+		grid2.add_child(_tile("x", "Anuluj", "odwołaj spotkanie", K.C_BAD, func(): _reply(oid, "decline"), 3))
+	elif order.counter != null:
+		grid2.add_child(_tile("check", "Zgoda", "%d zł/g" % int(order.counter), K.C_ACC, func(): _reply(oid, "counterok"), 1))
+		grid2.add_child(_tile("clock", "Zmień godzinę", "inna pora", K.C_BLUE, func(): retime = oid; _dir = 0.0; render(), 2))
+		grid2.add_child(_tile("x", "Anuluj", "odmów", K.C_BAD, func(): _reply(oid, "decline"), 3))
+	else:
+		grid2.add_child(_tile("check", "Zgoda", "%d zł/g" % int(order.stated), K.C_ACC, func(): _reply(oid, "accept"), 1))
+		grid2.add_child(_tile("hand_coins", "Negocjuj", "podbij cenę", K.C_GOLD, func(): nego = oid; nego_price = int(order.stated) + 3; _dir = 0.0; render(), 2))
+		grid2.add_child(_tile("clock", "Zmień godzinę", "inna pora", K.C_BLUE, func(): retime = oid; _dir = 0.0; render(), 3))
+		grid2.add_child(_tile("x", "Anuluj", "odmów", K.C_BAD, func(): _reply(oid, "decline"), 4))
 
 
 func _pair(a: Button, b: Button) -> HBoxContainer:
@@ -615,7 +769,7 @@ func _map() -> void:
 		var b := K.btn(t.label, func(): G.main.set_track(tid); render(), "go" if G.main.track_key() == str(tid) else "", true)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		body.add_child(b)
-	body.add_child(K.btn("Trasa na ziemi: " + ("włączona" if G.S.nav_on else "wyłączona"), func(): G.main.toggle_nav(); render(), "", true))
+	body.add_child(K.btn("Trasa na mapie: " + ("włączona" if G.S.nav_on else "wyłączona"), func(): G.main.toggle_nav(); render(), "", true))
 
 
 # ---------------------------------------------------------------- hurt (Wiktor)
@@ -915,9 +1069,9 @@ func _settings() -> void:
 	var c := K.card(body)
 	var f := K.flow(5)
 	c.add_child(f)
-	f.add_child(K.btn("Zapisz grę", func(): G.save_game(true), "", true))
 	f.add_child(K.btn("Dźwięk: " + ("wył." if Sfx.muted else "wł."), func(): Sfx.set_muted(not Sfx.muted); G.main.save_settings(); render(), "", true))
-	f.add_child(K.btn("Menu główne", func(): G.main.to_menu(), "bad", true))
+	f.add_child(K.btn("Menu główne (bez zapisu)", func(): G.main.to_menu(), "bad", true))
+	c.add_child(K.rich("Ostatni zapis: [b]%s[/b]\nGrę zapisujesz tylko przy [b]laptopie w kryjówce[/b]. Niezapisany postęp przepada." % G.last_save_text(), 12))
 	var q := K.card(body)
 	q.add_child(K.lbl("JAKOŚĆ GRAFIKI", 10, K.C_DIM))
 	var qf := K.flow(5)

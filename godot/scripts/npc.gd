@@ -5,7 +5,7 @@ extends Node3D
 const Models = preload("res://scripts/models.gd")
 const Chars = preload("res://scripts/chars.gd")
 
-const COP_LOOK := {"kind": "police", "top": "c8e020", "top2": "141c30", "bottom": "141c30", "shoes": "0c0c0e", "hat": "police"}
+const COP_LOOK := {"kind": "police", "top": "c8e020", "top2": "141c30", "bottom": "141c30", "shoes": "0c0c0e", "hat": "police", "walk": "Walk_Formal"}
 const CAR_ROUTE := [[-152.0, 20.0], [-106.0, 20.0], [-106.0, -130.0], [95.0, -130.0], [95.0, -66.0], [95.0, -130.0], [-106.0, -130.0], [-106.0, 20.0], [118.0, 20.0], [-106.0, 20.0], [-152.0, 20.0]]
 
 var all: Array = []
@@ -269,7 +269,7 @@ func _update_car(dt: float, pp: Vector3, outside: bool) -> void:
 	if float(car.look_t) <= 0.0:
 		car.look_t = 0.25
 		var ang := absf(_ang_diff(atan2(pp.x - car.x, pp.z - car.z), float(car.rot)))
-		car.sees = dist < 30.0 - G.night * 6.0 and (ang < 1.3 or dist < 7.0) and G.world.los(car.x, car.z, pp.x, pp.z)
+		car.sees = dist < (30.0 - G.night * 6.0) * sight(ang) and G.world.los(car.x, car.z, pp.x, pp.z)
 	if car.alarm:
 		car.light.visible = fmod(G.now * 5.0, 1.0) < 0.5
 		if not G.S.wanted:
@@ -413,8 +413,35 @@ func spawn_customer(order: Dictionary) -> void:
 func reschedule(order_id: int) -> void:
 	for n in customers:
 		if int(n.order.id) == order_id:
+			if n.node != null:
+				continue
+			# gdy do spotkania jest mniej czasu niż trwa droga z domu, klient „jest już w drodze”:
+			# zaczyna z takiego miejsca trasy, żeby dojść kilka minut przed czasem
+			var avail := maxf(6.0, float(n.order.meet) - G.S.t - 6.0)
+			var keep := float(n.speed) * avail / D.TIME_SCALE
+			if _path_len(n.path) > keep:
+				n.path = _path_tail(n.path, keep)
+				n.pi = 1
 			var travel := _path_len(n.path) / float(n.speed) * D.TIME_SCALE
 			n.spawn_at = float(n.order.meet) - travel - randf_range(3.0, 7.0)
+
+
+## końcówka trasy o zadanej długości (punkt startu wypada w środku odcinka)
+static func _path_tail(pts: Array, keep: float) -> Array:
+	var out: Array = [pts[pts.size() - 1]]
+	var left := keep
+	var i := pts.size() - 1
+	while i > 0 and left > 0.0:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[i - 1]
+		var d := a.distance_to(b)
+		if d >= left:
+			out.push_front(a.lerp(b, left / maxf(0.001, d)))
+			return out
+		out.push_front(b)
+		left -= d
+		i -= 1
+	return out
 
 
 func _customer_enter(n: Dictionary, at_spot := false) -> void:
@@ -489,6 +516,19 @@ func _walk_path(n: Dictionary, dt: float) -> bool:
 	n.z += to.y / d * sp * dt
 	n.rot = atan2(to.x, to.y)
 	return false
+
+
+## Pole widzenia policjanta: pełny zasięg na wprost (do ok. 35° od kierunku patrzenia),
+## coraz krótszy na boki (do ok. 85°) i nic za plecami. Zwraca ułamek zasięgu dla danego kąta.
+const SIGHT_FULL := 0.6
+const SIGHT_SIDE := 1.48
+
+static func sight(ang: float) -> float:
+	if ang <= SIGHT_FULL:
+		return 1.0
+	if ang >= SIGHT_SIDE:
+		return 0.0
+	return lerpf(1.0, 0.3, (ang - SIGHT_FULL) / (SIGHT_SIDE - SIGHT_FULL))
 
 
 func nearest_interact(px: float, pz: float, fwd: Vector2, loc: String) -> Variant:
@@ -752,8 +792,7 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		if c.look_t <= 0.0:
 			c.look_t = 0.2
 			var ang := absf(_ang_diff(atan2(dx, dz), c.node.rotation.y))
-			var in_cone := dist < 6.0 or ang < 1.05
-			c.sees = dist < view_range and in_cone and G.world.los(c.x, c.z, pp.x, pp.z)
+			c.sees = dist < view_range * sight(ang) and G.world.los(c.x, c.z, pp.x, pp.z)
 			if c.state == "chase" and dist < view_range * 1.4 and G.world.los(c.x, c.z, pp.x, pp.z):
 				c.sees = true
 		var move_speed := 0.0

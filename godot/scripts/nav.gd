@@ -20,6 +20,7 @@ var length := 0.0
 var ribbon: MeshInstance3D
 var mat: ShaderMaterial
 var _goal_node := -1
+var _goal_key := Vector2(1e9, 1e9)
 var _next := PackedInt32Array()
 var _dist := PackedFloat32Array()
 
@@ -79,49 +80,109 @@ func _solve(goal: int) -> void:
 	_goal_node = goal
 
 
+## Najbliższy punkt na sieci dróg i ścieżek (na krawędzi grafu, nie tylko w węźle):
+## {a, b — węzły krawędzi, p — punkt na krawędzi, d — odległość}
+func _nearest_edge(x: float, z: float) -> Dictionary:
+	var wp: Array = G.world.wp
+	var P := Vector2(x, z)
+	var best := {}
+	var bd := 1e9
+	var any := {}
+	var ad := 1e9
+	for n in wp:
+		var A := Vector2(n.x, n.z)
+		for j in n.links:
+			if int(j) <= int(n.i):
+				continue
+			var B := Vector2(wp[j].x, wp[j].z)
+			var ab := B - A
+			var t := clampf((P - A).dot(ab) / maxf(0.0001, ab.length_squared()), 0.0, 1.0)
+			var q := A + ab * t
+			var d := P.distance_to(q)
+			if d < ad:
+				ad = d
+				any = {"a": int(n.i), "b": int(j), "p": q, "d": d}
+			if d < bd and (d < 1.2 or G.world.los(x, z, q.x, q.y)):
+				bd = d
+				best = {"a": int(n.i), "b": int(j), "p": q, "d": d}
+	# krawędź widoczna z punktu ma pierwszeństwo, o ile nie jest dużo dalej niż najbliższa
+	return best if (not best.is_empty() and bd < ad + 30.0) else any
+
+
+## najkrótsze drogi po sieci do punktu leżącego na krawędzi (kolejkowy Bellman-Ford)
+func _solve_edge(ge: Dictionary) -> void:
+	var wp: Array = G.world.wp
+	var n := wp.size()
+	_dist.resize(n)
+	_next.resize(n)
+	for i in range(n):
+		_dist[i] = 1e9
+		_next[i] = -1
+	var queue: Array = []
+	for e in [int(ge.a), int(ge.b)]:
+		_dist[e] = Vector2(wp[e].x, wp[e].z).distance_to(ge.p)
+		queue.append(e)
+	var head := 0
+	while head < queue.size():
+		var u: int = queue[head]
+		head += 1
+		var nu: Dictionary = wp[u]
+		for v in nu.links:
+			var nv: Dictionary = wp[v]
+			var w := Vector2(nv.x - nu.x, nv.z - nu.z).length()
+			if _dist[u] + w < _dist[v] - 0.01:
+				_dist[v] = _dist[u] + w
+				_next[v] = u
+				queue.append(v)
+
+
+## Trasa prowadzi po drogach, chodnikach i wydeptanych ścieżkach: z miejsca gracza najkrótszym
+## dojściem do sieci, dalej wyłącznie po jej krawędziach (bez ścinania po przekątnej przez trawniki)
+## i na końcu krótkim dojściem do celu.
 func find(ax: float, az: float, bx: float, bz: float) -> Array:
 	var W = G.world
-	var direct := Vector2(bx - ax, bz - az).length()
-	if direct < 40.0 and W.los(ax, az, bx, bz) and absf(W.height(ax, az) - W.height(bx, bz)) < 1.5:
-		return [Vector2(ax, az), Vector2(bx, bz)]
-	var e := nearest_node(bx, bz)
-	if e < 0:
-		return [Vector2(ax, az), Vector2(bx, bz)]
-	if e != _goal_node:
-		_solve(e)
-	# start: widoczny węzeł o najmniejszym koszcie łącznym
+	var A := Vector2(ax, az)
+	var B := Vector2(bx, bz)
+	if A.distance_to(B) < 12.0 and W.los(ax, az, bx, bz) and absf(W.height(ax, az) - W.height(bx, bz)) < 1.5:
+		return [A, B]
+	var ge := _nearest_edge(bx, bz)
+	var se := _nearest_edge(ax, az)
+	if ge.is_empty() or se.is_empty():
+		return [A, B]
+	var gkey := Vector2(snappedf(ge.p.x, 0.5), snappedf(ge.p.y, 0.5))
+	if gkey != _goal_key:
+		_solve_edge(ge)
+		_goal_key = gkey
 	var wp: Array = W.wp
-	var s := -1
-	var sc := 1e9
-	for n in wp:
-		var d := Vector2(n.x - ax, n.z - az).length()
-		if d > 60.0 or _dist[n.i] > 1e8:
-			continue
-		var c := d * 1.15 + _dist[n.i]
-		if c < sc and W.los(ax, az, n.x, n.z):
-			sc = c
-			s = n.i
-	if s < 0:
-		s = nearest_node(ax, az, false)
-	var pts: Array = [Vector2(ax, az)]
-	var cur := s
-	var guard := 0
-	while cur >= 0 and guard < 400:
-		guard += 1
-		pts.append(Vector2(wp[cur].x, wp[cur].z))
-		cur = _next[cur]
-	pts.append(Vector2(bx, bz))
-	# wygładzanie: usuń punkty pośrednie na prostych, płaskich odcinkach
-	for _pass in range(2):
-		var i := 1
-		while i < pts.size() - 1:
-			var a: Vector2 = pts[i - 1]
-			var b: Vector2 = pts[i + 1]
-			if a.distance_to(b) < 46.0 and W.los(a.x, a.y, b.x, b.y) and absf(W.height(a.x, a.y) - W.height(b.x, b.y)) < 1.0:
-				pts.remove_at(i)
-			else:
-				i += 1
-	return pts
+	var pts: Array = [A, se.p]
+	var same: bool = (int(se.a) == int(ge.a) and int(se.b) == int(ge.b)) or (int(se.a) == int(ge.b) and int(se.b) == int(ge.a))
+	if not same:
+		var pa := Vector2(wp[se.a].x, wp[se.a].z)
+		var pb := Vector2(wp[se.b].x, wp[se.b].z)
+		var ca: float = se.p.distance_to(pa) + _dist[se.a]
+		var cb: float = se.p.distance_to(pb) + _dist[se.b]
+		var cur: int = int(se.a) if ca <= cb else int(se.b)
+		var guard := 0
+		while cur >= 0 and guard < 400:
+			guard += 1
+			pts.append(Vector2(wp[cur].x, wp[cur].z))
+			cur = _next[cur]
+	pts.append(ge.p)
+	pts.append(B)
+	# porządki: usuń powtórzenia i punkty leżące na jednej prostej
+	var out: Array = [pts[0]]
+	for i in range(1, pts.size()):
+		if (pts[i] as Vector2).distance_to(out[out.size() - 1]) > 0.35:
+			out.append(pts[i])
+	var i2 := 1
+	while i2 < out.size() - 1:
+		var u: Vector2 = (out[i2] as Vector2) - (out[i2 - 1] as Vector2)
+		var v: Vector2 = (out[i2 + 1] as Vector2) - (out[i2] as Vector2)
+		if absf(u.normalized().cross(v.normalized())) < 0.03 and u.dot(v) > 0.0:
+			out.remove_at(i2)
+		else:
+			i2 += 1
+	return out
 
 
 ## trasa jest rysowana tylko na minimapie i w aplikacji Mapa (bez wstęgi na ziemi)

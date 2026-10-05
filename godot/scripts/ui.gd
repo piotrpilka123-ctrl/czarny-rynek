@@ -50,6 +50,15 @@ var d_text: RichTextLabel
 var d_choices: VBoxContainer
 var d_hint: Label
 var modal: Control
+var cut: Control
+var cut_sub: Label
+var cut_tbox: VBoxContainer
+var cut_title_l: Label
+var cut_tsub_l: Label
+var cut_tw: Tween = null
+var cross: Control
+var aim_on := false
+var aim_t := 0.0
 var bar_bag: ProgressBar
 var ic_next: TextureRect
 var inv
@@ -122,6 +131,7 @@ func build() -> void:
 	fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(fade_rect)
+	_build_cut()
 	G.toast.connect(toast_add)
 	G.sms.connect(_on_sms)
 
@@ -392,14 +402,10 @@ func _build_hud() -> void:
 	hud.add_child(waymark)
 
 	# --- celownik, podpowiedź
-	var cross := ColorRect.new()
-	cross.color = Color(1, 1, 1, 0.8)
+	cross = Control.new()
 	cross.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	cross.offset_left = -1.5
-	cross.offset_top = -1.5
-	cross.offset_right = 1.5
-	cross.offset_bottom = 1.5
 	cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cross.draw.connect(_draw_cross)
 	hud.add_child(cross)
 	var pc := CenterContainer.new()
 	pc.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -501,6 +507,124 @@ func _on_sms(cid: String, text: String) -> void:
 	sms_t = 7.0
 	if phone.visible:
 		phone.refresh()
+
+
+# ---------------------------------------------------------------- przerywnik filmowy (wstęp)
+func _build_cut() -> void:
+	cut = Control.new()
+	cut.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cut.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cut.visible = false
+	root.add_child(cut)
+	for top in [true, false]:
+		var bar := ColorRect.new()
+		bar.color = Color.BLACK
+		bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE if top else Control.PRESET_BOTTOM_WIDE)
+		if top:
+			bar.offset_bottom = 70.0
+		else:
+			bar.offset_top = -92.0
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cut.add_child(bar)
+	cut_sub = Label.new()
+	cut_sub.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	cut_sub.offset_top = -88.0
+	cut_sub.offset_bottom = -6.0
+	cut_sub.offset_left = 150.0
+	cut_sub.offset_right = -150.0
+	cut_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cut_sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cut_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cut_sub.add_theme_font_size_override("font_size", 22)
+	cut_sub.add_theme_color_override("font_color", Color(0.95, 0.95, 0.93))
+	cut_sub.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
+	cut_sub.add_theme_constant_override("shadow_outline_size", 8)
+	cut_sub.modulate.a = 0.0
+	cut.add_child(cut_sub)
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cut.add_child(cc)
+	cut_tbox = K.vbox(6)
+	cut_tbox.modulate.a = 0.0
+	cc.add_child(cut_tbox)
+	cut_title_l = Label.new()
+	cut_title_l.add_theme_font_override("font", load("res://assets/fonts/bebas.ttf"))
+	cut_title_l.add_theme_font_size_override("font_size", 92)
+	cut_title_l.add_theme_color_override("font_color", Color(0.96, 0.96, 0.94))
+	cut_title_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cut_tbox.add_child(cut_title_l)
+	var ln := ColorRect.new()
+	ln.color = K.C_ACC
+	ln.custom_minimum_size = Vector2(0, 3)
+	cut_tbox.add_child(ln)
+	var fv := FontVariation.new()
+	fv.base_font = load("res://assets/fonts/barlowc.ttf")
+	fv.spacing_glyph = 4
+	cut_tsub_l = Label.new()
+	cut_tsub_l.add_theme_font_override("font", fv)
+	cut_tsub_l.add_theme_font_size_override("font_size", 19)
+	cut_tsub_l.add_theme_color_override("font_color", Color(0.75, 0.79, 0.84))
+	cut_tsub_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cut_tbox.add_child(cut_tsub_l)
+	var skip := K.lbl("Spacja — pomiń", 12, Color(1, 1, 1, 0.38))
+	skip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	skip.offset_left = -150.0
+	skip.offset_right = -22.0
+	skip.offset_top = -30.0
+	skip.offset_bottom = -10.0
+	skip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	cut.add_child(skip)
+
+
+func cut_begin() -> void:
+	cut.visible = true
+	hud.visible = false
+	cut_sub.modulate.a = 0.0
+	cut_sub.text = ""
+	cut_tbox.modulate.a = 0.0
+
+
+func cut_end() -> void:
+	cut.visible = false
+	if G.running and not G.test_hide_hud:
+		hud.visible = true
+
+
+## napis narracji na dole; pusty tekst = wygaszenie
+func cut_line(text: String) -> void:
+	if cut_tw != null and cut_tw.is_valid():
+		cut_tw.kill()
+	cut_tw = create_tween()
+	cut_tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	cut_tw.tween_property(cut_sub, "modulate:a", 0.0, 0.3)
+	if text != "":
+		cut_tw.tween_callback(func(): cut_sub.text = text)
+		cut_tw.tween_property(cut_sub, "modulate:a", 1.0, 0.5)
+
+
+## plansza na środku ekranu; pusty tekst = wygaszenie
+func cut_title(text: String, sub := "") -> void:
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	if text == "":
+		tw.tween_property(cut_tbox, "modulate:a", 0.0, 0.5)
+		return
+	cut_title_l.text = text
+	cut_tsub_l.text = sub
+	cut_tbox.scale = Vector2(1.06, 1.06)
+	cut_tbox.pivot_offset = cut_tbox.size * 0.5
+	tw.set_parallel(true)
+	tw.tween_property(cut_tbox, "modulate:a", 1.0, 0.25)
+	tw.tween_property(cut_tbox, "scale", Vector2.ONE, 3.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+## płynne ściemnienie / rozjaśnienie w zadanym czasie
+func fade_to(a: float, dur: float) -> void:
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(fade_rect, "color:a", a, dur)
+	await tw.finished
 
 
 func fade(on: bool) -> void:
@@ -704,8 +828,24 @@ func _fit_modal() -> void:
 
 func _modal_close() -> void:
 	if not deal.is_empty():
-		G.deal_leave(deal)
+		# zamknięcie okna rozmowy z umówionym klientem = „zaraz wracam” (nic nie przepada)
+		G.deal_pause(deal)
 	close_all()
+
+
+## przyciski wyjścia z rozmowy: przy zamówieniu „Zaraz wracam” i „Rezygnuję”, na ulicy samo „Odejdź”
+func _deal_exit_buttons(parent: Node, small := false) -> void:
+	if deal.ctx.get("order") != null and not deal.over:
+		var bw := K.btn("Zaraz wracam", func(): G.deal_pause(deal); close_all(), "", small)
+		bw.icon = K.tex("clock")
+		bw.add_theme_constant_override("icon_max_width", 15)
+		bw.tooltip_text = "Klient poczeka na miejscu. Zamówienie nie przepada."
+		parent.add_child(bw)
+		var bx := K.btn("Rezygnuję", func(): G.deal_cancel(deal); close_all(), "bad", small)
+		bx.tooltip_text = "Odwołujesz transakcję. Klient będzie zły."
+		parent.add_child(bx)
+	else:
+		parent.add_child(K.btn("Odejdź", _modal_close, "bad", small))
 
 
 func _open_modal(title: String, sub := "", dock := "center", width := 900.0) -> void:
@@ -753,6 +893,7 @@ func help_text() -> String:
 
 # ---------------------------------------------------------------- stół roboczy: porcjowanie i mieszanie
 func open_pack(room: String) -> void:
+	G.S.flags["tut_bench"] = true
 	bench.room = room
 	bench.sel = {}
 	bench.mixing = false
@@ -945,11 +1086,13 @@ func _skill_marks() -> String:
 
 
 func _skill_round() -> void:
-	var w: float = minf(0.5, [0.2, 0.15, 0.11][int(sk.round)] * float(sk.widen))
+	# każda z trzech prób jest taka sama: stałe tempo wskazówki i stała szerokość zielonej strefy
+	# (odrobinę trudniej niż dawna pierwsza próba, ale bez przyspieszania)
+	var w: float = minf(0.5, 0.165 * float(sk.widen))
 	var start := randf_range(0.08, 0.92 - w)
 	sk.z0 = start
 	sk.z1 = start + w
-	sk.speed = 0.74 + int(sk.round) * 0.4
+	sk.speed = 0.92
 	sk.t0 = _now_ms() - randi_range(0, 600)
 	l_skill_p.text = _skill_marks()
 
@@ -1015,6 +1158,7 @@ func _draw_skill() -> void:
 
 # ---------------------------------------------------------------- skrytka
 func open_stash(room: String) -> void:
+	G.S.flags["tut_stash"] = true
 	open_inventory(room)
 
 
@@ -1119,7 +1263,7 @@ func open_build(room: String) -> void:
 	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
 	var c := K.card(modal_body)
 	c.add_child(K.lbl("KATALOG", 10, K.C_DIM))
-	var names := {"pack": "stanowisko", "stash": "skrytka", "grow": "uprawa", "bed": "sen i zapis", "light": "światło", "decor": "wystrój"}
+	var names := {"pack": "stanowisko", "stash": "skrytka", "grow": "uprawa", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
 	for f in D.FURNITURE:
 		var fid: String = f.id
 		var why := ""
@@ -1208,7 +1352,7 @@ func _mumble_burst(voice: float, n: int) -> void:
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	for i in range(n):
 		tw.tween_callback(Sfx.mumble.bind(voice))
-		tw.tween_interval(randf_range(0.09, 0.15))
+		tw.tween_interval(randf_range(0.12, 0.2))
 
 
 func _meter(parent: Node, ic: String, label: String, value: float, color: Color) -> void:
@@ -1248,7 +1392,7 @@ func _render_deal() -> void:
 			gt.tween_callback(_deal_anim_done)
 		deal_said = String(deal.speech)
 		var fem: bool = who.get("look", {}).get("female", false)
-		_mumble_burst((1.32 if fem else 0.86) + float(absi(String(who.name).hash()) % 20) / 100.0, clampi(int(deal_said.length() / 7.0), 2, 7))
+		_mumble_burst((1.32 if fem else 0.86) + float(absi(String(who.name).hash()) % 20) / 100.0, clampi(int(deal_said.length() / 11.0), 2, 5))
 	# wskaźniki
 	var meters := K.hbox(18)
 	modal_body.add_child(meters)
@@ -1334,7 +1478,7 @@ func _deal_greet_ui() -> void:
 	var foot := K.hbox(10)
 	modal_body.add_child(foot)
 	foot.add_child(K.wrap("Każdy klient lubi inny ton. Trafiony poprawia nastrój (lepsza cena, więcej cierpliwości), chybiony go psuje. Odkryte upodobania trafiają do Kontaktów.", 12, K.C_DIM))
-	foot.add_child(K.btn("Odejdź", _modal_close, "bad", true))
+	_deal_exit_buttons(foot, true)
 
 
 func _deal_offer_ui() -> void:
@@ -1440,7 +1584,7 @@ func _deal_offer_ui() -> void:
 		if deal.counter != null:
 			acts.add_child(K.btn("Przyjmij %s za gram" % G.money(deal.counter), func(): G.deal_accept(deal); _render_deal(), "go"))
 		acts.add_child(K.btn("Zaproponuj cenę", func(): G.deal_offer(deal); _render_deal(), "go"))
-	acts.add_child(K.btn("Odejdź", _modal_close, "bad"))
+	_deal_exit_buttons(acts)
 	# taktyki
 	if not ctx.get("sting", false):
 		var tc := K.card(modal_body, 10)
@@ -1565,7 +1709,8 @@ func show_title() -> void:
 
 
 func show_pause() -> void:
-	_screen("PAUZA", K.C_TXT, "", [K.btn("Wróć do gry", close_all, "go"), K.btn("Telefon", func(): screen.visible = false; open_phone()), K.btn("Zapisz", func(): G.save_game(true)), K.btn("Menu główne", func(): G.main.to_menu(), "bad")], help_text())
+	_screen("PAUZA", K.C_TXT, "Ostatni zapis: %s.\nGrę zapisujesz tylko przy laptopie w kryjówce — niezapisany postęp przepada." % G.last_save_text(),
+		[K.btn("Wróć do gry", close_all, "go"), K.btn("Telefon", func(): screen.visible = false; open_phone()), K.btn("Menu główne (bez zapisu)", func(): G.main.to_menu(), "bad")], help_text())
 	set_mode("pause")
 
 
@@ -1595,9 +1740,12 @@ func _process_ui(dt: float) -> void:
 		d_text.visible_characters = int(dlg.typed)
 		# co kilka liter jedna sylaba mamrotania (narrator i gracz milczą)
 		var speaker := String(dlg.lines[dlg.i].n)
-		if int(dlg.typed) >= int(dlg.said) + 4 and speaker != "" and speaker != "Ty" and speaker != "Łóżko":
+		if int(dlg.typed) >= int(dlg.said) + 7 and speaker != "" and speaker != "Ty" and speaker != "Łóżko":
 			dlg.said = int(dlg.typed)
-			Sfx.mumble(float(dlg.voice))
+			# po znaku przestankowym krótka pauza, żeby brzmiało jak mowa, a nie terkot
+			var ch := String(dlg.lines[dlg.i].t).substr(maxi(0, int(dlg.typed) - 2), 2)
+			if not (ch.contains(".") or ch.contains(",") or ch.contains("?") or ch.contains("!") or ch.contains("…")):
+				Sfx.mumble(float(dlg.voice))
 		if int(dlg.typed) >= String(dlg.lines[dlg.i].t).length():
 			_line_done()
 	if mode == "modal":
@@ -1636,6 +1784,9 @@ func _process_ui(dt: float) -> void:
 		update_hud()
 	compass.queue_redraw()
 	waymark.queue_redraw()
+	aim_t += dt
+	if aim_on and aim_t < 0.25:
+		cross.queue_redraw()
 
 
 func update_hud() -> void:
@@ -1697,6 +1848,25 @@ func update_hud() -> void:
 	minimap.queue_redraw()
 
 
+## celownik: kropka, a po nacelowaniu na coś, czego można użyć — zielony pierścień
+func set_aim(on: bool) -> void:
+	if on != aim_on:
+		aim_on = on
+		aim_t = 0.0
+	cross.queue_redraw()
+
+
+func _draw_cross() -> void:
+	if aim_on:
+		var k := clampf(aim_t / 0.12, 0.0, 1.0)
+		cross.draw_arc(Vector2.ZERO, lerpf(3.0, 8.0, k), 0.0, TAU, 28, Color(0, 0, 0, 0.45), 3.5, true)
+		cross.draw_arc(Vector2.ZERO, lerpf(3.0, 8.0, k), 0.0, TAU, 28, K.C_ACC, 1.8, true)
+		cross.draw_circle(Vector2.ZERO, 1.6, Color.WHITE)
+	else:
+		cross.draw_circle(Vector2.ZERO, 2.6, Color(0, 0, 0, 0.35))
+		cross.draw_circle(Vector2.ZERO, 1.6, Color(1, 1, 1, 0.85))
+
+
 func set_prompt(text: String, progress := -1.0) -> void:
 	if text == "":
 		prompt.visible = false
@@ -1717,11 +1887,14 @@ func set_build_hint(text: String) -> void:
 
 func _draw_way() -> void:
 	var M = G.main
-	if M == null or M.way.is_empty() or not G.running or mode != "" or G.player == null:
+	if M == null or not G.running or mode != "" or G.player == null:
+		return
+	_draw_hints(M)
+	if M.way.is_empty():
 		return
 	var cam: Camera3D = G.player.cam
 	var pos: Vector3 = M.way.pos
-	if float(M.way.dist) < 3.0 or cam.is_position_behind(pos):
+	if float(M.way.dist) < (3.0 if G.player.loc == "out" else 1.3) or cam.is_position_behind(pos):
 		return
 	var sp := cam.unproject_position(pos)
 	var vs := get_viewport().get_visible_rect().size
@@ -1734,6 +1907,23 @@ func _draw_way() -> void:
 	var txt := "%d m" % int(round(float(M.way.dist)))
 	waymark.draw_string_outline(font, sp + Vector2(-40, 26), txt, HORIZONTAL_ALIGNMENT_CENTER, 80, 13, 4, Color(0, 0, 0, 0.8))
 	waymark.draw_string(font, sp + Vector2(-40, 26), txt, HORIZONTAL_ALIGNMENT_CENTER, 80, 13, Color(1, 1, 1, a))
+
+
+## małe znaczniki na pobliskich rzeczach, których można użyć (trzeba na nie nacelować)
+func _draw_hints(M) -> void:
+	if G.busy or not hud.visible:
+		return
+	var cam: Camera3D = G.player.cam
+	for h in M.aim_hints:
+		var pos: Vector3 = h.pos
+		if h.on or cam.is_position_behind(pos):
+			continue
+		var sp := cam.unproject_position(pos)
+		var d := cam.global_position.distance_to(pos)
+		var a := clampf(1.0 - (d - 1.5) / 3.0, 0.25, 0.8)
+		waymark.draw_circle(sp, 5.5, Color(0, 0, 0, 0.3 * a))
+		waymark.draw_arc(sp, 4.5, 0.0, TAU, 20, Color(1, 1, 1, a), 1.4, true)
+		waymark.draw_circle(sp, 1.4, Color(1, 1, 1, a))
 
 
 func _draw_compass() -> void:
@@ -1810,7 +2000,11 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 		var pts := PackedVector2Array()
 		for p in path:
 			pts.append(tr.call(p.x, p.y))
-		cv.draw_polyline(pts, nav_info.get("color", K.C_ACC), 3.0, true)
+		var rc: Color = nav_info.get("color", K.C_ACC)
+		cv.draw_polyline(pts, Color(0, 0, 0, 0.45), 6.0 if big else 5.0, true)
+		cv.draw_polyline(pts, rc, 3.2 if big else 2.6, true)
+		for pt in pts:
+			cv.draw_circle(pt, 1.6 if big else 1.3, rc)
 	# drzwi
 	for id in D.DOORS:
 		var dd: Dictionary = D.DOORS[id]
@@ -1833,13 +2027,17 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 	if P.loc == "out":
 		var pp: Vector3 = P.global_position
 		var see_all := G.has_skill("teren")
+		var vr: float = 27.0 - G.night * 6.0 - G.rain * 5.0
 		for c in G.npcs.cops:
 			var dist := Vector2(c.x - pp.x, c.z - pp.z).length()
-			if c.state != "patrol" or (see_all and dist < 60.0) or big:
-				cv.draw_circle(tr.call(c.x, c.z), 4.0, K.C_BAD if c.state == "chase" else (K.C_WARN if c.state != "patrol" else K.C_BLUE))
+			if c.state != "patrol" or (see_all and dist < 60.0) or big or dist < 24.0:
+				var cc: Color = K.C_BAD if c.state == "chase" else (K.C_WARN if c.state != "patrol" else K.C_BLUE)
+				_draw_sight(cv, tr, c.x, c.z, c.node.rotation.y, vr, cc)
+				cv.draw_circle(tr.call(c.x, c.z), 4.0, cc)
 		var car: Dictionary = G.npcs.car
 		if not car.is_empty() and (see_all or car.alarm or big or Vector2(car.x - pp.x, car.z - pp.z).length() < 45.0):
 			var cp: Vector2 = tr.call(car.x, car.z)
+			_draw_sight(cv, tr, car.x, car.z, float(car.rot), 30.0 - G.night * 6.0, K.C_BAD if car.alarm else K.C_BLUE)
 			cv.draw_rect(Rect2(cp - Vector2(4, 4), Vector2(8, 8)), K.C_BAD if car.alarm else K.C_BLUE)
 		for c in G.npcs.citizens:
 			if c.icon.visible:
@@ -1869,6 +2067,18 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 	cv.draw_colored_polygon(PackedVector2Array([c0 + f * 9.0, c0 - f * 6.0 + r * 5.5, c0 - f * 2.5, c0 - f * 6.0 - r * 5.5]), Color.WHITE)
 
 
+## stożek widzenia patrolu na mapie: pełny zasięg na wprost, krótszy na boki, nic z tyłu
+func _draw_sight(cv: Control, tr: Callable, x: float, z: float, rot: float, view_range: float, color: Color) -> void:
+	var NpcS = G.npcs.get_script()
+	var pts := PackedVector2Array([tr.call(x, z)])
+	var steps := 14
+	for i in range(steps + 1):
+		var a := lerpf(-NpcS.SIGHT_SIDE, NpcS.SIGHT_SIDE, float(i) / steps)
+		var r: float = view_range * NpcS.sight(absf(a))
+		pts.append(tr.call(x + sin(rot + a) * r, z + cos(rot + a) * r))
+	cv.draw_colored_polygon(pts, Color(color.r, color.g, color.b, 0.13))
+
+
 func _input(event: InputEvent) -> void:
 	if G.test_mode:
 		return
@@ -1883,6 +2093,11 @@ func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	var kc: int = event.physical_keycode
+	if cut.visible:
+		if kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER or kc == KEY_ESCAPE:
+			G.main.cut_skip = true
+		get_viewport().set_input_as_handled()
+		return
 	if kc == KEY_F11:
 		G.main.set_fullscreen(not G.main.is_fullscreen())
 		get_viewport().set_input_as_handled()
@@ -1906,6 +2121,8 @@ func _input(event: InputEvent) -> void:
 				close_all()
 			elif kc == KEY_ESCAPE or kc == KEY_BACKSPACE:
 				phone.back()
+			elif kc >= KEY_1 and kc <= KEY_4:
+				used = phone.hotkey(kc - KEY_1 + 1)
 			else:
 				used = false
 		"modal":
@@ -1914,7 +2131,15 @@ func _input(event: InputEvent) -> void:
 			else:
 				used = false
 		"inv":
-			if kc == KEY_ESCAPE or kc == KEY_I or kc == KEY_TAB:
+			if inv.asking():
+				# okno wyboru ilości: Esc zamyka, Enter zatwierdza, cyfry trafiają do pola
+				if kc == KEY_ESCAPE:
+					inv.ask_close()
+				elif kc == KEY_ENTER or kc == KEY_KP_ENTER:
+					inv.ask_ok()
+				else:
+					used = false
+			elif kc == KEY_ESCAPE or kc == KEY_I or kc == KEY_TAB:
 				close_all()
 			elif kc == KEY_1 or kc == KEY_2 or kc == KEY_3:
 				inv.tab = ["inv", "char", "org"][kc - KEY_1]

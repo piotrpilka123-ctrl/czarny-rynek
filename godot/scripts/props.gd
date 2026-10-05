@@ -173,6 +173,10 @@ void vertex() {
 	tone = fract(sin(dot(o.xz, vec2(12.9898, 78.233))) * 43758.5453);
 	float sway = sin(TIME * 1.5 + o.x * 0.9 + o.z * 1.3) + sin(TIME * 2.7 + o.z * 0.6) * 0.5;
 	VERTEX.x += sway * 0.035 * hh * hh * tall;
+	// kępy płynnie maleją z odległością (zamiast znikać „ziarnistym” wygaszaniem);
+	// daleko, gdzie źdźbła byłyby cieńsze niż piksel i migotały, nie ma ich wcale
+	float dcam = distance(CAMERA_POSITION_WORLD, o);
+	VERTEX *= 1.0 - smoothstep(9.0, 20.0, dcam);
 	NORMAL = normalize(mix(NORMAL, vec3(0.0, 1.0, 0.0), 0.85));
 }
 void fragment() {

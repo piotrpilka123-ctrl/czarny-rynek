@@ -13,3 +13,6 @@ game/muzyka/*
 
 # zwiastun 1080p przekracza limit GitHuba (100 MB na plik); w repo jest wersja 720p
 zwiastun/czarny-rynek-zwiastun.mp4
+
+# oryginały tekstur sprzed filtrowania (są w historii repo)
+godot/tools/tex_orig/

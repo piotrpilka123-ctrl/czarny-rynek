@@ -74,6 +74,28 @@ func run() -> void:
 		await skip_dialog()
 	U.close_all()
 
+	# --- oprowadzenie po kawalerce: zapis przy laptopie, skrytka, waga
+	ok(G.cur_step().id == "room_save", "samouczek zaczyna od pokoju, nie od paczki")
+	ok(not G.S.chats.has("wiktor") or G.S.chats.wiktor.is_empty(), "Wiktor nie pisze o paczce przed obejrzeniem pokoju")
+	var lap = null
+	for it in G.world.inter:
+		if String(it.get("id", "")) == "save_safe":
+			lap = it
+	ok(lap != null, "w kawalerce stoi laptop do zapisu gry")
+	if lap != null:
+		lap.act.call()
+	G.story_tick()
+	ok(G.flag("tut_save") and G.cur_step().id == "room_stash", "zapis przy laptopie zalicza pierwszy krok")
+	U.open_stash("safe")
+	await frames(2)
+	U.close_all()
+	G.story_tick()
+	U.open_pack("safe")
+	await frames(2)
+	U.close_all()
+	G.story_tick()
+	ok(G.cur_step().id == "phone" and G.flag("wiktor_sms"), "po oprowadzeniu Wiktor wysyła wiadomość o paczce")
+	S = G.S
 	# --- telefon: wiadomość od Wiktora
 	U.open_phone("sms")
 	await frames(3)
@@ -101,6 +123,18 @@ func run() -> void:
 	# --- stół: porcjowanie
 	M.enter("safe")
 	await wait_busy()
+	# interakcje wymagają nacelowania: drzwi wyjściowe są za plecami gracza
+	var RS: Dictionary = D.ROOMS.safe
+	M.teleport("safe", Vector3(float(RS.cx), 0.0, float(RS.d) * 0.5 - 1.5), 0.0)
+	await frames(4)
+	var it0 = M._find_interact()
+	ok(it0 == null or String(it0.get("id", "")) != "exit_safe", "tyłem do drzwi nie ma podpowiedzi „Wyjdź”")
+	M.teleport("safe", Vector3(float(RS.cx), 0.0, float(RS.d) * 0.5 - 1.5), PI)
+	await frames(4)
+	var it1 = M._find_interact()
+	ok(it1 != null and String(it1.get("id", "")) == "exit_safe", "po nacelowaniu na drzwi można wyjść (kanapa ich nie zasłania)")
+	M.teleport("safe", Vector3(float(RS.cx) - 0.6, 0.0, 1.2), 0.0)
+	await frames(2)
 	U.open_pack("safe")
 	await frames(3)
 	ok(U.mode == "modal", "stół roboczy otwarty")
@@ -134,6 +168,7 @@ func run() -> void:
 	U.close_all()
 	G.reply_order(o.id, "accept")
 	ok(o.status == "accepted" and o.agreed != null, "zamówienie przyjęte po cenie klienta (%s zł/g)" % str(o.agreed))
+	ok(float(o.meet) - S.t > 50.0 and float(o.meet) - S.t < 70.0, "spotkanie wypada ok. godzinę po potwierdzeniu (%d min)" % int(float(o.meet) - S.t))
 	ok(G.npcs.customers.size() == 1, "klient zaplanowany na spotkanie")
 	ok(G.npcs.customers[0].node == null, "klient jeszcze nie wyszedł z domu")
 	# pojawia się na krótko przed umówioną godziną i idzie pieszo
@@ -249,6 +284,35 @@ func run() -> void:
 		G.reply_order(o3.id, "decline")
 		ok(G.find_order(o3.id) == null, "odwołanie spotkania")
 
+	# --- „Zaraz wracam”: klient czeka, zamówienie zostaje; „Rezygnuję” je odwołuje
+	S.orders.clear()
+	G.npcs.clear_customers()
+	G.add_pack(S.inv, "dym", 80, 6)
+	var op: Dictionary = G.make_order(G.cust_def("dominik"))
+	G.reply_order(op.id, "accept")
+	var whop: Dictionary = G.cust_def("dominik").duplicate()
+	whop["st"] = S.cust.dominik
+	var dp: Dictionary = G.deal_start({"who": whop, "product": "dym", "grams": int(op.grams), "order": op, "street": false, "agreed": op.agreed})
+	G.deal_greet(dp, "twardo")
+	var mood_left: float = dp.mood
+	G.deal_pause(dp)
+	ok(G.find_order(op.id) != null and op.has("hold"), "„Zaraz wracam”: zamówienie nie przepada")
+	var dp2: Dictionary = G.deal_start({"who": whop, "product": "dym", "grams": int(op.grams), "order": op, "street": false, "agreed": op.agreed})
+	ok(float(dp2.mood) < mood_left + 0.01, "po powrocie klient pamięta nastrój rozmowy")
+	G.deal_cancel(dp2)
+	ok(G.find_order(op.id) == null, "„Rezygnuję” odwołuje transakcję")
+	G.take_pack(S.inv, "dym", 80, 99)
+
+	# --- ilości: gramy w połówkach, sztuki całe, miejsce w połówkach
+	var tmp: Dictionary = G.new_store()
+	G.add_bulk(tmp, "dym", 75, 3.7)
+	ok(absf(G.goods_total(tmp) - 3.5) < 0.001, "towar luzem zaokrągla się do połówek grama (3,7 → 3,5)")
+	ok(G.grams(3.5) == "3,5 g" and G.grams(10.0) == "10 g" and G.units(1.7) == "2", "zapis ilości: 3,5 g, 10 g, miejsce 2")
+
+	# --- policjant widzi do przodu i trochę na boki, ale nie za plecami
+	var NS = G.npcs.get_script()
+	ok(NS.sight(0.0) == 1.0 and NS.sight(1.2) > 0.0 and NS.sight(1.2) < 1.0 and NS.sight(2.4) == 0.0, "pole widzenia policji: przód tak, boki słabiej, tył wcale")
+
 	# --- doświadczony klient rozpoznaje mieszankę
 	var rejected := 0
 	for i in range(40):
@@ -328,9 +392,15 @@ func run() -> void:
 	var p0: Vector3 = G.player.global_position
 	Input.action_press("ui_accept")
 	Input.action_release("ui_accept")
-	var c0 := Vector2(G.npcs.citizens[0].x, G.npcs.citizens[0].z)
-	await frames(90)
-	ok(Vector2(G.npcs.citizens[0].x, G.npcs.citizens[0].z).distance_to(c0) > 0.2, "przechodnie chodzą po mieście")
+	var c0: Array = []
+	for cz in G.npcs.citizens:
+		c0.append(Vector2(cz.x, cz.z))
+	await frames(120)
+	var moved := 0
+	for ci in range(G.npcs.citizens.size()):
+		if Vector2(G.npcs.citizens[ci].x, G.npcs.citizens[ci].z).distance_to(c0[ci]) > 0.2:
+			moved += 1
+	ok(moved >= 2, "przechodnie chodzą po mieście (%d w ruchu)" % moved)
 	var path: Array = M.nav.find(p0.x, p0.z, float(D.SPOTS[0].x), float(D.SPOTS[0].z))
 	ok(path.size() >= 2, "nawigacja znajduje trasę (%d punktów)" % path.size())
 	var pb: Array = M.nav.path_between(Vector2(float(D.HOMES.blok5.x), float(D.HOMES.blok5.z)), Vector2(float(D.SPOTS[3].x), float(D.SPOTS[3].z)))
@@ -422,6 +492,8 @@ func _sim_one(days: int, run_i: int) -> String:
 	var S: Dictionary = G.S
 	var skill: float = [0.5, 0.7, 0.9][run_i % 3]      # jak dobrze gracz się targuje i waży
 	var invest: bool = M.args.has("invest")
+	for fk in ["tut_save", "tut_stash", "tut_bench", "wiktor_sms"]:
+		S.flags[fk] = true
 	S.flags["read_wiktor"] = true
 	var lazy := float(M.args.get("lazy", "0"))  # jaka część zamówień przepada (gracz nie zdąża)
 	var free: bool = M.args.has("free")       # bez długu: mierzymy sam zysk

@@ -377,6 +377,9 @@ func run() -> void:
 	await frames(30)
 	if U.mode == "dialog":
 		U.close_all()
+	for fk in ["tut_save", "tut_stash", "tut_bench"]:
+		G.S.flags[fk] = true
+	G._on_tour_done()
 	G.mods["sleeping"] = true          # żadnych losowych SMS-ów w trakcie nagrania
 	U.sms_banner.visible = false
 	U.sms_t = 0.0
@@ -493,7 +496,7 @@ func s3_tick(k: float, _f: int) -> void:
 # --- 4. telefon: wiadomość od Wiktora
 func s4_setup() -> void:
 	hud(true)
-	G.S.step = 0
+	G.S.step = 0 + G.TOUR_STEPS
 	G.S.cash = 60.0
 	G.S.flags.erase("read_wiktor")
 	clock(9.4, 1)
@@ -529,7 +532,7 @@ func s5_tick(k: float, _f: int) -> void:
 # --- 6. waga: porcjowanie
 func s6_setup() -> void:
 	hud(true)
-	G.S.step = 2
+	G.S.step = 2 + G.TOUR_STEPS
 	G.S.cash = 60.0
 	G.add_bulk(G.S.inv, "dym", 80, 5.0)
 	clock(10.6, 1)
@@ -579,7 +582,7 @@ func s7_tick(k: float, _f: int) -> void:
 # --- 8. rozmowa i targowanie
 func s8_setup() -> void:
 	hud(true)
-	G.S.step = 3
+	G.S.step = 3 + G.TOUR_STEPS
 	G.S.cash = 60.0
 	clock(17.15, 1)
 	G.add_pack(G.S.inv, "dym", 80, 5)
@@ -677,7 +680,7 @@ func s9_tick(_k: float, f: int) -> void:
 # --- 10. ulica z perspektywy gracza
 func s10_setup() -> void:
 	hud(true)
-	G.S.step = 6
+	G.S.step = 6 + G.TOUR_STEPS
 	clock(16.4, 4)
 	G.S.inv = G.new_store()
 	G.add_pack(G.S.inv, "dym", 80, 6)
@@ -812,7 +815,7 @@ func s16_tick(k: float, f: int) -> void:
 func s17_setup() -> void:
 	var S: Dictionary = G.S
 	hud(true)
-	S.step = 10
+	S.step = 10 + G.TOUR_STEPS
 	S.lvl = 5
 	S.cash = 2840.0
 	clock(14.2, 16)
