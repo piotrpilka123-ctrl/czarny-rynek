@@ -3,27 +3,28 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d1niep8v7wiqw"
-path="res://.godot/imported/spray_paint_bottles_arm_1k.jpg-0d577ad9b574329a13a139f4c326c588.ctex"
+path.s3tc="res://.godot/imported/spray_paint_bottles_arm_1k.jpg-0d577ad9b574329a13a139f4c326c588.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/spray_paint_bottles/textures/spray_paint_bottles_arm_1k.jpg"
-dest_files=["res://.godot/imported/spray_paint_bottles_arm_1k.jpg-0d577ad9b574329a13a139f4c326c588.ctex"]
+dest_files=["res://.godot/imported/spray_paint_bottles_arm_1k.jpg-0d577ad9b574329a13a139f4c326c588.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=2
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

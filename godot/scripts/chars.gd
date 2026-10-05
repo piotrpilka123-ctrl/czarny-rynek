@@ -3,6 +3,8 @@ extends RefCounted
 ## z ubraniami nakładanymi shaderem i animacjami z „Universal Animation Library” (CC0).
 ## Maska ubrań jest zapisana w kolorach wierzchołków (patrz tools/README).
 
+const People = preload("res://scripts/people.gd")
+
 const SH_BODY := """
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
@@ -549,6 +551,8 @@ static func make(o: Dictionary = {}) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(o.get("seed", randi()))
 	var female: bool = o.get("female", false)
+	if o.has("model") and People.exists(String(o.model)):
+		return _make_person(o, rng, female)
 	var inst: Node3D = _load_scene("res://assets/chars/%s.gltf" % ("female" if female else "male")).instantiate()
 	var skel: Skeleton3D = inst.find_child("Skeleton3D", true, false)
 	var body: MeshInstance3D = null
@@ -627,6 +631,33 @@ static func make(o: Dictionary = {}) -> Dictionary:
 		root.add_child(_blob(sx))
 	var rig := {"root": root, "model": inst, "skel": skel, "body": body, "anim": ap, "height": height, "cur": "", "female": female, "phase": rng.randf(),
 		"walk": o.get("walk", pick_walk(rng, female, kind_name)), "idle_t": 0.0}
+	play(rig, "Idle")
+	ap.seek(rng.randf() * 3.0, true)
+	return rig
+
+
+## postać z gotowego, realistycznego modelu (people.gd); animacje wspólne z resztą gry
+static func _make_person(o: Dictionary, rng: RandomNumberGenerator, female: bool) -> Dictionary:
+	var model := String(o.model)
+	var p: Dictionary = People.instance(model)
+	var inst: Node3D = p.model
+	var skel: Skeleton3D = p.skel
+	female = People.is_female(model)
+	var k: float = float(o.get("tall", rng.randf_range(0.97, 1.045)))
+	var build: float = o.get("build", rng.randf_range(0.97, 1.04))
+	inst.scale = Vector3(k * build, k, k * build)
+	var root := Node3D.new()
+	root.add_child(inst)
+	var ap := AnimationPlayer.new()
+	inst.add_child(ap)
+	ap.add_animation_library("", People.library(model, _library(false), _load_scene("res://assets/chars/male.gltf"), female))
+	ap.playback_default_blend_time = 0.28
+	_set_layer(inst, 2)
+	if not o.get("no_blob", false):
+		root.add_child(_blob(k))
+	var kind_name: String = o.get("kind", "hoodie")
+	var rig := {"root": root, "model": inst, "skel": skel, "body": p.body, "anim": ap, "height": float(p.top) * k, "cur": "", "female": female, "phase": rng.randf(),
+		"walk": o.get("walk", pick_walk(rng, female, kind_name)), "idle_t": 0.0, "person": true}
 	play(rig, "Idle")
 	ap.seek(rng.randf() * 3.0, true)
 	return rig

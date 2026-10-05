@@ -3,27 +3,28 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cv48drhhb3t48"
-path="res://.godot/imported/CoffeeTable_01_arm_1k.jpg-1f953a5af0133ca8eea3121855f19f41.ctex"
+path.s3tc="res://.godot/imported/CoffeeTable_01_arm_1k.jpg-1f953a5af0133ca8eea3121855f19f41.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/props/coffeetable_01/textures/CoffeeTable_01_arm_1k.jpg"
-dest_files=["res://.godot/imported/CoffeeTable_01_arm_1k.jpg-1f953a5af0133ca8eea3121855f19f41.ctex"]
+dest_files=["res://.godot/imported/CoffeeTable_01_arm_1k.jpg-1f953a5af0133ca8eea3121855f19f41.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=2
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

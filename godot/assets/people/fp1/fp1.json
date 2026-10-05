@@ -1,0 +1,19 @@
+{
+ "source": "Adults/Female_Party_01",
+ "parts": {
+  "body": {
+   "color": "fp1_body.jpg",
+   "prefix": "f010",
+   "normal": "fp1_body_n.jpg"
+  },
+  "head": {
+   "color": "fp1_head.jpg",
+   "prefix": "f010",
+   "normal": "fp1_head_n.jpg"
+  },
+  "opacity": {
+   "color": "fp1_opacity.png",
+   "prefix": "f010"
+  }
+ }
+}

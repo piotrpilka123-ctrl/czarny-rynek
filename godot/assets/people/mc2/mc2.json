@@ -1,0 +1,20 @@
+{
+ "source": "Professions/Construction_Male_02",
+ "parts": {
+  "body": {
+   "color": "mc2_body.jpg",
+   "prefix": "m101",
+   "normal": "mc2_body_n.jpg"
+  },
+  "head": {
+   "color": "mc2_head.jpg",
+   "prefix": "m101",
+   "normal": "mc2_head_n.jpg"
+  },
+  "helmet": {
+   "color": "mc2_helmet.jpg",
+   "prefix": "m101",
+   "normal": "mc2_helmet_n.jpg"
+  }
+ }
+}

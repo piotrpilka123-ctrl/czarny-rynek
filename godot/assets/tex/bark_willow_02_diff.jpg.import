@@ -3,27 +3,28 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ciwe1vp5hl377"
-path="res://.godot/imported/bark_willow_02_diff.jpg-1a36578d7e07d478d3c5100df9878ce9.ctex"
+path.s3tc="res://.godot/imported/bark_willow_02_diff.jpg-1a36578d7e07d478d3c5100df9878ce9.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/tex/bark_willow_02_diff.jpg"
-dest_files=["res://.godot/imported/bark_willow_02_diff.jpg-1a36578d7e07d478d3c5100df9878ce9.ctex"]
+dest_files=["res://.godot/imported/bark_willow_02_diff.jpg-1a36578d7e07d478d3c5100df9878ce9.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=2
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

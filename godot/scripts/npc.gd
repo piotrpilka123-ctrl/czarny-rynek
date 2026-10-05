@@ -6,6 +6,9 @@ const Models = preload("res://scripts/models.gd")
 const Chars = preload("res://scripts/chars.gd")
 
 const COP_LOOK := {"kind": "police", "top": "c8e020", "top2": "141c30", "bottom": "141c30", "shoes": "0c0c0e", "hat": "police", "walk": "Walk_Formal"}
+var _pool_m: Array = []
+var _pool_f: Array = []
+var _cop_i := 0
 const CAR_ROUTE := [[-152.0, 20.0], [-106.0, 20.0], [-106.0, -130.0], [95.0, -130.0], [95.0, -66.0], [95.0, -130.0], [-106.0, -130.0], [-106.0, 20.0], [118.0, 20.0], [-106.0, 20.0], [-152.0, 20.0]]
 
 var all: Array = []
@@ -61,9 +64,20 @@ func _random_node(public_only := true) -> int:
 	return 0
 
 
+## losuje model z puli tak, żeby się nie powtarzał, dopóki pula się nie wyczerpie
+func _pick_model(female: bool) -> String:
+	if _pool_m.is_empty():
+		_pool_m = D.PEOPLE_M.duplicate()
+		_pool_m.shuffle()
+	if _pool_f.is_empty():
+		_pool_f = D.PEOPLE_F.duplicate()
+		_pool_f.shuffle()
+	return String(_pool_f.pop_back()) if female else String(_pool_m.pop_back())
+
+
 func spawn_citizen(idx := 0) -> Dictionary:
-	var female := randf() < 0.4
-	var o := {"female": female, "seed": randi()}
+	var female := randf() < 0.42
+	var o := {"female": female, "seed": randi(), "model": _pick_model(female)}
 	var r := randf()
 	if r < 0.4 and not female:
 		o["kind"] = "dres"
@@ -136,8 +150,9 @@ func _pick_next(n: Dictionary, weighted: bool) -> void:
 # ---------------------------------------------------------------- policja
 func spawn_cop(at_station: bool) -> Dictionary:
 	var look := COP_LOOK.duplicate()
-	look["female"] = randf() < 0.25
 	look["seed"] = randi()
+	look["model"] = D.PEOPLE_COP[_cop_i % D.PEOPLE_COP.size()]
+	_cop_i += 1
 	var rig: Dictionary = Chars.make(look)
 	add_child(rig.root)
 	var alert: Label3D = Models.label("!", Color(1, 0.3, 0.3), 96)
@@ -195,30 +210,30 @@ func _static(o: Dictionary) -> Dictionary:
 func _build_static() -> void:
 	var sx: float = D.ROOMS.shop.cx
 	stasiu = _static({"x": sx, "z": -2.3, "loc": "shop", "name": "Wujek Staś", "label": "Wujek Staś", "track": true, "range": 3.4,
-		"look": {"kind": "shirt", "top": "5b6b4a", "bottom": "2b2622", "hair": "hair_simpleparted", "hair_color": "9a9a9a", "beard": true, "skin": 0.85, "build": 1.15, "height": 1.74, "seed": 3},
+		"look": {"model": "m03", "kind": "shirt", "top": "5b6b4a", "bottom": "2b2622", "hair": "hair_simpleparted", "hair_color": "9a9a9a", "beard": true, "skin": 0.85, "build": 1.15, "height": 1.74, "seed": 3},
 		"act": func(): G.main.talk_stasiu()})
 	# ochroniarze klubu
 	for z in [126.2, 129.8]:
 		_static({"x": -6.5, "z": z, "rot": PI / 2.0, "pose": "arms", "name": "Ochroniarz",
-			"look": {"kind": "jacket", "top": "0b0b0d", "bottom": "0b0b0d", "shoes": "0c0c0e", "bald": true, "build": 1.2, "height": 1.93, "seed": int(z)},
+			"look": {"model": "sm1", "tall": 1.07, "kind": "jacket", "top": "0b0b0d", "bottom": "0b0b0d", "shoes": "0c0c0e", "bald": true, "build": 1.2, "height": 1.93, "seed": int(z)},
 			"lines": ["Lista zamknięta.", "Nie dzisiaj, kolego.", "Bez awantur pod klubem."]})
 	# ekipa spod klatki bloku 5
 	_static({"x": -55.5, "z": -76.05, "rot": 0.0, "pose": "sit", "name": "Młody", "y": 0.0,
-		"look": {"kind": "dres", "top": "1c2330", "top2": "e8e6e0", "bottom": "1c2330", "stripes": true, "hat": "cap", "hat_color": "101114", "seed": 31},
+		"look": {"model": "m16", "kind": "dres", "top": "1c2330", "top2": "e8e6e0", "bottom": "1c2330", "stripes": true, "hat": "cap", "hat_color": "101114", "seed": 31},
 		"lines": ["Siwy to był gość. Szkoda chłopa.", "Ty jesteś brat Siwego? Uważaj na psy, kręcą się tu co wieczór.", "Masz szluga?"]})
 	_static({"x": -57.6, "z": -75.0, "rot": 0.9, "pose": "arms", "name": "Łysy",
-		"look": {"kind": "dres", "top": "101114", "top2": "b0382c", "bottom": "101114", "stripes": true, "bald": true, "build": 1.12, "seed": 32},
+		"look": {"model": "mb7", "kind": "dres", "top": "101114", "top2": "b0382c", "bottom": "101114", "stripes": true, "bald": true, "build": 1.12, "seed": 32},
 		"lines": ["Czego?", "Tu się nie stoi bez powodu.", "Jak będziesz coś miał, to wiesz, gdzie nas szukać."]})
 	_static({"x": -54.1, "z": -74.6, "rot": -0.7, "pose": "crouch", "name": "Mati",
-		"look": {"kind": "hoodie", "top": "3a3f4a", "bottom": "101114", "hat": "beanie", "hat_color": "101114", "seed": 33},
+		"look": {"model": "m09", "kind": "hoodie", "top": "3a3f4a", "bottom": "101114", "hat": "beanie", "hat_color": "101114", "seed": 33},
 		"lines": ["Ej, ty, nowy. Podobno Wiktor ci daje towar?", "Słonecznika chcesz?", "Radiowóz jeździ w kółko: Hutnicza, rampa, osiedle. Zapamiętaj."]})
 	# emeryt w parku
 	_static({"x": -88.0, "z": 63.85, "rot": 0.4, "pose": "sit", "name": "Pan Henryk",
-		"look": {"kind": "jacket", "top": "55504a", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "3a3530", "build": 1.05, "height": 1.7, "seed": 34},
+		"look": {"model": "mg1", "kind": "jacket", "top": "55504a", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "3a3530", "build": 1.05, "height": 1.7, "seed": 34},
 		"lines": ["Jak huta stała, to tu było życie. A teraz? Sam pan widzi.", "Trzydzieści lat przy piecu. I co mi z tego zostało?", "Kiedyś to na tej górce saneczki, festyny… Dziś strach wieczorem wyjść."]})
 	# pijaczek pod monopolowym
 	_static({"x": 33.4, "z": 11.2, "rot": 0.3, "pose": "junkie", "name": "Zdzichu",
-		"look": {"kind": "jacket", "top": "4a4538", "bottom": "2b2622", "beard": true, "hair": "hair_simpleparted", "hair_color": "7a7a7a", "seed": 35},
+		"look": {"model": "m07", "kind": "jacket", "top": "4a4538", "bottom": "2b2622", "beard": true, "hair": "hair_simpleparted", "hair_color": "7a7a7a", "seed": 35},
 		"lines": ["Kierowniku… poratuj złotówką…", "Ja tu wszystko widzę. Wszyściutko. Ale nic nie mówię.", "Zimno dziś, co?"]})
 	# potencjalni klienci „z rozmowy”
 	_static({"x": 96.2, "z": 86.2, "rot": 1.2, "pose": "kneel", "name": "Marek", "label": "Marek — mechanik",
@@ -231,11 +246,11 @@ func _build_static() -> void:
 	var cl := [[8.2, 120.6, -2.2, "talk"], [9.4, 121.9, -1.2, ""], [8.0, 122.8, -0.4, "talk"], [10.6, 133.0, 2.9, "phone"]]
 	for i in range(cl.size()):
 		_static({"x": cl[i][0], "z": cl[i][1], "rot": cl[i][2], "pose": cl[i][3], "name": ["Imprezowicz", "Imprezowiczka"][i % 2], "hours": [20, 4],
-			"look": {"female": i % 2 == 1, "kind": ["jacket", "tank", "hoodie", "jacket"][i], "seed": 40 + i},
+			"look": {"model": ["m06", "fp1", "m12", "f17"][i], "female": i % 2 == 1, "kind": ["jacket", "tank", "hoodie", "jacket"][i], "seed": 40 + i},
 			"lines": ["Ale dziś gra!", "Masz ogień?", "Znasz kogoś, kto coś ma? …A, nieważne.", "Ochrona dziś nie w humorze."]})
 	# kobieta na przystanku
 	_static({"x": 63.6, "z": 10.7, "rot": 0.2, "pose": "phone", "name": "Kobieta na przystanku", "hours": [6, 21],
-		"look": {"female": true, "kind": "coat", "top": "5a2f52", "bottom": "101114", "seed": 46},
+		"look": {"model": "fb3", "female": true, "kind": "coat", "top": "5a2f52", "bottom": "101114", "seed": 46},
 		"lines": ["Sto dwójka znowu spóźniona.", "Przepraszam, śpieszę się.", "Tu od tygodnia nie świeci latarnia. I komu to zgłosić?"]})
 
 
@@ -268,8 +283,7 @@ func _update_car(dt: float, pp: Vector3, outside: bool) -> void:
 	car.look_t = float(car.look_t) - dt
 	if float(car.look_t) <= 0.0:
 		car.look_t = 0.25
-		var ang := absf(_ang_diff(atan2(pp.x - car.x, pp.z - car.z), float(car.rot)))
-		car.sees = dist < (30.0 - G.night * 6.0) * sight(ang) and G.world.los(car.x, car.z, pp.x, pp.z)
+		car.sees = can_see(car.x, car.z, float(car.rot), 30.0 - G.night * 6.0)
 	if car.alarm:
 		car.light.visible = fmod(G.now * 5.0, 1.0) < 0.5
 		if not G.S.wanted:
@@ -529,6 +543,27 @@ static func sight(ang: float) -> float:
 	if ang >= SIGHT_SIDE:
 		return 0.0
 	return lerpf(1.0, 0.3, (ang - SIGHT_FULL) / (SIGHT_SIDE - SIGHT_FULL))
+
+
+## Czy patrzący z punktu (x, z) w kierunku `rot` widzi gracza. Jedyna droga, którą policja „widzi”:
+## liczy się kierunek patrzenia, odległość, zasłony po drodze i to, czy gracz kuca.
+func can_see(x: float, z: float, rot: float, view_range: float) -> bool:
+	var P = G.player
+	var pp: Vector3 = P.global_position
+	var dx := pp.x - x
+	var dz := pp.z - z
+	var dist := sqrt(dx * dx + dz * dz)
+	var crouch: bool = P.crouching
+	var r := view_range * sight(absf(_ang_diff(atan2(dx, dz), rot))) * (0.62 if crouch else 1.0)
+	return dist < r and G.world.los(x, z, pp.x, pp.z, crouch)
+
+
+## czy któryś patrol akurat patrzy na gracza z odległości do `r` metrów
+func watcher(r: float) -> Variant:
+	for c in cops:
+		if can_see(c.x, c.z, c.node.rotation.y, r):
+			return c
+	return null
 
 
 func nearest_interact(px: float, pz: float, fwd: Vector2, loc: String) -> Variant:
@@ -791,10 +826,12 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		c.look_t -= dt
 		if c.look_t <= 0.0:
 			c.look_t = 0.2
-			var ang := absf(_ang_diff(atan2(dx, dz), c.node.rotation.y))
-			c.sees = dist < view_range * sight(ang) and G.world.los(c.x, c.z, pp.x, pp.z)
-			if c.state == "chase" and dist < view_range * 1.4 and G.world.los(c.x, c.z, pp.x, pp.z):
-				c.sees = true
+			# w pościgu patrzy uważniej (dalej), ale dalej tylko przed siebie
+			c.sees = can_see(c.x, c.z, c.node.rotation.y, view_range * (1.4 if c.state == "chase" else 1.0))
+			# z bliska słyszy bieg za plecami: nie „widzi”, tylko odwraca się sprawdzić
+			if not c.sees and dist < 4.5 and G.player.sprinting and (c.state == "patrol" or c.state == "post"):
+				c.hear_t = 1.8
+				c.hear_rot = atan2(dx, dz)
 		var move_speed := 0.0
 		var has_tgt := false
 		var tgt := Vector2.ZERO
@@ -812,7 +849,10 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 					c.alert.modulate = Color(1.0, 0.8, 0.2)
 				if c.susp >= 1.0:
 					start_chase(c)
-				if c.state == "post":
+				if float(c.get("hear_t", 0.0)) > 0.0:
+					c.hear_t = float(c.hear_t) - dt
+					c.node.rotation.y += _ang_diff(float(c.hear_rot), c.node.rotation.y) * minf(1.0, dt * 4.0)
+				elif c.state == "post":
 					pose = "arms"
 					c.node.rotation.y += sin(G.now * 0.4 + c.x) * dt * 0.5
 				elif c.idle > 0.0:
@@ -879,27 +919,27 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 			var to := tgt - Vector2(c.x, c.z)
 			var face := atan2(to.x, to.y)
 			if c.state == "chase" or c.state == "investigate":
-				# pod górę wolniej — tak jak gracz
+				# biegnie trasą omijającą płoty, mury i auta; pod górę wolniej — tak jak gracz
+				var here := Vector2(c.x, c.z)
+				var path: PackedVector2Array = c.get("path", PackedVector2Array())
+				c.path_t = float(c.get("path_t", 0.0)) - dt
+				if c.path_t <= 0.0 or path.is_empty() or (Vector2(c.get("path_goal", tgt)) - tgt).length() > 1.5:
+					path = G.world.grid_path(here, tgt)
+					c.path_t = 0.4
+					c.path_goal = tgt
+				while path.size() > 1 and here.distance_to(path[0]) < 0.45:
+					path.remove_at(0)
+				c.path = path
+				var nxt: Vector2 = path[0] if not path.is_empty() else tgt
+				var dv := nxt - here
+				var ln0: float = maxf(0.001, dv.length())
 				var h0 := _h(c.x, c.z)
-				var ln0: float = maxf(0.001, to.length())
-				var h1 := _h(c.x + to.x / ln0 * 0.8, c.z + to.y / ln0 * 0.8)
-				var step := move_speed * dt * clampf(1.0 - maxf(0.0, (h1 - h0) / 0.8) * 0.75, 0.45, 1.0)
-				var base := atan2(to.y, to.x)
-				var offs := [0.0, 0.5, 1.0, 1.6, 2.3, -0.5, -1.0, -1.6] if c.side > 0.0 else [0.0, -0.5, -1.0, -1.6, -2.3, 0.5, 1.0, 1.6]
-				var moved := false
-				for off in offs:
-					var a: float = base + off
-					var r := _resolve(c.x, c.z, 0.35, cos(a) * step, sin(a) * step)
-					if (r - Vector2(c.x, c.z)).length() > step * 0.7:
-						c.x = r.x
-						c.z = r.y
-						face = PI / 2.0 - a
-						if off != 0.0:
-							c.side = 1.0 if off > 0.0 else -1.0
-						moved = true
-						break
-				if not moved:
-					c.side = -c.side
+				var h1 := _h(c.x + dv.x / ln0 * 0.8, c.z + dv.y / ln0 * 0.8)
+				var step := minf(ln0, move_speed * dt * clampf(1.0 - maxf(0.0, (h1 - h0) / 0.8) * 0.75, 0.45, 1.0))
+				c.x += dv.x / ln0 * step
+				c.z += dv.y / ln0 * step
+				if ln0 > 0.05:
+					face = atan2(dv.x, dv.y)
 			else:
 				var ln: float = maxf(0.001, to.length())
 				c.x += to.x / ln * move_speed * dt

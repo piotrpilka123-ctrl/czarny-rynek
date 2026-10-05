@@ -1,0 +1,19 @@
+{
+ "source": "Professions/Business_Female_03",
+ "parts": {
+  "body": {
+   "color": "fb3_body.jpg",
+   "prefix": "f016",
+   "normal": "fb3_body_n.jpg"
+  },
+  "head": {
+   "color": "fb3_head.jpg",
+   "prefix": "f016",
+   "normal": "fb3_head_n.jpg"
+  },
+  "opacity": {
+   "color": "fb3_opacity.png",
+   "prefix": "f016"
+  }
+ }
+}

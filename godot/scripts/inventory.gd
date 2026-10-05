@@ -133,7 +133,7 @@ func _build_viewport() -> void:
 	bag_mesh.material_override = mat
 	var skel: Skeleton3D = rig.skel
 	var bone := ""
-	for cand in ["spine_03", "spine_02", "Spine2", "Chest", "spine_01"]:
+	for cand in ["Bip01 Spine2", "spine_03", "spine_02", "Spine2", "Chest", "spine_01"]:
 		if skel.find_bone(cand) >= 0:
 			bone = cand
 			break
@@ -142,7 +142,12 @@ func _build_viewport() -> void:
 		ba.bone_name = bone
 		skel.add_child(ba)
 		ba.add_child(bag_mesh)
-		bag_mesh.position = Vector3(0, 0.02, -0.17)
+		if bone.begins_with("Bip01"):
+			# kość szkieletu Biped: oś X w górę kręgosłupa, Y do przodu, Z w bok
+			bm.size = Vector3(0.4, 0.16, 0.3)
+			bag_mesh.position = Vector3(0.04, -0.18, 0)
+		else:
+			bag_mesh.position = Vector3(0, 0.02, -0.17)
 	else:
 		rig.root.add_child(bag_mesh)
 		bag_mesh.position = Vector3(0, 1.2, -0.2)

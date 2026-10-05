@@ -162,9 +162,10 @@ static func bark_material() -> StandardMaterial3D:
 const SH_GRASS := """
 shader_type spatial;
 render_mode cull_disabled, specular_disabled;
-uniform vec3 base_col : source_color = vec3(0.13, 0.15, 0.07);
-uniform vec3 tip_col : source_color = vec3(0.36, 0.38, 0.19);
+uniform sampler2D tex : source_color, filter_linear_mipmap, repeat_disable;
 uniform float tall = 1.0;
+uniform float far0 = 24.0;
+uniform float far1 = 40.0;
 varying float hh;
 varying float tone;
 void vertex() {
@@ -172,96 +173,140 @@ void vertex() {
 	vec3 o = MODEL_MATRIX[3].xyz;
 	tone = fract(sin(dot(o.xz, vec2(12.9898, 78.233))) * 43758.5453);
 	float sway = sin(TIME * 1.5 + o.x * 0.9 + o.z * 1.3) + sin(TIME * 2.7 + o.z * 0.6) * 0.5;
-	VERTEX.x += sway * 0.035 * hh * hh * tall;
-	// kępy płynnie maleją z odległością (zamiast znikać „ziarnistym” wygaszaniem);
-	// daleko, gdzie źdźbła byłyby cieńsze niż piksel i migotały, nie ma ich wcale
+	VERTEX.x += sway * 0.04 * hh * hh * tall;
+	// kępy płynnie maleją z odległością, zamiast znikać skokowo
 	float dcam = distance(CAMERA_POSITION_WORLD, o);
-	VERTEX *= 1.0 - smoothstep(9.0, 20.0, dcam);
-	NORMAL = normalize(mix(NORMAL, vec3(0.0, 1.0, 0.0), 0.85));
+	VERTEX *= 1.0 - smoothstep(far0, far1, dcam);
+	NORMAL = vec3(0.0, 1.0, 0.0);
 }
 void fragment() {
-	vec3 c = mix(base_col, tip_col, hh);
-	c = mix(c, c * vec3(1.25, 1.1, 0.7), tone * 0.6);
-	ALBEDO = c;
+	vec4 c = texture(tex, UV);
+	ALPHA = texture(tex, UV, -1.0).a;
+	ALPHA_SCISSOR_THRESHOLD = 0.4;
+	vec3 col = c.rgb * mix(0.55, 1.0, hh) * mix(vec3(0.82, 0.86, 0.7), vec3(1.05, 0.98, 0.78), tone);
+	ALBEDO = col * 0.8;
 	ROUGHNESS = 1.0;
-	NORMAL = normalize(mix(NORMAL, vec3(0.0, 0.0, 1.0) * (FRONT_FACING ? 1.0 : -1.0), 0.0));
-	BACKLIGHT = vec3(0.12, 0.13, 0.05);
+	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	BACKLIGHT = col * 0.25;
 }
 """
 
 
-## lekka kępa trawy: kilka zwężających się źdźbeł (ok. 20 trójkątów zamiast 155 w modelu)
+## kępa trawy: trzy skrzyżowane karty z teksturą źdźbeł (szerokość i wysokość 1 — skaluje się przy rozstawianiu)
 static var _tuft: ArrayMesh = null
 
 static func grass_mesh() -> ArrayMesh:
 	if _tuft != null:
 		return _tuft
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 4242
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
+	var uvs := PackedVector2Array()
 	var idx := PackedInt32Array()
-	for b in range(7):
-		var ang := rng.randf() * TAU
-		var dir := Vector3(cos(ang), 0, sin(ang))
-		var side := Vector3(-dir.z, 0, dir.x)
-		var base := dir * rng.randf_range(0.02, 0.16)
-		var h := rng.randf_range(0.55, 1.0)
-		var w := rng.randf_range(0.035, 0.06)
-		var lean := rng.randf_range(0.1, 0.42)
-		var p0 := base - side * w
-		var p1 := base + side * w
-		var mid := base + dir * lean * 0.35 + Vector3(0, h * 0.55, 0)
-		var p2 := mid - side * w * 0.6
-		var p3 := mid + side * w * 0.6
-		var tip := base + dir * lean + Vector3(0, h, 0)
+	for k in range(3):
+		var a := PI * k / 3.0 + 0.3
+		var d := Vector3(cos(a), 0.0, sin(a)) * 0.5
 		var i0 := verts.size()
-		for p in [p0, p1, p2, p3, tip]:
-			verts.append(p)
-			norms.append((Vector3.UP + dir * 0.3).normalized())
-		for t in [0, 1, 2, 1, 3, 2, 2, 3, 4]:
+		for p in [[-1.0, 0.0], [1.0, 0.0], [1.0, 1.0], [-1.0, 1.0]]:
+			verts.append(d * float(p[0]) + Vector3(0, float(p[1]), 0))
+			norms.append(Vector3.UP)
+			uvs.append(Vector2(float(p[0]) * 0.5 + 0.5, 1.0 - float(p[1])))
+		for t in [0, 1, 2, 0, 2, 3]:
 			idx.append(i0 + t)
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = verts
 	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_TEX_UV] = uvs
 	arr[Mesh.ARRAY_INDEX] = idx
 	_tuft = ArrayMesh.new()
 	_tuft.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	return _tuft
 
 
-## kępy trawy: jeden materiał, kolor od ciemnej nasady po jaśniejsze końce, lekki wiatr
-static func grass_material(tall: float) -> Material:
+static var _grass_mats := {}
+
+## materiał kępy trawy; `seeds` = wysoka trawa z kłosami
+static func grass_material(tall: float, seeds := false) -> Material:
+	var key := "%.2f|%s" % [tall, seeds]
+	if _grass_mats.has(key):
+		return _grass_mats[key]
 	var sh := Shader.new()
 	sh.code = SH_GRASS
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	m.set_shader_parameter("tall", tall)
+	m.set_shader_parameter("tex", tex("res://assets/nature/%s.png" % ("gen_grass_b" if seeds else "gen_grass_a")))
+	_grass_mats[key] = m
 	return m
 
 
-static func _tint_leaves(n: Node, tint: Color) -> void:
+## Liście: karty z kępami drobnych liści (tekstury z tools/make_foliage.py). Shader pilnuje, żeby korona
+## nie „łysiała” z odległości, podświetla liście pod słońce, przyciemnia środek korony i kołysze nią na wietrze.
+const SH_LEAF := """
+shader_type spatial;
+render_mode cull_disabled, specular_disabled;
+uniform sampler2D tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform float cutoff = 0.4;
+uniform float crown_y = 4.0;
+instance uniform vec3 tint : source_color = vec3(1.0);
+varying vec3 opos;
+void vertex() {
+	opos = VERTEX;
+	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float k = clamp(VERTEX.y * 0.12, 0.0, 1.0);
+	float sway = sin(TIME * 1.1 + wp.x * 0.5 + wp.z * 0.7) * 0.6 + sin(TIME * 2.6 + wp.x * 1.9 + wp.y * 1.3) * 0.25;
+	VERTEX.x += sway * 0.05 * k;
+	VERTEX.z += cos(TIME * 0.9 + wp.z * 0.6) * 0.03 * k;
+	// „kuliste” normalne: korona łapie światło jak bryła, a nie jak stos kartek
+	vec3 from_c = normalize(VERTEX - vec3(0.0, crown_y, 0.0));
+	NORMAL = normalize(mix(NORMAL, from_c, 0.8));
+}
+void fragment() {
+	vec4 c = texture(tex, UV);
+	// przezroczystość z ostrzejszego poziomu mipmapy — z daleka liście nie znikają
+	float a = texture(tex, UV, -1.2).a;
+	ALPHA = a;
+	ALPHA_SCISSOR_THRESHOLD = cutoff;
+	float inner = smoothstep(0.2, 2.4, length(opos - vec3(0.0, crown_y, 0.0)));
+	vec3 col = c.rgb * tint * mix(0.5, 1.08, inner);
+	ALBEDO = col;
+	ROUGHNESS = 0.9;
+	BACKLIGHT = col * 0.6;
+}
+"""
+
+static var _leaf_sh: Shader = null
+
+static func leaf_material(tex_name: String, crown_y := 4.0) -> ShaderMaterial:
+	var key := "%s|%.1f" % [tex_name, crown_y]
+	if _leaf_mat.has(key):
+		return _leaf_mat[key]
+	if _leaf_sh == null:
+		_leaf_sh = Shader.new()
+		_leaf_sh.code = SH_LEAF
+	var m := ShaderMaterial.new()
+	m.shader = _leaf_sh
+	m.set_shader_parameter("tex", tex("res://assets/nature/%s.png" % tex_name))
+	m.set_shader_parameter("crown_y", crown_y)
+	_leaf_mat[key] = m
+	return m
+
+
+## podmienia materiały drzewa: kora realistyczna, liście z wybranej tekstury i w wybranym odcieniu
+static func _tint_leaves(n: Node, tint: Color, leaf_tex := "gen_leaves_autumn") -> void:
 	if n is MeshInstance3D:
 		var mi: MeshInstance3D = n
+		var top := mi.mesh.get_aabb().end.y
 		for i in range(mi.mesh.get_surface_count()):
 			var m: Material = mi.mesh.surface_get_material(i)
 			if m != null and String(m.resource_name).contains("Bark"):
 				mi.set_surface_override_material(i, bark_material())
 				continue
 			if m is BaseMaterial3D and (String(m.resource_name).contains("Leaves") or String(m.resource_name).contains("Grass")):
-				var key := str(m.get_instance_id()) + tint.to_html(false)
-				if not _leaf_mat.has(key):
-					var d: BaseMaterial3D = m.duplicate()
-					d.albedo_color = tint.darkened(0.25)
-					d.roughness = 1.0
-					d.alpha_scissor_threshold = 0.45
-					d.backlight_enabled = true
-					d.backlight = Color(0.25, 0.22, 0.08)
-					_leaf_mat[key] = d
-				mi.set_surface_override_material(i, _leaf_mat[key])
+				mi.set_surface_override_material(i, leaf_material(leaf_tex, snappedf(top * 0.66, 0.5)))
+				mi.set_instance_shader_parameter("tint", tint)
 	for c in n.get_children():
-		_tint_leaves(c, tint)
+		_tint_leaves(c, tint, leaf_tex)
 
 
 ## drzewo: `leaves` = szansa na liście (reszta to gołe, jesienne drzewa)
@@ -275,8 +320,11 @@ static func tree(seed_v: int, s := 1.0, leaves := 0.5) -> Node3D:
 		_tint_leaves(n, Color.WHITE)
 	else:
 		n = make("commontree_%d" % rng.randi_range(1, 5), rng.randf_range(6.0, 9.0) * s)
-		var tints := [Color(0.62, 0.58, 0.3), Color(0.72, 0.52, 0.22), Color(0.5, 0.55, 0.3), Color(0.78, 0.62, 0.25), Color(0.45, 0.5, 0.3)]
-		_tint_leaves(n, tints[rng.randi_range(0, tints.size() - 1)])
+		# późna jesień: złoto, rdza, trochę zieleni, czasem prawie gołe gałęzie
+		var r := rng.randf()
+		var tx := "gen_leaves_autumn" if r < 0.45 else ("gen_leaves_rust" if r < 0.7 else ("gen_leaves_green" if r < 0.88 else "gen_leaves_sparse"))
+		var k := rng.randf_range(0.82, 1.1)
+		_tint_leaves(n, Color(k, k * rng.randf_range(0.9, 1.0), k * rng.randf_range(0.8, 1.0)), tx)
 	n.rotation.y = rng.randf() * TAU
 	set_range(n, 170.0)
 	set_lod(n, 0.45)
@@ -285,7 +333,7 @@ static func tree(seed_v: int, s := 1.0, leaves := 0.5) -> Node3D:
 
 static func big_tree(seed_v: int, h := 13.0) -> Node3D:
 	var n := make("twistedtree_%d" % (1 + seed_v % 2), h)
-	_tint_leaves(n, Color(0.55, 0.5, 0.26))
+	_tint_leaves(n, Color(0.95, 0.9, 0.8), "gen_leaves_autumn" if seed_v % 3 != 0 else "gen_leaves_rust")
 	set_range(n, 200.0)
 	set_lod(n, 0.5)
 	return n
@@ -295,28 +343,25 @@ static func bush(seed_v: int, s := 1.0) -> Node3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v
 	var n := make("bush_common", rng.randf_range(1.0, 1.5) * s, 0.0, false)
-	_tint_leaves(n, [Color(0.4, 0.42, 0.22), Color(0.5, 0.42, 0.2), Color(0.35, 0.4, 0.24)][rng.randi_range(0, 2)])
+	var k := rng.randf_range(0.7, 1.0)
+	_tint_leaves(n, Color(k, k, k * 0.9), ["gen_leaves_green", "gen_leaves_rust", "gen_leaves_green"][rng.randi_range(0, 2)])
 	n.rotation.y = rng.randf() * TAU
 	set_range(n, 80.0)
 	return n
 
 
-## kępa chwastów / wysokiej trawy
-static var _weed_mat := {}
-
+## kępa chwastów / wysokiej trawy z kłosami (te same karty co trawa, tylko wyższe)
 static func weeds(seed_v: int, s := 1.0) -> Node3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v
-	var n := make(["grass_common_tall", "grass_wispy_tall", "grass_common_short", "grass_wispy_tall", "grass_common_tall"][rng.randi_range(0, 4)], rng.randf_range(0.5, 1.0) * s, 0.0, false)
-	# ten sam materiał co kępy trawy: jasne końce, ciemna nasada, lekki wiatr
-	var mi := _first_mesh_of(n)
-	if mi != null and mi.mesh != null:
-		var tall := snappedf(maxf(0.05, mi.mesh.get_aabb().end.y), 0.05)
-		if not _weed_mat.has(tall):
-			_weed_mat[tall] = grass_material(tall)
-		mi.material_override = _weed_mat[tall]
-	else:
-		_tint_leaves(n, Color(0.5, 0.5, 0.28))
+	var n := Node3D.new()
+	var mi := MeshInstance3D.new()
+	mi.mesh = grass_mesh()
+	mi.material_override = grass_material(1.0, rng.randf() < 0.6)
+	var h := rng.randf_range(0.5, 0.95) * s
+	mi.scale = Vector3(h * rng.randf_range(0.9, 1.3), h, h * rng.randf_range(0.9, 1.3))
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	n.add_child(mi)
 	n.rotation.y = rng.randf() * TAU
 	set_range(n, 45.0)
 	return n
@@ -488,6 +533,31 @@ static func bus_stop() -> Node3D:
 	Models.cyl(g, 0.03, 0.03, 2.8, Vector3(2.6, 1.4, 0.4), fr, Vector3.ZERO, 6)
 	Models.box(g, Vector3(0.5, 0.5, 0.04), Vector3(2.6, 2.6, 0.4), Models.mat("c9a020", 0.5))
 	return g
+
+
+## sam płat ogrodzenia (bez słupków), dolna krawędź na wysokości 0
+static func fence_panel(length: float, h: float, kind := "mesh") -> Node3D:
+	var g := Node3D.new()
+	if kind == "mesh":
+		var p := Models.box(g, Vector3(length, h, 0.012), Vector3(0, h * 0.5, 0), mesh_fence_material(), Vector3.ZERO, false)
+		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	else:
+		Models.box(g, Vector3(length, h, 0.06), Vector3(0, h * 0.5, 0), pbr("rusty_corrugated_iron", 0.5))
+	return g
+
+
+static var _mesh_fence_mat: StandardMaterial3D = null
+
+static func mesh_fence_material() -> StandardMaterial3D:
+	if _mesh_fence_mat == null:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.45, 0.48, 0.45, 0.42)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.roughness = 0.6
+		m.metallic = 0.4
+		_mesh_fence_mat = m
+	return _mesh_fence_mat
 
 
 static func fence(length: float, h := 1.6, kind := "mesh") -> Node3D:

@@ -160,25 +160,36 @@ func build(_noise_tex: Texture2D) -> void:
 const TARGET_H := {"high": 1260.0, "med": 940.0, "low": 740.0}
 
 
+## dodatkowe ustawienia z menu Opcje (nakładane na wybrany poziom jakości)
+var res_mult := 1.0
+var bright := 1.0
+var opt_shadows := ""       # "" = jak w poziomie jakości, "low" | "med" | "high"
+var opt_fog := true
+var opt_ssao := true
+var fog_on := true
+
+
 func set_quality(q: String) -> void:
 	quality = q
 	var vp := get_viewport()
 	if env == null or vp == null:
 		return
 	var high := q == "high"
-	env.ssao_enabled = q != "low"
+	env.ssao_enabled = q != "low" and opt_ssao
 	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_MEDIUM if high else RenderingServer.ENV_SSAO_QUALITY_LOW, true, 0.5, 3, 50.0, 300.0)
 	env.glow_enabled = true
-	env.volumetric_fog_enabled = q != "low"
+	fog_on = q != "low" and opt_fog
+	env.volumetric_fog_enabled = fog_on and not inside
 	env.ssr_enabled = false
 	env.ssil_enabled = false
 	vp.msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
 	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if high else Viewport.SCREEN_SPACE_AA_FXAA
 	apply_scale()
-	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if high else (RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM if q == "med" else RenderingServer.SHADOW_QUALITY_SOFT_LOW))
+	var sq := opt_shadows if opt_shadows != "" else q
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if sq == "high" else (RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM if sq == "med" else RenderingServer.SHADOW_QUALITY_SOFT_LOW))
 	if sun != null:
-		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if q != "low" else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-		sun.directional_shadow_max_distance = 110.0 if high else (80.0 if q == "med" else 60.0)
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if sq != "low" else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+		sun.directional_shadow_max_distance = 110.0 if sq == "high" else (80.0 if sq == "med" else 60.0)
 
 
 ## Dynamiczna rozdzielczość: gdy klatek jest za mało, obraz 3D rysuje się w nieco niższej
@@ -211,12 +222,13 @@ func apply_scale() -> void:
 	if vp == null:
 		return
 	var h := maxf(1.0, float(vp.size.y))
-	var sc := clampf(float(TARGET_H.get(quality, 940.0)) * dyn / h, 0.35, 1.0)
+	var sc := clampf(float(TARGET_H.get(quality, 940.0)) * dyn * res_mult / h, 0.3, 1.0)
 	vp.scaling_3d_scale = sc
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if sc < 0.97 else Viewport.SCALING_3D_MODE_BILINEAR
 	# łagodne wyostrzanie i lekko dodatnie przesunięcie mipmap: mniej „piasku” na drobnych teksturach w ruchu
-	vp.fsr_sharpness = 1.5
-	vp.texture_mipmap_bias = 0.35 if sc < 0.97 else 0.1
+	vp.fsr_sharpness = 1.2
+	# tekstury mają mipmapy, więc przy skalowaniu w górę wybieramy poziom o ułamek ostrzejszy (jak zaleca FSR)
+	vp.texture_mipmap_bias = clampf(log(sc) / log(2.0), -1.0, 0.0) * 0.6
 
 
 static func _dir(az_deg: float, el_deg: float) -> Vector3:
@@ -301,10 +313,10 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 			env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 			env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 			env.fog_enabled = true
-			env.volumetric_fog_enabled = quality != "low"
+			env.volumetric_fog_enabled = fog_on
 	if inside:
 		sun.light_energy = 0.0
-		env.tonemap_exposure = 1.0
+		env.tonemap_exposure = 1.0 * bright
 		env.glow_hdr_threshold = 1.0
 	else:
 		sun.look_at_from_position(sun_dir * 100.0, Vector3.ZERO, Vector3.UP)
@@ -312,7 +324,7 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		sun.light_energy = sun_e * (1.0 - ov * 0.8)
 		sun.light_volumetric_fog_energy = lerpf(1.25, 0.6, night)
 		env.ambient_light_energy = lerpf(0.9, 1.0, night)
-		env.tonemap_exposure = lerpf(0.92, 1.05, night)
+		env.tonemap_exposure = lerpf(0.92, 1.05, night) * bright
 		env.glow_hdr_threshold = lerpf(1.2, 0.85, night)
 		env.fog_light_color = (sun_c * 0.5 + Color(0.4, 0.45, 0.5) * 0.5) * lerpf(1.0, 0.08, night)
 		env.fog_light_energy = lerpf(0.8, 0.3, night)
@@ -334,6 +346,8 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 			continue
 		var always: bool = l.has_meta("always")
 		var e := 2.0 if always else night * 9.0
+		if l.has_meta("gain"):
+			e *= float(l.get_meta("gain"))
 		if l.has_meta("flicker"):
 			var ph := float(l.get_meta("flicker"))
 			if sin(t * 11.0 + ph) > 0.93 or fmod(t + ph, 9.0) < 0.18:

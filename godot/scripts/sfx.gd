@@ -44,28 +44,35 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if String(a).begins_with("--shot") or String(a).begins_with("--test") or String(a) == "--mute":
 			muted = true
+	_build_bus()
 	for i in range(8):
 		var p := AudioStreamPlayer.new()
+		p.bus = "Efekty"
 		add_child(p)
 		pool.append(p)
 	step_player = AudioStreamPlayer.new()
+	step_player.bus = "Efekty"
 	add_child(step_player)
 	siren_player = AudioStreamPlayer.new()
 	siren_player.volume_db = -30.0
+	siren_player.bus = "Efekty"
 	add_child(siren_player)
 	amb_player = AudioStreamPlayer.new()
 	amb_player.volume_db = -60.0
+	amb_player.bus = "Otoczenie"
 	add_child(amb_player)
 	rain_player = AudioStreamPlayer.new()
 	rain_player.volume_db = -60.0
+	rain_player.bus = "Otoczenie"
 	add_child(rain_player)
 	voice_player = AudioStreamPlayer.new()
 	voice_player.volume_db = -19.0
+	voice_player.bus = "Glosy"
 	add_child(voice_player)
 	intro_player = AudioStreamPlayer.new()
 	intro_player.volume_db = -5.0
+	intro_player.bus = "Muzyka"
 	add_child(intro_player)
-	_build_bus()
 	for k in FILES:
 		sounds[k] = []
 		for f in FILES[k]:
@@ -92,17 +99,46 @@ func _exit_tree() -> void:
 		_task = -1
 
 
+## Szyny: Muzyka (klub, bloki, wstęp), Efekty, Otoczenie (miasto, deszcz, kolejka), Glosy.
+## „Klub” i „Blok” to muzyka zza ściany — przytłumiona filtrem i wpięta w szynę Muzyka.
+const GROUPS := {"master": "Master", "music": "Muzyka", "sfx": "Efekty", "ambient": "Otoczenie", "voice": "Glosy"}
+
+func _add_bus(nm: String, send: String) -> int:
+	var i := AudioServer.get_bus_index(nm)
+	if i >= 0:
+		return i
+	AudioServer.add_bus()
+	i = AudioServer.bus_count - 1
+	AudioServer.set_bus_name(i, nm)
+	AudioServer.set_bus_send(i, send)
+	return i
+
+
 func _build_bus() -> void:
 	if AudioServer.get_bus_index("Klub") >= 0:
 		return
-	AudioServer.add_bus()
-	var i := AudioServer.bus_count - 1
-	AudioServer.set_bus_name(i, "Klub")
-	AudioServer.set_bus_send(i, "Master")
+	for nm in ["Muzyka", "Efekty", "Otoczenie", "Glosy"]:
+		_add_bus(nm, "Master")
+	var i := _add_bus("Klub", "Muzyka")
 	var lp := AudioEffectLowPassFilter.new()
 	lp.cutoff_hz = 420.0
 	lp.resonance = 0.5
 	AudioServer.add_bus_effect(i, lp)
+	var j := _add_bus("Blok", "Muzyka")
+	var lp2 := AudioEffectLowPassFilter.new()
+	lp2.cutoff_hz = 900.0
+	lp2.resonance = 0.6
+	AudioServer.add_bus_effect(j, lp2)
+
+
+## głośność grupy 0..1 (0 = cisza)
+func set_volume(group: String, v: float) -> void:
+	var i := AudioServer.get_bus_index(String(GROUPS.get(group, "")))
+	if i < 0:
+		return
+	AudioServer.set_bus_volume_db(i, linear_to_db(clampf(v, 0.0001, 1.0)))
+	if i > 0:
+		AudioServer.set_bus_mute(i, v <= 0.001)
 
 
 ## 0 = na ulicy (przytłumione basy zza ściany), 1 = tuż przy drzwiach

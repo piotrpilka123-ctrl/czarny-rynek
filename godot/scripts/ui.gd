@@ -5,6 +5,7 @@ extends CanvasLayer
 const K = preload("res://scripts/uikit.gd")
 const PhoneScript = preload("res://scripts/phone.gd")
 const InvScript = preload("res://scripts/inventory.gd")
+const OptsScript = preload("res://scripts/options.gd")
 const Chars = preload("res://scripts/chars.gd")
 
 var mode := "title"        # "" = rozgrywka; dialog | modal | phone | skill | pause | title | end
@@ -90,6 +91,16 @@ var hud_t := 0.0
 var nav_info := {}
 var cop_bar: ProgressBar = null
 var waymark: Control
+var mini_card: PanelContainer
+var ic_stance: TextureRect
+var susp_box: VBoxContainer
+var obj_card: PanelContainer
+var sms_key: Label
+var obj_t := 0.0
+var last_obj := ""
+var menu_root: Control = null
+var controls_back := ""
+var opts
 
 
 # ================================================================ budowa
@@ -126,6 +137,9 @@ func build() -> void:
 	screen_box = K.vbox(14)
 	screen_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	cc.add_child(screen_box)
+	opts = OptsScript.new()
+	root.add_child(opts)
+	opts.build(self)
 	fade_rect = ColorRect.new()
 	fade_rect.color = Color(0, 0, 0, 0)
 	fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -195,80 +209,87 @@ func _build_hud() -> void:
 	hud.visible = false
 	root.add_child(hud)
 
-	# --- prawy górny róg: karta stanu (gotówka, czas, poziom, plecak, najbliższa płatność)
-	var st_card := K.panel(_hud_card())
-	st_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	st_card.offset_left = -268.0
-	st_card.offset_right = -18.0
-	st_card.offset_top = 16.0
-	st_card.grow_vertical = Control.GROW_DIRECTION_END
-	_ign(st_card)
-	hud.add_child(st_card)
-	var tr := K.vbox(6)
-	_ign(tr)
-	st_card.add_child(tr)
-	var top := K.hbox(6)
-	_ign(top)
-	l_cash = K.head("0 zł", 30, K.C_ACC)
-	top.add_child(l_cash)
-	top.add_child(K.spacer())
-	var tv := K.vbox(0)
-	_ign(tv)
-	var trow := K.hbox(5)
-	trow.alignment = BoxContainer.ALIGNMENT_END
-	ic_weather = K.icon("sun", 14, K.C_WARN)
-	trow.add_child(ic_weather)
-	l_time = K.head("09:00", 20, Color.WHITE)
-	trow.add_child(l_time)
-	tv.add_child(trow)
-	l_day = K.lbl("dzień 1", 11, K.C_DIM)
-	l_day.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	tv.add_child(l_day)
-	top.add_child(tv)
-	tr.add_child(top)
-	var sep := ColorRect.new()
-	sep.color = Color(1, 1, 1, 0.07)
-	sep.custom_minimum_size = Vector2(0, 1)
-	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tr.add_child(sep)
-	var lrow := K.hbox(8)
-	_ign(lrow)
-	lrow.add_child(K.icon("award", 13, K.C_GOLD))
-	l_lvl = K.head("POZ. 1", 13, K.C_GOLD)
-	l_lvl.custom_minimum_size = Vector2(118, 0)
-	l_lvl.clip_text = true
-	lrow.add_child(l_lvl)
-	bar_xp = _thin_bar(K.C_GOLD)
-	lrow.add_child(bar_xp)
-	tr.add_child(lrow)
-	var brow := K.hbox(8)
-	_ign(brow)
-	brow.add_child(K.icon("backpack", 13, K.C_BLUE))
-	l_bag = K.head("0 / 15", 13, K.C_TXT)
-	l_bag.custom_minimum_size = Vector2(118, 0)
-	l_bag.clip_text = true
-	brow.add_child(l_bag)
-	bar_bag = _thin_bar(K.C_BLUE)
-	brow.add_child(bar_bag)
-	tr.add_child(brow)
-	var nrow := K.hbox(8)
-	_ign(nrow)
-	ic_next = K.icon("calendar", 13, K.C_DIM)
-	nrow.add_child(ic_next)
-	l_next = K.lbl("", 12, K.C_DIM)
-	l_next.clip_text = true
-	l_next.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	nrow.add_child(l_next)
-	tr.add_child(nrow)
+	# --- lewy dolny róg: tylko pasek kondycji (i minimapa, jeśli ktoś ją włączy w Opcjach)
+	var bl := K.vbox(8)
+	bl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	bl.offset_left = 22.0
+	bl.offset_bottom = -20.0
+	bl.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ign(bl)
+	hud.add_child(bl)
+	mini_card = K.panel(_hud_card())
+	_ign(mini_card)
+	mini_card.visible = false
+	bl.add_child(mini_card)
+	var mv := K.vbox(6)
+	_ign(mv)
+	mini_card.add_child(mv)
+	var zrow := K.hbox(5)
+	_ign(zrow)
+	zrow.add_child(K.icon("map_pin", 12, K.C_ACC))
+	l_zone_s = K.head("", 13, K.C_TXT)
+	zrow.add_child(l_zone_s)
+	mv.add_child(zrow)
+	var mp := K.panel(K.sb(Color(0.03, 0.035, 0.05, 1.0), 10, Color(0, 0, 0, 0), 0, 0))
+	mp.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	_ign(mp)
+	mv.add_child(mp)
+	minimap = Control.new()
+	minimap.custom_minimum_size = Vector2(190, 190)
+	minimap.clip_contents = true
+	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	minimap.draw.connect(_draw_mini)
+	mp.add_child(minimap)
+	var strow := K.hbox(8)
+	_ign(strow)
+	ic_stance = K.icon("footprints", 16, Color(1, 1, 1, 0.9))
+	strow.add_child(ic_stance)
+	bar_stam = _thin_bar(Color(0.93, 0.95, 0.98))
+	bar_stam.custom_minimum_size = Vector2(210, 6)
+	bar_stam.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	strow.add_child(bar_stam)
+	bl.add_child(strow)
 
-	# --- lewy górny róg: karta celu
-	var ob_card := K.panel(_hud_card())
-	ob_card.position = Vector2(18, 16)
-	_ign(ob_card)
-	hud.add_child(ob_card)
+	# --- środek u góry: „oko” — pojawia się dopiero, gdy patrol zaczyna się Tobie przyglądać
+	susp_box = K.vbox(3)
+	susp_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	susp_box.offset_left = -110.0
+	susp_box.offset_right = 110.0
+	susp_box.offset_top = 22.0
+	susp_box.visible = false
+	_ign(susp_box)
+	hud.add_child(susp_box)
+	var erow := K.hbox(8)
+	erow.alignment = BoxContainer.ALIGNMENT_CENTER
+	_ign(erow)
+	erow.add_child(K.icon("eye", 18, K.C_WARN))
+	bar_susp = _thin_bar(K.C_WARN)
+	bar_susp.custom_minimum_size = Vector2(150, 6)
+	bar_susp.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	erow.add_child(bar_susp)
+	susp_box.add_child(erow)
+	l_susp = K.head("", 13, K.C_BAD)
+	l_susp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_shadow(l_susp)
+	susp_box.add_child(l_susp)
+	l_zone = K.head("", 22, Color(1, 1, 1, 0.0))
+	l_zone.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	l_zone.offset_left = -300.0
+	l_zone.offset_right = 300.0
+	l_zone.offset_top = 74.0
+	l_zone.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_shadow(l_zone, 6)
+	hud.add_child(l_zone)
+
+	# --- lewy górny róg: cel — wysuwa się na kilka sekund, gdy się zmieni (albo na życzenie)
+	obj_card = K.panel(_hud_card())
+	obj_card.position = Vector2(22, 20)
+	obj_card.visible = false
+	_ign(obj_card)
+	hud.add_child(obj_card)
 	var ob := K.hbox(10)
 	_ign(ob)
-	ob_card.add_child(ob)
+	obj_card.add_child(ob)
 	var acc := ColorRect.new()
 	acc.color = K.C_ACC
 	acc.custom_minimum_size = Vector2(3, 0)
@@ -277,80 +298,13 @@ func _build_hud() -> void:
 	var opv := K.vbox(2)
 	_ign(opv)
 	l_obj_t = K.head("CEL", 12, K.C_ACC)
-	l_obj = K.wrap("", 15, Color.WHITE, 380.0)
+	l_obj = K.wrap("", 15, Color.WHITE, 360.0)
 	l_nav = K.rich("", 12)
-	l_nav.custom_minimum_size = Vector2(380, 0)
+	l_nav.custom_minimum_size = Vector2(360, 0)
 	opv.add_child(l_obj_t)
 	opv.add_child(l_obj)
 	opv.add_child(l_nav)
 	ob.add_child(opv)
-
-	# --- kompas: same kreski i litery
-	compass = Control.new()
-	compass.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	compass.offset_left = -190.0
-	compass.offset_right = 190.0
-	compass.offset_top = 10.0
-	compass.offset_bottom = 44.0
-	compass.clip_contents = true
-	compass.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	compass.draw.connect(_draw_compass)
-	hud.add_child(compass)
-	l_zone = K.head("", 24, Color(1, 1, 1, 0.0))
-	l_zone.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	l_zone.offset_left = -300.0
-	l_zone.offset_right = 300.0
-	l_zone.offset_top = 56.0
-	l_zone.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_shadow(l_zone, 6)
-	hud.add_child(l_zone)
-
-	# --- lewy dolny róg: karta z minimapą i paskami stanu
-	var bl_card := K.panel(_hud_card())
-	bl_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	bl_card.offset_left = 18.0
-	bl_card.offset_bottom = -16.0
-	bl_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_ign(bl_card)
-	hud.add_child(bl_card)
-	var bl := K.vbox(6)
-	_ign(bl)
-	bl_card.add_child(bl)
-	var zrow := K.hbox(5)
-	_ign(zrow)
-	zrow.add_child(K.icon("map_pin", 12, K.C_ACC))
-	l_zone_s = K.head("", 13, K.C_TXT)
-	zrow.add_child(l_zone_s)
-	bl.add_child(zrow)
-	var mp := K.panel(K.sb(Color(0.03, 0.035, 0.05, 1.0), 10, Color(0, 0, 0, 0), 0, 0))
-	mp.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
-	_ign(mp)
-	bl.add_child(mp)
-	minimap = Control.new()
-	minimap.custom_minimum_size = Vector2(196, 196)
-	minimap.clip_contents = true
-	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	minimap.draw.connect(_draw_mini)
-	mp.add_child(minimap)
-	bar_stam = _bar_row(bl, "footprints", K.C_BLUE)
-	bar_susp = _bar_row(bl, "eye", K.C_WARN)
-	bar_heat = _bar_row(bl, "flame", K.C_BAD)
-	bar_heat.max_value = 100.0
-	l_susp = K.lbl("", 12, K.C_BAD)
-	l_susp.position = Vector2(232, 0)
-	l_susp.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	l_susp.offset_left = 254.0
-	l_susp.offset_bottom = -38.0
-	l_susp.offset_top = -58.0
-	_shadow(l_susp)
-	hud.add_child(l_susp)
-	l_heat = K.lbl("", 11, Color(1, 1, 1, 0.6))
-	l_heat.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	l_heat.offset_left = 254.0
-	l_heat.offset_bottom = -18.0
-	l_heat.offset_top = -36.0
-	_shadow(l_heat)
-	hud.add_child(l_heat)
 
 	# --- powiadomienie o wiadomości — jak na ekranie telefonu
 	var sbox := StyleBoxFlat.new()
@@ -369,7 +323,7 @@ func _build_hud() -> void:
 	sms_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	sms_banner.offset_left = -338.0
 	sms_banner.offset_right = -18.0
-	sms_banner.offset_top = 164.0
+	sms_banner.offset_top = 20.0
 	_ign(sms_banner)
 	hud.add_child(sms_banner)
 	var sh := K.hbox(11)
@@ -386,7 +340,8 @@ func _build_hud() -> void:
 	srow.add_child(sms_name)
 	srow.add_child(K.spacer())
 	var kc := K.panel(K.sb(Color(1, 1, 1, 0.1), 5, Color(1, 1, 1, 0.2), 1, 6))
-	kc.add_child(K.lbl("Tab", 10, K.C_TXT))
+	sms_key = K.lbl("Tab", 10, K.C_TXT)
+	kc.add_child(sms_key)
 	srow.add_child(kc)
 	smv.add_child(srow)
 	sms_text = K.wrap("", 13, Color(0.82, 0.84, 0.88), 230.0)
@@ -647,7 +602,7 @@ func hurt() -> void:
 func set_mode(m: String) -> void:
 	mode = m
 	if G.running and not G.test_hide_hud and m != "title" and m != "end":
-		hud.visible = m != "inv" and m != "modal"
+		hud.visible = not (m in ["inv", "modal", "pause", "controls", "options"])
 	get_tree().paused = m != ""
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if (m != "" or G.test_mode) else Input.MOUSE_MODE_CAPTURED
 
@@ -664,6 +619,10 @@ func close_all() -> void:
 	phone.visible = false
 	if inv.visible:
 		inv.close()
+	opts.visible = false
+	if menu_root != null and is_instance_valid(menu_root):
+		menu_root.queue_free()
+		menu_root = null
 	_deal_unstage()
 	dlg = {}
 	deal = {}
@@ -888,7 +847,8 @@ func open_phone(app := "") -> void:
 
 
 func help_text() -> String:
-	return "[b]WASD[/b] ruch   [b]Mysz[/b] rozglądanie (lub strzałki)   [b]Shift[/b] sprint\n[b]E[/b] interakcja (przytrzymaj przy skrytce)   [b]Tab[/b] telefon   [b]I[/b] ekwipunek\n[b]N[/b] trasa do celu wł./wył.   [b]Q[/b] następny cel\n[b]B[/b] meblowanie (we własnej kryjówce)   [b]R[/b] obrót mebla\n[b]F[/b] latarka   [b]X[/b] (przytrzymaj) wyrzuć towar   [b]M[/b] dźwięk   [b]F11[/b] pełny ekran   [b]Esc[/b] pauza"
+	return "[b]%s %s %s %s[/b] ruch   [b]Mysz[/b] rozglądanie   [b]%s[/b] bieg   [b]%s[/b] kucanie\n[b]%s[/b] użyj   [b]%s[/b] telefon   [b]%s[/b] ekwipunek   [b]%s[/b] mapa   [b]%s[/b] latarka   [b]Esc[/b] pauza i opcje" % [
+		G.kn("fwd"), G.kn("left"), G.kn("back"), G.kn("right"), G.kn("sprint"), G.kn("crouch"), G.kn("use"), G.kn("phone"), G.kn("inv"), G.kn("map"), G.kn("flash")]
 
 
 # ---------------------------------------------------------------- stół roboczy: porcjowanie i mieszanie
@@ -1614,6 +1574,9 @@ func _deal_pick(s: Dictionary) -> void:
 # ---------------------------------------------------------------- ekrany
 func _screen(title: String, title_color: Color, text: String, buttons: Array, extra := "") -> void:
 	K.clear(screen_box)
+	if menu_root != null and is_instance_valid(menu_root):
+		menu_root.queue_free()
+		menu_root = null
 	dialog_box.visible = false
 	modal.visible = false
 	skill_box.visible = false
@@ -1642,6 +1605,123 @@ func _screen(title: String, title_color: Color, text: String, buttons: Array, ex
 	screen.visible = true
 
 
+## przycisk menu głównego: duży napis z zieloną kreską po najechaniu
+func _menu_btn(text: String, cb: Callable, sub := "", enabled := true) -> Control:
+	var v := K.vbox(0)
+	var b := Button.new()
+	b.text = text
+	b.focus_mode = Control.FOCUS_NONE
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.disabled = not enabled
+	b.custom_minimum_size = Vector2(360, 52)
+	b.add_theme_font_override("font", load("res://assets/fonts/bebas.ttf"))
+	b.add_theme_font_size_override("font_size", 36)
+	b.add_theme_color_override("font_color", Color(0.9, 0.92, 0.95, 0.88))
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_color_override("font_pressed_color", K.C_ACC)
+	b.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.25))
+	var n := StyleBoxFlat.new()
+	n.bg_color = Color(0, 0, 0, 0)
+	n.content_margin_left = 18
+	var h := StyleBoxFlat.new()
+	h.bg_color = Color(1, 1, 1, 0.07)
+	h.border_color = K.C_ACC
+	h.border_width_left = 4
+	h.content_margin_left = 26
+	h.set_corner_radius_all(4)
+	b.add_theme_stylebox_override("normal", n)
+	b.add_theme_stylebox_override("hover", h)
+	b.add_theme_stylebox_override("pressed", h)
+	b.add_theme_stylebox_override("disabled", n)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	b.pressed.connect(func():
+		Sfx.play("click")
+		cb.call())
+	b.mouse_entered.connect(func():
+		if not b.disabled:
+			Sfx.play("tick"))
+	v.add_child(b)
+	if sub != "":
+		var sl := K.lbl(sub, 12, Color(1, 1, 1, 0.5))
+		var m := MarginContainer.new()
+		m.add_theme_constant_override("margin_left", 20)
+		m.add_child(sl)
+		v.add_child(m)
+	return v
+
+
+## lewa kolumna menu na tle miasta: tytuł, pozycje, podpis
+func _menu_column(title_size: int, title: String, tag: String, items: Array, foot: String) -> void:
+	if menu_root != null and is_instance_valid(menu_root):
+		menu_root.queue_free()
+	menu_root = Control.new()
+	menu_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	menu_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	screen.add_child(menu_root)
+	# przyciemnienie z lewej, żeby napisy były czytelne na każdym tle
+	var gr := Gradient.new()
+	gr.offsets = PackedFloat32Array([0.0, 0.42, 0.78])
+	gr.colors = PackedColorArray([Color(0.01, 0.015, 0.03, 0.9), Color(0.01, 0.015, 0.03, 0.55), Color(0.01, 0.015, 0.03, 0.0)])
+	var gt := GradientTexture2D.new()
+	gt.gradient = gr
+	gt.width = 256
+	gt.height = 4
+	var shade := TextureRect.new()
+	shade.texture = gt
+	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_root.add_child(shade)
+	var col := K.vbox(4)
+	col.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	col.offset_left = 84.0
+	col.offset_right = 620.0
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	menu_root.add_child(col)
+	var bebas: Font = load("res://assets/fonts/bebas.ttf")
+	var spaced := FontVariation.new()
+	spaced.base_font = load("res://assets/fonts/barlowc.ttf")
+	spaced.spacing_glyph = 4
+	var t := Label.new()
+	t.text = title
+	t.add_theme_font_override("font", bebas)
+	t.add_theme_font_size_override("font_size", title_size)
+	t.add_theme_color_override("font_color", Color(0.96, 0.97, 0.99))
+	t.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	t.add_theme_constant_override("shadow_offset_y", 3)
+	t.add_theme_constant_override("line_spacing", -18)
+	col.add_child(t)
+	var ln := ColorRect.new()
+	ln.color = K.C_ACC
+	ln.custom_minimum_size = Vector2(120, 5)
+	ln.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	col.add_child(ln)
+	col.add_child(K.gap(8))
+	if tag != "":
+		var tg := Label.new()
+		tg.text = tag
+		tg.add_theme_font_override("font", spaced)
+		tg.add_theme_font_size_override("font_size", 17)
+		tg.add_theme_color_override("font_color", Color(0.84, 0.88, 0.92, 0.85))
+		col.add_child(tg)
+	col.add_child(K.gap(26))
+	for it in items:
+		col.add_child(it)
+	if foot != "":
+		var by := Label.new()
+		by.text = foot
+		by.add_theme_font_override("font", spaced)
+		by.add_theme_font_size_override("font_size", 13)
+		by.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
+		by.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+		by.offset_left = 86.0
+		by.offset_top = -44.0
+		by.offset_bottom = -22.0
+		by.offset_right = 700.0
+		menu_root.add_child(by)
+
+
 func show_title() -> void:
 	hud.visible = false
 	K.clear(screen_box)
@@ -1649,69 +1729,132 @@ func show_title() -> void:
 	modal.visible = false
 	skill_box.visible = false
 	phone.visible = false
-	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.42)
-	var bebas: Font = load("res://assets/fonts/bebas.ttf")
-	var spaced := FontVariation.new()
-	spaced.base_font = load("res://assets/fonts/barlowc.ttf")
-	spaced.spacing_glyph = 4
-	var t := Label.new()
-	t.text = "CZARNY RYNEK"
-	t.add_theme_font_override("font", bebas)
-	t.add_theme_font_size_override("font_size", 132)
-	t.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98))
-	t.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
-	t.add_theme_constant_override("shadow_offset_y", 2)
-	t.add_theme_constant_override("shadow_outline_size", 8)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen_box.add_child(t)
-	var ln := ColorRect.new()
-	ln.color = K.C_ACC
-	ln.custom_minimum_size = Vector2(0, 4)
-	screen_box.add_child(ln)
-	var tag := Label.new()
-	tag.text = "SPŁAĆ DŁUG.  ZBUDUJ IMPERIUM.  NIE DAJ SIĘ ZŁAPAĆ."
-	tag.add_theme_font_override("font", spaced)
-	tag.add_theme_font_size_override("font_size", 21)
-	tag.add_theme_color_override("font_color", Color(0.84, 0.88, 0.92))
-	tag.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
-	tag.add_theme_constant_override("shadow_outline_size", 6)
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen_box.add_child(tag)
-	screen_box.add_child(K.gap(10))
-	var bc := K.btn("Kontynuuj", func(): G.main.start_game(true))
-	bc.disabled = not G.has_save()
-	var h := K.hbox(12)
-	h.alignment = BoxContainer.ALIGNMENT_CENTER
-	for bt in [K.btn("Nowa gra", func(): G.main.start_game(false), "go"), bc, K.btn("Wyjdź", func(): get_tree().quit())]:
-		bt.custom_minimum_size = Vector2(150, 42)
-		bt.add_theme_font_size_override("font_size", 17)
-		h.add_child(bt)
-	screen_box.add_child(h)
-	screen_box.add_child(K.gap(6))
-	var card := K.panel(_hud_card())
-	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var e := K.rich("[center]%s[/center]" % help_text(), 13)
-	e.custom_minimum_size = Vector2(700, 0)
-	card.add_child(e)
-	screen_box.add_child(card)
-	var by := Label.new()
-	by.text = "A TEST GAME BY PIOTR PIŁKA"
-	by.add_theme_font_override("font", spaced)
-	by.add_theme_font_size_override("font_size", 14)
-	by.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
-	by.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen_box.add_child(by)
-	var note := K.lbl("Fikcyjna gra. Wszystkie postacie i miejsca są zmyślone. Gra nie zachęca do łamania prawa ani zażywania narkotyków.", 11, Color(1, 1, 1, 0.38))
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	screen_box.add_child(note)
+	opts.visible = false
+	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.12)
+	var sv := G.save_summary()
+	_menu_column(118, "CZARNY\nRYNEK", "SPŁAĆ DŁUG.  ZBUDUJ IMPERIUM.  NIE DAJ SIĘ ZŁAPAĆ.", [
+		_menu_btn("Kontynuuj", func(): G.main.start_game(true), ("Dzień %d  •  %s  •  zapis: %s" % [int(sv.day), G.money(sv.cash), String(sv.when)]) if not sv.is_empty() else "Brak zapisu", not sv.is_empty()),
+		_menu_btn("Nowa gra", func(): G.main.start_game(false)),
+		_menu_btn("Opcje", func(): open_options("title")),
+		_menu_btn("Wyjdź", func(): get_tree().quit()),
+	], "A TEST GAME BY PIOTR PIŁKA")
+	var note := K.lbl("Fikcyjna gra. Wszystkie postacie i miejsca są zmyślone.\nGra nie zachęca do łamania prawa ani zażywania narkotyków.", 11, Color(1, 1, 1, 0.4))
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	note.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	note.offset_left = -520.0
+	note.offset_right = -30.0
+	note.offset_top = -62.0
+	note.offset_bottom = -26.0
+	menu_root.add_child(note)
 	screen.visible = true
 	set_mode("title")
 
 
 func show_pause() -> void:
-	_screen("PAUZA", K.C_TXT, "Ostatni zapis: %s.\nGrę zapisujesz tylko przy laptopie w kryjówce — niezapisany postęp przepada." % G.last_save_text(),
-		[K.btn("Wróć do gry", close_all, "go"), K.btn("Telefon", func(): screen.visible = false; open_phone()), K.btn("Menu główne (bez zapisu)", func(): G.main.to_menu(), "bad")], help_text())
+	K.clear(screen_box)
+	dialog_box.visible = false
+	modal.visible = false
+	skill_box.visible = false
+	phone.visible = false
+	opts.visible = false
+	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.5)
+	_menu_column(96, "PAUZA", "Ostatni zapis: %s.  Grę zapisujesz przy laptopie w kryjówce." % G.last_save_text(), [
+		_menu_btn("Wróć do gry", close_all),
+		_menu_btn("Opcje", func(): open_options("pause")),
+		_menu_btn("Sterowanie", func(): show_controls("pause")),
+		_menu_btn("Menu główne", func(): G.main.to_menu(), "Niezapisany postęp przepadnie."),
+	], "")
+	screen.visible = true
 	set_mode("pause")
+
+
+func open_options(from: String) -> void:
+	screen.visible = false
+	phone.visible = false
+	opts.open(from)
+	set_mode("options")
+
+
+func options_closed(back: String) -> void:
+	match back:
+		"title": show_title()
+		"pause": show_pause()
+		_: close_all()
+
+
+# ---------------------------------------------------------------- ściąga sterowania
+func _keycap(text: String) -> Control:
+	var p := K.panel(K.sb(Color(1, 1, 1, 0.1), 6, Color(1, 1, 1, 0.28), 1, 9))
+	p.custom_minimum_size = Vector2(46, 30)
+	var l := K.head(text, 15, Color.WHITE)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	p.add_child(l)
+	return p
+
+
+## Okno z klawiszami na środku ekranu. Pojawia się, gdy gracz pierwszy raz dostaje sterowanie,
+## i zamyka je dopiero gracz. `back`: dokąd wrócić po zamknięciu ("" = do gry).
+func show_controls(back := "") -> void:
+	K.clear(screen_box)
+	if menu_root != null and is_instance_valid(menu_root):
+		menu_root.queue_free()
+		menu_root = null
+	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.62)
+	controls_back = back
+	var box := K.panel(K.sb(Color(0.045, 0.055, 0.078, 0.97), 16, Color(1, 1, 1, 0.1), 1, 24))
+	screen_box.add_child(box)
+	var v := K.vbox(12)
+	box.add_child(v)
+	var hd := K.hbox(10)
+	hd.add_child(K.icon("info", 20, K.C_ACC))
+	hd.add_child(K.head("STEROWANIE", 26, Color.WHITE))
+	v.add_child(hd)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 44)
+	grid.add_theme_constant_override("v_separation", 9)
+	v.add_child(grid)
+	var rows := [
+		[[G.kn("fwd"), G.kn("left"), G.kn("back"), G.kn("right")], "Chodzenie"],
+		[["Mysz"], "Rozglądanie się"],
+		[[G.kn("sprint")], "Bieg (zużywa kondycję)"],
+		[[G.kn("crouch")], "Kucanie — ciszej, trudniej Cię zauważyć, przełazy w płotach"],
+		[[G.kn("use")], "Użyj / rozmawiaj (naceluj na coś z bliska)"],
+		[[G.kn("phone")], "Telefon: wiadomości, klienci, mapa"],
+		[[G.kn("inv")], "Ekwipunek: towar, gotówka, cel, stan"],
+		[[G.kn("map")], "Mapa z trasą do celu"],
+		[[G.kn("flash")], "Latarka"],
+		[[G.kn("ditch")], "Wyrzuć towar (przytrzymaj w pościgu)"],
+		[["Esc"], "Pauza, opcje, zmiana klawiszy"],
+	]
+	for r in rows:
+		var kh := K.hbox(5)
+		kh.custom_minimum_size = Vector2(220, 0)
+		kh.alignment = BoxContainer.ALIGNMENT_END
+		for k in r[0]:
+			kh.add_child(_keycap(String(k)))
+		grid.add_child(kh)
+		var dl := K.lbl(String(r[1]), 15, Color(0.88, 0.9, 0.93))
+		dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		grid.add_child(dl)
+	v.add_child(K.wrap("Na ekranie zostaje tylko pasek kondycji. Gotówkę, godzinę, cel i uwagę policji sprawdzisz w ekwipunku, a klawisze zmienisz w Opcjach.", 13, K.C_DIM, 560.0))
+	var bh := K.hbox(8)
+	bh.alignment = BoxContainer.ALIGNMENT_CENTER
+	var go := K.btn("Jasne, gramy   [Enter]", close_controls, "go")
+	go.custom_minimum_size = Vector2(240, 44)
+	go.add_theme_font_size_override("font_size", 17)
+	bh.add_child(go)
+	v.add_child(bh)
+	screen.visible = true
+	set_mode("controls")
+
+
+func close_controls() -> void:
+	G.S.flags["seen_keys"] = true
+	if controls_back == "pause":
+		show_pause()
+	else:
+		close_all()
 
 
 func show_ending(title: String, text: String, stats: String, can_continue := false) -> void:
@@ -1782,7 +1925,6 @@ func _process_ui(dt: float) -> void:
 	if hud_t <= 0.0:
 		hud_t = 0.1
 		update_hud()
-	compass.queue_redraw()
 	waymark.queue_redraw()
 	aim_t += dt
 	if aim_on and aim_t < 0.25:
@@ -1794,43 +1936,25 @@ func update_hud() -> void:
 	var P = G.player
 	if P == null:
 		return
-	var eh := G.eff_heat()
-	l_cash.text = G.money(S.cash)
-	l_time.text = G.clock()
-	l_day.text = "dzień %d" % G.day()
-	ic_weather.texture = K.tex("cloud_rain" if G.rain > 0.2 else ("moon" if G.night > 0.5 else "sun"))
-	ic_weather.modulate = K.C_BLUE if (G.rain > 0.2 or G.night > 0.5) else K.C_WARN
-	l_lvl.text = "POZ. %d  %s" % [int(S.lvl), G.level_title().to_upper()]
-	bar_xp.max_value = maxf(1.0, G.next_xp() - G.prev_xp())
-	bar_xp.value = float(S.xp) - G.prev_xp()
-	var ni := G.next_installment()
-	if float(S.credit) > 0.0 and (G.credit_overdue() or ni.is_empty() or float(S.credit_due) / 1440.0 + 1.0 < float(ni.day)):
-		l_next.text = "Zeszyt: %s do dnia %d" % [G.money(S.credit), int(float(S.credit_due) / 1440.0) + 1]
-		l_next.add_theme_color_override("font_color", K.C_BAD if G.credit_overdue() else K.C_WARN)
-		ic_next.texture = K.tex("notebook_pen")
-		ic_next.modulate = K.C_BAD if G.credit_overdue() else K.C_WARN
-	elif not ni.is_empty() and S.debt > 0.0:
-		l_next.text = "Rata: %s / %s do dnia %d" % [G.money(S.paid), G.money(ni.due), int(ni.day)]
-		var soon: bool = int(ni.day) - G.day() <= 1 and S.paid < float(ni.due)
-		l_next.add_theme_color_override("font_color", K.C_WARN if soon else K.C_DIM)
-		ic_next.texture = K.tex("calendar")
-		ic_next.modulate = K.C_WARN if soon else K.C_DIM
-	else:
-		l_next.text = "Dług spłacony" if S.debt <= 0.0 else ""
 	bar_stam.max_value = P.max_stamina()
 	bar_stam.value = P.stamina
+	bar_stam.modulate.a = 0.55 if (P.stamina >= P.max_stamina() - 0.01 and not P.crouching) else 1.0
+	ic_stance.texture = K.tex("chevron_down" if P.crouching else "footprints")
+	ic_stance.modulate = K.C_ACC if P.crouching else Color(1, 1, 1, 0.6 if bar_stam.modulate.a < 1.0 else 0.95)
 	var su: float = clampf(G.npcs.max_susp, 0.0, 1.0)
 	bar_susp.value = su
+	susp_box.visible = su > 0.04 and not G.npcs.any_chase()
 	l_susp.text = "POLICJA CIĘ OBSERWUJE" if su > 0.3 else ""
-	bar_heat.value = eh
-	l_heat.text = ("śledztwo %d%%" % int(S.invest)) if S.invest >= 20.0 else ""
-	l_bag.text = "%s / %d  •  %d porcji" % [G.units(G.carry_total()), G.capacity(), G.packed_total(S.inv)]
-	bar_bag.max_value = float(G.capacity())
-	bar_bag.value = G.carry_total()
-	var st := G.cur_step()
-	l_obj_t.text = G.chapter().to_upper()
-	l_obj.text = st.text.call() if not st.is_empty() else ""
 	chase.visible = G.npcs.any_chase()
+	# cel: karta pokazuje się na chwilę, gdy treść się zmieni
+	var st := G.cur_step()
+	var txt: String = st.text.call() if not st.is_empty() else ""
+	if txt != last_obj:
+		last_obj = txt
+		if txt != "":
+			obj_t = 9.0
+	l_obj_t.text = G.chapter().to_upper()
+	l_obj.text = txt
 	var lines := ""
 	if not nav_info.is_empty():
 		lines = "%s  %s • %d m" % [K.col("◆", nav_info.get("color", K.C_ACC)), nav_info.label, int(round(nav_info.dist))]
@@ -1839,13 +1963,25 @@ func update_hud() -> void:
 		var left = float(nm.meet) - S.t
 		lines += ("\n" if lines != "" else "") + K.col("Spotkanie %s — %s" % [G.clock(nm.meet), ("za %d min" % int(left)) if left > 0.0 else ("klient czeka od %d min" % int(-left))], K.C_ACC if left > 0.0 else K.C_WARN)
 	l_nav.text = lines
-	l_zone_s.text = (G.zone_name.to_upper() if P.loc == "out" else String(D.ROOMS[P.loc].name).to_upper())
+	obj_t = maxf(0.0, obj_t - 0.1)
+	obj_card.visible = obj_t > 0.0 and txt != ""
+	obj_card.modulate.a = clampf(obj_t / 0.8, 0.0, 1.0)
+	sms_key.text = G.kn("phone")
+	var mm: bool = bool(G.main.settings.get("minimap", false))
+	mini_card.visible = mm
+	if mm:
+		l_zone_s.text = (G.zone_name.to_upper() if P.loc == "out" else String(D.ROOMS[P.loc].name).to_upper())
+		minimap.queue_redraw()
 	if G.zone_id != last_zone and P.loc == "out":
 		last_zone = G.zone_id
 		if G.zone_name != "":
 			l_zone.text = G.zone_name.to_upper()
 			zone_t = 3.2
-	minimap.queue_redraw()
+
+
+## pokazuje kartę z celem jeszcze raz (np. po zmianie śledzonego celu)
+func flash_objective() -> void:
+	obj_t = 7.0
 
 
 ## celownik: kropka, a po nacelowaniu na coś, czego można użyć — zielony pierścień
@@ -1871,7 +2007,7 @@ func set_prompt(text: String, progress := -1.0) -> void:
 	if text == "":
 		prompt.visible = false
 		return
-	var bb := "[b][color=#4ade80][E][/color][/b]  " + text
+	var bb := "[b][color=#4ade80][%s][/color][/b]  %s" % [G.kn("use"), text]
 	if l_prompt.text != bb:
 		l_prompt.text = bb
 	prompt_bar.visible = progress >= 0.0
@@ -1924,41 +2060,6 @@ func _draw_hints(M) -> void:
 		waymark.draw_circle(sp, 5.5, Color(0, 0, 0, 0.3 * a))
 		waymark.draw_arc(sp, 4.5, 0.0, TAU, 20, Color(1, 1, 1, a), 1.4, true)
 		waymark.draw_circle(sp, 1.4, Color(1, 1, 1, a))
-
-
-func _draw_compass() -> void:
-	var P = G.player
-	if P == null or not G.running:
-		return
-	var w := compass.size.x
-	var h := compass.size.y
-	var font := ThemeDB.fallback_font
-	var f: Vector2 = P.forward()
-	var bearing := atan2(f.x, -f.y)
-	var half := 1.25
-	for i in range(24):
-		var a := i * TAU / 24.0
-		var rel := wrapf(a - bearing, -PI, PI)
-		if absf(rel) > half:
-			continue
-		var x := w * 0.5 + rel / half * w * 0.5
-		if i % 6 == 0:
-			var nm: String = ["N", "E", "S", "W"][int(i / 6.0)]
-			compass.draw_string_outline(font, Vector2(x - 20, 22), nm, HORIZONTAL_ALIGNMENT_CENTER, 40, 15, 4, Color(0, 0, 0, 0.7))
-			compass.draw_string(font, Vector2(x - 20, 22), nm, HORIZONTAL_ALIGNMENT_CENTER, 40, 15, Color(1, 1, 1, 0.95) if nm == "N" else Color(1, 1, 1, 0.75))
-		else:
-			compass.draw_line(Vector2(x + 1, 13 if i % 3 == 0 else 16), Vector2(x + 1, 22), Color(0, 0, 0, 0.5), 1.0)
-			compass.draw_line(Vector2(x, 12 if i % 3 == 0 else 15), Vector2(x, 21), Color(1, 1, 1, 0.75 if i % 3 == 0 else 0.45), 1.0)
-	compass.draw_line(Vector2(w * 0.5, 0), Vector2(w * 0.5, 6), Color.WHITE, 2.0)
-	for t in G.main.targets():
-		if P.loc != "out" and t.loc == "out":
-			continue
-		var pp: Vector3 = P.global_position
-		var rel2 := wrapf(atan2(float(t.x) - pp.x, -(float(t.z) - pp.z)) - bearing, -PI, PI)
-		var x2 := clampf(w * 0.5 + rel2 / half * w * 0.5, 8.0, w - 8.0)
-		var c: Color = t.color
-		compass.draw_colored_polygon(PackedVector2Array([Vector2(x2, h - 2), Vector2(x2 - 6, h - 11), Vector2(x2 + 6, h - 11)]), c)
-		compass.draw_circle(Vector2(x2, 7), 4.0, c)
 
 
 func _draw_mini() -> void:
@@ -2032,12 +2133,10 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 			var dist := Vector2(c.x - pp.x, c.z - pp.z).length()
 			if c.state != "patrol" or (see_all and dist < 60.0) or big or dist < 24.0:
 				var cc: Color = K.C_BAD if c.state == "chase" else (K.C_WARN if c.state != "patrol" else K.C_BLUE)
-				_draw_sight(cv, tr, c.x, c.z, c.node.rotation.y, vr, cc)
 				cv.draw_circle(tr.call(c.x, c.z), 4.0, cc)
 		var car: Dictionary = G.npcs.car
 		if not car.is_empty() and (see_all or car.alarm or big or Vector2(car.x - pp.x, car.z - pp.z).length() < 45.0):
 			var cp: Vector2 = tr.call(car.x, car.z)
-			_draw_sight(cv, tr, car.x, car.z, float(car.rot), 30.0 - G.night * 6.0, K.C_BAD if car.alarm else K.C_BLUE)
 			cv.draw_rect(Rect2(cp - Vector2(4, 4), Vector2(8, 8)), K.C_BAD if car.alarm else K.C_BLUE)
 		for c in G.npcs.citizens:
 			if c.icon.visible:
@@ -2067,18 +2166,6 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 	cv.draw_colored_polygon(PackedVector2Array([c0 + f * 9.0, c0 - f * 6.0 + r * 5.5, c0 - f * 2.5, c0 - f * 6.0 - r * 5.5]), Color.WHITE)
 
 
-## stożek widzenia patrolu na mapie: pełny zasięg na wprost, krótszy na boki, nic z tyłu
-func _draw_sight(cv: Control, tr: Callable, x: float, z: float, rot: float, view_range: float, color: Color) -> void:
-	var NpcS = G.npcs.get_script()
-	var pts := PackedVector2Array([tr.call(x, z)])
-	var steps := 14
-	for i in range(steps + 1):
-		var a := lerpf(-NpcS.SIGHT_SIDE, NpcS.SIGHT_SIDE, float(i) / steps)
-		var r: float = view_range * NpcS.sight(absf(a))
-		pts.append(tr.call(x + sin(rot + a) * r, z + cos(rot + a) * r))
-	cv.draw_colored_polygon(pts, Color(color.r, color.g, color.b, 0.13))
-
-
 func _input(event: InputEvent) -> void:
 	if G.test_mode:
 		return
@@ -2102,10 +2189,22 @@ func _input(event: InputEvent) -> void:
 		G.main.set_fullscreen(not G.main.is_fullscreen())
 		get_viewport().set_input_as_handled()
 		return
+	var act := G.key_action(kc)
 	var used := true
 	match mode:
+		"options":
+			if not opts.take_key(kc):
+				if kc == KEY_ESCAPE:
+					opts.close()
+				else:
+					used = false
+		"controls":
+			if kc == KEY_ENTER or kc == KEY_KP_ENTER or kc == KEY_ESCAPE or kc == KEY_SPACE:
+				close_controls()
+			else:
+				used = false
 		"dialog":
-			if kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER or kc == KEY_E:
+			if kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER or act == "use":
 				advance()
 			elif kc >= KEY_1 and kc <= KEY_9:
 				pick_choice(kc - KEY_1)
@@ -2117,12 +2216,15 @@ func _input(event: InputEvent) -> void:
 			else:
 				used = false
 		"phone":
-			if kc == KEY_TAB:
+			if act == "phone" or act == "map":
 				close_all()
 			elif kc == KEY_ESCAPE or kc == KEY_BACKSPACE:
 				phone.back()
 			elif kc >= KEY_1 and kc <= KEY_4:
 				used = phone.hotkey(kc - KEY_1 + 1)
+			elif act == "inv":
+				close_all()
+				open_inventory("")
 			else:
 				used = false
 		"modal":
@@ -2139,8 +2241,11 @@ func _input(event: InputEvent) -> void:
 					inv.ask_ok()
 				else:
 					used = false
-			elif kc == KEY_ESCAPE or kc == KEY_I or kc == KEY_TAB:
+			elif kc == KEY_ESCAPE or act == "inv":
 				close_all()
+			elif act == "phone":
+				close_all()
+				open_phone("sms" if G.unread_total() > 0 else "")
 			elif kc == KEY_1 or kc == KEY_2 or kc == KEY_3:
 				inv.tab = ["inv", "char", "org"][kc - KEY_1]
 				inv.sel = {}
@@ -2156,25 +2261,29 @@ func _input(event: InputEvent) -> void:
 			if not G.running or G.busy:
 				return
 			if G.main.build_active():
-				match kc:
-					KEY_R: G.main.build_rotate()
-					KEY_E, KEY_ENTER: G.main.build_confirm()
-					KEY_ESCAPE, KEY_B: G.main.build_cancel()
-					_: used = false
+				if act == "rotate":
+					G.main.build_rotate()
+				elif act == "use" or kc == KEY_ENTER:
+					G.main.build_confirm()
+				elif kc == KEY_ESCAPE or act == "build":
+					G.main.build_cancel()
+				else:
+					used = false
+			elif kc == KEY_ESCAPE:
+				show_pause()
 			else:
-				match kc:
-					KEY_TAB: open_phone("sms" if G.unread_total() > 0 else "")
-					KEY_ESCAPE: show_pause()
-					KEY_I: open_inventory("")
-					KEY_E: G.main.interact()
-					KEY_F: G.main.toggle_flash()
-					KEY_N: G.main.toggle_nav()
-					KEY_Q: G.main.cycle_track()
-					KEY_B: G.main.build_menu()
-					KEY_M:
-						Sfx.set_muted(not Sfx.muted)
-						G.main.save_settings()
-						G.notify("Dźwięk wył." if Sfx.muted else "Dźwięk wł.")
+				match act:
+					"phone": open_phone("sms" if G.unread_total() > 0 else "")
+					"inv": open_inventory("")
+					"map": open_phone("mapa")
+					"use": G.main.interact()
+					"flash": G.main.toggle_flash()
+					"nav": G.main.toggle_nav()
+					"track":
+						G.main.cycle_track()
+						flash_objective()
+					"build": G.main.build_menu()
+					"crouch": G.player.toggle_crouch()
 					_: used = false
 		_:
 			used = false

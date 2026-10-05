@@ -1,0 +1,19 @@
+{
+ "source": "Adults/Female_Adult_17",
+ "parts": {
+  "body": {
+   "color": "f17_body.jpg",
+   "prefix": "f006",
+   "normal": "f17_body_n.jpg"
+  },
+  "head": {
+   "color": "f17_head.jpg",
+   "prefix": "f006",
+   "normal": "f17_head_n.jpg"
+  },
+  "opacity": {
+   "color": "f17_opacity.png",
+   "prefix": "f006"
+  }
+ }
+}

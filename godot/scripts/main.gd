@@ -62,6 +62,13 @@ func _ready() -> void:
 	if G.test_mode:
 		# okno testowe nie zabiera klawiatury użytkownikowi
 		get_window().unfocusable = true
+		if args.has("hidden"):
+			# Okno testowe poza ekranem: nie zasłania pracy użytkownikowi. System nie rysuje wtedy okna sam,
+			# więc każdą klatkę wymuszamy ręcznie (bez wyświetlania) — obraz trafia tylko do zrzutów.
+			var w := get_window()
+			w.borderless = true
+			w.position = Vector2i(-9000, -9000)
+			get_tree().process_frame.connect(_force_frame)
 
 	load_settings()
 	# ekran ładowania (pomijany w testach, żeby start pozostał synchroniczny)
@@ -83,7 +90,9 @@ func _ready() -> void:
 	env.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(env)
 	G.env = env
-	env.quality = String(args.get("quality", settings.get("quality", "med")))
+	if args.has("quality"):
+		settings.quality = String(args.quality)
+	env.quality = String(settings.get("quality", "med"))
 	env.build(world.noise_tex)
 	get_window().size_changed.connect(env.apply_scale)
 	_light_ranges(world)
@@ -107,6 +116,7 @@ func _ready() -> void:
 	add_child(ui)
 	G.ui = ui
 	ui.build()
+	apply_settings()
 	_build_beacon()
 	G.nav_dirty.connect(func(): nav_force = true)
 
@@ -193,7 +203,10 @@ func _light_ranges(n: Node) -> void:
 
 # ================================================================ ustawienia (osobny plik, niezależny od zapisu gry)
 const SETTINGS_PATH := "user://ustawienia.json"
-var settings := {"quality": "med", "fullscreen": true, "muted": false}
+var settings := {"quality": "med", "fullscreen": true, "muted": false,
+	"res_scale": 1.0, "dyn_res": true, "shadows": "", "fog": true, "ssao": true, "vsync": true, "fps_cap": 0, "fov": 70.0, "bright": 1.0,
+	"vol_master": 0.8, "vol_music": 0.8, "vol_sfx": 1.0, "vol_ambient": 0.9, "vol_voice": 0.9,
+	"sens": 1.0, "invert_y": false, "keys": {}, "minimap": false}
 
 
 func load_settings() -> void:
@@ -213,11 +226,40 @@ func load_settings() -> void:
 		Sfx.set_muted(true)
 
 
+## przenosi ustawienia do gry: obraz, dźwięk, mysz i klawisze (wołane po starcie i po każdej zmianie w Opcjach)
+func apply_settings() -> void:
+	var ks := G.KEY_DEFAULTS.duplicate()
+	if typeof(settings.keys) == TYPE_DICTIONARY:
+		for a in settings.keys:
+			if ks.has(a):
+				ks[a] = int(settings.keys[a])
+	G.keys = ks
+	if env != null:
+		env.res_mult = clampf(float(settings.res_scale), 0.5, 1.0)
+		env.dyn_on = bool(settings.dyn_res)
+		if not env.dyn_on:
+			env.dyn = 1.0
+		env.bright = clampf(float(settings.bright), 0.6, 1.6)
+		env.opt_shadows = String(settings.shadows)
+		env.opt_fog = bool(settings.fog)
+		env.opt_ssao = bool(settings.ssao)
+		env.set_quality(String(settings.quality))
+	if player != null:
+		player.base_fov = clampf(float(settings.fov), 55.0, 100.0)
+		player.look_scale = clampf(float(settings.sens), 0.2, 3.0)
+		player.invert_y = bool(settings.invert_y)
+	if not G.test_mode:
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if bool(settings.vsync) else DisplayServer.VSYNC_DISABLED)
+		Engine.max_fps = int(settings.fps_cap)
+		for g in ["master", "music", "sfx", "ambient", "voice"]:
+			Sfx.set_volume(g, float(settings["vol_" + g]))
+		Sfx.set_muted(bool(settings.muted) or args.has("mute"))
+
+
 func save_settings() -> void:
 	if G.test_mode:
 		return
 	settings.quality = env.quality
-	settings.muted = Sfx.muted
 	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f != null:
 		f.store_string(JSON.stringify(settings))
@@ -342,7 +384,7 @@ func intro_cutscene() -> void:
 		cut_nodes.append(li)
 		flashes.append(li)
 	# brat, dwóch policjantów i sąsiad, który wyszedł popatrzeć
-	var bro := _cut_actor({"kind": "jacket", "top": "2b3a2e", "bottom": "232a36", "hair": "hair_buzzed", "hair_color": "9a9a9a", "seed": 51, "build": 1.0, "walk": "Walk_Stiff"})
+	var bro := _cut_actor(D.BROTHER_LOOK)
 	# przechodnie z okolicy klatki idą gdzie indziej, żeby nikt nie wszedł w kadr tuż przed kamerą
 	for cz in npcs.citizens:
 		if Vector2(cz.x - door.x, cz.z - door.y).length() < 32.0:
@@ -358,8 +400,12 @@ func intro_cutscene() -> void:
 					cz.pi = -1
 					break
 	var cop_look := {"kind": "police", "top": "c8e020", "top2": "141c30", "bottom": "141c30", "shoes": "0c0c0e", "hat": "police", "seed": 4}
+	cop_look["model"] = "pm3"
 	var cop1 := _cut_actor(cop_look)
-	var cop2 := _cut_actor(cop_look)
+	var cop_look2 := cop_look.duplicate()
+	cop_look2["model"] = "pm6"
+	cop_look2["seed"] = 5
+	var cop2 := _cut_actor(cop_look2)
 	var watcher := _cut_actor(D.CLIENTS[2].look)
 	var wpos := door + Vector2(-5.6, 2.6)
 	watcher.root.position = Vector3(wpos.x, world.height(wpos.x, wpos.y), wpos.y)
@@ -1076,7 +1122,7 @@ func _tick(dt: float) -> void:
 	cur_inter = _find_interact()
 	ui.set_aim(cur_inter != null)
 	if hold_inter != null:
-		if cur_inter == null or cur_inter.get("id", "") != hold_inter.get("id", "?") or not Input.is_physical_key_pressed(KEY_E):
+		if cur_inter == null or cur_inter.get("id", "") != hold_inter.get("id", "?") or not G.key_down("use"):
 			hold_inter = null
 		else:
 			hold_t += dt
@@ -1092,7 +1138,7 @@ func _tick(dt: float) -> void:
 
 
 func _wanted_tick(dt: float) -> void:
-	if Input.is_physical_key_pressed(KEY_X) and G.carry_goods() > 0.01 and not G.arresting and not ui.is_open():
+	if G.key_down("ditch") and G.carry_goods() > 0.01 and not G.arresting and not ui.is_open():
 		ditch_hold += dt
 		ui.set_prompt("Wyrzucasz towar…", ditch_hold / 0.9)
 		if ditch_hold >= 0.9:
@@ -1340,14 +1386,30 @@ func _apply_test_args() -> void:
 			{"female": true, "kind": "hoodie", "top": "23402e", "bottom": "232a36", "hair": "hair_buns", "seed": 6},
 		]
 		var poses := ["", "arms", "phone", "arms", "talk", ""]
+		var anims: PackedStringArray = String(args.get("anims", "")).split(",", false)
+		if args.has("models"):
+			# rząd wskazanych modeli (people.gd), każdy z wybraną animacją: --models=m10,m10 --anims=Idle,Walk --seek=0.4
+			defs = []
+			var k := 0
+			for m in String(args.models).split(",", false):
+				defs.append({"model": m, "seed": 10 + k, "female": m.begins_with("f")})
+				k += 1
+		var turn := float(args.get("turn", "0"))
 		for i in range(defs.size()):
 			var rig: Dictionary = Chars.make(defs[i])
 			add_child(rig.root)
-			var off := (i - 2.5) * 0.85
+			var off := (i - (defs.size() - 1) * 0.5) * float(args.get("gap", "0.85"))
 			var p2 := Vector2(pp.x, pp.z) + f * (float(args.chars) + absf(off) * 0.2) + r * off
 			rig.root.position = Vector3(p2.x, world.height(p2.x, p2.y), p2.y)
-			rig.root.rotation.y = atan2(pp.x - p2.x, pp.z - p2.y)
-			Chars.animate(rig, 0.0, 0.0, poses[i])
+			rig.root.rotation.y = atan2(pp.x - p2.x, pp.z - p2.y) + turn
+			if i < anims.size():
+				rig.cur = anims[i]
+				rig.anim.play(anims[i], 0.0)
+				rig.anim.seek(float(args.get("seek", "0.4")) * rig.anim.current_animation_length, true)
+				if args.has("freeze"):
+					rig.anim.speed_scale = 0.0
+			else:
+				Chars.animate(rig, 0.0, 0.0, poses[i % poses.size()])
 
 
 func _test_order(cid: String, accept := true) -> Dictionary:
@@ -1361,6 +1423,15 @@ func _test_order(cid: String, accept := true) -> Dictionary:
 func _test_ui(what: String) -> void:
 	match what:
 		"home": ui.open_phone("")
+		"options": ui.open_options("pause")
+		"options_audio":
+			ui.opts.tab = "audio"
+			ui.open_options("pause")
+		"options_keys":
+			ui.opts.tab = "keys"
+			ui.open_options("pause")
+		"controls": ui.show_controls()
+		"pause": ui.show_pause()
 		"sms":
 			_test_order("dominik", false)
 			ui.open_phone("sms")
@@ -1439,6 +1510,11 @@ func _test_ui(what: String) -> void:
 
 
 ## seria kadrów kamery filmowej w jednym uruchomieniu (do wybierania ujęć zwiastuna)
+func _force_frame() -> void:
+	if not DisplayServer.window_can_draw():
+		RenderingServer.force_draw(false)
+
+
 func _tour() -> void:
 	var f := FileAccess.open(String(args.tour), FileAccess.READ)
 	var list = JSON.parse_string(f.get_as_text())
@@ -1467,7 +1543,8 @@ func _tour() -> void:
 			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
-		img.resize(640, int(640.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
+		var tw := int(args.get("tourw", "640"))
+		img.resize(tw, int(float(tw) * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 		img.save_jpg("%s/%s.jpg" % [dir, String(e.name)], 0.85)
 		print("TOUR ", e.name)
 	get_tree().quit()

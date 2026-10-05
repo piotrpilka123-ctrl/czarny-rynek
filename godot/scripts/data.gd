@@ -74,7 +74,14 @@ const SIZE_BULK := 1.0
 const W_PACK := 1.4
 const W_BULK := 1.0
 const PRODUCT_ICONS := {"dym": "leaf", "szron": "zap", "krysztal": "flask_conical", "snieg": "droplets"}
-const PLAYER_LOOK := {"kind": "dres", "top": "14161a", "top2": "e8e6e0", "bottom": "14161a", "stripes": true, "shoes": "e4e4e0", "hair": "hair_buzzed", "seed": 77, "skin": 0.25}
+## Postacie to gotowe modele ludzi (assets/people, Microsoft Rocketbox, MIT). Klienci i bohaterowie fabuły
+## mają własne twarze; przechodnie losują z puli, żeby nikt nie chodził po osiedlu „w dwóch egzemplarzach”.
+const PEOPLE_M := ["m01", "m02", "m06", "m07", "m08", "m09", "m11", "m12", "m16", "mc2", "ms4"]
+const PEOPLE_F := ["f01", "f02", "f05", "f07", "f08", "f12", "f13", "f14", "f17", "fb2", "fs2"]
+const PEOPLE_COP := ["pm3", "pm6", "pm4", "pm3"]
+const BROTHER_LOOK := {"model": "m18", "kind": "hoodie", "seed": 51, "tall": 1.02, "walk": "Walk_Stiff"}
+
+const PLAYER_LOOK := {"model": "m10", "kind": "dres", "top": "14161a", "top2": "e8e6e0", "bottom": "14161a", "stripes": true, "shoes": "e4e4e0", "hair": "hair_buzzed", "seed": 77, "skin": 0.25}
 const CAP_BASE := 15
 const STASH_BASE := 60
 
@@ -84,47 +91,47 @@ const CLIENTS := [
 	{"id": "dominik", "name": "Dominik", "nick": "Student", "lvl": 1, "via": "start", "type": "luzak", "like": "luz", "hate": "twardo",
 		"wealth": 0.9, "patience": 5, "minpur": 50, "grams": [4, 6], "every": [14.0, 22.0], "home": "blok5", "prod": "dym", "nerv": 0.1, "honesty": 0.95, "reliable": 0.9,
 		"spots": ["klatka5", "trzepak", "pawilon"], "bio": "Student zaoczny z bloku obok. Brał od Twojego brata. Spłukany, ale lojalny.",
-		"look": {"kind": "hoodie", "top": "2f4a6d", "bottom": "232a36", "hair": "hair_simpleparted", "hair_color": "3d2a1c", "seed": 11, "walk": "Walk_Stiff"}},
+		"look": {"model": "m20", "kind": "hoodie", "top": "2f4a6d", "bottom": "232a36", "hair": "hair_simpleparted", "hair_color": "3d2a1c", "seed": 11, "walk": "Walk_Stiff"}},
 	{"id": "seba", "name": "Seba", "nick": "Dres", "lvl": 2, "via": "ref:dominik:1", "type": "twardziel", "like": "twardo", "hate": "luz",
 		"wealth": 0.95, "patience": 4, "minpur": 55, "grams": [5, 8], "every": [16.0, 26.0], "home": "blok9", "prod": "dym", "nerv": 0.05, "honesty": 0.8, "reliable": 0.6,
 		"spots": ["trzepak", "klatka5", "garaze"], "bio": "Stoi pod klatką od zawsze. Szanuje tylko tych, którzy się nie cackają.",
-		"look": {"kind": "dres", "top": "101114", "top2": "e8e6e0", "bottom": "101114", "stripes": true, "hair": "hair_buzzed", "seed": 12, "build": 1.08, "walk": "Walk_Swagger"}},
+		"look": {"model": "m17", "kind": "dres", "top": "101114", "top2": "e8e6e0", "bottom": "101114", "stripes": true, "hair": "hair_buzzed", "seed": 12, "build": 1.08, "walk": "Walk_Swagger"}},
 	{"id": "zenon", "name": "Pan Zenon", "nick": "Emeryt", "lvl": 3, "via": "ref:dominik:3", "type": "gadula", "like": "luz", "hate": "twardo",
 		"wealth": 0.8, "patience": 6, "minpur": 45, "grams": [4, 6], "every": [18.0, 28.0], "home": "kam1", "prod": "dym", "nerv": 0.05, "honesty": 0.85, "reliable": 0.95,
 		"spots": ["park", "przystanek", "plac"], "bio": "„Na kolana, panie, na kolana”. Targuje się z przyzwyczajenia i lubi pogadać.",
-		"look": {"kind": "jacket", "top": "6b5a45", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "45423c", "seed": 13, "build": 1.1, "height": 1.7, "walk": "Walk_Hunched"}},
+		"look": {"model": "m13", "kind": "jacket", "top": "6b5a45", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "45423c", "seed": 13, "build": 1.1, "height": 1.7, "walk": "Walk_Hunched"}},
 	{"id": "kasia", "name": "Kasia", "nick": "Korpo", "lvl": 3, "via": "ref:dominik:5", "type": "konkret", "like": "konkret", "hate": "luz",
 		"wealth": 1.25, "patience": 3, "minpur": 68, "grams": [6, 9], "every": [18.0, 28.0], "home": "blok11", "prod": "dym", "nerv": 0.4, "honesty": 0.9, "reliable": 0.95,
 		"spots": ["przystanek", "brama", "pawilon"], "bio": "Open space, deadline'y, bezsenność. Płaci dobrze, ale panikuje na widok munduru.",
-		"look": {"female": true, "kind": "jacket", "top": "3a3f4a", "bottom": "101114", "hair": "hair_long", "hair_color": "6b4a2e", "seed": 14, "walk": "Walk_Phone"}},
+		"look": {"model": "f15", "female": true, "kind": "jacket", "top": "3a3f4a", "bottom": "101114", "hair": "hair_long", "hair_color": "6b4a2e", "seed": 14, "walk": "Walk_Phone"}},
 	{"id": "marek", "name": "Marek", "nick": "Mechanik", "lvl": 4, "via": "talk", "type": "cwaniak", "like": "twardo", "hate": "luz",
 		"wealth": 1.0, "patience": 4, "minpur": 60, "grams": [6, 9], "every": [16.0, 26.0], "home": "garaze", "prod": "dym", "nerv": 0.1, "honesty": 0.6, "reliable": 0.5,
 		"spots": ["garaze", "tunel"], "bio": "Dłubie przy autach w garażach. Blefiarz — w SMS-ach zawsze zaniża, ile da.",
-		"look": {"kind": "tshirt", "top": "3d3326", "bottom": "2e3440", "hair": "hair_buzzed", "beard": true, "hat": "cap", "seed": 15, "walk": "Walk"}},
+		"look": {"model": "mw1", "kind": "tshirt", "top": "3d3326", "bottom": "2e3440", "hair": "hair_buzzed", "beard": true, "hat": "cap", "seed": 15, "walk": "Walk"}},
 	{"id": "kowal", "name": "Kowal", "nick": "Stróż z huty", "lvl": 5, "via": "talk", "type": "twardziel", "like": "konkret", "hate": "luz",
 		"wealth": 0.95, "patience": 4, "minpur": 55, "grams": [7, 10], "every": [18.0, 28.0], "home": "huta", "prod": "dym", "nerv": 0.05, "honesty": 0.9, "reliable": 0.8,
 		"spots": ["huta", "tunel"], "bio": "Pilnuje ruin Starej Huty. Długie nocne zmiany, niska pensja.",
-		"look": {"kind": "jacket", "top": "23402e", "bottom": "45423c", "hat": "beanie", "beard": true, "seed": 16, "build": 1.15, "walk": "Walk_Swagger"}},
+		"look": {"model": "md1", "kind": "jacket", "top": "23402e", "bottom": "45423c", "hat": "beanie", "beard": true, "seed": 16, "build": 1.15, "walk": "Walk_Swagger"}},
 	{"id": "heniek", "name": "Gruby Heniek", "nick": "Hurtownik warzyw", "lvl": 5, "via": "ref:seba:4", "type": "impulsywny", "like": "konkret", "hate": "luz",
 		"wealth": 1.3, "patience": 2, "minpur": 50, "grams": [8, 12], "every": [18.0, 28.0], "home": "kam4", "prod": "dym", "nerv": 0.15, "honesty": 1.0, "reliable": 0.85,
 		"spots": ["boisko", "garaze", "brama"], "bio": "Kupuje szybko i dużo, ale nie znosi gadania.",
-		"look": {"kind": "tshirt", "top": "8a2a22", "bottom": "283b2e", "bald": true, "seed": 17, "build": 1.3, "walk": "Walk_Swagger"}},
+		"look": {"model": "m14", "kind": "tshirt", "top": "8a2a22", "bottom": "283b2e", "bald": true, "seed": 17, "build": 1.3, "walk": "Walk_Swagger"}},
 	{"id": "ola", "name": "Ola", "nick": "Barmanka", "lvl": 6, "via": "talk", "type": "konkret", "like": "konkret", "hate": "twardo",
 		"wealth": 1.3, "patience": 3, "minpur": 70, "grams": [5, 8], "every": [16.0, 26.0], "home": "klub", "prod": "szron", "nerv": 0.2, "honesty": 0.9, "reliable": 0.9,
 		"spots": ["klub"], "bio": "Barmanka z Neonu. Zna wszystkich, którzy mają pieniądze.",
-		"look": {"female": true, "kind": "tank", "top": "101114", "bottom": "101114", "hair": "hair_buns", "hair_color": "8a3a22", "seed": 18, "walk": "Walk_Loose"}},
+		"look": {"model": "f04", "female": true, "kind": "tank", "top": "101114", "bottom": "101114", "hair": "hair_buns", "hair_color": "8a3a22", "seed": 18, "walk": "Walk_Loose"}},
 	{"id": "mrok", "name": "DJ Mrok", "nick": "Rezydent Neonu", "lvl": 7, "via": "ref:ola:3", "type": "impulsywny", "like": "luz", "hate": "twardo",
 		"wealth": 1.5, "patience": 3, "minpur": 72, "grams": [7, 11], "every": [18.0, 28.0], "home": "klub", "prod": "szron", "nerv": 0.25, "honesty": 0.8, "reliable": 0.7,
 		"spots": ["klub", "boisko"], "bio": "Gra do rana, śpi do wieczora. Bierze dla siebie i „dla ekipy”.",
-		"look": {"kind": "hoodie", "top": "101114", "bottom": "101114", "hat": "cap", "hat_color": "5a2f52", "seed": 19, "walk": "Walk_Phone"}},
+		"look": {"model": "m04", "kind": "hoodie", "top": "101114", "bottom": "101114", "hat": "cap", "hat_color": "5a2f52", "seed": 19, "walk": "Walk_Phone"}},
 	{"id": "rysiek", "name": "Rysiek", "nick": "Tirowiec", "lvl": 7, "via": "ref:kowal:3", "type": "twardziel", "like": "twardo", "hate": "luz",
 		"wealth": 1.2, "patience": 4, "minpur": 68, "grams": [5, 8], "every": [18.0, 28.0], "home": "huta", "prod": "krysztal", "nerv": 0.1, "honesty": 0.85, "reliable": 0.8,
 		"spots": ["tunel", "huta", "garaze"], "bio": "Jeździ na trasie Zagłębie–Hamburg. Kolega Kowala. Musi nie spać trzy doby z rzędu.",
-		"look": {"kind": "jacket", "top": "4a4f58", "bottom": "1b2538", "hat": "cap", "hat_color": "8a1c1c", "beard": true, "seed": 21, "build": 1.2, "walk": "Walk_Folded"}},
+		"look": {"model": "m05", "kind": "jacket", "top": "4a4f58", "bottom": "1b2538", "hat": "cap", "hat_color": "8a1c1c", "beard": true, "seed": 21, "build": 1.2, "walk": "Walk_Folded"}},
 	{"id": "wolski", "name": "Mecenas Wolski", "nick": "Adwokat", "lvl": 9, "via": "ref:kasia:5", "type": "cwaniak", "like": "konkret", "hate": "twardo",
 		"wealth": 1.6, "patience": 3, "minpur": 82, "grams": [4, 6], "every": [20.0, 30.0], "home": "kam6", "prod": "snieg", "nerv": 0.5, "honesty": 0.7, "reliable": 1.0,
 		"spots": ["brama", "park"], "bio": "Broni takich jak Ty. Płaci krocie, ale tylko za najczystszy towar.",
-		"look": {"kind": "shirt", "top": "d8d8d8", "bottom": "1b1b1e", "shoes": "151517", "hair": "hair_simpleparted", "hair_color": "7a7a7a", "seed": 20, "walk": "Walk_Formal"}},
+		"look": {"model": "mb4", "kind": "shirt", "top": "d8d8d8", "bottom": "1b1b1e", "shoes": "151517", "hair": "hair_simpleparted", "hair_color": "7a7a7a", "seed": 20, "walk": "Walk_Formal"}},
 ]
 const MAX_CLIENTS := [1, 1, 2, 4, 5, 6, 8, 9, 10, 11, 11, 11, 11, 11, 11, 11]
 const TYPE_NAMES := {"luzak": "Luzak", "twardziel": "Twardziel", "gadula": "Gaduła", "konkret": "Konkretny", "cwaniak": "Cwaniak", "impulsywny": "Impulsywny"}

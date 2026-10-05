@@ -4,7 +4,7 @@
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SP="${CR_OUT:-${TMPDIR:-/tmp}/czarny-rynek}"; mkdir -p "$SP"
 L=$1; shift
-one() { n=$1; pos=$2; shift; shift; for try in 1 2; do : > "$SP/$n.log"; (open -g -n -W -a /Applications/Godot.app --args --path "$DIR" --audio-driver Dummy --resolution 2448x1440 --log-file "$SP/$n.log" -- --shot="$SP/$n.png" --mute --autostart --loc=out --nohud --raw --frames=100 --hour=14 --yaw=265 --pitch=-30 --quality=med --pos=$pos "$@" &); ok=0; for i in $(seq 1 45); do sleep 2; grep -q SHOT "$SP/$n.log" 2>/dev/null && { ok=1; break; }; done; sleep 1; [ $ok = 1 ] && return; pkill -f "shot=$SP/$n.png"; sleep 2; done; }
+one() { n=$1; pos=$2; shift; shift; for try in 1 2; do : > "$SP/$n.log"; (open -g -n -W -a /Applications/Godot.app --args --path "$DIR" --audio-driver Dummy --resolution 2448x1440 --log-file "$SP/$n.log" -- --shot="$SP/$n.png" --hidden --mute --autostart --loc=out --nohud --raw --frames=100 --hour=14 --yaw=265 --pitch=-30 --quality=med --pos=$pos "$@" &); ok=0; for i in $(seq 1 45); do sleep 2; grep -q SHOT "$SP/$n.log" 2>/dev/null && { ok=1; break; }; done; sleep 1; [ $ok = 1 ] && return; pkill -f "shot=$SP/$n.png"; sleep 2; done; }
 one "${L}_a" 30,22 "$@"
 one "${L}_b" 30.05,22 "$@"
 python3 - "$SP" "$L" <<'PY'

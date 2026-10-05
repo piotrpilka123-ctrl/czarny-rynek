@@ -5,6 +5,8 @@ extends Node3D
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
 const Signs = preload("res://scripts/signs.gd")
+const Facade = preload("res://scripts/facade.gd")
+const Details = preload("res://scripts/details.gd")
 
 const X0 := -210.0
 const Z0 := -171.0
@@ -20,7 +22,13 @@ const PLATEAU := 5.0
 const STAIRS := [-27.0, 60.0]
 const RAMPS := [[-106.0, -12.0, -52.0], [166.0, -10.0, -48.0]]
 
-var rects: Array = []          # przeszkody 2D: {x0,x1,z0,z1,h}
+var rects: Array = []          # wysokie przeszkody 2D (budynki): {x0,x1,z0,z1,h}
+var blocks: Array = []         # wszystko, co ma kolizję: {x0,x1,z0,z1,h,op} — op: zasłania widok
+var _bk := PackedFloat32Array()   # to samo spakowane do szybkiego sprawdzania linii wzroku
+var _col_opaque := true
+var grid: AStarGrid2D          # siatka przejść dla pościgu (policja omija płoty i mury)
+var crawls: Array = []         # przełazy tylko dla kucającego gracza: {x, z}
+const GCELL := 0.5
 var inter: Array = []          # stałe punkty interakcji: {loc,x,z,range,label,act}
 var inter_dyn := {}            # meble w kryjówkach: pokój -> Array
 var zones: Array = []
@@ -42,6 +50,8 @@ var wp: Array = []             # graf ścieżek: {x, z, links: Array[int], zone}
 var club_player: AudioStreamPlayer3D
 var club_door := Vector3(-7.0 * 0.56, 1.5, 128.0 * 0.56)
 var fac := {}
+var fac_cell := {}             # rozmiar pola okna dla danego materiału elewacji
+var balc: Array = []           # loggie: {b, code, cx, fl} — do rozstawiania anten, prania itp.
 var grow_nodes := {}
 var _bal_slab: Array = []
 var _bal_rail: Array = []
@@ -152,134 +162,6 @@ void fragment() {
 	SPECULAR = 0.2 + wet * 0.15 + puddle * 0.4;
 }
 """
-
-const SH_FACADE := """
-shader_type spatial;
-""" + SH_COMMON + """
-uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
-uniform sampler2D wall_tex : source_color, repeat_enable, filter_linear_mipmap_anisotropic;
-uniform sampler2D wall_nor : hint_normal, repeat_enable, filter_linear_mipmap;
-uniform float tex_scale = 0.22;
-uniform int style = 0;
-uniform vec2 cellsz = vec2(3.6, 3.0);
-instance uniform vec3 b_origin;
-instance uniform vec3 b_wall : source_color = vec3(0.8, 0.8, 0.78);
-instance uniform vec3 b_accent : source_color = vec3(0.85, 0.55, 0.3);
-instance uniform float b_seed = 0.0;
-instance uniform float b_dead = 0.0;
-varying vec3 wpos;
-varying vec3 wn;
-void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	wn = normalize(mat3(MODEL_MATRIX) * NORMAL);
-}
-void fragment() {
-	vec3 n = normalize(wn);
-	float nz = texture(noise_tex, wpos.xz * 0.05 + wpos.y * 0.03).r;
-	float nz2 = texture(noise_tex, vec2(wpos.x + wpos.z, wpos.y) * 0.011 + b_seed).r;
-	if (abs(n.y) > 0.5) {
-		ALBEDO = vec3(0.09, 0.09, 0.1) * (0.6 + nz * 0.8);
-		ROUGHNESS = 0.95;
-	} else {
-		float u = abs(n.x) > 0.5 ? (wpos.z - b_origin.z) : (wpos.x - b_origin.x);
-		float v = wpos.y - b_origin.y;
-		vec2 cell = floor(vec2(u, v) / cellsz);
-		vec2 f = fract(vec2(u, v) / cellsz);
-		float rnd = hash21(cell + b_seed * 7.3);
-		float rnd2 = hash21(cell * 1.7 + b_seed * 3.1 + 11.0);
-		vec2 tuv = vec2(u, v) * tex_scale;
-		vec3 tex = texture(wall_tex, tuv).rgb;
-		vec3 col = tex * b_wall * 1.25;
-		vec3 nmap = texture(wall_nor, tuv).rgb;
-		float rough = 0.9;
-		float metal = 0.0;
-		vec3 emi = vec3(0.0);
-		vec4 wr = vec4(0.24, 0.3, 0.76, 0.82);
-		bool has_win = true;
-		// zacieki i brud: pod dachem, między piętrami, przy ziemi
-		float streak = smoothstep(0.45, 0.8, texture(noise_tex, vec2(u * 0.35, v * 0.02) + b_seed).r);
-		col *= 1.0 - streak * 0.32;
-		col *= 0.78 + nz2 * 0.4;
-		if (style == 0) {
-			bool balcony = mod(cell.x, 2.0) > 0.5;
-			if (balcony) {
-				wr = vec4(0.1, 0.22, 0.9, 0.84);
-				vec3 ac = b_accent * (0.75 + nz * 0.35);
-				// każdy lokator maluje po swojemu
-				ac = mix(ac, tex * vec3(0.9, 0.88, 0.8), step(0.72, rnd2));
-				col = mix(col, ac * tex * 1.5, 0.75);
-			}
-			float seam = min(min(f.x, 1.0 - f.x) * cellsz.x, min(f.y, 1.0 - f.y) * cellsz.y);
-			col *= mix(0.55, 1.0, smoothstep(0.0, 0.05, seam));
-		} else if (style == 1) {
-			wr = vec4(0.3, 0.2, 0.7, 0.8);
-			float band = smoothstep(0.93, 0.95, f.y);
-			col = mix(col, b_accent * tex * 1.4, band * 0.8);
-			if (v < cellsz.y) { col *= 0.72; wr = vec4(0.2, 0.12, 0.8, 0.74); }
-			// opaska wokół okna
-			vec2 q0 = (f - wr.xy) / (wr.zw - wr.xy);
-			if (q0.x > -0.14 && q0.x < 1.14 && q0.y > -0.08 && q0.y < 1.1) col = mix(col, b_accent * tex * 1.5, 0.55);
-		} else if (style == 3) {
-			wr = vec4(0.12, 0.22, 0.88, 0.85);
-			has_win = v > cellsz.y * 0.4;
-		} else if (style == 4) {
-			has_win = false;
-			float line = smoothstep(0.03, 0.0, abs(f.y - 0.5));
-			vec3 neon = mod(cell.y, 2.0) > 0.5 ? b_accent : vec3(0.17, 0.9, 1.0);
-			float flick = 0.75 + 0.25 * step(0.08, fract(sin(floor(TIME * 9.0) * 12.7 + cell.y) * 43.7));
-			emi = neon * line * (0.5 + night * 3.5) * flick;
-			col = mix(col * 0.5, neon, line * 0.6);
-		} else {
-			wr = vec4(0.12, 0.3, 0.88, 0.8);
-			if (f.y < 0.26) col = mix(col, b_accent * tex * 1.3, 0.8);
-		}
-		bool glass_px = false;
-		if (has_win && v > 0.4) {
-			vec2 q = (f - wr.xy) / (wr.zw - wr.xy);
-			if (q.x > 0.0 && q.x < 1.0 && q.y > 0.0 && q.y < 1.0) {
-				float fx = min(q.x, 1.0 - q.x) * (wr.z - wr.x) * cellsz.x;
-				float fy = min(q.y, 1.0 - q.y) * (wr.w - wr.y) * cellsz.y;
-				float edge = min(fx, fy);
-				float mull = abs(q.x - 0.5) * (wr.z - wr.x) * cellsz.x;
-				float mull2 = style == 3 ? min(abs(fract(q.x * 4.0) - 0.5), abs(fract(q.y * 3.0) - 0.5)) * 0.5 : 1.0;
-				bool old_frame = rnd2 > 0.55;
-				nmap = vec3(0.5, 0.5, 1.0);
-				if (edge < 0.08 || mull < 0.035 || mull2 < 0.02) {
-					col = style == 3 ? vec3(0.12, 0.1, 0.09) : (old_frame ? vec3(0.3, 0.2, 0.13) : vec3(0.82, 0.83, 0.82));
-					col *= 0.8 + nz * 0.3;
-					rough = 0.6;
-				} else {
-					glass_px = true;
-					vec3 glass = mix(vec3(0.03, 0.045, 0.06), vec3(0.2, 0.27, 0.33), q.y * 0.7);
-					float curtain = step(rnd2, 0.5) * step(1.0 - (0.3 + rnd * 0.5), q.y);
-					glass = mix(glass, vec3(0.62, 0.6, 0.55) * (0.7 + rnd * 0.4), curtain * 0.7);
-					float dead = step(1.0 - b_dead, rnd);
-					// pustostan: dykta albo wybita szyba
-					if (dead > 0.5) { glass = rnd2 > 0.5 ? vec3(0.32, 0.25, 0.17) * (0.7 + nz * 0.5) : vec3(0.012); }
-					col = glass;
-					rough = dead > 0.5 ? 0.9 : 0.1;
-					metal = dead > 0.5 ? 0.0 : 0.5;
-					float lit = step(rnd, v < cellsz.y ? 0.12 : 0.36) * (1.0 - dead);
-					float tv = step(0.82, rnd2);
-					vec3 warm = tv > 0.5 ? vec3(0.4, 0.6, 1.0) * (0.6 + 0.4 * sin(TIME * (3.0 + rnd * 5.0) + rnd * 40.0)) : mix(vec3(1.0, 0.68, 0.36), vec3(1.0, 0.85, 0.6), rnd2);
-					emi = warm * lit * night * (0.35 + rnd2 * 0.35) * (1.0 - curtain * 0.55) * mix(0.55, 1.0, q.y);
-				}
-			} else if (f.y < wr.y && f.y > wr.y - 0.03 && q.x > -0.08 && q.x < 1.08) {
-				col = vec3(0.6, 0.6, 0.58) * (0.7 + nz * 0.4);
-			} else if (f.y < wr.y - 0.03 && q.x > 0.0 && q.x < 1.0) {
-				col *= 1.0 - 0.3 * smoothstep(0.5, 0.8, texture(noise_tex, vec2(u * 0.9, v * 0.05)).r);
-			}
-		}
-		col *= mix(0.5, 1.0, smoothstep(0.0, 1.4, v + nz * 0.8));
-		ALBEDO = col;
-		ROUGHNESS = rough;
-		METALLIC = metal;
-		EMISSION = emi;
-		if (!glass_px) { NORMAL_MAP = nmap; NORMAL_MAP_DEPTH = 0.8; }
-	}
-}
-"""
-
 
 # ================================================================ teren
 static func _ss(a: float, b: float, x: float) -> float:
@@ -648,6 +530,10 @@ func build(loader = null) -> void:
 	if loader != null:
 		await loader.step(52.0, "Spraying graffiti")
 	_dense()
+	Details.entrances(self)
+	Details.wall_art(self)
+	Details.facade_props(self)
+	Details.flush(self)
 	if loader != null:
 		await loader.step(58.0, "Building the overpass")
 	_viaduct()
@@ -655,6 +541,7 @@ func build(loader = null) -> void:
 	_backdrop()
 	_curb_lines()
 	_graph()
+	_build_grid()
 	if loader != null:
 		await loader.step(66.0, "Furnishing the hideouts")
 	_interiors()
@@ -671,18 +558,19 @@ func build(loader = null) -> void:
 
 func _facade_mats() -> void:
 	var sh := Shader.new()
-	sh.code = SH_FACADE
+	sh.code = Facade.SH
+	# [tekstura, skala, styl, pole okna (m), tekstura pod tynkiem, ile tynku odpadło]
 	var defs := {
-		"plyta": ["concrete_wall_008", 0.2, 0, Vector2(3.6, 3.0)],
-		"plyta2": ["grey_plaster_03", 0.22, 0, Vector2(3.6, 3.0)],
-		"kamA": ["damaged_plaster", 0.2, 1, Vector2(3.2, 3.8)],
-		"kamB": ["grey_plaster_03", 0.25, 1, Vector2(3.2, 3.8)],
-		"kamC": ["peeling_painted_wall", 0.3, 1, Vector2(3.2, 3.8)],
-		"kamD": ["blue_plaster_weathered", 0.3, 1, Vector2(3.2, 3.8)],
-		"cegla": ["factory_brick", 0.28, 3, Vector2(5.0, 5.2)],
-		"cegla2": ["brick_wall_10", 0.3, 1, Vector2(3.2, 3.8)],
-		"klub": ["grey_plaster_03", 0.3, 4, Vector2(4.0, 2.5)],
-		"urzad": ["concrete_wall_008", 0.25, 6, Vector2(3.0, 3.6)],
+		"plyta": ["concrete_wall_008", 0.2, 0, Vector2(3.6, 3.0), "", 0.0],
+		"plyta2": ["grey_plaster_03", 0.22, 0, Vector2(3.6, 3.0), "", 0.0],
+		"kamA": ["damaged_plaster", 0.2, 1, Vector2(3.2, 3.8), "factory_brick", 0.55],
+		"kamB": ["grey_plaster_03", 0.25, 1, Vector2(3.2, 3.8), "brick_wall_10", 0.35],
+		"kamC": ["peeling_painted_wall", 0.3, 1, Vector2(3.2, 3.8), "factory_brick", 0.6],
+		"kamD": ["blue_plaster_weathered", 0.3, 1, Vector2(3.2, 3.8), "brick_wall_10", 0.45],
+		"cegla": ["factory_brick", 0.28, 3, Vector2(5.0, 5.2), "", 0.0],
+		"cegla2": ["brick_wall_10", 0.3, 1, Vector2(3.2, 3.8), "", 0.0],
+		"klub": ["grey_plaster_03", 0.3, 4, Vector2(4.0, 2.5), "", 0.0],
+		"urzad": ["concrete_wall_008", 0.25, 6, Vector2(3.0, 3.6), "", 0.0],
 	}
 	for k in defs:
 		var d: Array = defs[k]
@@ -691,13 +579,17 @@ func _facade_mats() -> void:
 		m.set_shader_parameter("noise_tex", noise_tex)
 		m.set_shader_parameter("wall_tex", Props.tex("res://assets/tex/%s_diff.jpg" % d[0]))
 		m.set_shader_parameter("wall_nor", Props.tex("res://assets/tex/%s_nor.jpg" % d[0]))
+		m.set_shader_parameter("alt_tex", Props.tex("res://assets/tex/%s_diff.jpg" % (d[4] if d[4] != "" else d[0])))
+		m.set_shader_parameter("alt_amount", d[5])
 		m.set_shader_parameter("tex_scale", d[1])
 		m.set_shader_parameter("style", d[2])
 		m.set_shader_parameter("cellsz", d[3])
 		fac[k] = m
+		fac_cell[k] = d[3]
 
 
-func add_col(x0: float, x1: float, z0: float, z1: float, h := 4.0, solid := true, base := -999.0) -> void:
+## `blk_h`: wysokość przeszkody dla policji i linii wzroku, gdy sama bryła kolizji zaczyna się wyżej (przełaz)
+func add_col(x0: float, x1: float, z0: float, z1: float, h := 4.0, solid := true, base := -999.0, blk_h := -1.0) -> void:
 	var by := base
 	if by < -900.0:
 		by = minf(minf(hd(x0, z0), hd(x1, z1)), minf(hd(x0, z1), hd(x1, z0))) - 2.0 if x0 < 500.0 else -1.0
@@ -707,6 +599,8 @@ func add_col(x0: float, x1: float, z0: float, z1: float, h := 4.0, solid := true
 		z0 *= SC
 		z1 *= SC
 	rects.append({"x0": x0, "x1": x1, "z0": z0, "z1": z1, "h": h})
+	if solid and x0 < 400.0:
+		blocks.append({"x0": x0, "x1": x1, "z0": z0, "z1": z1, "h": blk_h if blk_h > 0.0 else h, "op": _col_opaque})
 	if solid:
 		var cs := CollisionShape3D.new()
 		var sh := BoxShape3D.new()
@@ -720,19 +614,62 @@ func _base(x0: float, z0: float, x1: float, z1: float) -> float:
 	return minf(minf(hd(x0, z0), hd(x1, z1)), minf(hd(x0, z1), hd(x1, z0)))
 
 
-## budynek-prostopadłościan z elewacją; key: materiał z `fac`
-func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String, wall := Color(0.8, 0.8, 0.78), accent := Color(0.8, 0.55, 0.3), dead := 0.0, balconies := false) -> void:
+## Siatka okien na ścianie długości `ln` metrów: [margines, liczba pól]. Gdy podano `anchor`
+## (metry od początku ściany), siatka przesuwa się tak, żeby środek jednego pola wypadł dokładnie tam.
+static func grid_for(ln: float, cs: float, anchor := -1.0) -> Array:
+	var n: int = maxi(1, int(floor((ln - 0.5) / cs)))
+	var m := (ln - n * cs) * 0.5
+	if anchor >= 0.0:
+		var k := int(round((anchor - m) / cs - 0.5))
+		m = anchor - (k + 0.5) * cs
+		while m < 0.25:
+			m += cs
+		n = maxi(1, int(floor((ln - 0.25 - m) / cs)))
+	return [m, n]
+
+
+## budynek-prostopadłościan z elewacją; key: materiał z `fac`.
+## opt: blind (0|1|2), pattern (0..4), stair (co ile pól klatka schodowa), front (ściana z wejściami: 1 = +Z, 2 = -Z, 3 = +X, 4 = -X),
+## door_at (współrzędna planu, w której ma wypaść klatka), no (numer bloku), balc (false = bez balkonów)
+func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String, wall := Color(0.8, 0.8, 0.78), accent := Color(0.8, 0.55, 0.3), dead := 0.0, _balconies_unused := false, opt := {}) -> void:
 	var by := _base(x0, z0, x1, z1) - 0.6
 	var w := x1 - x0
 	var d := z1 - z0
+	var plyta := key.begins_with("plyta")
+	var old := key.begins_with("kam") or key == "cegla2"
+	var cs: Vector2 = fac_cell[key]
+	# ściany szczytowe bloków i ściany ogniowe kamienic (krótsze boki) są ślepe
+	var blind: int = opt.get("blind", (1 if w >= d else 2) if (old or (plyta and (w > d * 1.5 or d > w * 1.5))) else 0)
+	var stair: int = opt.get("stair", 3 if (plyta and maxf(w, d) * SC > 12.0) else 0)
+	var pattern: int = opt.get("pattern", rng.randi_range(0, 4) if plyta else 0)
+	var front: int = opt.get("front", 1 if w >= d else 3)
+	var ax := -1.0
+	var az := -1.0
+	if opt.has("door_at"):
+		if front <= 2:
+			ax = (float(opt.door_at) - x0) * SC
+		else:
+			az = (float(opt.door_at) - z0) * SC
+	var gx := grid_for(w * SC, cs.x, ax)
+	var gz := grid_for(d * SC, cs.x, az)
+	# kolumna klatki schodowej: ta, w którą celuje door_at; inaczej środkowa w każdym segmencie
+	var st_off := 1
+	if stair > 0 and opt.has("door_at"):
+		var g: Array = gx if front <= 2 else gz
+		var a := ax if front <= 2 else az
+		st_off = posmod(int(floor((a - float(g[0])) / cs.x)), stair)
 	var mi := Models.box(city, Vector3(w, h + 0.6, d), Vector3((x0 + x1) * 0.5, by + (h + 0.6) * 0.5, (z0 + z1) * 0.5), fac[key])
 	mi.set_instance_shader_parameter("b_origin", Vector3(x0 * SC, by + 0.6, z0 * SC))
+	mi.set_instance_shader_parameter("b_size", Vector3(w * SC, h, d * SC))
 	mi.set_instance_shader_parameter("b_wall", wall)
 	mi.set_instance_shader_parameter("b_accent", accent)
 	mi.set_instance_shader_parameter("b_seed", rng.randf() * 10.0)
 	mi.set_instance_shader_parameter("b_dead", dead)
+	mi.set_instance_shader_parameter("b_opts", Vector4(float(blind), float(pattern), float(stair) + float(st_off) / 16.0, 0.0))
+	mi.set_instance_shader_parameter("b_grid", Vector4(gx[0], gx[1], gz[0], gz[1]))
 	add_col(x0, x1, z0, z1, h)
-	blds.append({"x0": x0, "x1": x1, "z0": z0, "z1": z1})
+	blds.append({"x0": x0, "x1": x1, "z0": z0, "z1": z1, "h": h, "by": by + 0.6, "key": key, "blind": blind, "stair": stair, "st_off": st_off, "front": front,
+		"gx": gx, "gz": gz, "accent": accent, "wall": wall, "node": mi, "no": String(opt.get("no", "")), "plyta": plyta, "old": old, "dead": dead})
 	var top := by + 0.6 + h
 	# attyka i nadbudówki
 	var rm := Models.mat("1a1a1c", 0.95)
@@ -759,20 +696,38 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 				Models.cyl(city, 0.03, 0.04, 5.0, Vector3(px + 1.0, top + 4.5, (z0 + z1) * 0.5), rm, Vector3.ZERO, 5)
 			px += 14.0
 			k += 1
-	if balconies:
-		var cw := 3.6 * INV
-		var nx := int(floor(w / cw))
-		var floors := int(floor(h / 3.0))
-		for fz in [z0, z1]:
-			var sgn := -1.0 if fz == z0 else 1.0
-			for cx in range(nx):
-				if cx % 2 == 0:
-					continue
-				for fl in range(1, floors):
-					var bx := x0 + (cx + 0.5) * cw
-					var byy := by + 0.6 + fl * 3.0 + 0.6
-					_bal_slab.append(Transform3D(Basis.IDENTITY, Vector3(bx, byy, fz + sgn * 0.55 * INV)))
-					_bal_rail.append([Transform3D(Basis.IDENTITY, Vector3(bx, byy + 0.55, fz + sgn * 1.1 * INV)), accent.lerp(Color(0.55, 0.55, 0.52), rng.randf_range(0.0, 0.8)) * rng.randf_range(0.6, 1.0)])
+	if plyta and opt.get("balc", true):
+		_balconies(blds.back())
+
+
+## Płyty i balustrady loggii — dokładnie tam, gdzie shader elewacji rysuje wnęki balkonowe.
+func _balconies(b: Dictionary) -> void:
+	var cs: Vector2 = fac_cell[b.key]
+	var floors := int(floor((float(b.h) + 0.3) / cs.y))
+	var stair: int = b.stair
+	for code in range(1, 5):
+		var xface := code >= 3                    # ściana prostopadła do osi X
+		if (int(b.blind) == 1 and xface) or (int(b.blind) == 2 and not xface):
+			continue
+		var g: Array = b.gz if xface else b.gx
+		var out := 1.0 if code % 2 == 1 else -1.0
+		var wall_c: float = [b.z1, b.z0, b.x1, b.x0][code - 1]
+		for cx in range(int(g[1])):
+			var is_stair := stair > 0 and posmod(cx - int(b.st_off), stair) == 0
+			if is_stair or cx % 2 == 0:
+				continue
+			var along := (float(g[0]) + (cx + 0.5) * cs.x) * INV
+			for fl in range(1, floors):
+				var y := float(b.by) + fl * cs.y + 0.09
+				var col: Color = (b.accent as Color).lerp(Color(0.6, 0.6, 0.57), rng.randf_range(0.0, 0.85)) * rng.randf_range(0.55, 1.0)
+				if rng.randf() < 0.12:
+					col = Color(0.75, 0.74, 0.7)
+				var basis := Basis(Vector3.UP, PI / 2.0) if xface else Basis.IDENTITY
+				var ps := Vector3(wall_c + out * 0.34 * INV, y, float(b.z0) + along) if xface else Vector3(float(b.x0) + along, y, wall_c + out * 0.34 * INV)
+				var pr := Vector3(wall_c + out * 0.7 * INV, y + 0.56, float(b.z0) + along) if xface else Vector3(float(b.x0) + along, y + 0.56, wall_c + out * 0.7 * INV)
+				_bal_slab.append(Transform3D(basis, ps))
+				_bal_rail.append([Transform3D(basis, pr), col])
+				balc.append({"b": b, "code": code, "cx": cx, "fl": fl})
 
 
 func _sign(text: String, pos: Vector3, color: Color, size := 120, rot_y := 0.0, px := 0.006, outline := 14) -> Label3D:
@@ -784,13 +739,21 @@ func _sign(text: String, pos: Vector3, color: Color, size := 120, rot_y := 0.0, 
 	return l
 
 
-func _graffiti(text: String, x: float, z: float, y: float, rot_y: float, color: Color, size := 200) -> void:
-	var kind: String = ["sedgwick", "marker", "sedgwick", "spray"][rng.randi_range(0, 3)]
-	var l := Signs.graffiti(text, color, size / 170.0, kind)
-	l.position = Vector3(x, hd(x, z) + y, z)
-	l.rotation = Vector3(0.0, rot_y, rng.randf_range(-0.07, 0.07))
-	l.scale = Vector3(INV, 1.0, INV)
-	city.add_child(l)
+## graffiti na murze, płocie albo garażu (kalkomania wtopiona w powierzchnię); im większy `size`, tym większa forma
+func _graffiti(_text: String, x: float, z: float, y: float, rot_y: float, _color: Color, size := 200) -> void:
+	var kind := "tag"
+	var width := rng.randf_range(0.9, 1.4)
+	if size >= 190:
+		kind = "piece" if rng.randf() < 0.5 else "throw"
+		width = rng.randf_range(2.6, 3.6)
+	elif size >= 140:
+		kind = "throw" if rng.randf() < 0.6 else "slogan"
+		width = rng.randf_range(1.8, 2.6)
+	elif size >= 105 and rng.randf() < 0.4:
+		kind = "slogan"
+		width = rng.randf_range(1.8, 2.4)
+	var n := Vector3(sin(rot_y), 0.0, cos(rot_y))
+	Details.decal(self, Details.pick(kind), Vector3(x * SC, hd(x, z) + y, z * SC) + n * 0.02, rot_y, width)
 
 
 ## element przyklejony do ściany (szyld, plakat, mural) — bez ściskania
@@ -828,6 +791,17 @@ func _place(n: Node3D, x: float, z: float, ry := 0.0, solid_x := 0.0, solid_z :=
 	return n
 
 
+## ławka osiedlowa (betonowe nogi, drewniane szczeble)
+func _bench(x: float, z: float, ry := 0.0) -> void:
+	var b := Details.bench(Color(0.2, 0.36, 0.26) if rng.randf() < 0.6 else Color(0.5, 0.28, 0.2))
+	b.position = Vector3(x, hd(x, z), z)
+	b.rotation.y = ry
+	b.scale = Vector3(INV, 1.0, INV)
+	city.add_child(b)
+	add_col(x - 0.9 * INV, x + 0.9 * INV, z - 0.35 * INV, z + 0.35 * INV, 0.9)
+	rects.pop_back()
+
+
 func _car(x: float, z: float, ry: float, type := "", color = null, police := false) -> void:
 	var t: String = type if type != "" else ["sedan", "hatch", "hatch", "sedan"].pick_random()
 	var c = color if color != null else Models.CARCOLS[rng.randi_range(0, Models.CARCOLS.size() - 1)]
@@ -847,6 +821,22 @@ func _car(x: float, z: float, ry: float, type := "", color = null, police := fal
 
 
 func _tree(x: float, z: float, s := 1.0, leaves := 0.5) -> void:
+	# drzewo nie może wyrosnąć na jezdni, chodniku ani w budynku — szukamy najbliższego trawnika
+	if not _soft_ground(x, z):
+		var found := false
+		for rad in [3.0, 6.0, 9.0]:
+			for k in range(8):
+				var nx: float = x + cos(k * PI / 4.0) * rad
+				var nz: float = z + sin(k * PI / 4.0) * rad
+				if _soft_ground(nx, nz):
+					x = nx
+					z = nz
+					found = true
+					break
+			if found:
+				break
+		if not found:
+			return
 	var t := Props.tree(rng.randi(), s * rng.randf_range(0.85, 1.2), leaves)
 	t.position = Vector3(x, hd(x, z) - 0.15, z)
 	t.scale *= Vector3(INV, 1.0, INV)
@@ -854,6 +844,19 @@ func _tree(x: float, z: float, s := 1.0, leaves := 0.5) -> void:
 	tree_pos.append(Vector2(x, z))
 	add_col(x - 0.3 * INV, x + 0.3 * INV, z - 0.3 * INV, z + 0.3 * INV, 3.0)
 	rects.pop_back()
+
+
+## czy w tym miejscu jest trawa albo ziemia (nie asfalt, płyty, beton) i nie stoi tam budynek
+func _soft_ground(x: float, z: float) -> bool:
+	var px := clampi(int((x - X0) * 2.0), 0, MAP_W - 1)
+	var pz := clampi(int((z - Z0) * 2.0), 0, MAP_H - 1)
+	var a := img1.get_pixel(px, pz)
+	if a.r + a.g + a.b > 0.25:
+		return false
+	for b in blds:
+		if x > float(b.x0) - 1.5 and x < float(b.x1) + 1.5 and z > float(b.z0) - 1.5 and z < float(b.z1) + 1.5:
+			return false
+	return true
 
 
 func _bush(x: float, z: float, s := 1.0) -> void:
@@ -938,12 +941,13 @@ func door(id: String) -> void:
 func _buildings() -> void:
 	var P := "plyta"
 	# osiedle: wielka płyta
-	building(-2.0, -90.0, 42.0, -78.0, 33.0, P, Color(0.78, 0.77, 0.72), Color(0.78, 0.58, 0.3), 0.0, true)
-	building(-82.0, -90.0, -38.0, -78.0, 33.0, "plyta2", Color(0.8, 0.8, 0.78), Color(0.42, 0.6, 0.45), 0.0, true)
-	building(-80.0, -158.0, -20.0, -146.0, 15.0, P, Color(0.8, 0.76, 0.74), Color(0.75, 0.48, 0.5), 0.0, true)
-	building(15.0, -158.0, 65.0, -146.0, 15.0, "plyta2", Color(0.76, 0.78, 0.8), Color(0.38, 0.55, 0.72), 0.0, true)
-	building(-137.0, -104.0, -119.0, -86.0, 39.0, P, Color(0.75, 0.75, 0.73), Color(0.7, 0.66, 0.4), 0.02)
-	building(-137.0, -161.0, -119.0, -143.0, 39.0, "plyta2", Color(0.78, 0.75, 0.72), Color(0.5, 0.52, 0.7), 0.02)
+	# Niska zabudowa, za to każdy blok inny: numer na szczycie, własny kolor i wzór malowania.
+	building(-2.0, -90.0, 42.0, -78.0, 18.0, P, Color(0.78, 0.77, 0.72), Color(0.82, 0.56, 0.24), 0.0, true, {"no": "7", "door_at": 8.0, "pattern": 4})
+	building(-82.0, -90.0, -38.0, -78.0, 15.0, "plyta2", Color(0.8, 0.8, 0.78), Color(0.4, 0.62, 0.45), 0.0, true, {"no": "5", "door_at": -60.0, "pattern": 1})
+	building(-80.0, -158.0, -20.0, -146.0, 12.0, P, Color(0.8, 0.76, 0.74), Color(0.75, 0.48, 0.5), 0.05, true, {"no": "9", "pattern": 0})
+	building(15.0, -158.0, 65.0, -146.0, 12.0, "plyta2", Color(0.76, 0.78, 0.8), Color(0.36, 0.56, 0.76), 0.0, true, {"no": "11", "pattern": 3})
+	building(-137.0, -104.0, -119.0, -86.0, 24.0, P, Color(0.75, 0.75, 0.73), Color(0.78, 0.7, 0.34), 0.02, true, {"no": "13", "front": 3, "pattern": 2})
+	building(-137.0, -161.0, -119.0, -143.0, 24.0, "plyta2", Color(0.78, 0.75, 0.72), Color(0.52, 0.5, 0.72), 0.02, true, {"no": "3", "front": 3, "pattern": 3})
 	# kamienice przy Hutniczej (strona północna)
 	building(-90.0, -10.0, -60.0, 10.0, 15.2, "kamA", Color(0.86, 0.8, 0.7), Color(0.8, 0.74, 0.62), 0.12)
 	building(-56.0, -10.0, -30.0, 10.0, 19.0, "kamB", Color(0.82, 0.72, 0.5), Color(0.86, 0.82, 0.7), 0.06)
@@ -968,8 +972,6 @@ func _buildings() -> void:
 	_garages()
 	# napisy, szyldy
 	var gy := hd(8.0, -77.0)
-	_sign("7", Vector3(-1.0, gy + 6.0, -77.85), Color(0.15, 0.15, 0.17), 400, 0.0, 0.01, 0)
-	_sign("5", Vector3(-81.0, gy + 6.0, -77.85), Color(0.15, 0.15, 0.17), 400, 0.0, 0.01, 0)
 	_sign("POLICJA", Vector3(-181.0, 9.2, 8.12), Color(0.9, 0.92, 1.0), 150, 0.0, 0.008, 8)
 	_sign("KOMISARIAT III", Vector3(-181.0, 7.6, 8.12), Color(0.75, 0.8, 0.9), 60, 0.0, 0.006, 6)
 	var ne := _sign("NEON", Vector3(-7.85, 8.0, 128.0), Color(1.0, 0.3, 0.85), 330, PI / 2.0, 0.01, 10)
@@ -994,21 +996,6 @@ func _buildings() -> void:
 	_sign("SKŁAD OPAŁU", Vector3(57.0, 6.2, 29.9), Color(0.8, 0.78, 0.7), 110, PI, 0.007, 8)
 	_sign("HALA NR 2", Vector3(175.9, hd(176.0, -80.0) + 11.0, -80.0), Color(0.7, 0.68, 0.62), 220, -PI / 2.0, 0.01, 8)
 	_sign("NA SPRZEDAŻ\ntel. 600 100 …", Vector3(190.0, hd(190.0, -51.0) + 4.6, -51.9), Color(0.95, 0.85, 0.2), 90, 0.0, 0.007, 10)
-	# graffiti
-	var gc := [Color(0.9, 0.9, 0.9), Color(0.85, 0.2, 0.2), Color(0.2, 0.5, 0.9), Color(0.1, 0.1, 0.1), Color(0.95, 0.8, 0.2), Color(0.3, 0.8, 0.4)]
-	_graffiti("HUTNIK '86", 20.0, -77.92, 1.6, 0.0, gc[1], 170)
-	_graffiti("BLOK 7 RZĄDZI", 34.0, -77.92, 1.3, 0.0, gc[3], 110)
-	_graffiti("STAL TO MY", -70.0, -77.92, 1.5, 0.0, gc[2], 150)
-	_graffiti("NIE UFAJ\nNIKOMU", -37.92, -84.0, 2.0, PI / 2.0, gc[0], 130)
-	_graffiti("ZAGŁĘBIE", -45.0, -10.08, 1.6, PI, gc[4], 180)
-	_graffiti("SKERO • DBS", 0.0, -10.08, 1.3, PI, gc[5], 120)
-	_graffiti("KOCHAM CIĘ ANKA", 30.0, -10.08, 1.5, PI, gc[1], 100)
-	_graffiti("HUTNIK PANY", -20.0, 80.08, 1.7, 0.0, gc[0], 170)
-	_graffiti("TU BYŁ SIWY", 75.0, 72.08, 1.4, 0.0, gc[3], 120)
-	_graffiti("MZK", 60.0, 95.92, 1.3, PI, gc[2], 200)
-	_graffiti("STARA HUTA\nŻYJE", 175.92, -95.0, 2.4, -PI / 2.0, gc[0], 190)
-	_graffiti("PRAWDA\nBOLI", 132.0, 11.9, 2.6, PI, gc[4], 170)
-	_graffiti("DBS", 150.0, 28.1, 2.2, 0.0, gc[1], 240)
 
 
 func _shopfront(x: float, zw: float, title: String, color: Color, shutter: String, closed: bool, dz := 1.0) -> void:
@@ -1111,20 +1098,17 @@ func _estate() -> void:
 	_place(Props.swing(), -9.0, -111.0, 0.3, 1.6, 0.9, 2.4)
 	_place(Props.slide(), 1.0, -110.5, -0.5, 0.6, 1.8, 1.7)
 	_place(Props.trzepak(), -33.0, -108.5, 0.1, 1.3, 0.1, 2.0)
-	_prop("painted_wooden_bench", -14.5, -104.6, PI, 0.85, 0.5)
-	_prop("painted_wooden_bench", 4.0, -104.6, PI, 0.85, 0.5)
+	_bench(-14.5, -104.6, PI)
+	_bench(4.0, -104.6, PI)
 	_prop("dirty_football", -4.0, -108.2, 0.0, 0.22, 0.0, false)
 	_prop("plastic_monobloc_chair_01", -31.0, -106.5, 2.2, 0.86, 0.0, false)
 	# ławki pod klatkami, śmietniki, krzesła
-	_prop("painted_wooden_bench", 12.5, -76.2, 0.0, 0.85, 0.5)
-	_prop("painted_wooden_bench", -55.5, -76.2, 0.0, 0.85, 0.5)
+	_bench(12.5, -76.2, 0.0)
+	_bench(-55.5, -76.2, 0.0)
 	_prop("metal_trash_can", 4.6, -76.8, 0.5, 0.9, 0.3)
 	_prop("metal_trash_can", -64.2, -76.8, 1.5, 0.9, 0.3)
 	_prop("can_rusted", 13.6, -75.4, 0.4, 0.13, 0.0, false)
 	_prop("plastic_crate_01", -53.4, -75.6, 0.3, 0.28, 0.0, false)
-	# klatki pozostałych bloków (atrapy wejść)
-	for e in [[-60.0, -78.0, 1.0], [30.0, -78.0, 1.0], [-65.0, -146.0, 1.0], [-35.0, -146.0, 1.0], [28.0, -146.0, 1.0], [52.0, -146.0, 1.0], [-119.0, -95.0, 0.0], [-119.0, -152.0, 0.0]]:
-		_fake_entrance(e[0], e[1], e[2])
 	# trafostacja
 	var tb := _base(108.0, -140.0, 113.0, -135.0)
 	Models.box(city, Vector3(5.0, 3.4, 5.0), Vector3(110.5, tb + 1.7, -137.5), Props.pbr("concrete_slab_wall", 0.3))
@@ -1134,7 +1118,7 @@ func _estate() -> void:
 	_prop("plastic_monobloc_chair_01", 61.0, -44.6, 0.4, 0.86, 0.0, false)
 	_prop("plastic_monobloc_chair_01", 62.4, -45.0, -0.9, 0.86, 0.0, false)
 	_prop("metal_trash_can", 86.5, -45.5, 0.0, 0.9, 0.3)
-	_prop("painted_wooden_bench", 78.0, -37.5, PI, 0.85, 0.5)
+	_bench(78.0, -37.5, PI)
 	# zieleń — rzadka, zaniedbana
 	for e in [[-90.0, -72.0], [-20.0, -72.0], [50.0, -72.0], [70.0, -84.0], [-100.0, -112.0], [-50.0, -112.0], [14.0, -112.0], [78.0, -108.0], [-95.0, -142.0], [-8.0, -142.0], [80.0, -142.0],
 			[-140.0, -122.0], [-150.0, -70.0], [-170.0, -100.0], [-185.0, -140.0], [-160.0, -150.0], [105.0, -90.0], [115.0, -110.0], [120.0, -45.0], [100.0, -40.0], [-15.0, -40.0], [-60.0, -42.0], [30.0, -38.0],
@@ -1169,7 +1153,7 @@ func _lower_town() -> void:
 	_place(Models.kiosk(), 52.5, -4.0, PI / 2.0, 1.1, 1.4, 2.4)
 	_sign("KIOSK", Vector3(53.6, 2.7, -4.0), Color(0.95, 0.9, 0.5), 60, PI / 2.0, 0.006, 8)
 	_prop("metal_trash_can", 66.0, 9.6, 0.0, 0.9, 0.3)
-	_prop("painted_wooden_bench", 56.0, -13.0, 0.0, 0.85, 0.5)
+	_bench(56.0, -13.0, 0.0)
 	# auta: prawie brak ruchu
 	_car(-40.0, 17.2, PI / 2.0, "sedan", "28424f")
 	_car(22.0, 22.8, -PI / 2.0, "hatch", "8a1c1c")
@@ -1254,7 +1238,7 @@ func _lower_town() -> void:
 # ---------------------------------------------------------------- park
 func _park() -> void:
 	for e in [[-88.0, 64.0, 0.4], [-124.0, 101.0, 2.4], [-150.0, 62.5, 0.2], [-128.0, 148.0, 3.0], [-62.0, 102.0, 1.6]]:
-		_prop("painted_wooden_bench", e[0], e[1], e[2], 0.85, 0.5)
+		_bench(e[0], e[1], e[2])
 	_prop("metal_trash_can", -90.5, 64.6, 0.0, 0.9, 0.3)
 	_prop("metal_trash_can", -121.0, 101.5, 0.0, 0.9, 0.3)
 	_prop("can_rusted", -123.0, 102.6, 0.0, 0.13, 0.0, false)
@@ -1400,28 +1384,88 @@ func _garage_row_ew(x0: float, x1: float, z0: float, north: bool, first_no: int)
 ## mur lub płot z kolizją; kind: "mur" | "siatka" | "blacha"
 ## Ogrodzenie z dziurami: `holes` to współrzędne (x dla płotu wschód–zachód, z dla północ–południe),
 ## w których zostaje przejście szerokie na człowieka, z odgiętą siatką i wydeptaną ścieżką.
-func _fence_run(ax: float, az: float, bx: float, bz: float, kind: String, h: float, holes: Array) -> void:
+## `holes`: miejsca, w których da się przejść normalnie; `crawl`: przełazy tylko na kucaka
+func _fence_run(ax: float, az: float, bx: float, bz: float, kind: String, h: float, holes: Array, crawl: Array = []) -> void:
 	var ew := absf(bx - ax) > absf(bz - az)
 	var lo := minf(ax, bx) if ew else minf(az, bz)
 	var hi := maxf(ax, bx) if ew else maxf(az, bz)
-	var gap := 1.35
-	var cuts: Array = holes.duplicate()
-	cuts.sort()
+	var cuts: Array = []
+	for c in holes:
+		cuts.append([float(c), false])
+	for c in crawl:
+		cuts.append([float(c), true])
+	cuts.sort_custom(func(a, b): return a[0] < b[0])
 	var from := lo
 	for c in cuts:
-		var cc := float(c)
+		var cc: float = c[0]
+		var gap := 1.0 if c[1] else 1.35
 		if cc - gap <= from + 1.0 or cc + gap >= hi - 1.0:
 			continue
 		if ew:
 			_barrier(from, az, cc - gap, az, kind, h)
 		else:
 			_barrier(ax, from, ax, cc - gap, kind, h)
-		_fence_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
+		if c[1]:
+			_crawl_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
+		else:
+			_fence_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
 		from = cc + gap
 	if ew:
 		_barrier(from, az, hi, az, kind, h)
 	else:
 		_barrier(ax, from, ax, hi, kind, h)
+
+
+## Przełaz: dół płotu jest podwinięty (albo mur ma wyrwę przy ziemi). Gracz przejdzie tylko na kucaka,
+## policja wcale — dla niej to dalej pełny płot.
+const CRAWL_H := 1.06
+
+func _crawl_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: float) -> void:
+	var along := Vector2(1, 0) if ew else Vector2(0, 1)
+	var across := Vector2(0, 1) if ew else Vector2(1, 0)
+	var by := hd(x, z)
+	var ry := 0.0 if ew else PI / 2.0
+	var w := gap * 2.0
+	var steel := Models.mat("4a4f4a", 0.6, 0.5)
+	if kind == "mur":
+		var cm := Props.pbr("dirty_concrete", 0.35, Color(0.7, 0.7, 0.68))
+		Models.box(city, Vector3(w + 0.1, h - CRAWL_H, 0.3), Vector3(x, by + CRAWL_H + (h - CRAWL_H) * 0.5 - 0.2, z), cm, Vector3(0, ry, 0))
+		Models.box(city, Vector3(w + 0.14, 0.1, 0.42), Vector3(x, by + h - 0.18, z), Models.mat("5a5a58", 0.9), Vector3(0, ry, 0), false)
+		# poszarpana krawędź wyrwy i gruz po bokach
+		for sd in [-1.0, 1.0]:
+			var pp = Vector2(x, z) + along * sd * (gap - 0.08)
+			Models.box(city, Vector3(0.34, 0.5, 0.3), Vector3(pp.x, by + CRAWL_H - 0.34, pp.y), cm, Vector3(0, ry, 0.5 * sd))
+		for k in range(3):
+			var rp := Vector2(x, z) + along * rng.randf_range(-gap, gap) * 1.6 + across * rng.randf_range(0.7, 1.8) * (1.0 if k % 2 == 0 else -1.0)
+			_prop("cinderblock", rp.x, rp.y, rng.randf() * TAU, 0.2)
+	else:
+		for sd in [-1.0, 1.0]:
+			var pp2 = Vector2(x, z) + along * sd * gap
+			Models.cyl(city, 0.03, 0.03, h, Vector3(pp2.x, by + h * 0.5, pp2.y), steel, Vector3.ZERO, 5)
+		var up := Props.fence_panel(w, h - CRAWL_H, "mesh" if kind == "siatka" else "sheet")
+		up.position = Vector3(x, by + CRAWL_H, z)
+		up.rotation.y = ry
+		city.add_child(up)
+		# podwinięty dół: płat odgięty do góry po jednej stronie
+		var fl := Props.fence_panel(w * 0.92, 0.75, "mesh" if kind == "siatka" else "sheet")
+		fl.position = Vector3(x, by + CRAWL_H - 0.04, z)
+		fl.rotation = Vector3(0.0, ry, 0.0)
+		fl.rotate_object_local(Vector3(1, 0, 0), -1.2)
+		city.add_child(fl)
+	var pad := 0.25
+	_col_opaque = kind != "siatka"
+	if ew:
+		add_col(x - gap, x + gap, z - pad, z + pad, h - CRAWL_H, true, by + CRAWL_H, h)
+	else:
+		add_col(x - pad, x + pad, z - gap, z + gap, h - CRAWL_H, true, by + CRAWL_H, h)
+	_col_opaque = true
+	rects.pop_back()
+	crawls.append({"x": x * SC, "z": z * SC})
+	inter.append({"loc": "out", "x": x * SC, "z": z * SC, "y0": 0.0, "y1": 1.2, "r": 0.8, "reach": 3.2, "id": "crawl",
+		"label": func(): return "Przełaz — przejdziesz tylko na kucaka  [C]" if not G.player.crouching else "Przełaz",
+		"act": func(): G.player.set_crouch(true)})
+	# wydeptana ścieżka
+	_pl(3, Vector2(x, z) - across * 3.5, Vector2(x, z) + across * 3.5, 1.1)
 
 
 func _fence_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: float) -> void:
@@ -1488,10 +1532,12 @@ func _barrier(ax: float, az: float, bx: float, bz: float, kind := "mur", h := 2.
 			f.rotation.y = ry
 			city.add_child(f)
 	var pad := 0.25
+	_col_opaque = kind != "siatka"
 	if absf(bx - ax) > absf(bz - az):
 		add_col(minf(ax, bx), maxf(ax, bx), mid.y - pad, mid.y + pad, h, true)
 	else:
 		add_col(mid.x - pad, mid.x + pad, minf(az, bz), maxf(az, bz), h, true)
+	_col_opaque = true
 	if h < 3.0:
 		rects.pop_back()
 
@@ -1575,52 +1621,19 @@ func _dense() -> void:
 	ctl1_tex.update(img1)
 	_barrier(-112.0, 52.0, -112.0, 60.0, "mur", 2.2)
 	_barrier(10.0, 80.0, 34.0, 80.0, "mur", 2.2)
-	# --- murale i graffiti
-	_wall(Signs.mural("HUTNIK", Color(0.85, 0.2, 0.2), Color(0.95, 0.95, 0.9), 1.6), -37.92, 7.0, -84.0, PI / 2.0)
-	_wall(Signs.mural("STEEL\nBLOCKS", Color(0.25, 0.55, 0.95), Color(0.05, 0.05, 0.08), 1.5), 42.08, 8.0, -84.0, PI / 2.0)
-	_wall(Signs.mural("NO FUTURE", Color(0.95, 0.8, 0.2), Color(0.1, 0.1, 0.1), 1.0), 145.0, 3.2, 12.26, 0.0)
-	_wall(Signs.mural("DEAD MILL", Color(0.9, 0.9, 0.9), Color(0.6, 0.1, 0.1), 0.9), 145.0, 3.0, 27.74, PI)
-	_wall(Signs.mural("OLD TOWN", Color(0.3, 0.8, 0.4), Color(0.05, 0.1, 0.05), 1.0), -59.92, 5.0, 0.0, PI / 2.0)
-	_wall(Signs.mural("SIWY\nR.I.P.", Color(0.9, 0.9, 0.9), Color(0.1, 0.1, 0.1), 0.8), 70.0, 1.8, -57.08, PI)
+	# --- graffiti na murach i płotach (na budynkach rozkłada je Details.wall_art)
+	Details.decal(self, "piece_04", Vector3(145.0 * SC, hd(145.0, 12.26) + 2.6, 12.26 * SC), 0.0, 4.4)
+	Details.decal(self, "piece_05", Vector3(145.0 * SC, hd(145.0, 27.74) + 2.5, 27.74 * SC), PI, 4.2)
+	Details.decal(self, "piece_07", Vector3(70.0 * SC, hd(70.0, -57.08) + 1.7, -57.08 * SC), PI, 3.0)
 	var tags := ["DBS", "SKERO", "MZK", "HWK", "ZGR", "KSH", "1986", "ACAB?", "STAL", "BLOKI", "JARA", "ELO", "NIE UFAJ", "TU RZĄDZĄ BLOKI", "LOVE", "KUBA TU BYŁ", "PUNK", "HIP-HOP", "WOLNOŚĆ", "ZOSTAŃ"]
 	var walls := [[-70.0, 57.45, PI], [-30.0, 57.45, PI], [20.0, 57.45, PI], [-80.0, -17.45, 0.0], [-45.0, -17.45, 0.0], [-10.0, -17.45, 0.0], [30.0, -17.45, 0.0],
 		[-75.0, -17.75, PI], [-40.0, -17.75, PI], [0.0, -17.75, PI], [28.0, -17.75, PI], [-70.0, -50.12, PI], [-56.0, -43.88, 0.0], [-80.0, -43.88, 0.0],
 		[52.0, 72.1, 0.0], [70.0, 72.1, 0.0], [92.0, 72.1, 0.0], [58.0, 95.9, PI], [82.0, 95.9, PI], [100.0, 95.9, PI], [20.0, 79.85, PI], [26.0, 80.15, 0.0]]
 	for w in walls:
 		_graffiti(tags[rng.randi_range(0, tags.size() - 1)], w[0] + rng.randf_range(-3.0, 3.0), w[1], rng.randf_range(0.9, 1.5), w[2], GC[rng.randi_range(0, 5)], rng.randi_range(70, 130))
-	# --- plakaty na ścianach budynków
-	var k2 := 0
-	for b in blds.duplicate():
-		if b.get("low", false):
-			continue
-		var w: float = b.x1 - b.x0
-		var d: float = b.z1 - b.z0
-		for face in range(4):
-			var flen := w if face < 2 else d
-			var cnt := int(flen / 13.0)
-			for i in range(cnt):
-				if rng.randf() < 0.35:
-					continue
-				k2 += 1
-				var t := rng.randf_range(0.08, 0.92)
-				var px: float
-				var pz: float
-				var ry: float
-				match face:
-					0:
-						px = b.x0 + w * t; pz = b.z1 + 0.05; ry = 0.0
-					1:
-						px = b.x0 + w * t; pz = b.z0 - 0.05; ry = PI
-					2:
-						px = b.x1 + 0.05; pz = b.z0 + d * t; ry = PI / 2.0
-					_:
-						px = b.x0 - 0.05; pz = b.z0 + d * t; ry = -PI / 2.0
-				var ps := Signs.poster(rng.randi(), rng.randf_range(0.9, 1.3))
-				ps.position = Vector3(px, hd(px, pz) + rng.randf_range(1.3, 1.9), pz)
-				ps.rotation.y = ry
-				ps.scale = Vector3(INV, 1.0, INV)
-				city.add_child(ps)
-				Props.set_range(ps, 38.0)
+	# --- słupy ogłoszeniowe w ruchliwych miejscach
+	for e in [[58.0, 15.6], [-22.0, 14.4], [66.0, -40.0], [-30.0, -100.0], [-112.0, 14.6], [22.0, 116.0]]:
+		Details.ad_pillar(self, e[0], e[1], int(e[0] * 13.0 + e[1]))
 	# --- ogień i życie
 	_fire(86.0, 80.0)
 	_fire(64.0, 136.0)
@@ -1727,13 +1740,13 @@ func _ground_details() -> void:
 	var chunk := 32.0
 	var cells := {}
 	var count := 0
-	for k in range(4200):
+	for k in range(9000):
 		var cx0 := rng.randf_range(-206.0, 206.0)
 		var cz0 := rng.randf_range(-166.0, 166.0)
 		# kępa: kilka źdźbeł obok siebie, wyższe w środku
-		for j in range(rng.randi_range(2, 5)):
-			var x := cx0 + rng.randf_range(-0.9, 0.9)
-			var z := cz0 + rng.randf_range(-0.9, 0.9)
+		for j in range(rng.randi_range(2, 6)):
+			var x := cx0 + rng.randf_range(-1.6, 1.6)
+			var z := cz0 + rng.randf_range(-1.6, 1.6)
 			var px2 := clampi(int((x - X0) * 2.0), 0, MAP_W - 1)
 			var pz2 := clampi(int((z - Z0) * 2.0), 0, MAP_H - 1)
 			var a := img1.get_pixel(px2, pz2)
@@ -1744,8 +1757,8 @@ func _ground_details() -> void:
 			var key := Vector2i(int(floor(x / chunk)), int(floor(z / chunk)))
 			if not cells.has(key):
 				cells[key] = []
-			var hgt := rng.randf_range(0.2, 0.46)
-			var wid := rng.randf_range(0.8, 1.5)
+			var hgt := rng.randf_range(0.22, 0.5)
+			var wid := hgt * rng.randf_range(1.2, 2.0)
 			var bs := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(wid * INV, hgt, wid * INV))
 			cells[key].append(Transform3D(bs, Vector3(x, hd(x, z) - 0.03, z)))
 			count += 1
@@ -1761,7 +1774,7 @@ func _ground_details() -> void:
 		mi.multimesh = mm
 		mi.material_override = gmat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.visibility_range_end = 44.0
+		mi.visibility_range_end = 64.0
 		mi.visibility_range_end_margin = 2.0
 		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 		city.add_child(mi)
@@ -1967,13 +1980,13 @@ func _backdrop() -> void:
 func _flush_multimeshes() -> void:
 	_multimesh(_curbs, Vector3(2.0 * INV, 0.26, 0.2 * INV), Props.pbr("concrete_wall_008", 0.5, Color(0.62, 0.62, 0.6)), false)
 	_curbs.clear()
-	_multimesh(_bal_slab, Vector3(3.3 * INV, 0.14, 1.2 * INV), Props.pbr("concrete_wall_008", 0.4, Color(0.7, 0.7, 0.68)), true)
+	_multimesh(_bal_slab, Vector3(3.2 * INV, 0.14, 0.8 * INV), Props.pbr("concrete_wall_008", 0.4, Color(0.7, 0.7, 0.68)), true)
 	if not _bal_rail.is_empty():
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		mm.use_colors = true
 		var bm := BoxMesh.new()
-		bm.size = Vector3(3.3 * INV, 1.0, 0.06 * INV)
+		bm.size = Vector3(3.2 * INV, 1.0, 0.06 * INV)
 		var m := StandardMaterial3D.new()
 		m.vertex_color_use_as_albedo = true
 		m.roughness = 0.85
@@ -2114,13 +2127,117 @@ func club_tick() -> void:
 		_club_next()
 
 
-func los(ax: float, az: float, bx: float, bz: float) -> bool:
-	for c in rects:
-		if c.h < 3.0:
+## Linia wzroku między dwoma punktami. Zasłaniają ją budynki, mury i blaszane płoty;
+## gdy cel kuca (`low`), wystarczy coś do pasa: auto, murek, śmietnik.
+func los(ax: float, az: float, bx: float, bz: float, low := false) -> bool:
+	if _bk.is_empty() and not blocks.is_empty():
+		_pack_blocks()
+	var thr := 1.0 if low else 1.8
+	var lx0 := minf(ax, bx)
+	var lx1 := maxf(ax, bx)
+	var lz0 := minf(az, bz)
+	var lz1 := maxf(az, bz)
+	var n := _bk.size()
+	var i := 0
+	while i < n:
+		if _bk[i + 4] >= thr and _bk[i] <= lx1 and _bk[i + 1] >= lx0 and _bk[i + 2] <= lz1 and _bk[i + 3] >= lz0:
+			if _seg_box(ax, az, bx, bz, _bk[i], _bk[i + 1], _bk[i + 2], _bk[i + 3]):
+				return false
+		i += 5
+	return true
+
+
+func _pack_blocks() -> void:
+	_bk = PackedFloat32Array()
+	for b in blocks:
+		if b.op:
+			_bk.append_array([b.x0, b.x1, b.z0, b.z1, b.h])
+
+
+# ---------------------------------------------------------------- siatka przejść (pościg)
+func _build_grid() -> void:
+	grid = AStarGrid2D.new()
+	var w := int(ceil(float(NX - 1) * CELL * SC / GCELL))
+	var hh := int(ceil(float(NZ - 1) * CELL * SC / GCELL))
+	grid.region = Rect2i(0, 0, w, hh)
+	grid.cell_size = Vector2(GCELL, GCELL)
+	grid.offset = Vector2(X0 * SC + GCELL * 0.5, Z0 * SC + GCELL * 0.5)
+	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	grid.default_estimate_heuristic = AStarGrid2D.HEURISTIC_OCTILE
+	grid.update()
+	var pad := 0.22
+	for b in blocks:
+		if float(b.h) < 0.7:
 			continue
-		if _seg_box(ax, az, bx, bz, c.x0, c.x1, c.z0, c.z1):
+		var a := _cell(float(b.x0) - pad, float(b.z0) - pad)
+		var c := _cell(float(b.x1) + pad, float(b.z1) + pad)
+		grid.fill_solid_region(Rect2i(a, c - a + Vector2i.ONE), true)
+	# strome zbocza: da się wejść, ale to droga na skróty tylko w ostateczności
+	for j in range(0, hh, 2):
+		for i in range(0, w, 2):
+			var px := X0 * SC + (i + 1) * GCELL
+			var pz := Z0 * SC + (j + 1) * GCELL
+			var g := maxf(absf(height(px + 1.0, pz) - height(px - 1.0, pz)), absf(height(px, pz + 1.0) - height(px, pz - 1.0))) * 0.5
+			if g > 0.42:
+				grid.fill_weight_scale_region(Rect2i(i, j, 2, 2), 1.0 + minf(4.0, g * 4.0))
+
+
+func _cell(x: float, z: float) -> Vector2i:
+	var r := grid.region
+	return Vector2i(clampi(int(floor((x - X0 * SC) / GCELL)), 0, r.size.x - 1), clampi(int(floor((z - Z0 * SC) / GCELL)), 0, r.size.y - 1))
+
+
+## najbliższa wolna kratka (gdy punkt wypada w ścianie albo tuż przy niej)
+func _free_cell(c: Vector2i) -> Vector2i:
+	if not grid.is_point_solid(c):
+		return c
+	var r := grid.region
+	for rad in range(1, 9):
+		for dz in range(-rad, rad + 1):
+			for dx in range(-rad, rad + 1):
+				if maxi(absi(dx), absi(dz)) != rad:
+					continue
+				var q := c + Vector2i(dx, dz)
+				if q.x >= 0 and q.y >= 0 and q.x < r.size.x and q.y < r.size.y and not grid.is_point_solid(q):
+					return q
+	return c
+
+
+## czy po prostej da się przejść (bez wchodzenia w przeszkody)
+func grid_clear(a: Vector2, b: Vector2) -> bool:
+	var d := a.distance_to(b)
+	var n := int(ceil(d / (GCELL * 0.6)))
+	for i in range(1, n):
+		var p := a.lerp(b, float(i) / n)
+		if grid.is_point_solid(_cell(p.x, p.y)):
 			return false
 	return true
+
+
+## trasa pieszo z a do b z ominięciem płotów, murów i aut (punkty w metrach świata)
+func grid_path(a: Vector2, b: Vector2) -> PackedVector2Array:
+	if grid == null:
+		return PackedVector2Array([b])
+	var ca := _free_cell(_cell(a.x, a.y))
+	var cb := _free_cell(_cell(b.x, b.y))
+	var raw := grid.get_point_path(ca, cb, true)
+	if raw.size() < 2:
+		return PackedVector2Array([b])
+	# wygładzenie: pomijamy punkty pośrednie, jeśli da się iść na wprost
+	var out := PackedVector2Array()
+	var cur := a
+	var i := 0
+	while i < raw.size() - 1:
+		var j := mini(raw.size() - 1, i + 24)
+		while j > i + 1 and not grid_clear(cur, raw[j]):
+			j -= 1
+		out.append(raw[j])
+		cur = raw[j]
+		i = j
+	if grid_clear(cur, b) and cur.distance_to(b) > 0.2:
+		out.append(b)
+	return out
 
 
 func _seg_box(ax: float, az: float, bx: float, bz: float, x0: float, x1: float, z0: float, z1: float) -> bool:

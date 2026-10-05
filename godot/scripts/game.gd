@@ -38,6 +38,53 @@ func _ready() -> void:
 	_build_story()
 
 
+# ================================================================ sterowanie
+## akcja -> klawisz (kod fizyczny); zmieniane w Opcjach i zapisywane w ustawieniach
+const KEY_DEFAULTS := {"fwd": KEY_W, "back": KEY_S, "left": KEY_A, "right": KEY_D, "sprint": KEY_SHIFT, "crouch": KEY_C,
+	"use": KEY_E, "phone": KEY_TAB, "inv": KEY_I, "map": KEY_M, "flash": KEY_F, "nav": KEY_N, "track": KEY_Q,
+	"build": KEY_B, "rotate": KEY_R, "ditch": KEY_X}
+const KEY_ACTIONS := [["fwd", "Do przodu"], ["back", "Do tyłu"], ["left", "W lewo"], ["right", "W prawo"], ["sprint", "Bieg"], ["crouch", "Kucanie"],
+	["use", "Użyj / rozmawiaj"], ["phone", "Telefon"], ["inv", "Ekwipunek"], ["map", "Mapa"], ["flash", "Latarka"], ["nav", "Trasa do celu"],
+	["track", "Następny cel"], ["ditch", "Wyrzuć towar (przytrzymaj)"], ["build", "Meblowanie kryjówki"], ["rotate", "Obrót mebla"]]
+var keys := KEY_DEFAULTS.duplicate()
+
+
+func key_down(a: String) -> bool:
+	return Input.is_physical_key_pressed(int(keys.get(a, 0)))
+
+
+func key_action(kc: int) -> String:
+	for a in keys:
+		if int(keys[a]) == kc:
+			return a
+	return ""
+
+
+## nazwa klawisza do podpowiedzi na ekranie
+func kn(a: String) -> String:
+	return key_label(int(keys.get(a, 0)))
+
+
+static func key_label(kc: int) -> String:
+	match kc:
+		KEY_SHIFT: return "Shift"
+		KEY_CTRL: return "Ctrl"
+		KEY_ALT: return "Alt"
+		KEY_META: return "Cmd"
+		KEY_TAB: return "Tab"
+		KEY_SPACE: return "Spacja"
+		KEY_ESCAPE: return "Esc"
+		KEY_ENTER: return "Enter"
+		KEY_BACKSPACE: return "Backspace"
+		KEY_CAPSLOCK: return "Caps Lock"
+		KEY_UP: return "↑"
+		KEY_DOWN: return "↓"
+		KEY_LEFT: return "←"
+		KEY_RIGHT: return "→"
+	var n := OS.get_keycode_string(kc)
+	return n if n != "" else "?"
+
+
 # ================================================================ stan
 static func new_store() -> Dictionary:
 	var st := {"bulk": {}, "pack": {}, "cash": 0.0}
@@ -1153,14 +1200,13 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 		else:
 			d.notes.append("Wciąż wisi Ci %s („następnym razem…”)" % money(st.owes))
 	if player != null and player.loc == "out" and npcs != null:
-		var pp: Vector3 = player.global_position
-		for c in npcs.cops:
-			if Vector2(c.x - pp.x, c.z - pp.z).length() < 22.0 and world.los(c.x, c.z, pp.x, pp.z):
-				d.cop = c
-				d.cop_t = 16.0
-				d.cop_max = 16.0
-				d.mood = maxf(5.0, float(d.mood) - 30.0 * float(who.get("nerv", 0.1)))
-				break
+		# patrol przeszkadza tylko wtedy, gdy faktycznie patrzy w Waszą stronę
+		var c = npcs.watcher(22.0)
+		if c != null:
+			d.cop = c
+			d.cop_t = 16.0
+			d.cop_max = 16.0
+			d.mood = maxf(5.0, float(d.mood) - 30.0 * float(who.get("nerv", 0.1)))
 	return d
 
 
@@ -2187,6 +2233,25 @@ func save_game(manual := true) -> void:
 
 func has_save() -> bool:
 	return FileAccess.file_exists(SAVE_PATH)
+
+
+## krótki opis zapisu do menu głównego: {day, cash, when} albo {} gdy zapisu nie ma
+func save_summary() -> Dictionary:
+	if not has_save():
+		return {}
+	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if f == null:
+		return {}
+	var d = JSON.parse_string(f.get_as_text())
+	f.close()
+	if typeof(d) != TYPE_DICTIONARY:
+		return {}
+	var when := "—"
+	var mt := FileAccess.get_modified_time(SAVE_PATH)
+	if mt > 0:
+		var dt := Time.get_datetime_dict_from_unix_time(mt + Time.get_time_zone_from_system().bias * 60)
+		when = "%02d.%02d, %02d:%02d" % [int(dt.day), int(dt.month), int(dt.hour), int(dt.minute)]
+	return {"day": int(float(d.get("t", 0.0)) / 1440.0) + 1, "cash": float(d.get("cash", 0.0)), "when": when}
 
 
 static func _merge(base: Dictionary, data: Dictionary) -> void:

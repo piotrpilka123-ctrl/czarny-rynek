@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://r6rof2sf7111"
-path="res://.godot/imported/wheel_Zombie_Atlas.png-c048023974ed0aedf02ffe3f6a9336de.ctex"
+path.s3tc="res://.godot/imported/wheel_Zombie_Atlas.png-c048023974ed0aedf02ffe3f6a9336de.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5b7c72c28e3ae7a7d279ebc2e407d44c"
@@ -14,17 +15,17 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/props/wheel_Zombie_Atlas.png"
-dest_files=["res://.godot/imported/wheel_Zombie_Atlas.png-c048023974ed0aedf02ffe3f6a9336de.ctex"]
+dest_files=["res://.godot/imported/wheel_Zombie_Atlas.png-c048023974ed0aedf02ffe3f6a9336de.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=2
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1

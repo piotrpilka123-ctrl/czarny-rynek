@@ -1,0 +1,15 @@
+{
+ "source": "Professions/Police_Male_06",
+ "parts": {
+  "body": {
+   "color": "pm6_body.jpg",
+   "prefix": "m175",
+   "normal": "pm6_body_n.jpg"
+  },
+  "head": {
+   "color": "pm6_head.jpg",
+   "prefix": "m175",
+   "normal": "pm6_head_n.jpg"
+  }
+ }
+}

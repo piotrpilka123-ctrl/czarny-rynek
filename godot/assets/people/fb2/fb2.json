@@ -1,0 +1,27 @@
+{
+ "source": "Professions/Business_Female_02",
+ "parts": {
+  "body": {
+   "color": "fb2_body.jpg",
+   "prefix": "f015",
+   "normal": "fb2_body_n.jpg"
+  },
+  "glasses": {
+   "normal": "fb2_glasses_n.jpg",
+   "prefix": "f015"
+  },
+  "glasses_opacity": {
+   "color": "fb2_glasses_opacity.png",
+   "prefix": "f015"
+  },
+  "head": {
+   "color": "fb2_head.jpg",
+   "prefix": "f015",
+   "normal": "fb2_head_n.jpg"
+  },
+  "opacity": {
+   "color": "fb2_opacity.png",
+   "prefix": "f015"
+  }
+ }
+}

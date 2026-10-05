@@ -3,7 +3,12 @@ extends CharacterBody3D
 
 const WALK := 3.9
 const SPRINT := 6.5
+const SNEAK := 2.0
 const BASE_STAMINA := 6.0
+const EYE := 1.66
+const EYE_LOW := 0.92
+const BODY_H := 1.75
+const BODY_LOW := 1.0
 
 var yaw := 0.0
 var pitch := 0.0
@@ -18,16 +23,23 @@ var shake := 0.0
 var cam: Camera3D
 var flash: SpotLight3D
 var look_scale := 1.0
+var invert_y := false
+var base_fov := 70.0
+var crouching := false
+var eye_y := EYE
+var _cs: CollisionShape3D
+var _cap: CapsuleShape3D
+var _stand_msg := 0.0
 
 
 func _ready() -> void:
-	var cs := CollisionShape3D.new()
-	var cap := CapsuleShape3D.new()
-	cap.radius = 0.34
-	cap.height = 1.75
-	cs.shape = cap
-	cs.position = Vector3(0, 0.9, 0)
-	add_child(cs)
+	_cs = CollisionShape3D.new()
+	_cap = CapsuleShape3D.new()
+	_cap.radius = 0.34
+	_cap.height = BODY_H
+	_cs.shape = _cap
+	_cs.position = Vector3(0, 0.9, 0)
+	add_child(_cs)
 	cam = Camera3D.new()
 	cam.fov = 70.0
 	cam.near = 0.06
@@ -67,7 +79,40 @@ func max_stamina() -> float:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and G.running and not G.busy:
 		yaw -= event.relative.x * 0.0022 * look_scale
-		pitch = clampf(pitch - event.relative.y * 0.0022 * look_scale, -1.45, 1.45)
+		pitch = clampf(pitch - event.relative.y * 0.0022 * look_scale * (-1.0 if invert_y else 1.0), -1.45, 1.45)
+
+
+# ---------------------------------------------------------------- kucanie
+## czy nad głową jest miejsce, żeby wstać
+func can_stand() -> bool:
+	if not is_inside_tree():
+		return true
+	var q := PhysicsShapeQueryParameters3D.new()
+	var cap := CapsuleShape3D.new()
+	cap.radius = 0.3
+	cap.height = BODY_H - 0.06
+	q.shape = cap
+	q.transform = Transform3D(Basis.IDENTITY, global_position + Vector3(0, 0.92, 0))
+	q.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+
+
+func set_crouch(on: bool) -> bool:
+	if on == crouching:
+		return true
+	if not on and not can_stand():
+		if G.now - _stand_msg > 2.5:
+			_stand_msg = G.now
+			G.notify("Tu się nie wyprostujesz.")
+		return false
+	crouching = on
+	_cap.height = BODY_LOW if on else BODY_H
+	_cs.position.y = 0.52 if on else 0.9
+	return true
+
+
+func toggle_crouch() -> void:
+	set_crouch(not crouching)
 
 
 func place(pos: Vector3, new_yaw: float) -> void:
@@ -77,6 +122,11 @@ func place(pos: Vector3, new_yaw: float) -> void:
 	velocity = Vector3.ZERO
 	rotation = Vector3(0, yaw, 0)
 	cam.rotation = Vector3.ZERO
+	if crouching:
+		crouching = false
+		_cap.height = BODY_H
+		_cs.position.y = 0.9
+	eye_y = EYE
 	if G.world != null and loc == "out":
 		global_position.y = G.world.height(pos.x, pos.z)
 
@@ -87,26 +137,29 @@ func _physics_process(dt: float) -> void:
 	# rozglądanie strzałkami (alternatywa dla myszy)
 	yaw += (float(Input.is_physical_key_pressed(KEY_LEFT)) - float(Input.is_physical_key_pressed(KEY_RIGHT))) * 1.9 * dt
 	pitch = clampf(pitch + (float(Input.is_physical_key_pressed(KEY_UP)) - float(Input.is_physical_key_pressed(KEY_DOWN))) * 1.4 * dt, -1.45, 1.45)
-	var mx := float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
-	var mz := float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))
+	var mx := float(G.key_down("right")) - float(G.key_down("left"))
+	var mz := float(G.key_down("back")) - float(G.key_down("fwd"))
 	moving = mx != 0.0 or mz != 0.0
 	var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
 	var right := Vector3(cos(yaw), 0, -sin(yaw))
 	var dir := (right * mx - fwd * mz)
 	if dir.length() > 0.01:
 		dir = dir.normalized()
-	var want_sprint := Input.is_physical_key_pressed(KEY_SHIFT) and moving
+	var want_sprint := G.key_down("sprint") and moving
 	var ms := max_stamina()
 	if stamina <= 0.05:
 		tired = true
 	if stamina > ms * 0.3:
 		tired = false
-	sprinting = want_sprint and not tired
+	# bieg podrywa z kucek (o ile jest miejsce nad głową)
+	if want_sprint and crouching and not tired:
+		set_crouch(false)
+	sprinting = want_sprint and not tired and not crouching
 	if sprinting:
 		stamina = maxf(0.0, stamina - dt)
 	else:
 		stamina = minf(ms, stamina + dt * (0.5 if moving else 1.0))
-	var sp := (SPRINT * (1.08 if G.has_skill("kondycja2") else 1.0)) if sprinting else WALK
+	var sp := (SPRINT * (1.08 if G.has_skill("kondycja2") else 1.0)) if sprinting else (SNEAK if crouching else WALK)
 	var gp := global_position
 	var outside := loc == "out" and G.world != null
 	# pod górę wolniej
@@ -135,15 +188,18 @@ func _physics_process(dt: float) -> void:
 			var surf := "wood" if not outside else String(G.world.surface_at(gp.x, gp.z))
 			if loc == "garage" or loc == "basement" or loc == "shop":
 				surf = "concrete"
-			Sfx.step(surf, sprinting)
+			# na kucaka idzie się cicho
+			if not crouching:
+				Sfx.step(surf, sprinting)
 			step_t = 0.3 if sprinting else 0.48
-		bob += dt * (12.0 if sprinting else 7.6)
+		bob += dt * (12.0 if sprinting else (5.2 if crouching else 7.6))
 	shake = maxf(0.0, shake - dt * 1.6)
-	var by := sin(bob) * (0.06 if sprinting else 0.03) if moving else 0.0
-	cam.position = Vector3(cos(bob * 0.5) * 0.018 if moving else 0.0, 1.66 + by, 0)
+	eye_y = lerpf(eye_y, EYE_LOW if crouching else EYE, minf(1.0, dt * 9.0))
+	var by := sin(bob) * (0.06 if sprinting else (0.018 if crouching else 0.03)) if moving else 0.0
+	cam.position = Vector3(cos(bob * 0.5) * 0.018 if moving else 0.0, eye_y + by, 0)
 	rotation = Vector3(0, yaw + randf_range(-1.0, 1.0) * shake * 0.02, 0)
 	cam.rotation = Vector3(pitch + randf_range(-1.0, 1.0) * shake * 0.02, 0, 0)
-	var fov := 70.0 + (5.0 if sprinting else 0.0)
+	var fov := base_fov + (5.0 if sprinting else 0.0)
 	cam.fov = lerpf(cam.fov, fov, minf(1.0, dt * 8.0))
 
 

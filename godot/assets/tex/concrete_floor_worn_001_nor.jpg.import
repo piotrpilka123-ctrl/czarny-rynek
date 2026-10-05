@@ -3,27 +3,28 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://xaf6et6lafm8"
-path="res://.godot/imported/concrete_floor_worn_001_nor.jpg-c6925dfaa4cf278ceba494f6426a40da.ctex"
+path.s3tc="res://.godot/imported/concrete_floor_worn_001_nor.jpg-c6925dfaa4cf278ceba494f6426a40da.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/tex/concrete_floor_worn_001_nor.jpg"
-dest_files=["res://.godot/imported/concrete_floor_worn_001_nor.jpg-c6925dfaa4cf278ceba494f6426a40da.ctex"]
+dest_files=["res://.godot/imported/concrete_floor_worn_001_nor.jpg-c6925dfaa4cf278ceba494f6426a40da.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

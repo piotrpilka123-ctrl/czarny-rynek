@@ -1,0 +1,25 @@
+{
+ "source": "Professions/Police_Male_03",
+ "parts": {
+  "body": {
+   "color": "pm3_body.jpg",
+   "prefix": "m172",
+   "normal": "pm3_body_n.jpg"
+  },
+  "equipment": {
+   "color": "pm3_equipment.jpg",
+   "prefix": "m172",
+   "normal": "pm3_equipment_n.jpg"
+  },
+  "head": {
+   "color": "pm3_head.jpg",
+   "prefix": "m172",
+   "normal": "pm3_head_n.jpg"
+  },
+  "pistol": {
+   "color": "pm3_pistol.jpg",
+   "prefix": "m172",
+   "normal": "pm3_pistol_n.jpg"
+  }
+ }
+}
