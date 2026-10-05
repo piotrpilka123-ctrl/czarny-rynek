@@ -150,6 +150,14 @@ func _ready() -> void:
 		print("MAPDUMP ok")
 		get_tree().quit()
 		return
+	if args.has("pts"):
+		add_child(load("res://scripts/audit_pts.gd").new())
+		return
+	if args.has("audit"):
+		var au: Node = load("res://scripts/audit.gd").new()
+		au.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(au)
+		return
 	if args.has("trailer"):
 		var tr: Node = load("res://scripts/trailer.gd").new()
 		tr.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -1372,6 +1380,20 @@ func _apply_test_args() -> void:
 			wr.root.rotation.y = atan2(pp0.x - p3.x, pp0.z - p3.y) + 0.5
 			Chars.animate(wr, 0.0, 1.2, "")
 			wr.anim.seek(0.35 + i * 0.07, true)
+	if args.has("cars"):
+		# rząd aut każdego rodzaju przed graczem (do oglądania modeli)
+		var pp0 := player.global_position
+		var f0: Vector2 = player.forward()
+		var r0 := Vector2(-f0.y, f0.x)
+		var types := ["maluch", "hatch", "sedan", "kombi", "van", "sedan"]
+		var cols := ["c9a23a", "8a1c1c", "28424f", "d9dcdf", "5a6068", "ffffff"]
+		for i in range(types.size()):
+			var cn: Node3D = Models.car(types[i], cols[i], i == 5)
+			add_child(cn)
+			var off := (i - 2.5) * 2.6
+			var p2 := Vector2(pp0.x, pp0.z) + f0 * float(args.cars) + r0 * off
+			cn.position = Vector3(p2.x, world.height(p2.x, p2.y), p2.y)
+			cn.rotation.y = float(args.get("turn", "0.6")) + atan2(f0.x, f0.y) + PI
 	if args.has("chars"):
 		var Chars = load("res://scripts/chars.gd")
 		var pp := player.global_position

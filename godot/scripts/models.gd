@@ -368,94 +368,13 @@ static func _extruded(parent: Node, key: String, pts: Array, r: float, depth: fl
 
 
 # ---------------------------------------------------------------- SAMOCHODY
-const CAR_TYPES := {
-	"sedan": {"L": 4.5, "W": 1.82, "wb": 2.7, "wr": 0.33, "belt": 0.92, "roof": 1.42,
-		"body": [[-2.25, 0.3], [-2.25, 0.7], [-2.15, 0.9], [-1.3, 0.94], [1.0, 0.94], [2.0, 0.86], [2.23, 0.7], [2.25, 0.3]],
-		"cab": [[-1.4, 0.92], [-0.78, 1.4], [0.32, 1.42], [1.08, 0.92]]},
-	"hatch": {"L": 4.0, "W": 1.76, "wb": 2.5, "wr": 0.32, "belt": 0.94, "roof": 1.48,
-		"body": [[-2.0, 0.3], [-2.0, 0.8], [-1.9, 0.96], [0.85, 0.96], [1.75, 0.88], [1.98, 0.7], [2.0, 0.3]],
-		"cab": [[-1.92, 0.94], [-1.62, 1.46], [0.2, 1.48], [0.95, 0.94]]},
-	"suv": {"L": 4.7, "W": 1.92, "wb": 2.8, "wr": 0.38, "belt": 1.08, "roof": 1.74,
-		"body": [[-2.35, 0.38], [-2.35, 0.95], [-2.28, 1.1], [1.1, 1.1], [2.1, 1.02], [2.33, 0.82], [2.35, 0.38]],
-		"cab": [[-2.25, 1.08], [-2.0, 1.72], [0.4, 1.74], [1.2, 1.08]]},
-	"van": {"L": 5.1, "W": 1.98, "wb": 3.1, "wr": 0.36, "belt": 1.12, "roof": 2.05,
-		"body": [[-2.55, 0.36], [-2.55, 1.05], [-2.5, 1.14], [1.75, 1.14], [2.35, 1.0], [2.53, 0.8], [2.55, 0.36]],
-		"cab": [[-2.5, 1.12], [-2.46, 2.03], [1.2, 2.05], [1.95, 1.12]]},
-}
+const Cars = preload("res://scripts/cars.gd")
+const CAR_TYPES := Cars.TYPES
 
 
-## zwraca Node3D; przód auta = +Z
+## zwraca Node3D; przód auta = +Z (nadwozia buduje cars.gd)
 static func car(type := "", color = null, police := false) -> Node3D:
-	if type == "":
-		type = ["sedan", "sedan", "hatch", "hatch", "suv", "van"].pick_random()
-	var T: Dictionary = CAR_TYPES[type]
-	var root := Node3D.new()
-	var g := Node3D.new()            # układ kształtu: przód = +X
-	g.rotation.y = -PI / 2.0
-	root.add_child(g)
-	var paint := mat(color if color != null else CARCOLS.pick_random(), 0.28, 0.6)
-	paint.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var glass := mat("0c1218", 0.06, 0.85)
-	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var dark := mat("141416", 0.7)
-	var W: float = T.W
-	var body_pts := []
-	for p in T.body:
-		body_pts.append(Vector2(p[0], p[1]))
-	var cab_pts := []
-	for p in T.cab:
-		cab_pts.append(Vector2(p[0], p[1]))
-	_extruded(g, "carbody_" + type, body_pts, 0.14, W, paint)
-	_extruded(g, "carcab_" + type, cab_pts, 0.1, W - 0.2, glass)
-	# dach i słupki w kolorze nadwozia
-	var cab: Array = T.cab
-	var roof_len: float = cab[2][0] - cab[1][0]
-	box(g, Vector3(roof_len + 0.16, 0.05, W - 0.26), Vector3((cab[1][0] + cab[2][0]) * 0.5, T.roof + 0.01, 0), paint)
-	for sd in [-1.0, 1.0]:
-		var zc: float = sd * (W - 0.2) * 0.5
-		_pillar(g, Vector2(cab[0][0], cab[0][1]), Vector2(cab[1][0], cab[1][1]), zc, paint)
-		_pillar(g, Vector2(cab[3][0], cab[3][1]), Vector2(cab[2][0], cab[2][1]), zc, paint)
-		box(g, Vector3(0.07, T.roof - T.belt, 0.03), Vector3((cab[1][0] + cab[2][0]) * 0.5 - 0.1, (T.roof + T.belt) * 0.5, zc), paint)
-		box(g, Vector3(0.13, 0.09, 0.2), Vector3(cab[3][0] - 0.06, T.belt + 0.07, sd * (W * 0.5 + 0.07)), dark)
-	# koła
-	var tire := mat("111112", 0.9)
-	var rim := mat("a9afb6", 0.35, 0.8)
-	for wx in [-T.wb * 0.5, T.wb * 0.5]:
-		for sd in [-1.0, 1.0]:
-			var z: float = sd * (W * 0.5 - 0.1)
-			cyl(g, T.wr + 0.06, T.wr + 0.06, 0.04, Vector3(wx, T.wr + 0.02, sd * (W * 0.5 - 0.005)), mat("08080a", 0.9), Vector3(PI / 2, 0, 0), 18)
-			cyl(g, T.wr, T.wr, 0.24, Vector3(wx, T.wr, z), tire, Vector3(PI / 2, 0, 0), 20)
-			cyl(g, T.wr * 0.62, T.wr * 0.62, 0.25, Vector3(wx, T.wr, z + sd * 0.004), rim, Vector3(PI / 2, 0, 0), 14)
-	# zderzaki, światła, tablice
-	var fx: float = T.L * 0.5
-	var front_y: float = T.body[T.body.size() - 2][1]
-	var rear_y: float = T.body[1][1]
-	box(g, Vector3(0.12, 0.17, W - 0.08), Vector3(fx - 0.03, 0.38, 0), dark)
-	box(g, Vector3(0.12, 0.17, W - 0.08), Vector3(-fx + 0.03, 0.38, 0), dark)
-	box(g, Vector3(0.05, 0.12, W * 0.42), Vector3(fx + 0.005, front_y - 0.09, 0), mat("0b0b0d", 0.5))
-	box(g, Vector3(0.02, 0.11, 0.5), Vector3(fx + 0.035, 0.42, 0), mat("f2f2f2", 0.6))
-	box(g, Vector3(0.02, 0.11, 0.5), Vector3(-fx - 0.035, 0.46, 0), mat("f2f2f2", 0.6))
-	var head_m := mat("fff6dc", 0.2, 0.0, 1.2)
-	var tail_m := mat("ff1a10", 0.3, 0.0, 1.0)
-	for sd in [-1.0, 1.0]:
-		box(g, Vector3(0.1, 0.15, 0.42), Vector3(fx + 0.0, front_y - 0.07, sd * (W * 0.5 - 0.33)), head_m)
-		box(g, Vector3(0.1, 0.14, 0.4), Vector3(-fx - 0.0, rear_y + 0.02, sd * (W * 0.5 - 0.31)), tail_m)
-	if police:
-		for sd in [-1.0, 1.0]:
-			box(g, Vector3(T.L * 0.78, 0.2, 0.02), Vector3(0, 0.68, sd * (W * 0.5 + 0.012)), mat("1d3fa8", 0.5))
-			var lb := label("POLICJA", Color.WHITE, 40)
-			lb.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-			lb.no_depth_test = false
-			lb.pixel_size = 0.004
-			lb.position = Vector3(0.2, 0.68, sd * (W * 0.5 + 0.03))
-			lb.rotation.y = 0.0 if sd > 0 else PI
-			g.add_child(lb)
-		box(g, Vector3(0.3, 0.06, 1.0), Vector3(-0.15, T.roof + 0.05, 0), dark)
-		var l1 := box(g, Vector3(0.24, 0.11, 0.42), Vector3(-0.15, T.roof + 0.13, -0.26), mat("ff2020", 0.3, 0.0, 3.0))
-		var l2 := box(g, Vector3(0.24, 0.11, 0.42), Vector3(-0.15, T.roof + 0.13, 0.26), mat("2040ff", 0.3, 0.0, 3.0))
-		root.set_meta("siren", [l1, l2])
-	root.set_meta("car", T)
-	return root
+	return Cars.car(type, color if color != null else CARCOLS.pick_random(), police)
 
 
 static func _pillar(g: Node, a: Vector2, b: Vector2, z: float, material: Material) -> void:

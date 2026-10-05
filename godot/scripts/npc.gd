@@ -249,7 +249,7 @@ func _build_static() -> void:
 			"look": {"model": ["m06", "fp1", "m12", "f17"][i], "female": i % 2 == 1, "kind": ["jacket", "tank", "hoodie", "jacket"][i], "seed": 40 + i},
 			"lines": ["Ale dziś gra!", "Masz ogień?", "Znasz kogoś, kto coś ma? …A, nieważne.", "Ochrona dziś nie w humorze."]})
 	# kobieta na przystanku
-	_static({"x": 63.6, "z": 10.7, "rot": 0.2, "pose": "phone", "name": "Kobieta na przystanku", "hours": [6, 21],
+	_static({"x": 67.6, "z": 10.9, "rot": 0.2, "pose": "phone", "name": "Kobieta na przystanku", "hours": [6, 21],
 		"look": {"model": "fb3", "female": true, "kind": "coat", "top": "5a2f52", "bottom": "101114", "seed": 46},
 		"lines": ["Sto dwójka znowu spóźniona.", "Przepraszam, śpieszę się.", "Tu od tygodnia nie świeci latarnia. I komu to zgłosić?"]})
 

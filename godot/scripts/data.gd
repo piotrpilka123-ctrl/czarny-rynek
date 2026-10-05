@@ -149,7 +149,7 @@ var SPOTS := [
 	{"id": "trzepak", "name": "Trzepak", "x": -28.0, "z": -104.0},
 	{"id": "plac", "name": "Plac zabaw", "x": -6.0, "z": -108.0},
 	{"id": "pawilon", "name": "Pawilon", "x": 72.0, "z": -43.5},
-	{"id": "przystanek", "name": "Przystanek", "x": 62.0, "z": 12.2},
+	{"id": "przystanek", "name": "Przystanek", "x": 66.0, "z": 12.4},
 	{"id": "brama", "name": "Brama kamienicy", "x": -58.0, "z": 12.4},
 	{"id": "garaze", "name": "Garaże", "x": 58.0, "z": 84.0},
 	{"id": "park", "name": "Ławka w parku", "x": -88.0, "z": 66.0},

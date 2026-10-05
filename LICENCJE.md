@@ -4,7 +4,8 @@ Kod gry i scenariusz: Piotr Piłka (z pomocą Claude). Poniższe zasoby pochodz�
 
 | Zasób | Autor / źródło | Licencja |
 |---|---|---|
-| Postacie (Universal Base Characters), animacje (Universal Animation Library 1 i 2) | Quaternius — quaternius.com | CC0 1.0 |
+| Modele ludzi (mieszkańcy, klienci, policja) | Microsoft Rocketbox Avatar Library — github.com/microsoft/Microsoft-Rocketbox | MIT |
+| Animacje postaci (Universal Animation Library 1 i 2), dawne sylwetki bazowe | Quaternius — quaternius.com | CC0 1.0 |
 | Drzewa, krzewy, trawy (Stylized Nature MegaKit), rekwizyty i pies | Quaternius — quaternius.com | CC0 1.0 |
 | Modele mebli i rekwizytów (m.in. stół, regał, kanapa, kosze, beczki) | Poly Haven — polyhaven.com | CC0 1.0 |
 | Tekstury PBR (asfalt, beton, cegła, tynk, ziemia, blacha…) | Poly Haven — polyhaven.com | CC0 1.0 |
@@ -14,6 +15,10 @@ Kod gry i scenariusz: Piotr Piłka (z pomocą Claude). Poniższe zasoby pochodz�
 | Czcionki: Barlow, Barlow Condensed, Bebas Neue, Oswald, Sedgwick Ave Display, Rubik Spray Paint | Google Fonts | SIL Open Font License 1.1 |
 | Czcionka: Permanent Marker | Google Fonts | Apache License 2.0 |
 | Silnik | Godot Engine — godotengine.org | MIT |
+
+Licencja MIT biblioteki Microsoft Rocketbox jest w `godot/assets/people/LICENSE-Microsoft-Rocketbox.md`
+(modele pobrane bez zmian, tekstury zmniejszone). Graffiti, plakaty, liście i trawa to własne tekstury gry,
+generowane skryptami z `godot/tools/` (czcionki z listy powyżej).
 
 Pełne teksty licencji czcionek są w `godot/assets/fonts/licencje/`, a licencja ikon Lucide w
 `godot/assets/icons/LICENSE.txt`.

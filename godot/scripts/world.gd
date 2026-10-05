@@ -513,6 +513,7 @@ func build(loader = null) -> void:
 	if loader != null:
 		await loader.step(14.0, "Pouring asphalt")
 	_terrain_mesh()
+	_graph()
 	if loader != null:
 		await loader.step(22.0, "Raising the blocks")
 	_buildings()
@@ -530,6 +531,7 @@ func build(loader = null) -> void:
 	if loader != null:
 		await loader.step(52.0, "Spraying graffiti")
 	_dense()
+	_trap_houses()
 	Details.entrances(self)
 	Details.wall_art(self)
 	Details.facade_props(self)
@@ -540,7 +542,6 @@ func build(loader = null) -> void:
 	_lamps()
 	_backdrop()
 	_curb_lines()
-	_graph()
 	_build_grid()
 	if loader != null:
 		await loader.step(66.0, "Furnishing the hideouts")
@@ -771,10 +772,38 @@ func _prop(name: String, x: float, z: float, ry := 0.0, h := 0.0, solid := 0.0, 
 	n.scale = Vector3(INV, 1.0, INV)
 	city.add_child(n)
 	Props.set_range(n, 90.0)
-	if solid > 0.0:
-		add_col(x - solid * INV, x + solid * INV, z - solid * INV, z + solid * INV, 1.0)
-		rects.pop_back()
+	if not (name in SOFT_PROPS):
+		_auto_col(n)
 	return n
+
+
+## rekwizyty, przez które wolno przejść (miękkie albo leżące płasko)
+const SOFT_PROPS := ["trashbag", "trashbag_1", "trashbag_2", "cardboard_box_01", "old_tyre", "dirty_football", "can_rusted", "pallet", "pallet_broken", "cement_bag",
+	"water_manhole_cover", "cigarette_pack", "spray_paint_bottles", "plastic_bottle_gallon", "rusted_wheel_rim_01"]
+
+## Kolizja z rzeczywistych brył modelu: każda część wyższa niż kolano dostaje własne pudełko.
+## Dzięki temu nie da się przejść przez kosz, krzesło czy beczkę, a pokrywa leżąca obok kosza nie blokuje.
+func _auto_col(n: Node3D) -> void:
+	var boxes: Array = []
+	_mesh_boxes(n, boxes)
+	for bb in boxes:
+		var a: AABB = bb
+		var gy := height(a.get_center().x, a.get_center().z)
+		if a.end.y - gy < 0.55 or a.position.y - gy > 0.7 or maxf(a.size.x, a.size.z) > 12.0 or minf(a.size.x, a.size.z) < 0.12:
+			continue
+		var k := 0.42
+		var cx := a.get_center().x * INV
+		var cz := a.get_center().z * INV
+		add_col(cx - a.size.x * k * INV, cx + a.size.x * k * INV, cz - a.size.z * k * INV, cz + a.size.z * k * INV, minf(2.6, a.end.y - gy))
+		rects.pop_back()
+
+
+func _mesh_boxes(n: Node, out: Array) -> void:
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		var mi: MeshInstance3D = n
+		out.append(mi.global_transform * mi.mesh.get_aabb())
+	for c in n.get_children():
+		_mesh_boxes(c, out)
 
 
 func _place(n: Node3D, x: float, z: float, ry := 0.0, solid_x := 0.0, solid_z := 0.0, h := 1.2, keep := true) -> Node3D:
@@ -791,6 +820,37 @@ func _place(n: Node3D, x: float, z: float, ry := 0.0, solid_x := 0.0, solid_z :=
 	return n
 
 
+## Zaparkowane auta: parking pod blokami, wzdłuż krawężników Hutniczej i Robotniczej, pod garażami.
+## Stare, różne, brudne — za autem można się schować na kucaka przed patrolem.
+func _parked_cars() -> void:
+	var types := ["sedan", "hatch", "maluch", "kombi", "sedan", "hatch", "maluch", "van", "kombi", "sedan"]
+	var k := 0
+	var spots := []
+	# parking osiedlowy: auta w wymalowanych zatokach (prostopadle)
+	for x in [24.8, 30.4, 41.6, 52.8, 64.0]:
+		spots.append([x, -119.9, 0.0 if rng.randf() < 0.6 else PI])
+	# Hutnicza: po polsku, dwoma kołami na chodniku — środek jezdni zostaje wolny dla radiowozu
+	for x in [-124.0, -86.0, -70.0, -15.0, 22.0, 47.0, 98.0, 117.0]:
+		if rng.randf() < 0.8:
+			spots.append([x, 16.3, PI / 2.0])
+	for x in [-112.0, -80.0, -45.0, -14.0, 36.0, 90.0, 110.0]:
+		if rng.randf() < 0.8:
+			spots.append([x, 23.7, -PI / 2.0])
+	# Robotnicza: raz z jednej, raz z drugiej strony
+	for z in [44.0, 66.0, 104.0, 140.0]:
+		spots.append([1.9, z, 0.0])
+	for z in [55.0, 92.0]:
+		spots.append([-1.9, z, PI])
+	for sp in spots:
+		var x: float = sp[0] + rng.randf_range(-0.3, 0.3)
+		var z: float = sp[1] + rng.randf_range(-0.1, 0.1)
+		_car(x, z, float(sp[2]) + rng.randf_range(-0.05, 0.05), types[k % types.size()])
+		k += 1
+	# wrak na cegłach pod garażami i dostawczak pod bramą huty
+	_car(74.0, 88.5, 1.2, "maluch", "7a6a3a")
+	_car(181.0, 22.6, -PI / 2.0 + 0.1, "van", "5a6068")
+
+
 ## ławka osiedlowa (betonowe nogi, drewniane szczeble)
 func _bench(x: float, z: float, ry := 0.0) -> void:
 	var b := Details.bench(Color(0.2, 0.36, 0.26) if rng.randf() < 0.6 else Color(0.5, 0.28, 0.2))
@@ -803,7 +863,7 @@ func _bench(x: float, z: float, ry := 0.0) -> void:
 
 
 func _car(x: float, z: float, ry: float, type := "", color = null, police := false) -> void:
-	var t: String = type if type != "" else ["sedan", "hatch", "hatch", "sedan"].pick_random()
+	var t: String = type if type != "" else ["sedan", "hatch", "maluch", "kombi"][rng.randi_range(0, 3)]
 	var c = color if color != null else Models.CARCOLS[rng.randi_range(0, Models.CARCOLS.size() - 1)]
 	var car: Node3D = Models.car(t, c, police)
 	car.position = Vector3(x, hd(x, z), z)
@@ -837,6 +897,9 @@ func _tree(x: float, z: float, s := 1.0, leaves := 0.5) -> void:
 				break
 		if not found:
 			return
+	var op := _off_path(x, z, 2.2)
+	x = op.x
+	z = op.y
 	var t := Props.tree(rng.randi(), s * rng.randf_range(0.85, 1.2), leaves)
 	t.position = Vector3(x, hd(x, z) - 0.15, z)
 	t.scale *= Vector3(INV, 1.0, INV)
@@ -846,12 +909,41 @@ func _tree(x: float, z: float, s := 1.0, leaves := 0.5) -> void:
 	rects.pop_back()
 
 
+## odległość (w jednostkach planu) od najbliższej ścieżki przechodniów
+func _path_dist(x: float, z: float) -> float:
+	var p := Vector2(x, z) * SC
+	var best := 1e9
+	for n in wp:
+		for j in n.links:
+			if int(j) <= int(n.i):
+				continue
+			var a := Vector2(n.x, n.z)
+			var b := Vector2(wp[j].x, wp[j].z)
+			var ab := b - a
+			var t := clampf((p - a).dot(ab) / maxf(0.0001, ab.length_squared()), 0.0, 1.0)
+			best = minf(best, p.distance_to(a + ab * t))
+	return best * INV
+
+
+## odsuwa punkt od ścieżki na co najmniej `keep` jednostek planu
+func _off_path(x: float, z: float, keep: float) -> Vector2:
+	if wp.is_empty() or _path_dist(x, z) >= keep:
+		return Vector2(x, z)
+	for rad in [keep, keep * 1.6, keep * 2.4]:
+		for k in range(8):
+			var nx: float = x + cos(k * PI / 4.0 + 0.4) * rad
+			var nz: float = z + sin(k * PI / 4.0 + 0.4) * rad
+			if _path_dist(nx, nz) >= keep:
+				return Vector2(nx, nz)
+	return Vector2(x, z)
+
+
 ## czy w tym miejscu jest trawa albo ziemia (nie asfalt, płyty, beton) i nie stoi tam budynek
 func _soft_ground(x: float, z: float) -> bool:
 	var px := clampi(int((x - X0) * 2.0), 0, MAP_W - 1)
 	var pz := clampi(int((z - Z0) * 2.0), 0, MAP_H - 1)
 	var a := img1.get_pixel(px, pz)
-	if a.r + a.g + a.b > 0.25:
+	if a.r + a.g + a.b + a.a > 0.25 or img2.get_pixel(px, pz).r > 0.25:
 		return false
 	for b in blds:
 		if x > float(b.x0) - 1.5 and x < float(b.x1) + 1.5 and z > float(b.z0) - 1.5 and z < float(b.z1) + 1.5:
@@ -860,10 +952,19 @@ func _soft_ground(x: float, z: float) -> bool:
 
 
 func _bush(x: float, z: float, s := 1.0) -> void:
+	var op := _off_path(x, z, 3.2)
+	x = op.x
+	z = op.y
 	var b := Props.bush(rng.randi(), s)
 	b.position = Vector3(x, hd(x, z) - 0.05, z)
 	b.scale *= Vector3(INV, 1.0, INV)
 	city.add_child(b)
+	# gęsty krzak: nie da się przez niego przejść, za to można się za nim schować
+	var sz: Vector3 = b.get_meta("size", Vector3(1.4, 1.2, 1.4))
+	if sz.x > 1.3:
+		var r := sz.x * 0.3
+		add_col(x - r * INV, x + r * INV, z - r * INV, z + r * INV, clampf(sz.y, 1.0, 2.0))
+		rects.pop_back()
 
 
 func _lamp(x: float, z: float, ry: float, broken := false) -> void:
@@ -874,6 +975,8 @@ func _lamp(x: float, z: float, ry: float, broken := false) -> void:
 	city.add_child(g)
 	var pole := Props.pbr("concrete_wall_008", 0.6, Color(0.75, 0.75, 0.72))
 	Models.cyl(g, 0.09, 0.15, 7.2, Vector3(0, 3.6, 0), pole, Vector3.ZERO, 8)
+	add_col(x - 0.16 * INV, x + 0.16 * INV, z - 0.16 * INV, z + 0.16 * INV, 3.0)
+	rects.pop_back()
 	Models.cyl(g, 0.035, 0.04, 1.6, Vector3(0, 7.2, 0.75), Models.mat("3a3d42", 0.5, 0.6), Vector3(PI / 2.0 - 0.15, 0, 0), 6)
 	Models.box(g, Vector3(0.26, 0.1, 0.6), Vector3(0, 7.3, 1.6), Models.mat("2a2c30", 0.5, 0.5))
 	if broken:
@@ -944,10 +1047,10 @@ func _buildings() -> void:
 	# Niska zabudowa, za to każdy blok inny: numer na szczycie, własny kolor i wzór malowania.
 	building(-2.0, -90.0, 42.0, -78.0, 18.0, P, Color(0.78, 0.77, 0.72), Color(0.82, 0.56, 0.24), 0.0, true, {"no": "7", "door_at": 8.0, "pattern": 4})
 	building(-82.0, -90.0, -38.0, -78.0, 15.0, "plyta2", Color(0.8, 0.8, 0.78), Color(0.4, 0.62, 0.45), 0.0, true, {"no": "5", "door_at": -60.0, "pattern": 1})
-	building(-80.0, -158.0, -20.0, -146.0, 12.0, P, Color(0.8, 0.76, 0.74), Color(0.75, 0.48, 0.5), 0.05, true, {"no": "9", "pattern": 0})
-	building(15.0, -158.0, 65.0, -146.0, 12.0, "plyta2", Color(0.76, 0.78, 0.8), Color(0.36, 0.56, 0.76), 0.0, true, {"no": "11", "pattern": 3})
-	building(-137.0, -104.0, -119.0, -86.0, 24.0, P, Color(0.75, 0.75, 0.73), Color(0.78, 0.7, 0.34), 0.02, true, {"no": "13", "front": 3, "pattern": 2})
-	building(-137.0, -161.0, -119.0, -143.0, 24.0, "plyta2", Color(0.78, 0.75, 0.72), Color(0.52, 0.5, 0.72), 0.02, true, {"no": "3", "front": 3, "pattern": 3})
+	building(-80.0, -158.0, -20.0, -146.0, 12.0, P, Color(0.8, 0.76, 0.74), Color(0.75, 0.48, 0.5), 0.05, true, {"no": "9", "pattern": 0, "door_at": -50.0})
+	building(15.0, -158.0, 65.0, -146.0, 12.0, "plyta2", Color(0.76, 0.78, 0.8), Color(0.36, 0.56, 0.76), 0.0, true, {"no": "11", "pattern": 3, "door_at": 40.0})
+	building(-137.0, -104.0, -119.0, -86.0, 24.0, P, Color(0.75, 0.75, 0.73), Color(0.78, 0.7, 0.34), 0.02, true, {"no": "13", "front": 3, "pattern": 2, "door_at": -95.0})
+	building(-137.0, -161.0, -119.0, -143.0, 24.0, "plyta2", Color(0.78, 0.75, 0.72), Color(0.52, 0.5, 0.72), 0.02, true, {"no": "3", "front": 3, "pattern": 3, "door_at": -152.0})
 	# kamienice przy Hutniczej (strona północna)
 	building(-90.0, -10.0, -60.0, 10.0, 15.2, "kamA", Color(0.86, 0.8, 0.7), Color(0.8, 0.74, 0.62), 0.12)
 	building(-56.0, -10.0, -30.0, 10.0, 19.0, "kamB", Color(0.82, 0.72, 0.5), Color(0.86, 0.82, 0.7), 0.06)
@@ -1013,14 +1116,14 @@ func _shopfront(x: float, zw: float, title: String, color: Color, shutter: Strin
 
 
 func _pavilion() -> void:
-	var by := _base(55.0, -57.0, 85.0, -47.0)
-	Models.box(city, Vector3(30.0, 4.2, 10.0), Vector3(70.0, by + 2.1, -52.0), Props.pbr("concrete_slab_wall", 0.3, Color(0.8, 0.78, 0.74)))
-	Models.box(city, Vector3(31.0, 0.3, 12.4), Vector3(70.0, by + 4.3, -51.2), Models.mat("1a1a1c", 0.95))
-	add_col(55.0, 85.0, -57.0, -47.0, 4.2)
-	blds.append({"x0": 55.0, "x1": 85.0, "z0": -57.0, "z1": -47.0, "low": true})
+	var by := _base(63.0, -57.0, 93.0, -47.0)
+	Models.box(city, Vector3(30.0, 4.2, 10.0), Vector3(78.0, by + 2.1, -52.0), Props.pbr("concrete_slab_wall", 0.3, Color(0.8, 0.78, 0.74)))
+	Models.box(city, Vector3(31.0, 0.3, 12.4), Vector3(78.0, by + 4.3, -51.2), Models.mat("1a1a1c", 0.95))
+	add_col(63.0, 93.0, -57.0, -47.0, 4.2)
+	blds.append({"x0": 63.0, "x1": 93.0, "z0": -57.0, "z1": -47.0, "low": true})
 	var names := [["KEBAB U MIRKA", Color(0.95, 0.4, 0.2), false], ["WARZYWA", Color(0.4, 0.8, 0.4), true], ["TOTO-LOTEK", Color(0.95, 0.85, 0.2), true], ["SERWIS GSM", Color(0.4, 0.7, 0.95), true], ["PIWO • WINO", Color(0.9, 0.3, 0.3), false]]
 	for i in range(5):
-		var x := 58.5 + i * 5.8
+		var x := 66.5 + i * 5.8
 		var e: Array = names[i]
 		Models.box(city, Vector3(4.6, 2.5, 0.1), Vector3(x, by + 1.45, -46.94), Props.pbr("rusted_shutter" if i % 2 == 0 else "painted_metal_shutter", 0.5) if e[2] else Models.mat("0c1216", 0.1, 0.4))
 		_wall(Signs.shop(e[0], e[1], 2.3, not e[2]), x, 3.3, -46.88, 0.0)
@@ -1031,22 +1134,30 @@ func _pavilion() -> void:
 			li.light_energy = 1.0
 			li.omni_range = 6.0
 			city.add_child(li)
-	_sign("NA SPRZEDAŻ", Vector3(58.5, by + 2.2, -46.86), Color(0.95, 0.85, 0.2), 44, 0.0, 0.006, 8)
+	_sign("NA SPRZEDAŻ", Vector3(66.5, by + 2.2, -46.86), Color(0.95, 0.85, 0.2), 44, 0.0, 0.006, 8)
 
 
 func _garages() -> void:
 	var cols := ["8a8f94", "6a7a6a", "7a6a5a", "5a6a7a", "8a7a5a", "767676", "5f6f66", "8a6a5a", "6a6a7a", "7f8a8a"]
 	for row in range(2):
 		var z0 := 66.0 if row == 0 else 96.0
+		# północny rząd ma przerwę na wjazd z ulicy (x 72–78) — wcześniej droga kończyła się na ścianie garażu
+		var parts := [[44.0, 72.0], [78.0, 104.0]] if row == 0 else [[44.0, 104.0]]
+		for pt in parts:
+			var xa: float = pt[0]
+			var xb: float = pt[1]
+			var by0 := _base(xa, z0, xb, z0 + 6.0)
+			Models.box(city, Vector3(xb - xa, 2.9, 6.0), Vector3((xa + xb) * 0.5, by0 + 1.2, z0 + 3.0), Props.pbr("rusty_corrugated_iron", 0.5, Color(0.72, 0.74, 0.72)))
+			Models.box(city, Vector3(xb - xa + 0.6, 0.12, 6.6), Vector3((xa + xb) * 0.5, by0 + 2.72, z0 + 3.0), Props.pbr("asbestos_sheet", 0.5), Vector3(0.03 if row == 0 else -0.03, 0, 0))
+			add_col(xa, xb, z0, z0 + 6.0, 3.0)
+			blds.append({"x0": xa, "x1": xb, "z0": z0, "z1": z0 + 6.0, "low": true})
 		var by := _base(44.0, z0, 104.0, z0 + 6.0)
-		Models.box(city, Vector3(60.0, 2.9, 6.0), Vector3(74.0, by + 1.2, z0 + 3.0), Props.pbr("rusty_corrugated_iron", 0.5, Color(0.72, 0.74, 0.72)))
-		Models.box(city, Vector3(60.6, 0.12, 6.6), Vector3(74.0, by + 2.72, z0 + 3.0), Props.pbr("asbestos_sheet", 0.5), Vector3(0.03 if row == 0 else -0.03, 0, 0))
-		add_col(44.0, 104.0, z0, z0 + 6.0, 3.0)
-		blds.append({"x0": 44.0, "x1": 104.0, "z0": z0, "z1": z0 + 6.0, "low": true})
 		var fz := z0 + 6.06 if row == 0 else z0 - 0.06
 		for i in range(10):
 			var x := 47.0 + i * 6.0
 			if row == 1 and i == 3:
+				continue
+			if row == 0 and (i == 4 or i == 5):
 				continue
 			var c := Models.col(cols[(i + row * 3) % 10])
 			Models.box(city, Vector3(2.9, 2.2, 0.08), Vector3(x, by + 1.1, fz), Props.pbr("painted_metal_shutter" if (i + row) % 3 != 0 else "rusted_shutter", 0.5, c * 1.5))
@@ -1078,22 +1189,20 @@ func _estate() -> void:
 	# mur oporowy przy rampie
 	for r in RAMPS:
 		for side in [-1.0, 1.0]:
-			var x: float = r[0] + side * 5.2
+			var x: float = r[0] + side * (6.9 if (float(r[0]) < 0.0 and side > 0.0) else 5.2)
 			Models.box(city, Vector3(0.4, 1.2, 30.0), Vector3(x, hd(x + side * 2.5, -35.0) - 0.2, -36.0), Props.pbr("concrete_wall_008", 0.4, Color(0.75, 0.75, 0.72)), Vector3(-0.1, 0, 0))
+			add_col(x - 0.3, x + 0.3, -51.0, -21.0, 6.5)
+			rects.pop_back()
 	# parking — mało aut, stare
-	_car(27.0, -121.0, 0.05, "sedan", "6b1f2a")
-	var cc := _prop("covered_car", 50.5, -121.0, PI, 0.0, 0.0)
-	add_col(49.5, 51.5, -123.2, -118.8, 1.5)
-	rects.pop_back()
+	var cc := _prop("covered_car", 47.2, -119.9, PI, 0.0, 0.0)
 	cc.scale = Vector3(1.0, 1.0, 1.0)
-	_car(61.5, -121.2, -0.04, "hatch", "9aa3ab")
 	# altanki śmietnikowe
-	_place(Props.trash_shed(), 46.0, -108.0, 0.0, 2.6, 1.7, 2.0)
+	_place(Props.trash_shed(), 53.0, -108.0, 0.0, 2.6, 1.7, 2.0)
 	_place(Props.trash_shed(), -70.0, -110.0, 0.0, 2.6, 1.7, 2.0)
-	for e in [[49.6, -106.5, 0.4], [43.0, -106.2, 1.9], [48.2, -111.6, 2.6], [-66.8, -108.2, 1.0], [-72.5, -107.8, 0.2]]:
+	for e in [[56.6, -106.5, 0.4], [50.4, -106.4, 1.9], [55.2, -111.6, 2.6], [-66.8, -108.2, 1.0], [-72.5, -107.8, 0.2]]:
 		_prop("trashbag", e[0], e[1], e[2], 0.5, 0.0, false)
-	_prop("old_tyre", 44.6, -111.8, 0.3, 0.0, 0.0, false).rotation.x = PI / 2.0 - 0.2
-	_prop("cardboard_box_01", 49.0, -110.6, 0.8, 0.34, 0.0, false)
+	_prop("old_tyre", 51.2, -111.8, 0.3, 0.0, 0.0, false).rotation.x = PI / 2.0 - 0.2
+	_prop("cardboard_box_01", 56.0, -110.6, 0.8, 0.34, 0.0, false)
 	# plac zabaw i trzepak
 	_place(Props.swing(), -9.0, -111.0, 0.3, 1.6, 0.9, 2.4)
 	_place(Props.slide(), 1.0, -110.5, -0.5, 0.6, 1.8, 1.7)
@@ -1115,8 +1224,8 @@ func _estate() -> void:
 	add_col(108.0, 113.0, -140.0, -135.0, 3.4)
 	_sign("NIE DOTYKAĆ!\nURZĄDZENIE ELEKTRYCZNE", Vector3(110.5, tb + 2.2, -134.95), Color(0.95, 0.85, 0.2), 30, 0.0, 0.006, 6)
 	# plac przed pawilonem
-	_prop("plastic_monobloc_chair_01", 61.0, -44.6, 0.4, 0.86, 0.0, false)
-	_prop("plastic_monobloc_chair_01", 62.4, -45.0, -0.9, 0.86, 0.0, false)
+	_prop("plastic_monobloc_chair_01", 65.0, -45.9, 0.4, 0.86, 0.0, false)
+	_prop("plastic_monobloc_chair_01", 66.6, -46.1, -0.9, 0.86, 0.0, false)
 	_prop("metal_trash_can", 86.5, -45.5, 0.0, 0.9, 0.3)
 	_bench(78.0, -37.5, PI)
 	# zieleń — rzadka, zaniedbana
@@ -1147,7 +1256,7 @@ func _fake_entrance(x: float, zw: float, facing: float) -> void:
 
 # ---------------------------------------------------------------- dolne miasto
 func _lower_town() -> void:
-	_place(Props.bus_stop(), 62.0, 9.4, 0.0, 2.0, 0.3, 2.4)
+	_place(Props.bus_stop(), 66.2, 9.4, 0.0, 2.0, 0.3, 2.4)
 	rects.pop_back()
 	_sign("HUTNICZA 02", Vector3(62.0, 2.2, 8.75), Color(0.9, 0.9, 0.9), 34, 0.0, 0.006, 6)
 	_place(Models.kiosk(), 52.5, -4.0, PI / 2.0, 1.1, 1.4, 2.4)
@@ -1597,25 +1706,25 @@ func _dense() -> void:
 	# Płoty mają dziury: GPS prowadzi oficjalnymi przejściami (schody, tunel, bramy),
 	# ale kto zna teren, przejdzie na skróty przez wyrwę w siatce.
 	_fence_run(-98.0, -31.6, -34.0, -31.6, "siatka", 1.8, [-66.0])
-	_fence_run(-20.0, -31.6, 9.0, -31.6, "siatka", 1.8, [])
-	_fence_run(15.0, -31.6, 54.0, -31.6, "siatka", 1.8, [37.0])
-	_fence_run(66.0, -31.6, 104.0, -31.6, "siatka", 1.8, [88.0])
-	_barrier(-90.0, 57.6, -50.0, 57.6, "mur", 2.2)
+	_fence_run(-20.0, -31.6, 9.0, -31.6, "siatka", 1.8, [], [-6.0])
+	_fence_run(15.0, -31.6, 54.0, -31.6, "siatka", 1.8, [37.0], [22.0])
+	_fence_run(66.0, -31.6, 104.0, -31.6, "siatka", 1.8, [88.0], [74.0])
+	_fence_run(-90.0, 57.6, -50.0, 57.6, "mur", 2.2, [], [-70.0])
 	_barrier(-44.0, 57.6, -9.0, 57.6, "mur", 2.2)
-	_barrier(8.0, 57.6, 40.0, 57.6, "mur", 2.2)
+	_fence_run(8.0, 57.6, 40.0, 57.6, "mur", 2.2, [], [24.0])
 	_barrier(46.0, 52.0, 68.0, 52.0, "blacha", 2.0)
 	_barrier(-48.5, 60.0, -48.5, 96.0, "siatka", 1.8)
-	_fence_run(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8, [123.0])
+	_fence_run(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8, [123.0], [142.0])
 	_barrier(-92.0, -17.6, -62.0, -17.6, "mur", 2.0)
-	_barrier(-54.0, -17.6, -31.0, -17.6, "mur", 2.0)
+	_fence_run(-54.0, -17.6, -31.0, -17.6, "mur", 2.0, [], [-42.0])
 	_barrier(-23.0, -17.6, 8.0, -17.6, "mur", 2.0)
 	_fence_run(16.0, -17.6, 46.0, -17.6, "mur", 2.0, [31.0])
 	_barrier(40.0, 100.0, 40.0, 130.0, "blacha", 2.0)
-	_fence_run(128.6, 32.0, 128.6, 120.0, "siatka", 1.8, [78.0])
-	_fence_run(128.6, -160.0, 128.6, -72.0, "siatka", 1.8, [-112.0])
+	_fence_run(128.6, 32.0, 128.6, 120.0, "siatka", 1.8, [78.0], [50.0, 104.0])
+	_fence_run(128.6, -160.0, 128.6, -72.0, "siatka", 1.8, [-112.0], [-90.0])
 	_fence_run(128.6, -60.0, 128.6, -20.0, "siatka", 1.8, [-40.0])
 	# nowe ogrodzenia w miejscach, gdzie dało się biegać na przełaj
-	_fence_run(44.0, 127.0, 104.0, 127.0, "blacha", 2.0, [71.0])          # garaże / wysypisko
+	_fence_run(44.0, 127.0, 104.0, 127.0, "blacha", 2.0, [71.0], [92.0])  # garaże / wysypisko
 	_fence_run(-146.0, 57.6, -113.0, 57.6, "siatka", 1.8, [-130.0])       # tyły kamienicy od strony parku
 	_fence_run(104.0, -60.0, 104.0, -34.0, "siatka", 1.8, [])             # skarpa przy nasypie
 	ctl1_tex.update(img1)
@@ -1624,7 +1733,7 @@ func _dense() -> void:
 	# --- graffiti na murach i płotach (na budynkach rozkłada je Details.wall_art)
 	Details.decal(self, "piece_04", Vector3(145.0 * SC, hd(145.0, 12.26) + 2.6, 12.26 * SC), 0.0, 4.4)
 	Details.decal(self, "piece_05", Vector3(145.0 * SC, hd(145.0, 27.74) + 2.5, 27.74 * SC), PI, 4.2)
-	Details.decal(self, "piece_07", Vector3(70.0 * SC, hd(70.0, -57.08) + 1.7, -57.08 * SC), PI, 3.0)
+	Details.decal(self, "piece_07", Vector3(78.0 * SC, hd(78.0, -57.08) + 1.7, -57.08 * SC), PI, 3.0)
 	var tags := ["DBS", "SKERO", "MZK", "HWK", "ZGR", "KSH", "1986", "ACAB?", "STAL", "BLOKI", "JARA", "ELO", "NIE UFAJ", "TU RZĄDZĄ BLOKI", "LOVE", "KUBA TU BYŁ", "PUNK", "HIP-HOP", "WOLNOŚĆ", "ZOSTAŃ"]
 	var walls := [[-70.0, 57.45, PI], [-30.0, 57.45, PI], [20.0, 57.45, PI], [-80.0, -17.45, 0.0], [-45.0, -17.45, 0.0], [-10.0, -17.45, 0.0], [30.0, -17.45, 0.0],
 		[-75.0, -17.75, PI], [-40.0, -17.75, PI], [0.0, -17.75, PI], [28.0, -17.75, PI], [-70.0, -50.12, PI], [-56.0, -43.88, 0.0], [-80.0, -43.88, 0.0],
@@ -1632,8 +1741,9 @@ func _dense() -> void:
 	for w in walls:
 		_graffiti(tags[rng.randi_range(0, tags.size() - 1)], w[0] + rng.randf_range(-3.0, 3.0), w[1], rng.randf_range(0.9, 1.5), w[2], GC[rng.randi_range(0, 5)], rng.randi_range(70, 130))
 	# --- słupy ogłoszeniowe w ruchliwych miejscach
-	for e in [[58.0, 15.6], [-22.0, 14.4], [66.0, -40.0], [-30.0, -100.0], [-112.0, 14.6], [22.0, 116.0]]:
+	for e in [[52.0, 6.4], [68.0, -39.0], [-22.0, -98.6], [10.5, 118.5]]:
 		Details.ad_pillar(self, e[0], e[1], int(e[0] * 13.0 + e[1]))
+	_parked_cars()
 	# --- ogień i życie
 	_fire(86.0, 80.0)
 	_fire(64.0, 136.0)
@@ -1892,9 +2002,9 @@ func _lamps() -> void:
 			_lamp(x, 12.2 if k % 2 == 0 else 27.8, 0.0 if k % 2 == 0 else PI, k % 5 == 3)
 		x += 34.0
 		k += 1
-	for e in [[5.8, 62.0, PI / 2.0, false], [-5.8, 98.0, -PI / 2.0, true], [5.8, 134.0, PI / 2.0, false], [-100.0, -30.0, -PI / 2.0, false], [-100.0, -80.0, -PI / 2.0, true],
-			[-70.0, -124.2, PI, false], [-10.0, -124.2, PI, false], [50.0, -124.2, PI, true], [89.5, -90.0, -PI / 2.0, false], [-27.0, -66.5, PI / 2.0, false],
-			[30.0, -66.5, 0.0, false], [-60.0, -102.5, 0.0, true], [20.0, -102.5, 0.0, false], [60.0, -40.0, PI, false], [75.0, 76.0, PI, false], [166.5, -30.0, PI / 2.0, true], [174.0, 34.0, 0.0, false]]:
+	for e in [[6.7, 62.0, PI / 2.0, false], [-6.7, 98.0, -PI / 2.0, true], [6.7, 134.0, PI / 2.0, false], [-99.3, -30.0, -PI / 2.0, false], [-99.3, -80.0, -PI / 2.0, true],
+			[-70.0, -123.6, PI, false], [-10.0, -123.6, PI, false], [50.0, -123.6, PI, true], [88.7, -90.0, -PI / 2.0, false], [-25.4, -68.0, PI / 2.0, false],
+			[30.0, -67.6, 0.0, false], [-60.0, -101.5, 0.0, true], [20.0, -101.5, 0.0, false], [61.7, -40.0, PI, false], [76.7, 76.0, PI, false], [170.2, -30.0, PI / 2.0, true], [175.8, 33.0, 0.0, false]]:
 		_lamp(e[0], e[1], e[2], e[3])
 
 
@@ -2122,7 +2232,62 @@ func _club_next() -> void:
 		club_player.play()
 
 
+# ---------------------------------------------------------------- „meliny”: muzyka z okien bloków
+var traps: Array = []
+
+## Kilka mieszkań, z których wieczorami dudni bit (własna synteza, jak w klubie). Okno pulsuje fioletem
+## (shader elewacji), a dźwięk jest przytłumiony jak zza szyby i słychać go z kilkudziesięciu metrów.
+func _trap_houses() -> void:
+	var want := [["7", 1, 4, 3], ["5", 2, 0, 2], ["13", 3, 0, 5], ["11", 1, 6, 2]]
+	for wdef in want:
+		for b in blds:
+			if not b.has("key") or String(b.no) != String(wdef[0]):
+				continue
+			var code: int = wdef[1]
+			if Details.is_blind(b, code):
+				code = 1 if code >= 3 else 3
+			var g: Array = b.gx if code <= 2 else b.gz
+			var cs: Vector2 = fac_cell[b.key]
+			# szukamy zwykłego okna (nie loggii i nie klatki) najbliżej wskazanej kolumny
+			var cx := -1
+			for d in range(int(g[1])):
+				for cand in [int(wdef[2]) + d, int(wdef[2]) - d]:
+					if cand >= 0 and cand < int(g[1]) and cand % 2 == 0 and not (int(b.stair) > 0 and posmod(cand - int(b.st_off), int(b.stair)) == 0):
+						cx = cand
+						break
+				if cx >= 0:
+					break
+			if cx < 0:
+				continue
+			var fl := mini(int(wdef[3]), int(floor((float(b.h) + 0.3) / cs.y)) - 1)
+			(b.node as MeshInstance3D).set_instance_shader_parameter("b_trap", Vector3(cx, fl, code))
+			var pl := AudioStreamPlayer3D.new()
+			pl.position = Details.face_pos(b, code, float(g[0]) + (cx + 0.5) * cs.x, fl * cs.y + 1.6, 0.4)
+			pl.bus = "Blok"
+			pl.unit_size = 5.0
+			pl.max_distance = 38.0
+			pl.volume_db = -3.0
+			pl.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+			add_child(pl)
+			traps.append({"player": pl, "i": traps.size(), "from": 16.5 + traps.size() * 1.3, "to": 3.5 - traps.size() * 0.5})
+
+
+func _trap_tick() -> void:
+	if traps.is_empty() or Sfx.muted:
+		return
+	var h := G.hour()
+	for t in traps:
+		var pl: AudioStreamPlayer3D = t.player
+		var on: bool = h >= float(t.from) or h < float(t.to)
+		if on and not pl.playing and Sfx.trap_streams.size() > 0:
+			pl.stream = Sfx.trap_streams[int(t.i) % Sfx.trap_streams.size()]
+			pl.play(randf() * 6.0)
+		elif not on and pl.playing:
+			pl.stop()
+
+
 func club_tick() -> void:
+	_trap_tick()
 	if club_player != null and not club_player.playing and not Sfx.muted:
 		_club_next()
 

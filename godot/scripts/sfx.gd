@@ -422,6 +422,13 @@ func _generate() -> void:
 		var beat := _gen_trap()
 		if not _abort:
 			_club_ready.call_deferred(_wav(beat, true))
+	# bity lecące z okien bloków: inne tempo i tonacja niż w klubie
+	for e in [[303, 128.0, -3.0], [707, 150.0, 2.0], [512, 136.0, -5.0]]:
+		if _abort:
+			return
+		var tb2 := _gen_trap(int(e[0]), float(e[1]), float(e[2]))
+		if not _abort:
+			_trap_ready.call_deferred(_wav(tb2, true))
 
 
 func _set_loops(s1: AudioStreamWAV, s2: AudioStreamWAV, s3: AudioStreamWAV) -> void:
@@ -439,21 +446,26 @@ func _club_ready(s: AudioStreamWAV) -> void:
 	club_stream = s
 
 
+var trap_streams: Array = []
+
+func _trap_ready(s: AudioStreamWAV) -> void:
+	trap_streams.append(s)
+
+
 func _mtof(nn: float) -> float:
 	return 440.0 * pow(2.0, (nn - 69.0) / 12.0)
 
 
 ## własny bit w klimacie polskiego trapu: 140 BPM, bas 808, werbel na „trzy”, hi-haty z rolkami
-func _gen_trap() -> PackedFloat32Array:
-	var bpm := 140.0
+func _gen_trap(seed_v := 808, bpm := 140.0, shift := 0.0) -> PackedFloat32Array:
 	var beat := 60.0 / bpm
 	var bars := 8
 	var n := int(bars * 4.0 * beat * RATE)
 	var b := PackedFloat32Array()
 	b.resize(n)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 808
-	var roots := [29.0, 29.0, 32.0, 27.0, 29.0, 29.0, 24.0, 27.0]   # F, F, As, Es, F, F, C, Es
+	rng.seed = seed_v
+	var roots := [29.0 + shift, 29.0 + shift, 32.0 + shift, 27.0 + shift, 29.0 + shift, 29.0 + shift, 24.0 + shift, 27.0 + shift]   # F, F, As, Es, F, F, C, Es
 	var s16 := beat / 4.0
 	for bar in range(bars):
 		if _abort:
@@ -507,7 +519,7 @@ func _gen_trap() -> PackedFloat32Array:
 		var mel := [[0, 65.0], [3, 68.0], [6, 72.0], [8, 68.0], [11, 67.0], [14, 65.0]] if bar % 4 < 2 else [[0, 63.0], [4, 67.0], [6, 70.0], [10, 68.0], [12, 65.0]]
 		for m in mel:
 			var i3 := int((t0 + float(m[0]) * s16) * RATE)
-			var fm := _mtof(float(m[1]))
+			var fm := _mtof(float(m[1]) + shift)
 			for i in range(int(0.9 * RATE)):
 				if i3 + i >= n:
 					break
