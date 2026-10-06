@@ -216,6 +216,9 @@ func back() -> void:
 	elif app == "kontakty" and contact_id != "":
 		contact_id = ""
 		render()
+	elif app == "hurt" and String(hurt.get("chat", "")) != "":
+		hurt["chat"] = ""
+		render()
 	elif app != "":
 		go("")
 	else:

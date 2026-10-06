@@ -105,7 +105,7 @@ func new_state() -> Dictionary:
 	return {
 		"v": 3, "t": 9.0 * 60.0, "cash": float(D.START_CASH), "debt": float(D.START_DEBT), "paid": 0.0,
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
-		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {},
+		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store()},
 		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},

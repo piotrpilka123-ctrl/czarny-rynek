@@ -231,7 +231,7 @@ def szp_umywalka():
     p.append(rbox('recznik', (0.2, 0.03, 0.05), mat('papier', 'f4f1e6', 0.95), 0.008, (-0.52, -0.06, 1.115)))
     ob = join('Umywalka', p)
     weather([ob], 1024, 0.4, 0.2, (0.2, 0.2, 0.18))
-    rbox('Lustro', (0.46, 0.004, 0.56), mat('lustro', 'c8d4d8', 0.04, 1.0), 0.0, (0, -0.024, 1.72), segs=1)
+    rbox('Lustro', (0.46, 0.004, 0.56), mat('lustro', 'b8c4cc', 0.12, 0.35), 0.0, (0, -0.024, 1.72), segs=1)
     export('szp_umywalka')
 
 

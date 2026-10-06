@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c542f8x43ohuu"
-path="res://.godot/imported/dom_waga_Waga_kolor.png-543c5047a4554e93e0b54243f576e566.ctex"
+uid="uid://c4fwlbml87hjy"
+path="res://.godot/imported/dom_laptop_Laptop_kolor.png-2d33e064f89e727ead7e316143fd1a84.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "944c78928241b239a6554c7e81b2bbb2"
+"md5": "c2c49f6d0ae17baf5210c72bb09ad069"
 }
 
 [deps]
 
-source_file="res://assets/models/dom_waga_Waga_kolor.png"
-dest_files=["res://.godot/imported/dom_waga_Waga_kolor.png-543c5047a4554e93e0b54243f576e566.ctex"]
+source_file="res://assets/models/dom_laptop_Laptop_kolor.png"
+dest_files=["res://.godot/imported/dom_laptop_Laptop_kolor.png-2d33e064f89e727ead7e316143fd1a84.ctex"]
 
 [params]
 

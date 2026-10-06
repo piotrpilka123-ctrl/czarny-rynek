@@ -45,7 +45,14 @@ static func pbr(name: String, scale := 0.5, tint := Color.WHITE, triplanar := tr
 	return m
 
 
+## stare modele z paczek zastąpione własnymi z Blendera (ta sama nazwa w kodzie i w danych mebli)
+const OWN := {"painted_wooden_table": "dom_biurko", "classic_laptop": "dom_laptop", "painted_wooden_chair_01": "dom_krzeslo", "painted_wooden_cabinet": "dom_szafa"}
+
 static func _path(name: String) -> String:
+	if OWN.has(name):
+		var own := "res://assets/models/%s.glb" % String(OWN[name])
+		if ResourceLoader.exists(own):
+			return own
 	var a := "res://assets/props/%s/%s.gltf" % [name, name]
 	if ResourceLoader.exists(a):
 		return a

@@ -2259,6 +2259,13 @@ func _test_ui(what: String) -> void:
 		return
 	match what:
 		"home": ui.open_phone("")
+		"gielda", "gielda_chat":
+			G.S.flags["hurt_on"] = true
+			G.Market.roll_special()
+			ui.open_phone("hurt")
+			if what == "gielda_chat":
+				ui.phone.hurt["chat"] = String(args.get("vendor", "wiktor"))
+				ui.phone.render()
 		"options": ui.open_options("pause")
 		"options_audio":
 			ui.opts.tab = "audio"

@@ -2856,13 +2856,13 @@ func _interiors() -> void:
 		"label": func(): return "Laptop — zapisz grę", "act": func(): G.main.save_here()})
 	var dl := _room_light(g, tx + 0.4, tz + 0.1, 1.75, 0.8, Color(1.0, 0.9, 0.7), 2.6)
 	dl.shadow_enabled = false
-	_rp(g, "painted_wooden_chair_01", tx - 0.1, tz + 0.85, PI, 0.92)
+	_rp(g, "painted_wooden_chair_01", tx - 0.15, tz + 0.95, PI + 0.35, 1.02)
 	inter.append({"loc": "safe", "x": tx - 0.38, "z": tz, "y0": 0.6, "y1": 1.05, "r": 0.5, "reach": 2.5, "id": "pack_safe",
 		"label": func(): return "Waga i woreczki — porcjowanie towaru", "act": func(): G.ui.open_pack("safe")})
 	Interior.wall_shelf(g, Vector3(tx + 0.1, 1.72, -d * 0.5 + 0.01), 0.0, 1.0, 7)
 	_rp(g, "wall_clock", cx + 2.35, -d * 0.5 + 0.04, 0.0, 0.3, 1.82)
 	# skrytka: szafa
-	_rp(g, "painted_wooden_cabinet", cx + w * 0.5 - 0.42, 0.6, -PI / 2.0, 1.75, 0.0, 0.4, 0.65)
+	_rp(g, "painted_wooden_cabinet", cx + w * 0.5 - 0.32, 0.6, -PI / 2.0, 1.9, 0.0, 0.32, 0.66)
 	inter.append({"loc": "safe", "x": cx + w * 0.5 - 0.42, "z": 0.6, "y0": 0.1, "y1": 1.7, "r": 0.62, "reach": 2.5, "id": "stash_safe",
 		"label": func(): return "Skrytka w szafie", "act": func(): G.ui.open_stash("safe")})
 	Interior.note(g, Vector3(cx + w * 0.5 - 0.01, 1.62, 1.75), -PI / 2.0, "WYBUCH W STAREJ HUCIE\nPolicja szuka świadków. Jedna osoba zatrzymana.", 0.46, 0.3)
@@ -3550,7 +3550,7 @@ func _scale_set(g: Node3D, at: Vector3) -> void:
 		# waga z wyświetlaczem, woreczki, pojemnik i łyżeczka z modelu; na szalce porcja towaru
 		wm.position = at
 		g.add_child(wm)
-		Models.sphere(wm, 0.03, Vector3(0, 0.058, -0.03), Models.mat("3f7a3a", 0.95), Vector3(1.3, 0.55, 1.1), false, 8)
+		Models.sphere(wm, 0.03, Vector3(0, 0.046, -0.03), Models.mat("3f7a3a", 0.95), Vector3(1.3, 0.55, 1.1), false, 8)
 		return
 	var s := Node3D.new()
 	s.position = at

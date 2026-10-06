@@ -1,8 +1,21 @@
 extends RefCounted
-## Ekran „Giełda” w telefonie: zeszyt, paczki w drodze, okazja dnia, dostawcy z zaufaniem,
-## formularz zamówienia (towar, ilość, dostawa, płatność) i skup nadwyżek.
+## „Giełda” w telefonie jako szyfrowany komunikator: lista rozmów z dostawcami (każdy pisze po swojemu),
+## a w rozmowie cennik w dymku, okazja dnia, historia zamówień i odpowiedź składana z gotowych kawałków
+## („Biorę 50 g… Skrytkomat… płacę przy odbiorze”). Zeszyt i paczki w drodze są przypięte na górze listy.
 
 const K = preload("res://scripts/uikit.gd")
+
+## jak kto pisze: powitanie zależy od zaufania (chłodno → normalnie → po swojemu), potwierdzenia losowe
+const SAY := {
+	"wiktor": {"hi": ["Kuba. Mów, ile bierzesz, nie mam całego dnia.", "Jesteś. Zeszyt pamięta wszystko, ja też. Ile tym razem?", "Dla ciebie zawsze coś się znajdzie. Ile?"],
+		"ok": ["Będzie. Nie spóźnij się po odbiór.", "Załatwione. Miejsce dostaniesz SMS-em.", "Dobra. I pamiętaj o zeszycie."], "list": "Dziś mam tak:"},
+	"zbyszek": {"hi": ["siema szefie, co potrzeba? tanio i od ręki", "elo, mam świeży rzut. nie pytaj skąd", "ooo mój najlepszy klient!! dla ciebie cena specjalna (ta sama co zawsze)"],
+		"ok": ["leci. jak coś nie halo z towarem to nie do mnie pretensje", "ok pakuję, będzie raz dwa", "git. tylko odbierz szybko bo różnie bywa"], "list": "cennik na dziś:"},
+	"chemik": {"hi": ["Dzień dobry. Proszę podać ilość. Płatność z góry, bez wyjątków.", "Witam ponownie. Partia z tego tygodnia wyszła powyżej 90%.", "Dla stałych odbiorców odkładam najlepsze frakcje. Słucham."],
+		"ok": ["Przyjąłem. Synteza i pakowanie potrwają kilka godzin.", "Zamówienie potwierdzone. Proszę o cierpliwość.", "Zapisane. Towar zostanie sprawdzony przed wysyłką."], "list": "Aktualna oferta:"},
+	"port": {"hi": ["Hurt. Od pięćdziesięciu gram. Mniejszych nie pakujemy.", "Kontener stoi. Ile cegieł?", "Dla ciebie wyciągniemy z dna, gdzie nie zamokło."],
+		"ok": ["Idzie. Statek to nie taksówka, poczekasz.", "Zapisane. Odbiór, jak dostaniesz sygnał.", "Dobra. Kasa przyszła, towar wychodzi."], "list": "Stawki za cegłę:"},
+}
 
 
 static func _time_left(m: float) -> String:
@@ -11,12 +24,95 @@ static func _time_left(m: float) -> String:
 	return ("%.1f godz." % (m / 60.0)).replace(".", ",")
 
 
+static func _say(vid: String, key: String) -> Variant:
+	return SAY.get(vid, SAY.wiktor)[key]
+
+
+static func _hello(vid: String) -> String:
+	var t: float = G.Market.trust(vid)
+	return String(_say(vid, "hi")[0 if t < 25.0 else (1 if t < 60.0 else 2)])
+
+
+static func _log(vid: String) -> Array:
+	if not G.S.has("mlog"):
+		G.S["mlog"] = {}
+	if not G.S.mlog.has(vid):
+		G.S.mlog[vid] = []
+	return G.S.mlog[vid]
+
+
+static func _log_add(vid: String, me: bool, text: String) -> void:
+	var lg := _log(vid)
+	lg.append({"me": me, "t": text, "at": G.S.t})
+	while lg.size() > 10:
+		lg.pop_front()
+
+
+## dymek rozmowy: cudze po lewej (z kolorem rozmówcy), własne po prawej
+static func _bubble(body: Control, bb: String, me: bool, color := K.C_BLUE, extra: Control = null) -> VBoxContainer:
+	var row := K.hbox(0)
+	body.add_child(row)
+	var bg := Color(0.1, 0.2, 0.16) if me else Color(0.11, 0.13, 0.19)
+	var p := K.panel(K.sb(bg, 13, Color(K.C_ACC.r, K.C_ACC.g, K.C_ACC.b, 0.35) if me else Color(color.r, color.g, color.b, 0.4), 1, 9))
+	p.custom_minimum_size = Vector2(258, 0)
+	var v := K.vbox(5)
+	p.add_child(v)
+	var r := K.rich(bb, 13)
+	v.add_child(r)
+	if extra != null:
+		v.add_child(extra)
+	if me:
+		row.add_child(K.spacer())
+		row.add_child(p)
+	else:
+		row.add_child(p)
+		row.add_child(K.spacer())
+	return v
+
+
+static func _note(body: Control, text: String, color := K.C_DIM) -> void:
+	var l := K.wrap(text, 11, color)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_child(l)
+
+
+static func _avatar(name: String, color: Color, open := true, size := 34.0) -> Control:
+	var dot := K.panel(K.sb(color if open else Color(0.22, 0.23, 0.27), int(size / 2.0), Color(0, 0, 0, 0), 0, 0))
+	dot.custom_minimum_size = Vector2(size, size)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := K.head(name.substr(0, 1).to_upper(), int(size * 0.5), Color(0.05, 0.06, 0.08) if open else K.C_DIM)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dot.add_child(l)
+	return dot
+
+
 static func build(PH) -> void:
+	var st: Dictionary = PH.hurt
+	if not st.has("chat"):
+		st["chat"] = ""
+	var chat := String(st.chat)
+	if chat != "" and G.flag("hurt_on"):
+		if chat == "skup":
+			_buyer(PH)
+			return
+		var v: Dictionary = G.Market.vendor(chat)
+		if not v.is_empty() and G.Market.unlocked(v):
+			_talk(PH, v)
+			return
+	st["chat"] = ""
+	_list(PH)
+
+
+# ================================================================ lista rozmów
+static func _list(PH) -> void:
 	var S: Dictionary = G.S
 	var M = G.Market
 	var body: VBoxContainer = PH.body
 	var st: Dictionary = PH.hurt
-	PH._header("Giełda", "Szyfrowany kanał • %d dostawców" % _open_vendors())
+	PH._header("Giełda", "Szyfrowany komunikator • %d kontaktów" % _open_vendors())
 	if not G.flag("hurt_on"):
 		var c0 := K.card(body)
 		c0.add_child(K.icon("lock", 28, K.C_DIM))
@@ -64,84 +160,135 @@ static func build(PH) -> void:
 		cd.add_child(K.btn("Prowadź do odbioru", func(): G.main.set_track("drop"); PH.ui.close_all(), "", true))
 	if not G.flag("hurt_on"):
 		return
-	# ---------------------------------------------------------------- okazja dnia
+	# ---------------------------------------------------------------- rozmowy
+	body.add_child(K.lbl("ROZMOWY", 10, K.C_DIM))
 	var sp = M.special()
-	if sp != null:
-		var sv: Dictionary = M.vendor(String(sp.vendor))
-		var cs := K.panel(K.sb(Color(0.16, 0.12, 0.04), 12, K.C_GOLD, 1, 12))
-		body.add_child(cs)
-		var sb := K.vbox(4)
-		cs.add_child(sb)
-		sb.add_child(K.icon_label("flame", "OKAZJA DNIA — do %s" % G.clock(sp.until), 11, K.C_GOLD, 14))
-		var sr := K.hbox(8)
-		sb.add_child(sr)
-		sr.add_child(K.icon("brick_" + String(sp.p) if int(sp.g) >= 50 else "bulk_" + String(sp.p), 40))
-		var srt := K.rich("[b]%d g %s[/b] od: %s\n[b]%s[/b]  %s" % [int(sp.g), D.PRODUCT_GEN[sp.p], String(sv.name), K.col(G.money(sp.price), K.C_GOLD), K.col("−%d%%" % int(round(float(sp.off) * 100.0)), K.C_ACC)], 13)
-		srt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		sr.add_child(srt)
-		var bb := K.btn("Biorę (płatne z góry)", func(): M.buy_special(); PH.render(), "go", true)
-		bb.disabled = S.cash < float(sp.price) or S.drops.size() >= 3
-		sb.add_child(bb)
-	# ---------------------------------------------------------------- dostawcy
-	var cv := K.card(body)
-	cv.add_child(K.lbl("DOSTAWCY", 10, K.C_DIM))
-	var cur: Dictionary = M.vendor(String(st.get("v", "wiktor")))
-	if cur.is_empty() or not M.unlocked(cur):
-		cur = M.vendor("wiktor")
-		st["v"] = "wiktor"
 	for v in D.VENDORS:
 		var vid: String = v.id
 		var open: bool = M.unlocked(v)
-		var on: bool = vid == String(cur.id)
 		var vc := Color.html(String(v.color))
-		var b := Button.new()
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(0, 52)
-		b.disabled = not open
-		b.add_theme_stylebox_override("normal", K.sb(Color(0.13, 0.17, 0.24) if on else Color(0.085, 0.102, 0.15), 9, vc if on else Color(1, 1, 1, 0.07), 1, 8))
-		b.add_theme_stylebox_override("hover", K.sb(Color(0.13, 0.16, 0.23), 9, vc, 1, 8))
-		b.add_theme_stylebox_override("pressed", K.sb(Color(0.07, 0.085, 0.12), 9, vc, 1, 8))
-		b.add_theme_stylebox_override("disabled", K.sb(Color(0.06, 0.07, 0.1), 9, Color(1, 1, 1, 0.04), 1, 8))
-		b.pressed.connect(func():
-			Sfx.play("click")
+		var preview := "Nie odpisuje nieznajomym (od poziomu %d)." % int(v.lvl)
+		var hot := false
+		if open:
+			var lg := _log(vid)
+			preview = String(lg[-1].t) if not lg.is_empty() else _hello(vid)
+			if not lg.is_empty() and bool(lg[-1].me):
+				preview = "Ty: " + preview
+			for d in S.drops:
+				if String(d.get("vendor", "")) == vid:
+					preview = "Paczka czeka na odbiór." if d.state == "ready" else "Paczka w drodze, ok. %s." % _time_left(float(d.ready) - S.t)
+			if sp != null and String(sp.vendor) == vid:
+				preview = "Okazja: %d g %s za %s (−%d%%), do %s" % [int(sp.g), D.PRODUCT_GEN[sp.p], G.money(sp.price), int(round(float(sp.off) * 100.0)), G.clock(sp.until)]
+				hot = true
+		_row(body, String(v.name), String(v.tag), preview, vc, open, hot, M.trust(vid) if open else -1.0, func():
+			st["chat"] = vid
 			st["v"] = vid
 			st["credit"] = false
 			PH.render())
-		var h := K.hbox(8)
-		h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
-		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(h)
-		var dot := K.panel(K.sb(vc if open else Color(0.25, 0.26, 0.3), 14, Color(0, 0, 0, 0), 0, 0))
-		dot.custom_minimum_size = Vector2(28, 28)
-		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		h.add_child(dot)
-		var vb := K.vbox(0)
-		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		vb.add_child(K.lbl(String(v.name), 14, K.C_TXT if open else K.C_DIM))
-		var pm := int(round((float(v.price) * (1.0 - M.trust_discount(vid)) - 1.0) * 100.0))
-		var sub := "%s  •  %s  •  %d–%d%%" % [String(v.tag), ("cena %+d%%" % pm) if pm != 0 else "cena bazowa", int(v.pur[0]), int(v.pur[1])] if open else "od poziomu %d" % int(v.lvl)
-		vb.add_child(K.lbl(sub, 11, K.C_DIM))
-		h.add_child(vb)
-		if open:
-			var tb := K.bar(M.trust(vid), 100.0, vc, 5.0)
-			tb.custom_minimum_size = Vector2(46, 5)
-			tb.size_flags_horizontal = Control.SIZE_SHRINK_END
-			tb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			tb.tooltip_text = "Zaufanie"
-			h.add_child(tb)
-		cv.add_child(b)
-	cv.add_child(K.wrap(String(cur.desc), 11, K.C_DIM))
-	if M.trust(String(cur.id)) > 1.0:
-		cv.add_child(K.lbl("Zaufanie %d/100 — rabat %s%%" % [int(M.trust(String(cur.id))), ("%.1f" % (M.trust_discount(String(cur.id)) * 100.0)).replace(".", ",")], 11, K.C_ACC))
-	# ---------------------------------------------------------------- zamówienie
-	var co := K.card(body)
-	co.add_child(K.lbl("ZAMÓWIENIE U: %s" % String(cur.name).to_upper(), 10, K.C_DIM))
-	var pf := K.flow(5)
-	co.add_child(pf)
+	var by: Dictionary = M.bulk_buyer()
+	_row(body, "Skup — %s" % String(by.name), "Bierze nadwyżki", "Luzem z własnej roboty: %d%% ceny ulicy, dziś jeszcze %d g." % [int(round(float(by.rate) * 100.0)), M.bulk_left_today()],
+		Color(0.55, 0.6, 0.68), true, false, -1.0, func():
+			st["chat"] = "skup"
+			PH.render())
+
+
+## wiersz rozmowy: awatar z inicjałem, nazwa i dopisek, ostatnia wiadomość, pasek zaufania albo kropka okazji
+static func _row(body: Control, name: String, tag: String, preview: String, color: Color, open: bool, hot: bool, trust: float, cb: Callable) -> void:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(0, 58)
+	b.disabled = not open
+	b.add_theme_stylebox_override("normal", K.sb(Color(0.16, 0.13, 0.06) if hot else Color(0.085, 0.102, 0.15), 10, K.C_GOLD if hot else Color(1, 1, 1, 0.07), 1, 8))
+	b.add_theme_stylebox_override("hover", K.sb(Color(0.13, 0.16, 0.23), 10, color, 1, 8))
+	b.add_theme_stylebox_override("pressed", K.sb(Color(0.07, 0.085, 0.12), 10, color, 1, 8))
+	b.add_theme_stylebox_override("disabled", K.sb(Color(0.06, 0.07, 0.1), 10, Color(1, 1, 1, 0.04), 1, 8))
+	b.pressed.connect(func():
+		Sfx.play("click")
+		cb.call())
+	var h := K.hbox(9)
+	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(h)
+	h.add_child(_avatar(name, color, open))
+	var vb := K.vbox(0)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var top := K.hbox(6)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(K.lbl(name, 14, K.C_TXT if open else K.C_DIM))
+	top.add_child(K.lbl(tag, 10, color if open else K.C_DIM))
+	vb.add_child(top)
+	var pl := K.lbl(preview, 11, K.C_GOLD if hot else K.C_DIM)
+	pl.clip_text = true
+	pl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	vb.add_child(pl)
+	h.add_child(vb)
+	if hot:
+		h.add_child(K.icon("flame", 16, K.C_GOLD))
+	elif trust >= 0.0:
+		var tb := K.bar(trust, 100.0, color, 5.0)
+		tb.custom_minimum_size = Vector2(40, 5)
+		tb.size_flags_horizontal = Control.SIZE_SHRINK_END
+		tb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tb.tooltip_text = "Zaufanie"
+		h.add_child(tb)
+	body.add_child(b)
+
+
+# ================================================================ rozmowa z dostawcą
+static func _talk(PH, cur: Dictionary) -> void:
+	var S: Dictionary = G.S
+	var M = G.Market
+	var body: VBoxContainer = PH.body
+	var st: Dictionary = PH.hurt
+	var vid := String(cur.id)
+	var vc := Color.html(String(cur.color))
+	var tr: float = M.trust(vid)
+	var sub := "%s  •  zaufanie %d/100" % [String(cur.tag), int(tr)]
+	if M.trust_discount(vid) > 0.001:
+		sub += "  •  rabat %s%%" % ("%.1f" % (M.trust_discount(vid) * 100.0)).replace(".", ",")
+	PH._header(String(cur.name), sub)
+	st["v"] = vid
 	if int(S.lvl) < int(D.PRODUCTS[String(st.p)].lvl):
 		st.p = "dym"
+	var sizes := []
+	for g in D.WHOLESALE_SIZES:
+		if g >= int(cur.min):
+			sizes.append(g)
+	if not sizes.has(int(st.g)) or int(st.g) > M.max_g(cur):
+		st.g = sizes[0]
+	var method := String(st.get("m", "drop"))
+	if cur.get("prepay", false) or not cur.get("credit", false):
+		st["credit"] = false
+	# --- powitanie i cennik
+	_bubble(body, _hello(vid), false, vc)
+	var lines := [String(_say(vid, "list"))]
+	for p in D.PRODUCTS:
+		if int(S.lvl) < int(D.PRODUCTS[p].lvl):
+			continue
+		var per: float = M.price(vid, p, int(st.g), "drop") / float(st.g)
+		lines.append("%s — [b]%s[/b]/g" % [String(D.PRODUCTS[p].name), G.money(per)])
+	lines.append(K.col("czystość %s, od %d do %d g" % [("niespodzianka" if cur.get("blind", false) else "%d–%d%%" % [int(cur.pur[0]), int(cur.pur[1])]), int(cur.min), M.max_g(cur)], K.C_DIM))
+	_bubble(body, "\n".join(lines), false, vc)
+	_note(body, String(cur.desc))
+	# --- okazja dnia od tego dostawcy
+	var sp = M.special()
+	if sp != null and String(sp.vendor) == vid:
+		var bb := K.btn("Biorę (%s, płatne z góry)" % G.money(sp.price), func(): M.buy_special(); _log_add(vid, true, "Biorę okazję."); PH.render(), "go", true)
+		bb.disabled = S.cash < float(sp.price) or S.drops.size() >= 3
+		_bubble(body, "%s do %s: [b]%d g %s[/b] za [b]%s[/b] %s" % [K.col("Okazja", K.C_GOLD), G.clock(sp.until), int(sp.g), D.PRODUCT_GEN[sp.p], K.col(G.money(sp.price), K.C_GOLD),
+			K.col("(−%d%%)" % int(round(float(sp.off) * 100.0)), K.C_ACC)], false, K.C_GOLD, bb)
+	# --- historia i paczki od niego
+	for e in _log(vid):
+		_bubble(body, String(e.t), bool(e.me), vc)
+	for d in S.drops:
+		if String(d.get("vendor", "")) == vid:
+			_note(body, ("Paczka czeka: %s" % M.spot_name(d)) if d.state == "ready" else ("Paczka w drodze: %d g %s, ok. %s" % [int(d.g), D.PRODUCT_GEN[d.p], _time_left(float(d.ready) - S.t)]), K.C_ACC)
+	# --- odpowiedź składana z kawałków
+	var co := K.card(body)
+	co.add_child(K.lbl("TWOJA ODPOWIEDŹ", 10, K.C_DIM))
+	var pf := K.flow(5)
+	co.add_child(pf)
 	for p in D.PRODUCTS:
 		var pid: String = p
 		var locked: bool = int(S.lvl) < int(D.PRODUCTS[p].lvl)
@@ -150,19 +297,11 @@ static func build(PH) -> void:
 		pf.add_child(b)
 	var qf := K.flow(5)
 	co.add_child(qf)
-	var sizes := []
-	for g in D.WHOLESALE_SIZES:
-		if g >= int(cur.min):
-			sizes.append(g)
-	if not sizes.has(int(st.g)) or int(st.g) > M.max_g(cur):
-		st.g = sizes[0]
 	for g in sizes:
 		var gg: int = g
 		var b := K.btn("%d g" % g, func(): st.g = gg; PH.render(), "go" if int(st.g) == g else "", true)
 		b.disabled = g > M.max_g(cur)
 		qf.add_child(b)
-	# dostawa
-	var method := String(st.get("m", "drop"))
 	var df := K.flow(5)
 	co.add_child(df)
 	for mid in D.DELIVERY:
@@ -171,44 +310,57 @@ static func build(PH) -> void:
 		var b := K.btn(String(md.name) + ((" +%d%%" % int(float(md.fee) * 100.0)) if float(md.fee) > 0.0 else ""), func(): st["m"] = mm; PH.render(), "go" if method == mid else "", true)
 		b.icon = K.tex(String(md.icon))
 		b.add_theme_constant_override("icon_max_width", 13)
+		b.tooltip_text = String(md.desc)
 		df.add_child(b)
-	co.add_child(K.wrap(String(D.DELIVERY[method].desc), 11, K.C_DIM))
-	# płatność
-	var pmf := K.flow(5)
-	co.add_child(pmf)
-	if cur.get("prepay", false):
-		st["credit"] = false
-		pmf.add_child(K.lbl("Płatne z góry.", 12, K.C_WARN))
-	else:
+	var pay := "płatne z góry"
+	if not cur.get("prepay", false):
+		var pmf := K.flow(5)
+		co.add_child(pmf)
 		pmf.add_child(K.btn("Płacę przy odbiorze", func(): st.credit = false; PH.render(), "go" if not st.credit else "", true))
 		var bc := K.btn("Na zeszyt", func(): st.credit = true; PH.render(), "go" if st.credit else "", true)
 		bc.disabled = not cur.get("credit", false)
 		bc.tooltip_text = "Na zeszyt daje tylko Wiktor."
 		pmf.add_child(bc)
-		if not cur.get("credit", false):
-			st["credit"] = false
-	var cost: float = M.price(String(cur.id), String(st.p), int(st.g), method)
+		pay = "na zeszyt" if st.credit else "płacę przy odbiorze"
+	var cost: float = M.price(vid, String(st.p), int(st.g), method)
 	var eta_lo: float = float(cur.eta[0]) * float(D.DELIVERY[method].eta)
 	var eta_hi: float = float(cur.eta[1]) * float(D.DELIVERY[method].eta)
 	var avg_pur := (int(cur.pur[0]) + int(cur.pur[1])) / 2
-	co.add_child(K.rich("Razem: [b]%s[/b]  (%s/g)\nDostawa: %s–%s  •  ulica płaci ok. %s/g" % [K.col(G.money(cost), K.C_WARN), G.money(cost / float(st.g)), _time_left(eta_lo), _time_left(eta_hi),
-		G.money(G.market_price(String(st.p), avg_pur))], 13))
+	var draft := "Biorę %d g %s. %s, %s." % [int(st.g), D.PRODUCT_GEN[String(st.p)], String(D.DELIVERY[method].name), pay]
+	_bubble(co, "„%s”\n%s" % [draft, K.col("Razem [b]%s[/b] (%s/g)  •  dostawa %s–%s\nulica płaci ok. %s/g" % [G.money(cost), G.money(cost / float(st.g)), _time_left(eta_lo), _time_left(eta_hi),
+		G.money(G.market_price(String(st.p), avg_pur))], K.C_DIM)], true)
 	if float(cur.get("risk", 0.0)) > 0.0 and method == "drop":
 		co.add_child(K.wrap("Uwaga: ok. %d%% skrytek od tego dostawcy jest spalonych. Skrytkomat i kurier są czyste." % int(float(cur.risk) * 100.0), 11, K.C_BAD))
-	var why: String = M.block(String(cur.id), String(st.p), int(st.g), method, bool(st.credit))
-	var ob := K.btn("Zamów" if why == "" else why, func(): M.order(String(cur.id), String(st.p), int(st.g), method, bool(st.credit)); PH.render(), "go")
+	var why: String = M.block(vid, String(st.p), int(st.g), method, bool(st.credit))
+	var ob := K.btn("Wyślij zamówienie" if why == "" else why, func():
+		var res: Dictionary = M.order(vid, String(st.p), int(st.g), method, bool(st.credit))
+		if not res.is_empty():
+			_log_add(vid, true, draft)
+			_log_add(vid, false, String((_say(vid, "ok") as Array).pick_random()))
+		PH.render(), "go")
+	ob.icon = K.tex("send")
+	ob.add_theme_constant_override("icon_max_width", 14)
 	ob.disabled = why != ""
 	co.add_child(ob)
-	# ---------------------------------------------------------------- skup
+
+
+# ================================================================ skup nadwyżek
+static func _buyer(PH) -> void:
+	var S: Dictionary = G.S
+	var M = G.Market
+	var body: VBoxContainer = PH.body
 	var by: Dictionary = M.bulk_buyer()
-	var cb := K.card(body)
-	cb.add_child(K.lbl("SKUP NADWYŻEK — %s" % String(by.name).to_upper(), 10, K.C_DIM))
-	cb.add_child(K.wrap("Towar luzem z własnej produkcji: %d%% ceny ulicznej, od %d g, dziś jeszcze %d g. Rozrobionego nie biorą." % [int(round(float(by.rate) * 100.0)), D.BULK_SELL_MIN, M.bulk_left_today()], 11, K.C_DIM))
+	var vc := Color(0.55, 0.6, 0.68)
+	PH._header("Skup — %s" % String(by.name), "Bierze nadwyżki z własnej produkcji")
+	_bubble(body, "Biorę towar luzem z własnej roboty. Płacę [b]%d%%[/b] ceny ulicy, od %d g. Dziś wezmę jeszcze [b]%d g[/b]." % [int(round(float(by.rate) * 100.0)), D.BULK_SELL_MIN, M.bulk_left_today()], false, vc)
+	_bubble(body, "Rozrobionego nie ruszam. I nie przynoś mi cudzego — poznam.", false, vc)
 	var loc: String = G.player.loc if G.player != null else "out"
 	var stores := [[S.inv, "plecak"]]
 	if S.stash.has(loc):
 		stores.append([S.stash[loc], "skrytka"])
 	var any := false
+	var cb := K.card(body)
+	cb.add_child(K.lbl("TWOJA ODPOWIEDŹ", 10, K.C_DIM))
 	for e in stores:
 		var store: Dictionary = e[0]
 		for s in G.stacks(store, "bulk"):
@@ -224,11 +376,11 @@ static func build(PH) -> void:
 			var l2 := K.rich("%s %s — [b]%s[/b] (%s)" % [D.PRODUCTS[sp2].name, K.tier_bb(spur), G.grams(s.n), String(e[1])], 12)
 			l2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row2.add_child(l2)
-			var sb2 := K.btn("Sprzedaj %s za %s" % [G.grams(amt), G.money(M.bulk_price(sp2, spur, amt))], func(): M.bulk_sell(store, sp2, spur, amt); PH.render(), "go", true)
+			var sb2 := K.btn("„Mam %s — biorę %s”" % [G.grams(amt), G.money(M.bulk_price(sp2, spur, amt))], func(): M.bulk_sell(store, sp2, spur, amt); PH.render(), "go", true)
 			sb2.disabled = M.bulk_block(store, sp2, spur, amt) != ""
 			cb.add_child(sb2)
 	if not any:
-		cb.add_child(K.lbl("Nic do sprzedania tutaj (min. %d g luzem w plecaku albo w skrytce, przy której stoisz)." % D.BULK_SELL_MIN, 11, K.C_DIM))
+		cb.add_child(K.wrap("Nie masz tu nic na sprzedaż: potrzeba co najmniej %d g towaru luzem w plecaku albo w skrytce, przy której stoisz." % D.BULK_SELL_MIN, 11, K.C_DIM))
 
 
 static func _open_vendors() -> int:

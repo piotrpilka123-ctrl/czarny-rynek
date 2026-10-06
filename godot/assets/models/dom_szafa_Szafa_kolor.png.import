@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c542f8x43ohuu"
-path="res://.godot/imported/dom_waga_Waga_kolor.png-543c5047a4554e93e0b54243f576e566.ctex"
+uid="uid://b2i2ys7x3y2nl"
+path="res://.godot/imported/dom_szafa_Szafa_kolor.png-f49c942284ab7249faff4c79e2d48c3f.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "944c78928241b239a6554c7e81b2bbb2"
+"md5": "b239f7e8d7864af4249971f4dfa89f49"
 }
 
 [deps]
 
-source_file="res://assets/models/dom_waga_Waga_kolor.png"
-dest_files=["res://.godot/imported/dom_waga_Waga_kolor.png-543c5047a4554e93e0b54243f576e566.ctex"]
+source_file="res://assets/models/dom_szafa_Szafa_kolor.png"
+dest_files=["res://.godot/imported/dom_szafa_Szafa_kolor.png-f49c942284ab7249faff4c79e2d48c3f.ctex"]
 
 [params]
 
