@@ -1064,7 +1064,13 @@ func _parked_cars() -> void:
 
 ## ławka osiedlowa (betonowe nogi, drewniane szczeble)
 func _bench(x: float, z: float, ry := 0.0) -> void:
-	var b := Details.bench(Color(0.2, 0.36, 0.26) if rng.randf() < 0.6 else Color(0.5, 0.28, 0.2))
+	var bcol := Color(0.2, 0.36, 0.26) if rng.randf() < 0.6 else Color(0.5, 0.28, 0.2)
+	var b: Node3D = Stations.model("ul_lawka")
+	if b != null:
+		Interior._tint(b, bcol.lightened(0.25))
+		Props.set_range(b, 110.0)
+	else:
+		b = Details.bench(bcol)
 	b.position = Vector3(x, hd(x, z), z)
 	b.rotation.y = ry
 	b.scale = Vector3(INV, 1.0, INV)
@@ -1185,15 +1191,28 @@ func _lamp(x: float, z: float, ry: float, broken := false) -> void:
 	g.rotation.y = ry
 	g.scale = Vector3(INV, 1.0, INV)
 	city.add_child(g)
-	var pole := Props.pbr("concrete_wall_008", 0.6, Color(0.75, 0.75, 0.72))
-	Models.cyl(g, 0.09, 0.15, 7.2, Vector3(0, 3.6, 0), pole, Vector3.ZERO, 8)
 	add_col(x - 0.16 * INV, x + 0.16 * INV, z - 0.16 * INV, z + 0.16 * INV, 3.0)
 	rects.pop_back()
-	Models.cyl(g, 0.035, 0.04, 1.6, Vector3(0, 7.2, 0.75), Models.mat("3a3d42", 0.5, 0.6), Vector3(PI / 2.0 - 0.15, 0, 0), 6)
-	Models.box(g, Vector3(0.26, 0.1, 0.6), Vector3(0, 7.3, 1.6), Models.mat("2a2c30", 0.5, 0.5))
-	if broken:
-		return
-	Models.box(g, Vector3(0.2, 0.03, 0.46), Vector3(0, 7.24, 1.6), lamp_mat, Vector3.ZERO, false)
+	var lm: Node3D = Stations.model("ul_latarnia")
+	if lm != null:
+		# słup z modelu; klosz dostaje wspólny materiał latarni, który rozpala się po zmroku
+		g.add_child(lm)
+		Props.set_range(lm, 150.0)
+		var lens := Stations._find(lm, "Swiatlo") as MeshInstance3D
+		if lens != null:
+			lens.visible = not broken
+			lens.material_override = lamp_mat
+			lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if broken:
+			return
+	else:
+		var pole := Props.pbr("concrete_wall_008", 0.6, Color(0.75, 0.75, 0.72))
+		Models.cyl(g, 0.09, 0.15, 7.2, Vector3(0, 3.6, 0), pole, Vector3.ZERO, 8)
+		Models.cyl(g, 0.035, 0.04, 1.6, Vector3(0, 7.2, 0.75), Models.mat("3a3d42", 0.5, 0.6), Vector3(PI / 2.0 - 0.15, 0, 0), 6)
+		Models.box(g, Vector3(0.26, 0.1, 0.6), Vector3(0, 7.3, 1.6), Models.mat("2a2c30", 0.5, 0.5))
+		if broken:
+			return
+		Models.box(g, Vector3(0.2, 0.03, 0.46), Vector3(0, 7.24, 1.6), lamp_mat, Vector3.ZERO, false)
 	# reflektor w dół: plama światła na ziemi i widoczny snop we mgle
 	var li := SpotLight3D.new()
 	li.position = Vector3(0, 7.15, 1.6)

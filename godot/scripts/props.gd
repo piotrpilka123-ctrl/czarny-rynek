@@ -2,6 +2,8 @@ extends RefCounted
 ## Realistyczne materiały PBR (Poly Haven, CC0) i rekwizyty z plików glTF
 ## (Poly Haven oraz Quaternius, CC0) z automatycznym dopasowaniem skali.
 
+const StationsRef = preload("res://scripts/stations.gd")
+const InteriorRef = preload("res://scripts/interior.gd")
 const Models = preload("res://scripts/models.gd")
 
 static var _pbr := {}
@@ -543,6 +545,9 @@ static func fire_barrel(lights: Array) -> Node3D:
 
 ## trzepak — obowiązkowy element polskiego podwórka
 static func trzepak() -> Node3D:
+	var tm: Node3D = StationsRef.model("ul_trzepak")
+	if tm != null:
+		return tm
 	var g := Node3D.new()
 	var m := Models.mat("3d5a48", 0.6, 0.5)
 	for x in [-1.2, 1.2]:
@@ -553,6 +558,9 @@ static func trzepak() -> Node3D:
 
 
 static func swing() -> Node3D:
+	var sm0: Node3D = StationsRef.model("ul_hustawka")
+	if sm0 != null:
+		return sm0
 	var g := Node3D.new()
 	var m := Models.mat("7a2f24", 0.6, 0.5)
 	for x in [-1.5, 1.5]:
@@ -568,6 +576,9 @@ static func swing() -> Node3D:
 
 
 static func slide() -> Node3D:
+	var sl0: Node3D = StationsRef.model("ul_zjezdzalnia")
+	if sl0 != null:
+		return sl0
 	var g := Node3D.new()
 	var m := Models.mat("5a6a7a", 0.5, 0.6)
 	Models.box(g, Vector3(0.9, 0.06, 0.9), Vector3(0, 1.6, 0), m)
@@ -582,6 +593,19 @@ static func slide() -> Node3D:
 
 ## altanka śmietnikowa z kontenerami
 static func trash_shed() -> Node3D:
+	var ws: Node3D = StationsRef.model("ul_wiata")
+	if ws != null:
+		# wiata z modelu i trzy kontenery w różnych kolorach, każdy trochę inaczej dosunięty
+		var tints := [Color(0.2, 0.42, 0.28), Color(0.2, 0.33, 0.5), Color(0.62, 0.52, 0.16)]
+		for k0 in range(3):
+			var dm: Node3D = StationsRef.model("ul_kontener")
+			if dm == null:
+				break
+			dm.position = Vector3(-1.6 + k0 * 1.6, 0.06, -0.55 + 0.12 * (k0 % 2))
+			dm.rotation.y = 0.08 * (k0 - 1)
+			InteriorRef._tint(dm, tints[k0])
+			ws.add_child(dm)
+		return ws
 	var g := Node3D.new()
 	var wall := pbr("concrete_wall_008", 0.4, Color(0.8, 0.8, 0.78))
 	Models.box(g, Vector3(5.0, 1.9, 0.18), Vector3(0, 0.95, -1.6), wall)
@@ -601,6 +625,9 @@ static func trash_shed() -> Node3D:
 
 
 static func bus_stop() -> Node3D:
+	var bs0: Node3D = StationsRef.model("ul_przystanek")
+	if bs0 != null:
+		return bs0
 	var g := Node3D.new()
 	var fr := Models.mat("3a4048", 0.5, 0.6)
 	for x in [-1.9, 1.9]:

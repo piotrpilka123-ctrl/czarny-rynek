@@ -305,6 +305,23 @@ func stat_traits(o: Dictionary) -> Array:
 	return out
 
 
+const STAT_MARKS := [["speed", "gauge", "szybkość", true], ["stamina", "dumbbell", "kondycja", true], ["noise", "footprints", "hałas kroków", false],
+	["vis", "eye", "widoczność", false], ["vis_night", "moon", "widoczność nocą", false], ["attention", "siren", "podejrzliwość patroli", false],
+	["witness", "fingerprint", "świadkowie i śledztwo", false], ["charm", "hand_coins", "ceny u klientów", true], ["conceal", "scan_eye", "kontrola przy wejściu", false]]
+
+## cechy ubrania jako znaczniki z ikoną: [{icon, text, good, tip}] — np. „+6%” z ikoną stóp i kolorem zależnym od tego, czy to zaleta
+func stat_marks(o: Dictionary) -> Array:
+	var out := []
+	for e in STAT_MARKS:
+		if o.has(e[0]):
+			var v := float(o[e[0]])
+			var txt := "%+d%%" % int(round((v - 1.0) * 100.0))
+			out.append({"icon": e[1], "text": txt, "good": (v > 1.0) == bool(e[3]), "tip": "%s %s" % [e[2], txt]})
+	if o.has("cap"):
+		out.append({"icon": "backpack", "text": "%+d" % int(o.cap), "good": int(o.cap) > 0, "tip": "kieszenie %+d" % int(o.cap)})
+	return out
+
+
 ## łączne cechy tego, co masz na sobie (strój + ubrania)
 func worn_traits() -> Array:
 	var tot := {}

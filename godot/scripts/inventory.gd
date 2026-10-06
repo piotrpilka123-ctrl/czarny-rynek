@@ -5,8 +5,8 @@ extends Control
 const K = preload("res://scripts/uikit.gd")
 const Chars = preload("res://scripts/chars.gd")
 
-const W_SIDE := 432.0
-const W_MID := 300.0
+const W_SIDE := 404.0
+const W_MID := 356.0
 const H_BODY := 548.0
 const TABS := [["inv", "EKWIPUNEK", "backpack"], ["char", "POSTAĆ", "user"], ["wear", "UBRANIA", "store"], ["org", "ORGANIZER", "notebook_pen"]]
 
@@ -361,7 +361,7 @@ func _tab_inv() -> void:
 		_list(rv, st, "stash", "Skrytka jest pusta. Przeciągnij tu rzeczy z plecaka.")
 		rv.add_child(_cap_bar(sused, scap, K.C_GOLD))
 		right.set_drag_forwarding(Callable(), _can_drop.bind("stash"), _drop.bind("stash"))
-		hint.text = "Przeciągnij rzecz na drugą stronę i wybierz ilość   •   ubranie przeciągnij na pole przy postaci   •   gotówkę przenosisz jak każdą rzecz"
+		hint.text = "Przeciągnij rzecz na drugą stronę i wybierz ilość   •   ubranie przeciągnij na pole przy postaci"
 	else:
 		var right2 := K.vbox(10)
 		right2.custom_minimum_size = Vector2(W_SIDE, H_BODY)
@@ -457,7 +457,7 @@ func _list(parent: Node, st: Dictionary, side: String, empty: String) -> void:
 	var c1 := K.lbl("PRZEDMIOT", 10, K.C_DIM)
 	c1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hd.add_child(c1)
-	for e in [["ILOŚĆ", 74.0], ["MIEJSCE", 58.0], ["WAGA", 58.0]]:
+	for e in [["ILOŚĆ", 68.0], ["MIEJSCE", 46.0], ["WAGA", 52.0]]:
 		var l := K.lbl(e[0], 10, K.C_DIM)
 		l.custom_minimum_size = Vector2(e[1], 0)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -527,7 +527,7 @@ func _row(e: Dictionary, side: String) -> Control:
 	var nv := K.vbox(0)
 	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var nl := K.lbl(e.name, 14, K.C_TXT)
+	var nl := K.lbl(e.name, 14 if String(e.name).length() <= 16 else 13, K.C_TXT)
 	nl.clip_text = true
 	nv.add_child(nl)
 	var sub := String(e.sub)
@@ -537,7 +537,7 @@ func _row(e: Dictionary, side: String) -> Control:
 		sub = "przedmiot"
 	nv.add_child(K.lbl(sub, 11, col if int(e.tier) >= 0 else K.C_DIM))
 	h.add_child(nv)
-	for cell in [[e.qty, 74.0, K.C_TXT, 16], [G.units(e.size), 58.0, K.C_DIM, 14], [G.weight_text(e.weight), 58.0, K.C_DIM, 14]]:
+	for cell in [[e.qty, 68.0, K.C_TXT, 16], [G.units(e.size), 46.0, K.C_DIM, 14], [G.weight_text(e.weight), 52.0, K.C_DIM, 14]]:
 		var l := K.head(String(cell[0]), int(cell[3]), cell[2])
 		l.custom_minimum_size = Vector2(cell[1], 0)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -611,7 +611,7 @@ func _gear_slots(view: Control, w: float, h: float) -> void:
 	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(lines)
 	var marks: Array = []
-	var sw := 126.0
+	var sw := 152.0
 	var sh := 52.0
 	for e in D.GEAR_SLOTS:
 		var slot: String = e[0]
@@ -631,19 +631,42 @@ func _gear_slots(view: Control, w: float, h: float) -> void:
 		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		p.add_child(hb)
 		if id != "":
-			var ic := K.icon(String(D.ITEMS[id].icon), 30, K.C_TXT)
+			var ic := K.icon(String(D.ITEMS[id].icon), 28, K.C_TXT)
 			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			hb.add_child(ic)
 		var vb := K.vbox(0)
 		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		vb.add_child(K.lbl(String(e[1]).to_upper(), 9, K.C_ACC if id != "" else K.C_DIM))
-		var nl := K.wrap(String(D.ITEMS[id].name) if id != "" else "puste", 11, K.C_TXT if id != "" else Color(1, 1, 1, 0.35), sw - (50.0 if id != "" else 16.0))
+		var marks_fx: Array = G.stat_marks(D.ITEMS[id].get("stats", {})) if id != "" else []
+		var nl := K.wrap(String(D.ITEMS[id].name) if id != "" else "puste", 11, K.C_TXT if id != "" else Color(1, 1, 1, 0.35), sw - (48.0 + (44.0 if not marks_fx.is_empty() else 0.0) if id != "" else 16.0))
 		nl.max_lines_visible = 2
 		nl.add_theme_constant_override("line_spacing", -2)
 		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.add_child(nl)
 		hb.add_child(vb)
+		# cechy ubrania: wartość z ikoną po prawej stronie pola, jedna pod drugą; zielone pomagają, czerwone szkodzą
+		if not marks_fx.is_empty():
+			var fx := K.vbox(-1)
+			fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			fx.alignment = BoxContainer.ALIGNMENT_CENTER
+			var tips: Array = []
+			for mk in marks_fx:
+				var mc: Color = K.C_ACC if mk.good else K.C_BAD
+				var mr := K.hbox(2)
+				mr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				mr.alignment = BoxContainer.ALIGNMENT_END
+				var big: bool = marks_fx.size() <= 2
+				var ml := K.lbl(String(mk.text), 11 if big else 10, mc)
+				ml.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				mr.add_child(ml)
+				var mi := K.icon(String(mk.icon), 14 if big else 12, mc)
+				mi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				mr.add_child(mi)
+				fx.add_child(mr)
+				tips.append(String(mk.tip))
+			hb.add_child(fx)
+			p.tooltip_text = "%s\n%s" % [", ".join(tips), p.tooltip_text]
 		p.set_drag_forwarding(_drag_gear.bind(slot), _can_drop_gear.bind(slot), _drop_gear.bind(slot))
 		p.gui_input.connect(_gear_input.bind(slot))
 		# kreska od pola do sylwetki
@@ -934,10 +957,6 @@ func _detail() -> Control:
 		_stat(v, "package", "Porcje gotowe do sprzedaży", str(G.packed_total(S.inv)))
 		_stat(v, "weight", "Waga ładunku", G.weight_text(G.store_weight(S.inv)))
 		_stat(v, "shield_alert", "Przy kontroli stracisz", G.grams(goods) if goods > 0.0 else "nic", K.C_WARN if goods > 0.0 else K.C_ACC)
-		var wt: Array = []
-		for t in G.worn_traits():
-			wt.append(K.col(String(t.text), K.C_ACC if t.good else K.C_WARN))
-		v.add_child(K.rich(K.col("Ubranie: ", K.C_DIM) + ("   ".join(wt) if not wt.is_empty() else K.col("nic nie zmienia", K.C_DIM)), 11))
 		v.add_child(K.spacer())
 		v.add_child(K.wrap("Przeciągnij rzecz na drugą stronę — pojawi się suwak z wyborem ilości. Kliknięcie pokazuje opis.", 11, K.C_DIM))
 		return p
