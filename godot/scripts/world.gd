@@ -157,11 +157,11 @@ void fragment() {
 		vec3 g1 = texture(a_grass, uv * 0.31, lodb).rgb;
 		vec3 g2 = texture(a_grass2, uv * 0.27, lodb).rgb;
 		vec3 a = mix(g1, g2, smoothstep(0.42, 0.62, big));
-		a = mix(vec3(dot(a, vec3(0.3, 0.5, 0.2))), a, 0.55) * vec3(0.92, 0.95, 0.8) * (0.6 + mid * 0.42);
+		a = mix(vec3(dot(a, vec3(0.3, 0.5, 0.2))), a, 0.7) * vec3(0.6, 1.08, 0.46) * (0.72 + mid * 0.5);
 		float litter = smoothstep(0.25, 0.6, c2.b + (nz - 0.5) * 0.5 + (mid - 0.5) * 0.3);
 		vec3 lf = texture(a_leaf, uv * 0.36, lodb).rgb;
 		lf = mix(vec3(dot(lf, vec3(0.33))), lf, 0.6) * 0.72;
-		a = mix(a, lf, litter * 0.9);
+		a = mix(a, lf, litter * 0.22);
 		alb += a * grass; nrm += texture(n_grass, uv * 0.31, lodb).rgb * grass; rgh += 0.97 * grass;
 	}
 	float tot = max(0.001, sum + grass);
@@ -947,6 +947,9 @@ func _hide_shed(x: float, z: float, ry: float, search := true) -> bool:
 	var inside := Vector2(x, z) + f * 0.75 * INV
 	var h := {"x": inside.x * SC, "z": inside.y * SC, "ox": front.x * SC, "oz": front.y * SC, "rot": ry + PI, "name": "altanka śmietnikowa"}
 	hides.append(h)
+	var sid := "altanka_%d_%d" % [int(round(x)), int(round(z))]
+	inter.append({"loc": "out", "x": (x + f.x * 1.2 * INV) * SC, "z": (z + f.y * 1.2 * INV) * SC, "y0": 0.0, "y1": 1.5, "r": 1.6, "reach": 2.6, "id": sid,
+		"label": func(): return "Kontenery — już przeszukane" if G.bin_used(sid) else "Przeszukaj kontenery", "act": func(): G.main.search_bin(sid, "dumpster")})
 	inter.append({"loc": "out", "x": front.x * SC, "z": front.y * SC, "ax": (x + f.x * 1.4 * INV) * SC, "az": (z + f.y * 1.4 * INV) * SC, "y0": 0.2, "y1": 1.7, "r": 1.5, "reach": 3.4, "id": "hide",
 		"label": func(): return "[E] Schowaj się między kontenerami", "act": func(): G.main.hide_enter(h)})
 	return true
@@ -1067,6 +1070,50 @@ func _parked_cars() -> void:
 
 
 ## ławka osiedlowa (betonowe nogi, drewniane szczeble)
+## kosz uliczny, w którym można pogrzebać (raz na dobę coś się w nim znajdzie — albo i nie)
+func _bin(x: float, z: float, ry := 0.0) -> void:
+	_prop("metal_trash_can", x, z, ry, 0.9, 0.3)
+	var bid := "kosz_%d_%d" % [int(round(x)), int(round(z))]
+	inter.append({"loc": "out", "x": x * SC, "z": z * SC, "y0": 0.0, "y1": 1.2, "r": 0.6, "reach": 2.4, "id": bid,
+		"label": func(): return "Kosz — już przeszukany" if G.bin_used(bid) else "Przeszukaj kosz", "act": func(): G.main.search_bin(bid, "bin")})
+
+
+## rzeczy leżące na ziemi (upuszczone z plecaka i znaleziska): model, podpis i podnoszenie
+var ground_nodes: Array = []
+
+func refresh_ground() -> void:
+	for n in ground_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	ground_nodes.clear()
+	for i in range(inter.size() - 1, -1, -1):
+		if String(inter[i].get("id", "")).begins_with("ziemia_"):
+			inter.remove_at(i)
+	var k := 0
+	for rec in G.S.get("ground", []):
+		var loc := String(rec.loc)
+		var host: Node3D = self if loc == "out" else rooms.get(loc)
+		if host == null:
+			continue
+		var x := float(rec.x)
+		var z := float(rec.z)
+		var y := height(x, z) if loc == "out" else 0.0
+		var n: Node3D = Stations.model("pod_znalezisko")
+		if n == null:
+			n = Node3D.new()
+			Models.box(n, Vector3(0.2, 0.12, 0.2), Vector3(0, 0.06, 0), Models.mat("d8d4c8", 0.8))
+		n.position = Vector3(x, y, z)
+		n.rotation.y = float(absi(int(x * 31.0 + z * 17.0)) % 628) / 100.0
+		host.add_child(n)
+		if loc == "out":
+			Props.set_range(n, 45.0)
+		ground_nodes.append(n)
+		var r: Dictionary = rec
+		inter.append({"loc": loc, "x": x, "z": z, "y0": y - 0.1, "y1": y + 0.5, "r": 0.45, "reach": 2.3, "id": "ziemia_%d" % k,
+			"label": func(): return "Podnieś: " + G.ground_name(r), "act": func(): G.ground_take(r)})
+		k += 1
+
+
 func _bench(x: float, z: float, ry := 0.0) -> void:
 	var bcol := Color(0.2, 0.36, 0.26) if rng.randf() < 0.6 else Color(0.5, 0.28, 0.2)
 	var b: Node3D = Stations.model("ul_lawka")
@@ -1399,7 +1446,11 @@ func _buildings() -> void:
 	cl.omni_range = 9.0
 	city.add_child(cl)
 	# szyldy przy Hutniczej
-	_shopfront(-75.0, 10.0, "PAWN SHOP", Color(0.95, 0.8, 0.2), "rusted_shutter", true)
+	_shopfront(-75.0, 10.0, "PAWN SHOP", Color(0.95, 0.8, 0.2), "rusted_shutter", false)
+	_sign("WE BUY ANYTHING", Vector3(-75.0, hd(-75.0, 11.0) + 1.9, 10.2), Color(0.95, 0.8, 0.2), 34, 0.0, 0.006, 6)
+	inter.append({"loc": "out", "x": -75.0 * SC, "z": 10.6 * SC, "y0": 0.0, "y1": 2.4, "r": 1.6, "reach": 3.0, "id": "lombard",
+		"label": func(): return "Lombard — sprzedaj znaleziska" if G.pawn_open() else "Lombard — otwarte %d:00–%d:00" % [int(D.PAWN_OPEN[0]), int(D.PAWN_OPEN[1])],
+		"act": func(): G.main.pawn_talk()})
 	_shopfront(-43.0, 10.0, "KEBAB", Color(0.95, 0.35, 0.2), "painted_metal_shutter", true)
 	_shopfront(31.0, 10.0, "LIQUOR 24H", Color(0.4, 0.9, 0.5), "rusted_shutter", false)
 	_shopfront(-70.0, 30.0, "SCRAP YARD", Color(0.8, 0.8, 0.8), "rusted_shutter", true, -1.0)
@@ -1523,10 +1574,11 @@ func _estate() -> void:
 	# ławki pod klatkami, śmietniki, krzesła
 	_bench(12.5, -76.2, 0.0)
 	_bench(-55.5, -76.2, 0.0)
-	_prop("metal_trash_can", 4.6, -76.8, 0.5, 0.9, 0.3)
-	_prop("metal_trash_can", -64.2, -76.8, 1.5, 0.9, 0.3)
+	_bin(4.6, -76.8, 0.5)
+	_bin(-64.2, -76.8, 1.5)
 	_prop("can_rusted", 13.6, -75.4, 0.4, 0.13, 0.0, false)
 	_prop("plastic_crate_01", -53.4, -75.6, 0.3, 0.28, 0.0, false)
+	_yard()
 	# trafostacja
 	var tb := _base(108.0, -140.0, 113.0, -135.0)
 	Models.box(city, Vector3(5.0, 3.4, 5.0), Vector3(110.5, tb + 1.7, -137.5), Props.pbr("concrete_slab_wall", 0.3))
@@ -1535,7 +1587,7 @@ func _estate() -> void:
 	# plac przed pawilonem
 	_prop("plastic_monobloc_chair_01", 65.0, -45.9, 0.4, 0.86, 0.0, false)
 	_prop("plastic_monobloc_chair_01", 66.6, -46.1, -0.9, 0.86, 0.0, false)
-	_prop("metal_trash_can", 86.5, -45.5, 0.0, 0.9, 0.3)
+	_bin(86.5, -45.5, 0.0)
 	_bench(78.0, -37.5, PI)
 	# zieleń — rzadka, zaniedbana
 	for e in [[-90.0, -72.0], [-20.0, -72.0], [50.0, -72.0], [70.0, -84.0], [-100.0, -112.0], [-50.0, -112.0], [14.0, -112.0], [78.0, -108.0], [-95.0, -142.0], [-8.0, -142.0], [80.0, -142.0],
@@ -1547,6 +1599,101 @@ func _estate() -> void:
 	# ogrodzenie działek na zachodzie
 	for k in range(6):
 		_place(Props.fence(20.0, 1.5, "mesh"), -150.0, -160.0 + k * 20.0 + 10.0, PI / 2.0)
+
+
+## Podwórko: wysokie drzewa przed blokami, ogródki pod oknami parteru, „spocik” ze starą kanapą, grill sąsiada.
+func _yard() -> void:
+	# drzewa jak na starym osiedlu: różnej wielkości, rozrzucone po trawnikach, z koronami wysoko nad głową —
+	# nigdy na chodniku ani na wprost klatki, żeby nie zasłaniać przejść i widoku na sąsiednie bloki
+	var k := 0
+	var placed: Array = []
+	var tr := RandomNumberGenerator.new()
+	tr.seed = 20261
+	var spots := [[0.5, -70.8], [16.5, -70.6], [31.5, -71.4], [45.0, -70.8], [-6.0, -61.6], [14.0, -60.4], [27.0, -61.6], [41.0, -60.4], [-78.0, -70.8], [-47.0, -70.8], [-36.0, -70.6],
+		[-22.0, -98.5], [16.0, -98.0], [-44.0, -117.0], [-64.0, -98.0]]
+	for i in range(26):
+		spots.append([tr.randf_range(-96.0, 70.0), tr.randf_range(-124.0, -56.0)])
+	for e in spots:
+		var x := float(e[0])
+		var z := float(e[1])
+		if not _soft_ground(x, z):
+			continue
+		var op := _off_path(x, z, 3.0)
+		x = op.x
+		z = op.y
+		# wolny pas na wprost klatek (drzwi przy x = 8 i x = −60) oraz ogródki pod oknami
+		if (absf(x - 8.0) < 5.0 or absf(x + 60.0) < 5.0) and z > -78.0 and z < -62.0:
+			continue
+		if z < -72.6 and z > -78.5 and x > -3.0 and x < 41.0:
+			continue
+		var close := false
+		for q in placed:
+			if (q as Vector2).distance_to(Vector2(x, z)) < 7.5:
+				close = true
+				break
+		if close or not is_free(x * SC, z * SC, 1.2):
+			continue
+		placed.append(Vector2(x, z))
+		var t: Node3D
+		if k % 3 == 2:
+			# niższe, rozłożyste drzewo między wysokimi
+			t = Props.tree(900 + k * 13, 1.25, 1.0)
+			_place(t, x, z, float(k) * 1.3, 0.2, 0.2, 3.0)
+		else:
+			t = Props.tall_tree(31 + k * 7, tr.randf_range(14.5, 19.0))
+			var ts: Vector3 = t.scale
+			_place(t, x, z, float(k) * 1.3, 0.18, 0.18, 3.0)
+			# _place nadaje własną skalę — smukłość drzewa trzeba zachować
+			t.scale = Vector3(ts.x * INV, ts.y, ts.z * INV)
+		t.position.y -= 0.2
+		tree_pos.append(Vector2(x, z))
+		k += 1
+	# niskie zielone barierki wzdłuż chodnika przed blokiem i żywopłot po drugiej stronie
+	var bs := 2.0 * INV
+	var bx := -1.0
+	while bx < 44.0:
+		if absf(bx + bs * 0.5 - 8.0) > 3.2 and absf(bx + bs * 0.5 - 22.0) > 3.4:
+			var br := _place(Stations.model("pod_barierka"), bx + bs * 0.5, -67.7, 0.0)
+			Props.set_range(br, 60.0)
+		bx += bs
+	for i in range(13):
+		var hx := 13.0 + i * 2.3
+		if _soft_ground(hx, -63.4):
+			_bush(hx, -63.4, 0.85)
+	# czerwony kontener na używaną odzież przy chodniku (da się w nim pogrzebać)
+	_place(Stations.model("pod_pck"), -3.6, -69.0, PI * 0.5 + 0.1, 0.55, 0.6, 1.9)
+	inter.append({"loc": "out", "x": -2.6 * SC, "z": -69.0 * SC, "y0": 0.3, "y1": 1.9, "r": 0.9, "reach": 2.6, "id": "pck_1",
+		"label": func(): return "Kontener na odzież — już przeszukany" if G.bin_used("pck_1") else "Pogrzeb w kontenerze na odzież", "act": func(): G.main.search_bin("pck_1", "clothes")})
+	# ogródki pod oknami bloku 7: [x od, x do, kolor płotka]
+	var seg := 2.0 * INV
+	for g in [[14.6, 25.4, Color(0.25, 0.42, 0.3)], [28.2, 39.0, Color(0.5, 0.36, 0.24)], [-1.6, 2.0, Color(0.3, 0.38, 0.5)]]:
+		var x0: float = g[0]
+		var x1: float = g[1]
+		var n := int(round((x1 - x0) / seg))
+		for i in range(n):
+			var f := _place(Stations.model("pod_plotek"), x0 + (i + 0.5) * seg, -73.7, 0.0)
+			Interior._tint(f, g[2])
+			Props.set_range(f, 70.0)
+		for sx in [x0, x1]:
+			var f2 := _place(Stations.model("pod_plotek"), sx, -73.7 - seg * 0.5, PI / 2.0)
+			Interior._tint(f2, g[2])
+			Props.set_range(f2, 70.0)
+		add_col(x0, x1, -73.85, -73.55, 0.9)
+		rects.pop_back()
+	for e in [["pod_grzadka", 17.6, -75.9, 0.0], ["pod_kwiaty", 22.8, -76.6, 0.1], ["pod_krasnal", 21.0, -74.7, 0.4], ["pod_suszarka", 24.0, -75.4, 0.6],
+			["pod_kwiaty", 36.0, -76.7, -0.1], ["pod_grzadka", 36.6, -74.9, PI / 2.0], ["pod_grill", 31.0, -75.4, 0.5], ["pod_krasnal", 29.2, -76.6, -0.6],
+			["pod_kwiaty", 0.2, -76.4, 0.0], ["pod_krasnal", 1.4, -74.6, 0.9]]:
+		var m := _place(Stations.model(String(e[0])), float(e[1]), float(e[2]), float(e[3]))
+		Props.set_range(m, 60.0)
+	for e in [[32.8, -74.4, 2.4], [29.8, -74.3, -2.1]]:
+		_prop("plastic_monobloc_chair_01", e[0], e[1], e[2], 0.86, 0.0, false)
+	# „spocik”: stara kanapa, stolik z palety z popielniczką i lufkami, skrzynki do siedzenia
+	_place(Stations.model("pod_kanapa"), 22.0, -69.6, 0.08, 1.0, 0.45, 1.0)
+	_place(Stations.model("pod_stolik"), 22.2, -67.9, 0.12, 0.55, 0.4, 0.5)
+	_prop("plastic_crate_01", 20.2, -67.8, 0.3, 0.3, 0.0, false)
+	_prop("plastic_crate_01", 24.3, -68.0, -0.4, 0.3, 0.0, false)
+	_prop("can_rusted", 23.6, -69.0, 0.4, 0.13, 0.0, false)
+	_prop("trashbag", 19.4, -70.2, 0.7, 0.45, 0.0, false)
 
 
 func _fake_entrance(x: float, zw: float, facing: float) -> void:
@@ -1570,7 +1717,7 @@ func _lower_town() -> void:
 	_sign("HUTNICZA ST. 02", Vector3(62.0, 2.2, 8.75), Color(0.9, 0.9, 0.9), 34, 0.0, 0.006, 6)
 	_place(Models.kiosk(), 52.5, -4.0, PI / 2.0, 1.1, 1.4, 2.4)
 	_sign("KIOSK", Vector3(53.6, 2.7, -4.0), Color(0.95, 0.9, 0.5), 60, PI / 2.0, 0.006, 8)
-	_prop("metal_trash_can", 66.0, 9.6, 0.0, 0.9, 0.3)
+	_bin(66.0, 9.6, 0.0)
 	_bench(56.0, -13.0, 0.0)
 	# auta: prawie brak ruchu
 	_car(-40.0, 17.2, PI / 2.0, "sedan", "28424f")
@@ -1589,8 +1736,8 @@ func _lower_town() -> void:
 	# zaułek za kamienicami
 	for e in [[-88.0, -15.5, 0.2], [-70.0, -16.0, 1.2], [-50.0, -15.8, 2.0], [-12.0, -16.2, 0.6], [22.0, -15.6, 2.8], [40.0, -16.0, 1.6]]:
 		_prop("trashbag", e[0], e[1], e[2], 0.5, 0.0, false)
-	_prop("metal_trash_can", -62.0, -11.0, 0.4, 0.9, 0.3)
-	_prop("metal_trash_can", 5.0, -11.0, 0.0, 0.9, 0.3)
+	_bin(-62.0, -11.0, 0.4)
+	_bin(5.0, -11.0, 0.0)
 	_prop("old_tyre", -86.0, -12.2, 0.0, 0.16, 0.0, false)
 	_prop("cardboard_box_01", -82.0, -11.2, 0.5, 0.34, 0.0, false)
 	_prop("cardboard_box_01", -83.0, -11.6, 1.1, 0.3, 0.0, false)
@@ -1605,7 +1752,7 @@ func _lower_town() -> void:
 	# przed sklepem Stasia
 	_prop("plastic_crate_01", -9.5, 10.5, 0.2, 0.28, 0.0, false)
 	_prop("plastic_crate_01", -9.5, 10.5, 0.9, 0.28, 0.0, false, 0.28)
-	_prop("metal_trash_can", -2.5, 10.7, 0.0, 0.9, 0.3)
+	_bin(-2.5, 10.7, 0.0)
 	# podwórka południowe
 	for e in [[-80.0, 53.0], [-30.0, 54.0], [20.0, 53.5], [58.0, 52.0]]:
 		_prop("trashbag", e[0], e[1], rng.randf() * 6.0, 0.5, 0.0, false)
@@ -1658,8 +1805,8 @@ func _lower_town() -> void:
 func _park() -> void:
 	for e in [[-88.0, 64.0, 0.4], [-124.0, 101.0, 2.4], [-150.0, 62.5, 0.2], [-128.0, 148.0, 3.0], [-62.0, 102.0, 1.6]]:
 		_bench(e[0], e[1], e[2])
-	_prop("metal_trash_can", -90.5, 64.6, 0.0, 0.9, 0.3)
-	_prop("metal_trash_can", -121.0, 101.5, 0.0, 0.9, 0.3)
+	_bin(-90.5, 64.6, 0.0)
+	_bin(-121.0, 101.5, 0.0)
 	_prop("can_rusted", -123.0, 102.6, 0.0, 0.13, 0.0, false)
 	_prop("wooden_picnic_table", -146.0, 96.0, 0.6, 0.75, 1.2)
 	# stary dąb ze skrytką
@@ -2849,7 +2996,13 @@ func _interiors() -> void:
 	var h: float = R.h
 	var w: float = R.w
 	var d: float = R.d
-	var g := _room("safe", "old_linoleum_flooring_01", "decrepit_wallpaper", "d6d2c8", Color(0.95, 0.92, 0.85), 0.7)
+	var g := _room("safe", "old_linoleum_flooring_01", "gen_tapeta", "e9e6de", Color(1.0, 0.98, 0.94), 0.7)
+	# lamperia: jaśniejsza olejna farba do wysokości parapetu i listwa — ściany przestają być jedną brązową plamą
+	var dado := Models.mat("b9c2b4", 0.55)
+	var rail := Models.mat("efece4", 0.5)
+	for e in [[w, 0.014, cx, -d * 0.5 + 0.007], [w, 0.014, cx, d * 0.5 - 0.007], [0.014, d, cx - w * 0.5 + 0.007, 0.0], [0.014, d, cx + w * 0.5 - 0.007, 0.0]]:
+		Models.box(g, Vector3(e[0], 0.92, e[1]), Vector3(e[2], 0.52, e[3]), dado, Vector3.ZERO, false)
+		Models.box(g, Vector3(float(e[0]) + (0.012 if float(e[0]) < 1.0 else 0.0), 0.05, float(e[1]) + (0.012 if float(e[1]) < 1.0 else 0.0)), Vector3(e[2], 1.0, e[3]), rail, Vector3.ZERO, false)
 	Interior.baseboards(g, cx, w, d, "cfc8b6")
 	Interior.ceiling_lamp(g, Vector3(cx, h, 0.2), "shade")
 	_room_light(g, cx, 0.2, h - 0.1, 1.35, Color(1.0, 0.82, 0.58), 8.0)

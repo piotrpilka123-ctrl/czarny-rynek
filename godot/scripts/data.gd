@@ -151,6 +151,18 @@ const ITEMS := {
 	"nawoz": {"name": "Nawóz", "icon": "nawoz", "size": 0.4, "w": 90.0, "unit": "dawek", "desc": "Dawka na jeden krzak: plon większy o 25%, ale roślina pije więcej wody."},
 	"chemia": {"name": "Zestaw chemikaliów", "icon": "chemia", "size": 4.0, "w": 1800.0, "unit": "szt.", "illegal": true, "desc": "Prekursory i rozpuszczalniki na jedną syntezę przy stole laboratoryjnym."},
 	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
+	# --- ZNALEZISKA: rzeczy z ziemi i ze śmietników. Do niczego nie służą — lombard przy Hutniczej płaci za nie gotówką (pawn = cena skupu).
+	"butelki": {"name": "Butelki zwrotne", "icon": "beer", "size": 0.5, "w": 350.0, "unit": "szt.", "junk": true, "pawn": 3, "desc": "Kaucja to kaucja. Lombard bierze je hurtem."},
+	"zapalniczka": {"name": "Zapalniczka benzynowa", "icon": "flame", "size": 0.1, "w": 60.0, "unit": "szt.", "junk": true, "pawn": 20, "desc": "Ktoś zgubił. Działa."},
+	"miedz": {"name": "Zwój miedzianego kabla", "icon": "route", "size": 2.0, "w": 1600.0, "unit": "szt.", "junk": true, "pawn": 38, "desc": "Ciężki, ale skup metali i lombard zawsze wezmą."},
+	"telefon_stary": {"name": "Stary telefon", "icon": "phone", "size": 0.5, "w": 140.0, "unit": "szt.", "junk": true, "pawn": 55, "desc": "Pęknięty ekran, bateria trzyma kwadrans. Części są coś warte."},
+	"kartridz": {"name": "Gra na starą konsolę", "icon": "dices", "size": 0.3, "w": 90.0, "unit": "szt.", "junk": true, "pawn": 45, "desc": "Kolekcjonerzy płacą za takie rzeczy więcej, niż myślisz."},
+	"magnetofon": {"name": "Magnetofon kasetowy", "icon": "music", "size": 3.0, "w": 2200.0, "unit": "szt.", "junk": true, "pawn": 70, "desc": "Kaseciak z urwaną klapką. Jeszcze gra."},
+	"radio_sam": {"name": "Radio samochodowe", "icon": "radar", "size": 2.0, "w": 1300.0, "unit": "szt.", "junk": true, "pawn": 85, "desc": "Wyrwane z kablami. Lepiej nie pytać, skąd się wzięło w kontenerze."},
+	"zegarek": {"name": "Zegarek na bransolecie", "icon": "clock", "size": 0.1, "w": 110.0, "unit": "szt.", "junk": true, "pawn": 110, "desc": "Nie chodzi, ale koperta jest ze stali."},
+	"wiertarka": {"name": "Wiertarka udarowa", "icon": "hammer", "size": 3.0, "w": 2600.0, "unit": "szt.", "junk": true, "pawn": 120, "desc": "Spalone szczotki. W lombardzie naprawią i sprzedadzą jak nową."},
+	"aparat": {"name": "Aparat fotograficzny", "icon": "camera", "size": 1.0, "w": 480.0, "unit": "szt.", "junk": true, "pawn": 140, "desc": "Lustrzanka z porysowanym obiektywem."},
+	"obraczka": {"name": "Złota obrączka", "icon": "award", "size": 0.1, "w": 6.0, "unit": "szt.", "junk": true, "pawn": 260, "desc": "Ktoś ją wyrzucił razem ze wspomnieniami. Złoto to złoto."},
 	"kastet": {"name": "Kastet", "icon": "kastet", "size": 0.5, "w": 180.0, "unit": "szt.", "illegal": true, "weapon": true,
 		"desc": "Mosiądz na cztery palce. Dłużnicy oddają chętniej, gdy go widzą. Ochroniarz znajdzie go zawsze, a przy zatrzymaniu to osobny zarzut."},
 	# --- UBRANIA: lekkie przedmioty z polem `slot`. Założone (przeciągnięte na postać) nic nie ważą i nie zajmują miejsca.
@@ -342,6 +354,25 @@ var DOORS := {
 	"szpital": {"x": -181.0, "z": 31.6, "dz": -1.0, "title": "EMERGENCY", "color": "e85a5a", "locked": "Izba przyjęć. Na szczęście nic Ci nie dolega — nie masz tu czego szukać."},
 	"komisariat": {"x": -181.0, "z": 9.4, "dz": 1.0, "title": "POLICE", "color": "9ab4ff", "locked": "Sam z siebie na komendę? Lepiej nie kusić losu."},
 }
+
+# ---------------------------------------------------------------- znaleziska, śmietniki, lombard
+## co można znaleźć: [id albo "cash" albo "", ile od, ile do, waga losowania]
+const LOOT := {
+	"ground": [["butelki", 1, 3, 30], ["cash", 5, 20, 20], ["zapalniczka", 1, 1, 12], ["kartridz", 1, 1, 5], ["telefon_stary", 1, 1, 5], ["zegarek", 1, 1, 2]],
+	"bin": [["", 0, 0, 45], ["butelki", 1, 4, 25], ["cash", 2, 15, 9], ["zapalniczka", 1, 1, 6], ["miedz", 1, 1, 5], ["telefon_stary", 1, 1, 4], ["kartridz", 1, 1, 4], ["zegarek", 1, 1, 2]],
+	"dumpster": [["", 0, 0, 30], ["butelki", 2, 6, 22], ["miedz", 1, 2, 10], ["radio_sam", 1, 1, 6], ["telefon_stary", 1, 1, 6], ["magnetofon", 1, 1, 5], ["kartridz", 1, 1, 5],
+		["cash", 5, 30, 5], ["wiertarka", 1, 1, 4], ["aparat", 1, 1, 3], ["zegarek", 1, 1, 3], ["obraczka", 1, 1, 1]],
+}
+## kontener na używaną odzież: zwykle szmaty, czasem coś, co da się nosić
+const LOOT_CLOTHES := [["", 0, 0, 60], ["czapka_zimowa", 1, 1, 10], ["rekawiczki", 1, 1, 10], ["dresy", 1, 1, 8], ["trampki", 1, 1, 6], ["butelki", 1, 2, 6]]
+## ile minut zajmuje przeszukanie i ile losowań daje kosz uliczny, a ile kontener w altance
+const BIN_MINUTES := 12.0
+const BIN_ROLLS := {"bin": 1, "dumpster": 3}
+## ile znalezisk leży co rano na mieście
+const LOOT_DAILY := [5, 8]
+## lombard: godziny otwarcia i dzienne wahanie cen skupu
+const PAWN_OPEN := [9.0, 19.0]
+const PAWN_SWING := 0.12
 
 # ---------------------------------------------------------------- rozmowy telefoniczne
 ## Telefony od ludzi z życia Kuby. Każdy dzwoni raz, gdy spełnią się warunki (dzień, poziom, zdarzenie),

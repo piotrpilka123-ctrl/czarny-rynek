@@ -274,8 +274,8 @@ void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float k = clamp(VERTEX.y * 0.12, 0.0, 1.0);
 	float sway = sin(TIME * 1.1 + wp.x * 0.5 + wp.z * 0.7) * 0.6 + sin(TIME * 2.6 + wp.x * 1.9 + wp.y * 1.3) * 0.25;
-	VERTEX.x += sway * 0.05 * k;
-	VERTEX.z += cos(TIME * 0.9 + wp.z * 0.6) * 0.03 * k;
+	VERTEX.x += sway * 0.1 * k;
+	VERTEX.z += cos(TIME * 0.9 + wp.z * 0.6) * 0.065 * k;
 	// „kuliste” normalne: korona łapie światło jak bryła, a nie jak stos kartek
 	vec3 from_c = normalize(VERTEX - vec3(0.0, crown_y, 0.0));
 	NORMAL = normalize(mix(NORMAL, from_c, 0.8));
@@ -403,18 +403,17 @@ static func _shadow_proxy(n: Node) -> void:
 static func tree(seed_v: int, s := 1.0, leaves := 0.5) -> Node3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v
-	var bare := rng.randf() > leaves
+	# wiosna: prawie wszystko zielone, gołe zostają tylko pojedyncze uschnięte drzewa
+	var bare := rng.randf() > maxf(leaves, 0.95)
 	var n: Node3D
 	if bare:
 		n = make("deadtree_%d" % rng.randi_range(1, 5), rng.randf_range(6.5, 9.5) * s)
 		_tint_leaves(n, Color.WHITE)
 	else:
 		n = make("commontree_%d" % rng.randi_range(1, 5), rng.randf_range(6.0, 9.0) * s)
-		# późna jesień: złoto, rdza, trochę zieleni, czasem prawie gołe gałęzie
-		var r := rng.randf()
-		var tx := "gen_leaves_autumn" if r < 0.45 else ("gen_leaves_rust" if r < 0.7 else ("gen_leaves_green" if r < 0.88 else "gen_leaves_sparse"))
-		var k := rng.randf_range(0.82, 1.1)
-		_tint_leaves(n, Color(k, k * rng.randf_range(0.9, 1.0), k * rng.randf_range(0.8, 1.0)), tx)
+		# świeża wiosenna zieleń w kilku odcieniach
+		var k := rng.randf_range(0.9, 1.18)
+		_tint_leaves(n, Color(k * rng.randf_range(0.78, 0.95), k * 1.04, k * rng.randf_range(0.5, 0.7)), "gen_leaves_green")
 		_shadow_proxy(n)
 	n.rotation.y = rng.randf() * TAU
 	set_range(n, 170.0)
@@ -422,9 +421,24 @@ static func tree(seed_v: int, s := 1.0, leaves := 0.5) -> Node3D:
 	return n
 
 
+## wysokie, smukłe drzewo osiedlowe (jak topole między blokami): zwykłe drzewo wyciągnięte w górę, z wąską koroną
+static func tall_tree(seed_v: int, h := 16.0) -> Node3D:
+	var n := make("commontree_%d" % (1 + seed_v % 5), h)
+	var slim := 0.4 + float(seed_v % 4) * 0.035
+	n.scale *= Vector3(slim, 1.0, slim)
+	var gk := 0.95 + float(seed_v % 5) * 0.05
+	_tint_leaves(n, Color(gk * 0.82, gk * 1.04, gk * 0.56), "gen_leaves_green")
+	_shadow_proxy(n)
+	n.rotation.y = float(seed_v % 628) / 100.0
+	set_range(n, 220.0)
+	set_lod(n, 0.5)
+	return n
+
+
 static func big_tree(seed_v: int, h := 13.0) -> Node3D:
 	var n := make("twistedtree_%d" % (1 + seed_v % 2), h)
-	_tint_leaves(n, Color(0.95, 0.9, 0.8), "gen_leaves_autumn" if seed_v % 3 != 0 else "gen_leaves_rust")
+	var gk := 0.95 + float(seed_v % 5) * 0.05
+	_tint_leaves(n, Color(gk * 0.84, gk * 1.04, gk * 0.58), "gen_leaves_green")
 	_shadow_proxy(n)
 	set_range(n, 200.0)
 	set_lod(n, 0.5)
@@ -436,7 +450,7 @@ static func bush(seed_v: int, s := 1.0) -> Node3D:
 	rng.seed = seed_v
 	var n := make("bush_common", rng.randf_range(1.0, 1.5) * s, 0.0, false)
 	var k := rng.randf_range(0.7, 1.0)
-	_tint_leaves(n, Color(k, k, k * 0.9), ["gen_leaves_green", "gen_leaves_rust", "gen_leaves_green"][rng.randi_range(0, 2)])
+	_tint_leaves(n, Color(k, k, k * 0.9), "gen_leaves_green")
 	n.rotation.y = rng.randf() * TAU
 	set_range(n, 80.0)
 	return n

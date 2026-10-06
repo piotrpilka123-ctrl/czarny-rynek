@@ -2,6 +2,7 @@ extends Node3D
 ## Postacie: przechodnie, umówieni klienci, policja (piesze patrole i radiowóz),
 ## stali mieszkańcy osiedla, Wujek Staś, bezpański pies.
 
+const Props = preload("res://scripts/props.gd")
 const Models = preload("res://scripts/models.gd")
 const Chars = preload("res://scripts/chars.gd")
 
@@ -237,6 +238,30 @@ func _static(o: Dictionary) -> Dictionary:
 	return n
 
 
+## życie podwórka: sąsiad przy grillu (po południu), chłopaki na kanapie pod blokiem (wieczorem)
+func _build_yard() -> void:
+	var grill := _static({"x": 31.9, "z": -74.6, "rot": -2.2, "pose": "talk", "name": "Pan Rysiek", "label": "Pan Rysiek", "hours": [14.0, 21.0],
+		"look": {"model": "m14", "kind": "tshirt", "top": "e8e4d8", "bottom": "3a4a5a", "seed": 501, "build": 1.15},
+		"lines": ["Kiełbaska dochodzi, sąsiad. Jeszcze pięć minut i będzie w sam raz.", "Wiosna przyszła, to się grilluje. Żona mówi, że dymię — a co mam robić?",
+			"Ty z siódemki? Spokojny chłopak. Tylko późno wracasz.", "Widziałeś tych nowych spod trójki? Kręcą się tu nocami. Uważaj na nich."]})
+	# dym z grilla idzie w górę razem z sąsiadem (znika, kiedy on znika)
+	var smoke = Props._particles(10, 3.0, 0.5, false, [Color(1, 1, 1, 0.0), Color(0.9, 0.9, 0.9, 0.22), Color(0.8, 0.8, 0.8, 0.1), Color(0.7, 0.7, 0.7, 0.0)], Vector2(0.3, 0.7), 0.12, true)
+	grill.node.add_child(smoke)
+	smoke.global_position = Vector3(31.0 * D.SC, _h(31.0 * D.SC, -75.4 * D.SC) + 0.85, -75.4 * D.SC)
+	var gl := OmniLight3D.new()
+	gl.light_color = Color(1.0, 0.45, 0.15)
+	gl.light_energy = 0.7
+	gl.omni_range = 2.6
+	gl.shadow_enabled = false
+	grill.node.add_child(gl)
+	gl.global_position = smoke.global_position
+	for e in [[21.4, -69.75, "sit_talk", "Łysy", "m02"], [22.6, -69.7, "sit", "Młody", "m16"]]:
+		_static({"x": float(e[0]), "z": float(e[1]), "rot": 0.08, "pose": String(e[2]), "name": String(e[3]), "hours": [17.0, 2.0],
+			"look": {"model": String(e[4]), "seed": 510 + int(float(e[0]) * 3.0)},
+			"lines": ["Siema. Siadaj, miejsce jest.", "Masz ognia? Nie? To po co podchodzisz.", "Ta kanapa stoi tu dłużej niż ty żyjesz, szanuj.", "Jak coś ci zginie spod klatki, to nie my. My tu tylko siedzimy.",
+				"Psy jeździły godzinę temu. Dwa kółka i pojechali."]})
+
+
 ## klub Neon od środka: barman, DJ i imprezowicze na parkiecie, którzy kupują od ręki
 func _build_club() -> void:
 	var R: Dictionary = D.ROOMS.club
@@ -311,6 +336,7 @@ func _build_static() -> void:
 			"look": {"model": "sm1", "tall": 1.07, "kind": "jacket", "top": "0b0b0d", "bottom": "0b0b0d", "shoes": "0c0c0e", "bald": true, "build": 1.2, "height": 1.93, "seed": int(z)},
 			"range": 3.0, "act": func(): G.main.club_door()})
 	_build_club()
+	_build_yard()
 	# szpital i komenda
 	var hx: float = D.ROOMS.szpital.cx
 	_static({"loc": "szpital", "x": hx + 1.25, "z": 0.2, "rot": PI * 1.2, "pose": "arms", "name": "Pielęgniarka", "label": "Pielęgniarka", "track": true,

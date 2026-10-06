@@ -365,6 +365,10 @@ func start_game(from_save: bool) -> void:
 	ui.last_zone = ""
 	for room in ["garage", "basement"]:
 		world.refresh_furniture(room)
+	# rzeczy na ziemi: nowa gra zaczyna z porannymi znaleziskami, wczytana odtwarza zapisane
+	if not loaded and G.S.get("ground", []).is_empty():
+		G.loot_spawn()
+	world.refresh_ground()
 	var R: Dictionary = D.ROOMS.safe
 	if loaded and G.S.pos != null:
 		teleport(String(G.S.pos.loc), Vector3(float(G.S.pos.x), 0.0, float(G.S.pos.z)), float(G.S.pos.yaw))
@@ -677,6 +681,62 @@ func _club_drink(price: float) -> void:
 		"Trzy razy Cię złapią z towarem jednej nocy i wyjedziesz stąd karetką. Bogdan nie żartuje.",
 		"W piątki i soboty schodzi tu wszystko. Szron i śnieg najlepiej.",
 		"Jak masz przy sobie za dużo gotówki, a zgarną Cię psy, to zaczną grzebać głębiej. Trzymaj kasę w domu."].pick_random()]})
+
+
+# ================================================================ śmietniki, lombard
+## grzebanie w śmietniku: kwadrans roboty, raz na dobę; patrol, który to widzi, zapamięta Cię
+func search_bin(id: String, source: String) -> void:
+	if G.busy or ui.mode != "":
+		return
+	if G.bin_used(id):
+		G.notify("Tu już dziś grzebałeś. Jutro ktoś znowu coś wyrzuci.", "warn")
+		return
+	G.busy = true
+	Sfx.play("open")
+	await ui.fade(true)
+	var got: Array = G.bin_search(id, source)
+	if npcs.watcher(18.0) != null:
+		G.add_heat(2.0)
+		G.notify("Patrol patrzył, jak grzebiesz w śmieciach.", "warn")
+	await get_tree().create_timer(0.35).timeout
+	await ui.fade(false)
+	G.busy = false
+	if got.is_empty():
+		G.notify("Same śmieci. Nic, co dałoby się sprzedać.")
+	else:
+		Sfx.play("good")
+		G.notify("Znalezione: %s. Lombard przy Hutniczej to kupi." % ", ".join(got), "good")
+
+
+func pawn_talk() -> void:
+	if G.busy or ui.mode != "":
+		return
+	if not G.pawn_open():
+		G.notify("Lombard otwarty od %d:00 do %d:00." % [int(D.PAWN_OPEN[0]), int(D.PAWN_OPEN[1])], "warn")
+		return
+	var list: Array = G.pawn_list()
+	if list.is_empty():
+		ui.dialog({"name": "Pan Zenek", "lines": [["Z pustymi rękami? Przynieś coś, to pogadamy. Biorę wszystko, co ludzie wyrzucają.", "Telefony, zegarki, miedź, butelki. Co znajdziesz, to przynoś.", "Dziś nic? Poszukaj po śmietnikach, młody. Ludzie wyrzucają skarby."].pick_random()]})
+		return
+	var total := 0.0
+	var choices := []
+	for e in list:
+		total += float(e.total)
+	choices.append({"label": "Sprzedaj wszystko — %s" % G.money(total), "kind": "go", "act": func():
+		var got: float = G.pawn_sell_all()
+		Sfx.play("good")
+		G.notify("Lombard: +%s." % G.money(got), "good")})
+	for e in list:
+		if choices.size() >= 5:
+			break
+		var iid: String = e.id
+		choices.append({"label": "%s × %d — %s" % [String(D.ITEMS[iid].name), int(e.n), G.money(e.total)], "act": func():
+			var got2: float = G.pawn_sell(iid)
+			Sfx.play("good")
+			G.notify("Lombard: +%s." % G.money(got2), "good")
+			pawn_talk()})
+	choices.append({"label": "Na razie nic."})
+	ui.dialog({"name": "Pan Zenek", "lines": [["Pokaż, co tam masz. Dziś płacę uczciwie — jak na mnie.", "No, no. Ktoś miał dobry dzień na śmietnikach.", "Ceny mam inne co dzień. Jak ci nie pasuje, przyjdź jutro."].pick_random()], "choices": choices})
 
 
 func sleep() -> void:

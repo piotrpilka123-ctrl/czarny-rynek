@@ -795,7 +795,7 @@ func ask_amount(e: Dictionary, from: String, to: String) -> void:
 	hd.add_child(hv)
 	var route := K.hbox(6)
 	route.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var names := {"bag": G.bag_name(), "stash": "Skrytka", "bin": "Kosz"}
+	var names := {"bag": G.bag_name(), "stash": "Skrytka", "bin": "Na ziemię"}
 	route.add_child(K.lbl(String(names[from]), 12, K.C_DIM))
 	route.add_child(K.icon("chevron_right", 14, edge))
 	route.add_child(K.lbl(String(names[to]), 13, edge))
@@ -1323,10 +1323,10 @@ class _DropBox:
 		var ic := KK.icon("trash_2", 44, Color(0.94, 0.3, 0.3, 0.85))
 		ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		v.add_child(ic)
-		var t := KK.head("WYRZUĆ", 26, Color(0.9, 0.91, 0.94))
+		var t := KK.head("UPUŚĆ NA ZIEMIĘ", 24, Color(0.9, 0.91, 0.94))
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(t)
-		var s := KK.lbl("Przeciągnij tutaj rzecz, której chcesz się pozbyć.\nNie da się jej potem odzyskać.", 12, Color(0.56, 0.59, 0.66))
+		var s := KK.lbl("Przeciągnij tutaj rzecz, którą chcesz zostawić.\nBędzie leżeć u Twoich stóp — możesz ją potem podnieść.", 12, Color(0.56, 0.59, 0.66))
 		s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(s)
 

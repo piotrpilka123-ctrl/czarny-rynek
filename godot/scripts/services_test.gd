@@ -127,6 +127,41 @@ static func run(T) -> void:
 	await T.wait_busy()
 	await T.frames(3)
 	T.ok(P.loc == "out" and P.global_position.distance_to(G.world.club_door) < 4.0, "wyjście z klubu prowadzi przed wejście")
+	# --- znaleziska: rzeczy na ziemi, śmietniki, lombard
+	var cash_g := float(S.cash)
+	S.items["telefon_stary"] = 2
+	S.items["butelki"] = 5
+	T.ok(G.pawn_list().size() == 2 and G.pawn_price("telefon_stary") > 40.0 and G.pawn_price("telefon_stary") < 70.0, "lombard wycenia znaleziska (stary telefon: %s)" % G.money(G.pawn_price("telefon_stary")))
+	var pv: float = G.pawn_price("telefon_stary") * 2.0 + G.pawn_price("butelki") * 5.0
+	T.ok(absf(G.pawn_sell_all() - pv) < 0.01 and G.item("telefon_stary") == 0 and absf(float(S.cash) - cash_g - pv) < 0.01, "sprzedaż w lombardzie: rzeczy znikają, gotówka rośnie")
+	T.ok(G.pawn_price("woreczki") == 0.0, "lombard nie bierze zwykłych rzeczy")
+	var rl := RandomNumberGenerator.new()
+	rl.seed = 7
+	var got_any := 0
+	for i in range(40):
+		if not G.loot_roll("dumpster", rl).is_empty():
+			got_any += 1
+	T.ok(got_any > 15 and got_any < 40, "kontener: czasem coś jest, czasem same śmieci (%d/40)" % got_any)
+	S.bins = {}
+	var t_bin: float = S.t
+	G.bin_search("test_kosz", "dumpster", rl)
+	T.ok(G.bin_used("test_kosz") and S.t > t_bin and G.bin_search("test_kosz", "dumpster", rl).is_empty(), "śmietnik da się przeszukać raz na dobę i zajmuje to czas")
+	S.t += 1440.0
+	T.ok(not G.bin_used("test_kosz"), "następnego dnia w śmietniku znowu coś może być")
+	S.ground = []
+	S.items["zegarek"] = 1
+	var ents: Array = G.entries(S.inv)
+	for en in ents:
+		if String(en.id) == "zegarek":
+			G.discard_entry(en, 1.0)
+	T.ok(G.item("zegarek") == 0 and S.ground.size() == 1 and String(S.ground[0].id) == "zegarek", "wyrzucona rzecz leży na ziemi, a nie znika")
+	T.ok(G.world.ground_nodes.size() == 1, "na ziemi widać zawiniątko do podniesienia")
+	T.ok(G.ground_take(S.ground[0]) and G.item("zegarek") == 1 and S.ground.is_empty(), "podniesiona rzecz wraca do plecaka")
+	S.items["zegarek"] = 0
+	var spawned: int = G.loot_spawn(rl)
+	T.ok(spawned >= int(D.LOOT_DAILY[0]) and S.ground.size() == spawned, "rano na mieście leży kilka znalezisk (%d)" % spawned)
+	S.ground = []
+	G.world.refresh_ground()
 	# --- telefony od postaci: każdy dzwoni raz, gdy ma powód
 	var mama: Dictionary = D.CALLS[0]
 	var adw: Dictionary = {}

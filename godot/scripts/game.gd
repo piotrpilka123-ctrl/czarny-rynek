@@ -105,7 +105,7 @@ func new_state() -> Dictionary:
 	return {
 		"v": 3, "t": 9.0 * 60.0, "cash": float(D.START_CASH), "debt": float(D.START_DEBT), "paid": 0.0,
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
-		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {},
+		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store()},
 		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
@@ -608,6 +608,7 @@ func move_limit(room: String, e: Dictionary, to_stash: bool) -> float:
 
 
 ## wyrzuca pozycję z plecaka (bezpowrotnie)
+## wyrzucenie z plecaka: rzecz ląduje na ziemi u Twoich stóp i leży tam, dopóki jej ktoś nie podniesie
 func discard_entry(e: Dictionary, amount: float) -> void:
 	if e.kind == "cash":
 		return
@@ -617,7 +618,197 @@ func discard_entry(e: Dictionary, amount: float) -> void:
 		take_bulk(S.inv, e.p, int(e.pur), amount)
 	else:
 		S.items[e.id] = maxi(0, item(e.id) - int(amount))
-	notify("Wyrzucono: %s." % e.name, "warn")
+	if player != null:
+		var f: Vector2 = player.forward()
+		var pp: Vector3 = player.global_position
+		ground_add(String(player.loc), pp.x + f.x * 0.7, pp.z + f.y * 0.7, {"kind": String(e.kind), "p": String(e.p), "pur": int(e.pur), "id": String(e.id), "n": amount, "name": String(e.name)})
+	notify("Upuszczono na ziemię: %s." % e.name, "warn")
+
+
+# ================================================================ rzeczy na ziemi, śmietniki, lombard
+func ground_add(loc: String, x: float, z: float, rec: Dictionary, found := false) -> void:
+	if not S.has("ground"):
+		S["ground"] = []
+	rec["loc"] = loc
+	rec["x"] = x
+	rec["z"] = z
+	rec["found"] = found
+	S.ground.append(rec)
+	if world != null:
+		world.refresh_ground()
+
+
+## podniesienie rzeczy z ziemi; zwraca false, gdy nie ma na nią miejsca
+func ground_take(rec: Dictionary) -> bool:
+	var n := float(rec.n)
+	match String(rec.kind):
+		"cash":
+			S.cash += n
+		"pack":
+			if float(capacity()) - carry_total() < n * D.SIZE_PACK - 0.01:
+				notify("Brak miejsca w plecaku.", "warn")
+				return false
+			add_pack(S.inv, String(rec.p), int(rec.pur), int(n))
+		"bulk":
+			if float(capacity()) - carry_total() < n * D.SIZE_BULK - 0.01:
+				notify("Brak miejsca w plecaku.", "warn")
+				return false
+			add_bulk(S.inv, String(rec.p), int(rec.pur), n)
+		_:
+			var id := String(rec.id)
+			if not D.ITEMS.has(id):
+				S.ground.erase(rec)
+				return false
+			if float(capacity()) - carry_total() < float(D.ITEMS[id].size) * n - 0.01:
+				notify("Brak miejsca w plecaku.", "warn")
+				return false
+			S.items[id] = item(id) + int(n)
+	S.ground.erase(rec)
+	Sfx.play("good")
+	notify("Podniesiono: %s." % ground_name(rec), "good")
+	if world != null:
+		world.refresh_ground()
+	return true
+
+
+func ground_name(rec: Dictionary) -> String:
+	var n := float(rec.n)
+	match String(rec.kind):
+		"cash": return money(n)
+		"pack": return "%s — %d szt." % [String(D.PRODUCTS[rec.p].name), int(n)]
+		"bulk": return "%s — %s" % [String(D.PRODUCTS[rec.p].name), grams(n)]
+	var id := String(rec.id)
+	var nm := String(D.ITEMS[id].name) if D.ITEMS.has(id) else "coś"
+	return nm if n <= 1.0 else "%s × %d" % [nm, int(n)]
+
+
+## jedno losowanie z tabeli znalezisk: {} = nic, {"cash": n} albo {"id": …, "n": …}
+func loot_roll(source: String, r: RandomNumberGenerator = null) -> Dictionary:
+	var tab: Array = D.LOOT_CLOTHES if source == "clothes" else D.LOOT.get(source, [])
+	var total := 0.0
+	for e in tab:
+		total += float(e[3])
+	var x := (r.randf() if r != null else randf()) * total
+	for e in tab:
+		x -= float(e[3])
+		if x <= 0.0:
+			if String(e[0]) == "":
+				return {}
+			var n := (r.randi_range(int(e[1]), int(e[2])) if r != null else randi_range(int(e[1]), int(e[2])))
+			return {"cash": n} if String(e[0]) == "cash" else {"id": String(e[0]), "n": n}
+	return {}
+
+
+## czy ten śmietnik był już dziś przeszukany
+func bin_used(id: String) -> bool:
+	return int(S.get("bins", {}).get(id, -1)) == day()
+
+
+## przeszukanie śmietnika: zwraca listę opisów tego, co wpadło w ręce (pusta = same śmieci). Raz na dobę na każdy śmietnik.
+func bin_search(id: String, source := "bin", r: RandomNumberGenerator = null) -> Array:
+	if not S.has("bins"):
+		S["bins"] = {}
+	if bin_used(id):
+		return []
+	S.bins[id] = day()
+	add_minutes(D.BIN_MINUTES)
+	var out := []
+	for k in range(int(D.BIN_ROLLS.get(source, 1))):
+		var l := loot_roll(source, r)
+		if l.is_empty():
+			continue
+		if l.has("cash"):
+			S.cash += float(l.cash)
+			out.append(money(l.cash))
+			continue
+		var id2 := String(l.id)
+		var rec := {"kind": "item", "p": "", "pur": 0, "id": id2, "n": float(l.n), "name": String(D.ITEMS[id2].name)}
+		if float(capacity()) - carry_total() >= float(D.ITEMS[id2].size) * float(l.n) - 0.01:
+			S.items[id2] = item(id2) + int(l.n)
+			out.append(ground_name(rec))
+		elif player != null:
+			# nie mieści się w plecaku: zostaje na ziemi obok śmietnika
+			var pp: Vector3 = player.global_position
+			ground_add(String(player.loc), pp.x + randf_range(-0.5, 0.5), pp.z + randf_range(-0.5, 0.5), rec, true)
+			out.append(ground_name(rec) + " (leży obok — brak miejsca)")
+	S.stats["found"] = int(S.stats.get("found", 0)) + out.size()
+	return out
+
+
+## cena skupu w lombardzie: waha się z dnia na dzień, każda rzecz po swojemu
+func pawn_price(id: String) -> float:
+	if not D.ITEMS.has(id) or not D.ITEMS[id].has("pawn"):
+		return 0.0
+	var h := float(absi(("%s|%d" % [id, day()]).hash()) % 1000) / 1000.0
+	return maxf(1.0, round(float(D.ITEMS[id].pawn) * (1.0 + (h * 2.0 - 1.0) * D.PAWN_SWING)))
+
+
+func pawn_open() -> bool:
+	var h := hour()
+	return h >= float(D.PAWN_OPEN[0]) and h < float(D.PAWN_OPEN[1])
+
+
+## co z plecaka weźmie lombard: [{id, n, price, total}]
+func pawn_list() -> Array:
+	var out := []
+	for id in D.ITEMS:
+		if D.ITEMS[id].has("pawn") and item(id) > 0:
+			out.append({"id": id, "n": item(id), "price": pawn_price(id), "total": pawn_price(id) * float(item(id))})
+	return out
+
+
+func pawn_sell(id: String) -> float:
+	var n := item(id)
+	if n <= 0 or pawn_price(id) <= 0.0:
+		return 0.0
+	var got := pawn_price(id) * float(n)
+	S.items[id] = 0
+	S.cash += got
+	S.stats["earned"] = float(S.stats.get("earned", 0.0)) + got
+	return got
+
+
+func pawn_sell_all() -> float:
+	var got := 0.0
+	for e in pawn_list():
+		got += pawn_sell(String(e.id))
+	return got
+
+
+## co rano na mieście leży kilka nowych znalezisk (wczorajszych nikt nie pilnuje)
+func loot_spawn(r: RandomNumberGenerator = null) -> int:
+	if world == null or world.wp.is_empty():
+		return 0
+	if not S.has("ground"):
+		S["ground"] = []
+	for rec in S.ground.duplicate():
+		if rec.get("found", false):
+			S.ground.erase(rec)
+	var count := (r.randi_range(int(D.LOOT_DAILY[0]), int(D.LOOT_DAILY[1])) if r != null else randi_range(int(D.LOOT_DAILY[0]), int(D.LOOT_DAILY[1])))
+	var made := 0
+	for k in range(count * 4):
+		if made >= count:
+			break
+		var w: Dictionary = world.wp[(r.randi() if r != null else randi()) % world.wp.size()]
+		var ox := (r.randf_range(-1.6, 1.6) if r != null else randf_range(-1.6, 1.6))
+		var oz := (r.randf_range(-1.6, 1.6) if r != null else randf_range(-1.6, 1.6))
+		var x: float = float(w.x) + ox
+		var z: float = float(w.z) + oz
+		if not world.is_free(x, z, 0.5):
+			continue
+		var l := loot_roll("ground", r)
+		if l.is_empty():
+			continue
+		var rec := {"kind": "cash", "p": "", "pur": 0, "id": "", "n": float(l.cash), "name": "Banknot"} if l.has("cash") else {"kind": "item", "p": "", "pur": 0, "id": String(l.id), "n": float(l.n), "name": String(D.ITEMS[l.id].name)}
+		rec["loc"] = "out"
+		rec["x"] = x
+		rec["z"] = z
+		rec["found"] = true
+		S.ground.append(rec)
+		made += 1
+	world.refresh_ground()
+	return made
+
 
 
 ## paniczne pozbycie się całego towaru (podczas pościgu)
@@ -1310,6 +1501,7 @@ func _has_order(cid: String) -> bool:
 
 func on_day() -> void:
 	var d := day()
+	loot_spawn()
 	Prod.daily()
 	Market.roll_special()
 	for p in S.demand:
