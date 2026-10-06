@@ -309,6 +309,77 @@ static func _tint_leaves(n: Node, tint: Color, leaf_tex := "gen_leaves_autumn") 
 		_tint_leaves(c, tint, leaf_tex)
 
 
+## Cień drzewa z osobnej, rzadszej siatki. Korona to setki nakładających się kart z wycinaną
+## przezroczystością (w modelu ~1000 m² kart w koronie o średnicy 4 m); rysowanie ich wszystkich
+## do mapy cieni kosztowało kilka milisekund na klatkę. Co któraś karta daje taki sam, gęsty cień.
+static var _shadow_mesh := {}
+static var shadow_proxy_on := true   # wyłączane tylko w testach porównawczych
+
+static func _bark_lod(mesh: Mesh, surf: int, max_tris: int, full: PackedInt32Array) -> PackedInt32Array:
+	if int(full.size() / 3.0) <= max_tris:
+		return full
+	var d: Dictionary = RenderingServer.mesh_get_surface(mesh.get_rid(), surf)
+	var wide := int(d.get("vertex_count", 0)) > 65536
+	for l in d.get("lods", []):
+		var raw: PackedByteArray = l.index_data
+		var n := int(raw.size() / (4.0 if wide else 2.0))
+		if int(n / 3.0) > max_tris:
+			continue
+		var out := PackedInt32Array()
+		out.resize(n)
+		for i in range(n):
+			out[i] = raw.decode_u32(i * 4) if wide else raw.decode_u16(i * 2)
+		return out
+	return full
+
+
+static func _build_shadow_mesh(mi: MeshInstance3D) -> ArrayMesh:
+	var src := mi.mesh
+	var out := ArrayMesh.new()
+	for i in range(src.get_surface_count()):
+		var mat: Material = mi.get_surface_override_material(i)
+		if mat == null:
+			mat = src.surface_get_material(i)
+		var full: Array = src.surface_get_arrays(i)
+		var idx: PackedInt32Array = full[Mesh.ARRAY_INDEX]
+		if mat is ShaderMaterial:
+			# liście: karty to osobne czworokąty (po 6 indeksów) — zostaje około 120, wybranych równomiernie
+			var quads := int(idx.size() / 6.0)
+			var every := maxi(1, int(round(quads / 120.0)))
+			var keep := PackedInt32Array()
+			for q in range(quads):
+				if int((q * 2654435761) >> 7) % every == 0:
+					for k in range(6):
+						keep.append(idx[q * 6 + k])
+			idx = keep
+		else:
+			idx = _bark_lod(src, i, 1300, idx)
+		var arr := []
+		arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = full[Mesh.ARRAY_VERTEX]
+		arr[Mesh.ARRAY_NORMAL] = full[Mesh.ARRAY_NORMAL]
+		arr[Mesh.ARRAY_TEX_UV] = full[Mesh.ARRAY_TEX_UV]
+		arr[Mesh.ARRAY_INDEX] = idx
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		out.surface_set_material(out.get_surface_count() - 1, mat)
+	return out
+
+
+static func _shadow_proxy(n: Node) -> void:
+	var mi := _first_mesh_of(n)
+	if mi == null or mi.mesh == null or not shadow_proxy_on:
+		return
+	var key := "%s|%d" % [mi.mesh.resource_path, mi.get_surface_override_material(mi.mesh.get_surface_count() - 1).get_instance_id() if mi.get_surface_override_material(mi.mesh.get_surface_count() - 1) != null else 0]
+	if not _shadow_mesh.has(key):
+		_shadow_mesh[key] = _build_shadow_mesh(mi)
+	var px := MeshInstance3D.new()
+	px.name = "cien"
+	px.mesh = _shadow_mesh[key]
+	px.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	mi.add_child(px)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
 ## drzewo: `leaves` = szansa na liście (reszta to gołe, jesienne drzewa)
 static func tree(seed_v: int, s := 1.0, leaves := 0.5) -> Node3D:
 	var rng := RandomNumberGenerator.new()
@@ -325,6 +396,7 @@ static func tree(seed_v: int, s := 1.0, leaves := 0.5) -> Node3D:
 		var tx := "gen_leaves_autumn" if r < 0.45 else ("gen_leaves_rust" if r < 0.7 else ("gen_leaves_green" if r < 0.88 else "gen_leaves_sparse"))
 		var k := rng.randf_range(0.82, 1.1)
 		_tint_leaves(n, Color(k, k * rng.randf_range(0.9, 1.0), k * rng.randf_range(0.8, 1.0)), tx)
+		_shadow_proxy(n)
 	n.rotation.y = rng.randf() * TAU
 	set_range(n, 170.0)
 	set_lod(n, 0.45)
@@ -334,6 +406,7 @@ static func tree(seed_v: int, s := 1.0, leaves := 0.5) -> Node3D:
 static func big_tree(seed_v: int, h := 13.0) -> Node3D:
 	var n := make("twistedtree_%d" % (1 + seed_v % 2), h)
 	_tint_leaves(n, Color(0.95, 0.9, 0.8), "gen_leaves_autumn" if seed_v % 3 != 0 else "gen_leaves_rust")
+	_shadow_proxy(n)
 	set_range(n, 200.0)
 	set_lod(n, 0.5)
 	return n

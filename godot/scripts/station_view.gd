@@ -53,10 +53,7 @@ func _process(dt: float) -> void:
 
 
 func _box(r: Rect2, c: Color, rad := 8, border := Color(0, 0, 0, 0), bw := 0) -> void:
-	var key := "%s|%d|%s|%d" % [c.to_html(), rad, border.to_html(), bw]
-	if not _sb.has(key):
-		_sb[key] = K.sb(c, rad, border, bw, 0)
-	draw_style_box(_sb[key], r)
+	K.rbox(self, r, c, rad, border, bw)
 
 
 func _text(pos: Vector2, s: String, sz: int, c: Color, w := 240.0, al := HORIZONTAL_ALIGNMENT_CENTER) -> void:
@@ -103,7 +100,7 @@ func _draw_grow(j, w: float, h: float) -> void:
 	if on:
 		draw_rect(Rect2(x0 + 24, top + 20, rw - 48, 4), Color(0.93, 0.45, 1.0))
 		for i in range(int((rw - 48) / 14.0)):
-			draw_circle(Vector2(x0 + 30 + i * 14.0, top + 22), 2.2, Color(1.0, 0.82, 1.0))
+			K.circle(self, Vector2(x0 + 30 + i * 14.0, top + 22), 2.2, Color(1.0, 0.82, 1.0))
 	# kuweta
 	var tray_y := floor_y - 22.0
 	draw_rect(Rect2(x0 + 4, tray_y, rw - 8, 9), Color(0.05, 0.05, 0.06))
@@ -133,18 +130,18 @@ func _draw_grow(j, w: float, h: float) -> void:
 			draw_set_transform(Vector2(cx, py + 6), sway, Vector2.ONE)
 			draw_texture_rect(_plants[stage], Rect2(-pw * 0.5, -ph, pw, ph), false, tint)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		draw_colored_polygon(PackedVector2Array([Vector2(cx - pot_w * 0.5, py), Vector2(cx + pot_w * 0.5, py), Vector2(cx + pot_w * 0.4, py + pot_h), Vector2(cx - pot_w * 0.4, py + pot_h)]), Color(0.085, 0.085, 0.09))
+		K.poly(self, PackedVector2Array([Vector2(cx - pot_w * 0.5, py), Vector2(cx + pot_w * 0.5, py), Vector2(cx + pot_w * 0.4, py + pot_h), Vector2(cx - pot_w * 0.4, py + pot_h)]), Color(0.085, 0.085, 0.09))
 		draw_rect(Rect2(cx - pot_w * 0.5 - 2, py - 3, pot_w + 4, 7), Color(0.12, 0.12, 0.13))
 		draw_rect(Rect2(cx - pot_w * 0.5 + 3, py - 1, pot_w - 6, 4), Color(0.2, 0.14, 0.1) if not on or float(j.water) > 25.0 else Color(0.36, 0.3, 0.24))
 		# czynności
 		if fx == "water":
 			for d in range(7):
 				var q := fmod(fx_t * 2.2 + d * 0.17 + k * 0.31, 1.0)
-				draw_circle(Vector2(cx - 22 + d * 7.5, lerpf(top + 40, py - 4, q)), 2.4, Color(0.45, 0.75, 1.0, 0.9))
+				K.circle(self, Vector2(cx - 22 + d * 7.5, lerpf(top + 40, py - 4, q)), 2.4, Color(0.45, 0.75, 1.0, 0.9))
 		if fx == "fert":
 			for d in range(6):
 				var q2 := fmod(fx_t * 1.6 + d * 0.2, 1.0)
-				draw_circle(Vector2(cx - 18 + d * 7.0, lerpf(py - 60, py - 2, q2)), 2.0, Color(0.95, 0.85, 0.4, 0.95))
+				K.circle(self, Vector2(cx - 18 + d * 7.0, lerpf(py - 60, py - 2, q2)), 2.0, Color(0.95, 0.85, 0.4, 0.95))
 		if fx == "harvest" and on:
 			draw_line(Vector2(cx - 34, py - 30 + sin(fx_t * 20.0) * 6.0), Vector2(cx + 34, py - 18 + sin(fx_t * 20.0) * 6.0), Color(0.9, 0.92, 0.95), 3.0)
 	if fx == "trim":
@@ -180,8 +177,8 @@ func _draw_dry(j, w: float, h: float) -> void:
 		draw_line(Vector2(cx, y - gap + 10 if t > 0 else top + 16), Vector2(cx - 150, y), Color(1, 1, 1, 0.12), 1.0)
 		draw_line(Vector2(cx, y - gap + 10 if t > 0 else top + 16), Vector2(cx + 150, y), Color(1, 1, 1, 0.12), 1.0)
 		draw_set_transform(Vector2(cx, y), 0.0, Vector2(1.0, 0.22))
-		draw_circle(Vector2.ZERO, 156.0, Color(0.16, 0.18, 0.21))
-		draw_circle(Vector2.ZERO, 150.0, Color(0.08, 0.09, 0.11))
+		K.circle(self, Vector2.ZERO, 156.0, Color(0.16, 0.18, 0.21))
+		K.circle(self, Vector2.ZERO, 150.0, Color(0.08, 0.09, 0.11))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		if j != null:
 			var dryk := float(j.prog)
@@ -191,12 +188,12 @@ func _draw_dry(j, w: float, h: float) -> void:
 				var a := k * 2.4 + t * 1.1
 				var r := 30.0 + fmod(k * 37.0, 100.0)
 				var bp := Vector2(cx + cos(a) * r, y + sin(a) * r * 0.22 - 4)
-				draw_circle(bp, 9.0, col.darkened(0.2))
-				draw_circle(bp + Vector2(-2, -2), 6.0, col)
+				K.circle(self, bp, 9.0, col.darkened(0.2))
+				K.circle(self, bp + Vector2(-2, -2), 6.0, col)
 	if j != null and float(j.prog) < 1.0:
 		for k in range(8):
 			var q := fmod(_clock * 0.25 + k * 0.125, 1.0)
-			draw_circle(Vector2(cx - 120 + k * 34.0 + sin(_clock + k) * 8.0, lerpf(floor_y - 30, top + 20, q)), 5.0 + q * 6.0, Color(1, 1, 1, 0.05 * (1.0 - q)))
+			K.circle(self, Vector2(cx - 120 + k * 34.0 + sin(_clock + k) * 8.0, lerpf(floor_y - 30, top + 20, q)), 5.0 + q * 6.0, Color(1, 1, 1, 0.05 * (1.0 - q)))
 	if j == null:
 		_text(Vector2(cx, h - 16), "SUSZARKA PUSTA", 16, Color(1, 1, 1, 0.3), 400.0)
 	else:
@@ -224,20 +221,20 @@ func _draw_lab(j, w: float, h: float) -> void:
 		draw_rect(Rect2(fx0 - 36, ty - 17, 72, 4), Color(1.0, 0.36 + 0.1 * mode, 0.12, 0.6 + 0.3 * sin(_clock * 7.0)))
 	# kolba
 	var fc := Vector2(fx0, ty - 62)
-	draw_circle(fc, 46.0, glass)
+	K.circle(self, fc, 46.0, glass)
 	draw_rect(Rect2(fx0 - 11, ty - 150, 22, 50), glass)
 	if j != null:
 		var liq := Color(0.6, 0.9, 0.36, 0.85) if float(j.prog) < 0.45 else Color(0.92, 0.9, 0.7, 0.85)
 		draw_set_transform(fc + Vector2(0, 12), 0.0, Vector2(1.0, 0.72))
-		draw_circle(Vector2.ZERO, 41.0, liq)
+		K.circle(self, Vector2.ZERO, 41.0, liq)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		if cooking:
 			for k in range(9 + mode * 5):
 				var q := fmod(_clock * (0.7 + mode * 0.5) + k * 0.173, 1.0)
-				draw_circle(fc + Vector2(-28 + fmod(k * 13.7, 56.0), 34 - q * 52.0), 2.0 + fmod(k * 1.3, 3.0), Color(1, 1, 1, 0.55 * (1.0 - q)))
+				K.circle(self, fc + Vector2(-28 + fmod(k * 13.7, 56.0), 34 - q * 52.0), 2.0 + fmod(k * 1.3, 3.0), Color(1, 1, 1, 0.55 * (1.0 - q)))
 			for k in range(5):
 				var q2 := fmod(_clock * 0.4 + k * 0.2, 1.0)
-				draw_circle(Vector2(fx0 + sin(_clock + k) * 6.0, ty - 150 - q2 * 44.0), 7.0 + q2 * 12.0, Color(1, 1, 1, 0.08 * (1.0 - q2)))
+				K.circle(self, Vector2(fx0 + sin(_clock + k) * 6.0, ty - 150 - q2 * 44.0), 7.0 + q2 * 12.0, Color(1, 1, 1, 0.08 * (1.0 - q2)))
 	# chłodnica do odbieralnika
 	var a := Vector2(fx0 + 12, ty - 144)
 	var b := Vector2(x0 + 330, ty - 60)
@@ -245,14 +242,14 @@ func _draw_lab(j, w: float, h: float) -> void:
 	draw_line(a, b, Color(0.5, 0.8, 0.95, 0.6), 3.0)
 	if cooking:
 		var q3 := fmod(_clock * 0.8, 1.0)
-		draw_circle(a.lerp(b, q3), 3.0, Color(0.95, 0.95, 0.8))
+		K.circle(self, a.lerp(b, q3), 3.0, Color(0.95, 0.95, 0.8))
 	# odbieralnik: napełnia się z postępem
 	var bx := x0 + 340.0
-	draw_colored_polygon(PackedVector2Array([Vector2(bx - 34, ty - 70), Vector2(bx + 34, ty - 70), Vector2(bx + 28, ty), Vector2(bx - 28, ty)]), glass)
+	K.poly(self, PackedVector2Array([Vector2(bx - 34, ty - 70), Vector2(bx + 34, ty - 70), Vector2(bx + 28, ty), Vector2(bx - 28, ty)]), glass)
 	if j != null:
 		var fill := clampf(float(j.prog), 0.0, 1.0)
 		var fy := ty - 66.0 * fill
-		draw_colored_polygon(PackedVector2Array([Vector2(bx - 28 - 5 * fill, fy), Vector2(bx + 28 + 5 * fill, fy), Vector2(bx + 28, ty), Vector2(bx - 28, ty)]), Color(0.95, 0.93, 0.78, 0.9))
+		K.poly(self, PackedVector2Array([Vector2(bx - 28 - 5 * fill, fy), Vector2(bx + 28 + 5 * fill, fy), Vector2(bx + 28, ty), Vector2(bx - 28, ty)]), Color(0.95, 0.93, 0.78, 0.9))
 	if fx == "pour":
 		draw_line(Vector2(bx - 60 + fx_t * 40.0, ty - 120), Vector2(bx, ty - 40), Color(0.92, 0.9, 0.7, 0.9), 5.0)
 	# butelki
@@ -292,6 +289,6 @@ func _timeline(j, w: float, h: float) -> void:
 			_box(Rect2(a + 2, y, (b - a - 4) * clampf((prog - prev) / (float(st.to) - prev), 0.03, 1.0), 8), c, 4)
 		_text(Vector2((a + b) * 0.5, y + 22), String(st.name).to_upper(), 12, Color.WHITE if cur else K.C_DIM, b - a)
 		if st.has("hold"):
-			draw_circle(Vector2(b, y + 4), 6.0, K.C_BAD if int(j.hold) == i else Color(0.3, 0.32, 0.38))
-			draw_circle(Vector2(b, y + 4), 2.5, Color.WHITE)
+			K.circle(self, Vector2(b, y + 4), 6.0, K.C_BAD if int(j.hold) == i else Color(0.3, 0.32, 0.38))
+			K.circle(self, Vector2(b, y + 4), 2.5, Color.WHITE)
 		prev = float(st.to)

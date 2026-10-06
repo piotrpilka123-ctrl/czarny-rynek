@@ -127,10 +127,7 @@ func _process(dt: float) -> void:
 
 # ---------------------------------------------------------------- rysowanie
 func _box(r: Rect2, c: Color, rad := 8, border := Color(0, 0, 0, 0), bw := 0) -> void:
-	var key := "%s|%d|%s|%d" % [c.to_html(), rad, border.to_html(), bw]
-	if not _sb.has(key):
-		_sb[key] = K.sb(c, rad, border, bw, 0)
-	draw_style_box(_sb[key], r)
+	K.rbox(self, r, c, rad, border, bw)
 
 
 func _tray_pos() -> Vector2:
@@ -175,7 +172,7 @@ func _draw() -> void:
 	# światło lampki nad wagą
 	var sp := _scale_pos()
 	for i in range(6):
-		draw_circle(sp + Vector2(0, -20), 250.0 - i * 34.0, Color(1.0, 0.86, 0.6, 0.012 + i * 0.004))
+		K.circle(self, sp + Vector2(0, -20), 250.0 - i * 34.0, Color(1.0, 0.86, 0.6, 0.012 + i * 0.004))
 
 	# --- tacka z towarem
 	var tp := _tray_pos()
@@ -201,7 +198,7 @@ func _draw() -> void:
 				var ph := fmod(_clock * 2.6 + i / float(n), 1.0)
 				var a := jp + Vector2(-22, 6)
 				var b := tp + Vector2(randf_range(-6, 6) + 10, 0)
-				draw_circle(a.lerp(b, ph) + Vector2(0, -sin(ph * PI) * 8.0), 2.2, Color(0.93, 0.92, 0.82, 0.9 * sin(clampf(mix_t, 0.0, 1.0) * PI)))
+				K.circle(self, a.lerp(b, ph) + Vector2(0, -sin(ph * PI) * 8.0), 2.2, Color(0.93, 0.92, 0.82, 0.9 * sin(clampf(mix_t, 0.0, 1.0) * PI)))
 		draw_set_transform(jp, rot, Vector2.ONE)
 		_tex(K.tex(filler), Vector2.ZERO, 58.0)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -214,10 +211,10 @@ func _draw() -> void:
 	_text(sp + Vector2(0, 40), "%.2f g" % maxf(0.0, reading), 24, lcd, 136.0)
 	# szalka
 	draw_set_transform(sp + Vector2(0, -34), 0.0, Vector2(1.0, 0.36))
-	draw_circle(Vector2(0, 8), 80.0, Color(0, 0, 0, 0.28))
-	draw_circle(Vector2.ZERO, 78.0, Color(0.56, 0.58, 0.62))
-	draw_circle(Vector2.ZERO, 72.0, Color(0.82, 0.83, 0.86))
-	draw_circle(Vector2(-14, -10), 46.0, Color(0.9, 0.91, 0.93, 0.6))
+	K.circle(self, Vector2(0, 8), 80.0, Color(0, 0, 0, 0.28))
+	K.circle(self, Vector2.ZERO, 78.0, Color(0.56, 0.58, 0.62))
+	K.circle(self, Vector2.ZERO, 72.0, Color(0.82, 0.83, 0.86))
+	K.circle(self, Vector2(-14, -10), 46.0, Color(0.9, 0.91, 0.93, 0.6))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_text(sp + Vector2(0, -78), "WAGA", 12, K.C_DIM)
 
@@ -229,7 +226,7 @@ func _draw() -> void:
 	# --- rozsypane okruchy
 	var pcol := Color.html(String(D.PRODUCTS[product].color))
 	for s in spills:
-		draw_circle(s.p, float(s.r), pcol.darkened(0.15))
+		K.circle(self, s.p, float(s.r), pcol.darkened(0.15))
 
 	# --- łyżka i towar na szalce
 	var pan := sp + Vector2(0, -36)
@@ -249,16 +246,16 @@ func _draw() -> void:
 			pos = top + Vector2(34, -30)
 		if u >= 0.3 and u < 0.74:
 			draw_set_transform(pan, 0.0, Vector2(1.0, 0.5))
-			draw_circle(Vector2.ZERO, 17.0 * smoothstep(0.3, 0.4, u), pcol)
-			draw_circle(Vector2(-4, -4), 9.0 * smoothstep(0.3, 0.4, u), pcol.lightened(0.18))
+			K.circle(self, Vector2.ZERO, 17.0 * smoothstep(0.3, 0.4, u), pcol)
+			K.circle(self, Vector2(-4, -4), 9.0 * smoothstep(0.3, 0.4, u), pcol.lightened(0.18))
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		# łyżka: trzonek i miseczka
 		draw_line(pos + Vector2(8, -6), pos + Vector2(58, -40), Color(0.2, 0.2, 0.22), 6.0, true)
 		draw_line(pos + Vector2(8, -6), pos + Vector2(58, -40), Color(0.72, 0.73, 0.77), 4.0, true)
-		draw_circle(pos, 13.0, Color(0.2, 0.2, 0.22))
-		draw_circle(pos, 11.5, Color(0.78, 0.79, 0.82))
+		K.circle(self, pos, 13.0, Color(0.2, 0.2, 0.22))
+		K.circle(self, pos, 11.5, Color(0.78, 0.79, 0.82))
 		if loaded:
-			draw_circle(pos + Vector2(0, -2), 8.5, pcol)
+			K.circle(self, pos + Vector2(0, -2), 8.5, pcol)
 
 	# --- gotowe woreczki
 	var x0 := w * 0.635

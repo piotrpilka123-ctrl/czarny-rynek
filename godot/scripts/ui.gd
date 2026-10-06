@@ -194,8 +194,8 @@ func _thin_bar(color: Color, w := 0.0) -> ProgressBar:
 	b.custom_minimum_size = Vector2(w, 5)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	b.add_theme_stylebox_override("background", K.sb(Color(0, 0, 0, 0.55), 3, Color(1, 1, 1, 0.08), 1, 0))
-	b.add_theme_stylebox_override("fill", K.sb(color, 3, Color(0, 0, 0, 0), 0, 0))
+	b.add_theme_stylebox_override("background", K.pill(Color(0, 0, 0, 0.55), 2))
+	b.add_theme_stylebox_override("fill", K.pill(color, 2))
 	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return b
 
@@ -1752,21 +1752,25 @@ func set_aim(on: bool) -> void:
 	if on != aim_on:
 		aim_on = on
 		aim_t = 0.0
-	cross.queue_redraw()
+		cross.queue_redraw()
 
 
 func _draw_cross() -> void:
 	if aim_on:
 		var k := clampf(aim_t / 0.12, 0.0, 1.0)
-		cross.draw_arc(Vector2.ZERO, lerpf(3.0, 8.0, k), 0.0, TAU, 28, Color(0, 0, 0, 0.45), 3.5, true)
-		cross.draw_arc(Vector2.ZERO, lerpf(3.0, 8.0, k), 0.0, TAU, 28, K.C_ACC, 1.8, true)
-		cross.draw_circle(Vector2.ZERO, 1.6, Color.WHITE)
+		K.arc(cross, Vector2.ZERO, lerpf(3.0, 8.0, k), 0.0, TAU, 28, Color(0, 0, 0, 0.45), 3.5)
+		K.arc(cross, Vector2.ZERO, lerpf(3.0, 8.0, k), 0.0, TAU, 28, K.C_ACC, 1.8)
+		K.circle(cross, Vector2.ZERO, 1.6, Color.WHITE)
 	else:
-		cross.draw_circle(Vector2.ZERO, 2.6, Color(0, 0, 0, 0.35))
-		cross.draw_circle(Vector2.ZERO, 1.6, Color(1, 1, 1, 0.85))
+		K.circle(cross, Vector2.ZERO, 2.6, Color(0, 0, 0, 0.35))
+		K.circle(cross, Vector2.ZERO, 1.6, Color(1, 1, 1, 0.85))
 
+
+var test_prompt_lock := false   # pomiary wydajności: podpowiedź zostaje na ekranie
 
 func set_prompt(text: String, progress := -1.0) -> void:
+	if test_prompt_lock and text == "":
+		return
 	if text == "":
 		prompt.visible = false
 		return
@@ -1802,15 +1806,15 @@ func _draw_aware() -> void:
 		var half := 0.34
 		var n: float = clampf(float(a.n), 0.0, 1.0)
 		var sus: float = float(a.s)
-		aware_cv.draw_arc(c0, 86.0, mid - half, mid + half, 14, Color(0, 0, 0, 0.35), 7.0, true)
-		aware_cv.draw_arc(c0, 86.0, mid - half, mid + half, 14, Color(1, 1, 1, 0.16), 4.0, true)
+		K.arc(aware_cv, c0, 86.0, mid - half, mid + half, 14, Color(0, 0, 0, 0.35), 7.0)
+		K.arc(aware_cv, c0, 86.0, mid - half, mid + half, 14, Color(1, 1, 1, 0.16), 4.0)
 		var col := Color(1, 1, 1, 0.9)
 		if n >= 1.0:
 			col = K.C_WARN.lerp(K.C_BAD, sus)
 		var fill := n if n < 1.0 else 1.0
-		aware_cv.draw_arc(c0, 86.0, mid - half * fill, mid + half * fill, 14, col, 4.0, true)
+		K.arc(aware_cv, c0, 86.0, mid - half * fill, mid + half * fill, 14, col, 4.0)
 		if n >= 1.0 and sus > 0.0:
-			aware_cv.draw_arc(c0, 94.0, mid - half * sus, mid + half * sus, 14, K.C_BAD, 3.0, true)
+			K.arc(aware_cv, c0, 94.0, mid - half * sus, mid + half * sus, 14, K.C_BAD, 3.0)
 
 
 func _draw_way() -> void:
@@ -1829,8 +1833,8 @@ func _draw_way() -> void:
 	sp = Vector2(clampf(sp.x, 30.0, vs.x - 30.0), clampf(sp.y, 70.0, vs.y - 120.0))
 	var c: Color = M.way.color
 	var a := 0.9 if float(M.way.dist) > 12.0 else 0.55
-	waymark.draw_colored_polygon(PackedVector2Array([sp + Vector2(0, -9), sp + Vector2(7, 0), sp + Vector2(0, 9), sp + Vector2(-7, 0)]), Color(c.r, c.g, c.b, a))
-	waymark.draw_polyline(PackedVector2Array([sp + Vector2(0, -9), sp + Vector2(7, 0), sp + Vector2(0, 9), sp + Vector2(-7, 0), sp + Vector2(0, -9)]), Color(0, 0, 0, a), 1.5)
+	K.poly(waymark, PackedVector2Array([sp + Vector2(0, -9), sp + Vector2(7, 0), sp + Vector2(0, 9), sp + Vector2(-7, 0)]), Color(c.r, c.g, c.b, a))
+	K.polyline(waymark, PackedVector2Array([sp + Vector2(0, -9), sp + Vector2(7, 0), sp + Vector2(0, 9), sp + Vector2(-7, 0), sp + Vector2(0, -9)]), Color(0, 0, 0, a), 1.5)
 	var font := ThemeDB.fallback_font
 	var txt := "%d m" % int(round(float(M.way.dist)))
 	waymark.draw_string_outline(font, sp + Vector2(-40, 26), txt, HORIZONTAL_ALIGNMENT_CENTER, 80, 13, 4, Color(0, 0, 0, 0.8))
@@ -1849,9 +1853,9 @@ func _draw_hints(M) -> void:
 		var sp := cam.unproject_position(pos)
 		var d := cam.global_position.distance_to(pos)
 		var a := clampf(1.0 - (d - 1.5) / 3.0, 0.25, 0.8)
-		waymark.draw_circle(sp, 5.5, Color(0, 0, 0, 0.3 * a))
-		waymark.draw_arc(sp, 4.5, 0.0, TAU, 20, Color(1, 1, 1, a), 1.4, true)
-		waymark.draw_circle(sp, 1.4, Color(1, 1, 1, a))
+		K.circle(waymark, sp, 5.5, Color(0, 0, 0, 0.3 * a))
+		K.ring(waymark, sp, 4.5, Color(1, 1, 1, a), 1.4)
+		K.circle(waymark, sp, 1.4, Color(1, 1, 1, a))
 
 
 func _draw_mini() -> void:
@@ -1894,10 +1898,10 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 		for p in path:
 			pts.append(tr.call(p.x, p.y))
 		var rc: Color = nav_info.get("color", K.C_ACC)
-		cv.draw_polyline(pts, Color(0, 0, 0, 0.45), 6.0 if big else 5.0, true)
-		cv.draw_polyline(pts, rc, 3.2 if big else 2.6, true)
+		K.polyline(cv, pts, Color(0, 0, 0, 0.45), 6.0 if big else 5.0)
+		K.polyline(cv, pts, rc, 3.2 if big else 2.6)
 		for pt in pts:
-			cv.draw_circle(pt, 1.6 if big else 1.3, rc)
+			K.circle(cv, pt, 1.6 if big else 1.3, rc)
 	# drzwi
 	for id in D.DOORS:
 		var dd: Dictionary = D.DOORS[id]
@@ -1916,7 +1920,7 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 			if d.state == "ready":
 				var dd2: Dictionary = G.Market.spot(d)
 				var p2: Vector2 = tr.call(dd2.x, dd2.z)
-				cv.draw_circle(p2, 5.0, K.C_PINK)
+				K.circle(cv, p2, 5.0, K.C_PINK)
 	if P.loc == "out":
 		var pp: Vector3 = P.global_position
 		var see_all := G.has_skill("teren")
@@ -1925,26 +1929,26 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 			var dist := Vector2(c.x - pp.x, c.z - pp.z).length()
 			if c.state != "patrol" or (see_all and dist < 60.0) or big or dist < 24.0:
 				var cc: Color = K.C_BAD if c.state == "chase" else (K.C_WARN if c.state != "patrol" else K.C_BLUE)
-				cv.draw_circle(tr.call(c.x, c.z), 4.0, cc)
+				K.circle(cv, tr.call(c.x, c.z), 4.0, cc)
 		var car: Dictionary = G.npcs.car
 		if not car.is_empty() and (see_all or car.alarm or big or Vector2(car.x - pp.x, car.z - pp.z).length() < 45.0):
 			var cp: Vector2 = tr.call(car.x, car.z)
 			cv.draw_rect(Rect2(cp - Vector2(4, 4), Vector2(8, 8)), K.C_BAD if car.alarm else K.C_BLUE)
 		for c in G.npcs.citizens:
 			if c.icon.visible:
-				cv.draw_circle(tr.call(c.x, c.z), 2.6, Color(0.98, 0.8, 0.08))
+				K.circle(cv, tr.call(c.x, c.z), 2.6, Color(0.98, 0.8, 0.08))
 	for c in G.npcs.customers:
 		if c.node == null:
 			continue
 		var cpos: Vector2 = tr.call(c.x, c.z)
-		cv.draw_circle(cpos, 5.0, K.C_ACC)
+		K.circle(cv, cpos, 5.0, K.C_ACC)
 		cv.draw_string(font, cpos + Vector2(-50, -8), String(c.def.name).split(" ")[0], HORIZONTAL_ALIGNMENT_CENTER, 100, 10, Color(0.75, 0.97, 0.82))
 	for t in G.main.targets():
 		var tp: Vector2 = tr.call(t.x, t.z)
 		tp = Vector2(clampf(tp.x, 6.0, w - 6.0), clampf(tp.y, 6.0, hgt - 6.0))
 		var tc: Color = t.color
-		cv.draw_colored_polygon(PackedVector2Array([tp + Vector2(0, -7), tp + Vector2(6, 0), tp + Vector2(0, 7), tp + Vector2(-6, 0)]), tc)
-		cv.draw_polyline(PackedVector2Array([tp + Vector2(0, -7), tp + Vector2(6, 0), tp + Vector2(0, 7), tp + Vector2(-6, 0), tp + Vector2(0, -7)]), Color.BLACK, 1.0)
+		K.poly(cv, PackedVector2Array([tp + Vector2(0, -7), tp + Vector2(6, 0), tp + Vector2(0, 7), tp + Vector2(-6, 0)]), tc)
+		K.polyline(cv, PackedVector2Array([tp + Vector2(0, -7), tp + Vector2(6, 0), tp + Vector2(0, 7), tp + Vector2(-6, 0), tp + Vector2(0, -7)]), Color.BLACK, 1.0)
 	# gracz
 	var gx: float = P.global_position.x
 	var gz: float = P.global_position.z
@@ -1955,7 +1959,7 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 	c0 = Vector2(clampf(c0.x, 6.0, w - 6.0), clampf(c0.y, 6.0, hgt - 6.0))
 	var f: Vector2 = P.forward()
 	var r := Vector2(-f.y, f.x)
-	cv.draw_colored_polygon(PackedVector2Array([c0 + f * 9.0, c0 - f * 6.0 + r * 5.5, c0 - f * 2.5, c0 - f * 6.0 - r * 5.5]), Color.WHITE)
+	K.poly(cv, PackedVector2Array([c0 + f * 9.0, c0 - f * 6.0 + r * 5.5, c0 - f * 2.5, c0 - f * 6.0 - r * 5.5]), Color.WHITE)
 
 
 func _input(event: InputEvent) -> void:

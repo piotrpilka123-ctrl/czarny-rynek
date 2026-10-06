@@ -86,8 +86,8 @@ static func _gauge(deal: Dictionary, lo_v: float, hi_v: float) -> Control:
 		var xm: float = X.call(mk)
 		c.draw_line(Vector2(xm, 4), Vector2(xm, 20), Color(1, 1, 1, 0.7), 2.0)
 		var xp: float = X.call(float(deal.price))
-		c.draw_colored_polygon(PackedVector2Array([Vector2(xp, 8), Vector2(xp - 6, 0), Vector2(xp + 6, 0)]), K.C_ACC)
-		c.draw_colored_polygon(PackedVector2Array([Vector2(xp, 16), Vector2(xp - 6, 24), Vector2(xp + 6, 24)]), K.C_ACC))
+		K.poly(c, PackedVector2Array([Vector2(xp, 8), Vector2(xp - 6, 0), Vector2(xp + 6, 0)]), K.C_ACC)
+		K.poly(c, PackedVector2Array([Vector2(xp, 16), Vector2(xp - 6, 24), Vector2(xp + 6, 24)]), K.C_ACC))
 	return c
 
 

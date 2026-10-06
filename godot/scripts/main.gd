@@ -11,6 +11,8 @@ const UiScript = preload("res://scripts/ui.gd")
 const LoadingScript = preload("res://scripts/loading.gd")
 const Models = preload("res://scripts/models.gd")
 const Chars = preload("res://scripts/chars.gd")
+const Props = preload("res://scripts/props.gd")
+const K = preload("res://scripts/uikit.gd")
 
 const C_ORDER := Color(0.29, 0.87, 0.5)
 const C_STORY := Color(0.98, 0.75, 0.14)
@@ -60,6 +62,7 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		var kv := String(a).trim_prefix("--").split("=", true, 1)
 		args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	Props.shadow_proxy_on = not args.has("noproxy")
 	G.main = self
 	G.test_mode = args.has("shot") or args.has("test") or args.has("rec") or args.has("tour") or args.has("trailer")
 	if G.test_mode or args.has("mute"):
@@ -1436,6 +1439,40 @@ func _apply_test_args() -> void:
 		env.env.glow_enabled = int(args.glow) == 1
 	if args.has("splits"):
 		env.sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if int(args.splits) == 4 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	if args.has("resmult"):
+		env.res_mult = float(args.resmult)
+		env.apply_scale()
+	if args.has("nosky"):
+		env.env.background_mode = Environment.BG_COLOR
+	if args.has("hideterrain"):
+		for tn in get_tree().get_nodes_in_group("terrain"):
+			(tn as Node3D).visible = false
+	if args.has("treelod"):
+		var st5: Array = [self]
+		while not st5.is_empty():
+			var n5: Node = st5.pop_back()
+			for ch5 in n5.get_children():
+				st5.append(ch5)
+			if n5 is MeshInstance3D and (n5 as MeshInstance3D).mesh != null and (n5 as MeshInstance3D).mesh.resource_path.contains("/nature/commontree"):
+				(n5 as MeshInstance3D).lod_bias = float(args.treelod)
+	if args.has("sunang"):
+		env.sun.light_angular_distance = float(args.sunang)
+	if args.has("shadowsize"):
+		RenderingServer.directional_shadow_atlas_set_size(int(args.shadowsize), true)
+	if args.has("shadowdist"):
+		env.sun.directional_shadow_max_distance = float(args.shadowdist)
+	if args.has("blend"):
+		env.sun.directional_shadow_blend_splits = int(args.blend) == 1
+	if args.has("softq"):
+		RenderingServer.directional_soft_shadow_filter_set_quality(int(args.softq))
+	if args.has("treeshadow"):
+		var st4: Array = [self]
+		while not st4.is_empty():
+			var n4: Node = st4.pop_back()
+			for ch4 in n4.get_children():
+				st4.append(ch4)
+			if n4 is MeshInstance3D and (n4 as MeshInstance3D).mesh != null and (n4 as MeshInstance3D).mesh.resource_path.contains("/nature/" + ("" if String(args.treeshadow) == "0" else String(args.treeshadow))):
+				(n4 as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if args.has("sunshadow"):
 		env.sun.shadow_enabled = int(args.sunshadow) == 1
 	if args.has("nolights") or args.has("nolabels") or args.has("noparticles") or args.has("nomm"):
@@ -1466,6 +1503,196 @@ func _apply_test_args() -> void:
 	if args.has("nohud"):
 		G.test_hide_hud = true
 		ui.hud.visible = false
+	if args.has("proplod") or args.has("hideprops") or args.has("proprange"):
+		# eksperymenty wydajności: ostrzejsze upraszczanie / ukrycie / zasięg modeli z plików
+		var st2: Array = [self]
+		while not st2.is_empty():
+			var n2: Node = st2.pop_back()
+			for ch2 in n2.get_children():
+				st2.append(ch2)
+			var which := String(args.get("hideprops", ""))
+			if n2 is MeshInstance3D and (n2 as MeshInstance3D).mesh != null and (n2 as MeshInstance3D).mesh.resource_path.contains(".gltf") and (which == "" or (n2 as MeshInstance3D).mesh.resource_path.contains("/" + which + "/")):
+				if args.has("proplod"):
+					(n2 as MeshInstance3D).lod_bias = float(args.proplod)
+				if args.has("hideprops"):
+					(n2 as MeshInstance3D).visible = false
+				if args.has("proprange"):
+					(n2 as MeshInstance3D).visibility_range_end = float(args.proprange)
+	if args.has("treelist"):
+		# najbliższe drzewa z liśćmi (pozycje w jednostkach projektu, do --pos)
+		var found: Array = []
+		var st6: Array = [self]
+		while not st6.is_empty():
+			var n6: Node = st6.pop_back()
+			for ch6 in n6.get_children():
+				st6.append(ch6)
+			if n6 is MeshInstance3D and String(n6.name) == "cien":
+				var gp: Vector3 = (n6 as MeshInstance3D).global_position
+				found.append([gp.distance_to(player.global_position), gp])
+		found.sort_custom(func(a, b): return a[0] < b[0])
+		for i6 in range(mini(12, found.size())):
+			print("TREE %.1f m  pos=%.1f,%.1f" % [found[i6][0], found[i6][1].x / D.SC, found[i6][1].z / D.SC])
+	if args.has("tridump"):
+		# co w promieniu `tridump` metrów od kamery ma najwięcej trójkątów (szukanie ciężkich miejsc)
+		var rad := float(args.tridump)
+		var cp: Vector3 = player.global_position
+		var agg := {}
+		var cache := {}
+		var stack: Array = [self]
+		while not stack.is_empty():
+			var nd: Node = stack.pop_back()
+			for ch in nd.get_children():
+				stack.append(ch)
+			var mesh: Mesh = null
+			var inst := 1
+			var pos := Vector3.ZERO
+			if nd is MeshInstance3D and (nd as MeshInstance3D).is_visible_in_tree():
+				mesh = (nd as MeshInstance3D).mesh
+				pos = (nd as MeshInstance3D).global_position
+			elif nd is MultiMeshInstance3D and (nd as MultiMeshInstance3D).is_visible_in_tree() and (nd as MultiMeshInstance3D).multimesh != null:
+				mesh = (nd as MultiMeshInstance3D).multimesh.mesh
+				inst = (nd as MultiMeshInstance3D).multimesh.instance_count
+				pos = (nd as MultiMeshInstance3D).global_position
+			if mesh == null:
+				continue
+			if not (nd is MultiMeshInstance3D) and Vector2(pos.x - cp.x, pos.z - cp.z).length() > rad:
+				continue
+			var id := mesh.get_instance_id()
+			if not cache.has(id):
+				cache[id] = int(mesh.get_faces().size() / 3.0)
+			var owner_name := String(nd.name)
+			var par := nd.get_parent()
+			var key := "%s <%s> %s" % [mesh.resource_path.get_file() if mesh.resource_path != "" else mesh.get_class(), owner_name.left(24), String(par.name).left(18) if par != null else ""]
+			if nd is MultiMeshInstance3D:
+				key = "MM " + key
+			if not agg.has(key):
+				agg[key] = [0, 0]
+			agg[key][0] += int(cache[id]) * inst
+			agg[key][1] += inst
+		var rows: Array = []
+		for k2 in agg:
+			rows.append([agg[k2][0], agg[k2][1], k2])
+		rows.sort_custom(func(a, b): return a[0] > b[0])
+		for i2 in range(mini(28, rows.size())):
+			print("TRI %8d  x%-5d %s" % [rows[i2][0], rows[i2][1], rows[i2][2]])
+	if args.has("uidump"):
+		# duże, widoczne elementy interfejsu (szukanie kosztownego nakładania się warstw)
+		await get_tree().create_timer(1.0).timeout
+		var scr: Vector2 = get_viewport().get_visible_rect().size
+		var st7: Array = [ui]
+		var total := 0.0
+		while not st7.is_empty():
+			var n7: Node = st7.pop_back()
+			if n7 is CanvasItem and not (n7 as CanvasItem).visible:
+				continue
+			for ch7 in n7.get_children():
+				st7.append(ch7)
+			if n7 is Control:
+				var c7: Control = n7
+				var ar := c7.get_global_rect().size.x * c7.get_global_rect().size.y / (scr.x * scr.y)
+				var draws := c7 is ColorRect or c7 is Panel or c7 is PanelContainer or c7 is TextureRect or c7 is NinePatchRect or c7.material != null or c7.clip_contents
+				if ar > 0.15 and draws:
+					total += ar
+					var extra := ""
+					if c7 is ColorRect:
+						extra = " color=%s" % (c7 as ColorRect).color
+					if c7 is TextureRect and (c7 as TextureRect).texture != null:
+						extra = " tex=%s" % (c7 as TextureRect).texture.get_size()
+					print("UIBIG %.2f %s <%s> mod=%s mat=%s clip=%s%s  %s" % [ar, c7.get_class(), c7.name, c7.modulate, c7.material != null, c7.clip_contents, extra, String(c7.get_path()).right(70)])
+		print("UIBIG total area = %.1f screens" % total)
+		var st8: Array = [[ui, 0]]
+		while not st8.is_empty():
+			var e8: Array = st8.pop_back()
+			var n8: Node = e8[0]
+			if n8 is CanvasItem and not (n8 as CanvasItem).visible:
+				continue
+			var info := ""
+			if n8 is Control:
+				info = " %s mat=%s" % [(n8 as Control).get_global_rect().size, (n8 as Control).material != null]
+			print("UITREE %s%s <%s>%s" % ["  ".repeat(int(e8[1])), n8.get_class(), n8.name, info])
+			if int(e8[1]) < 4:
+				for ch8 in n8.get_children():
+					st8.append([ch8, int(e8[1]) + 1])
+	if args.has("drawtest"):
+		# który rodzaj rysowania 2D co klatkę wstrzymuje kartę graficzną (pomiar: --bench)
+		var kind := String(args.drawtest)
+		var cv := Control.new()
+		cv.set_anchors_preset(Control.PRESET_FULL_RECT)
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tex0: Texture2D = load("res://assets/icons/eye.png") if ResourceLoader.exists("res://assets/icons/eye.png") else null
+		cv.draw.connect(func():
+			var c := Vector2(300, 300)
+			match kind:
+				"circle": cv.draw_circle(c, 6.0, Color.WHITE)
+				"circle_aa": cv.draw_circle(c, 6.0, Color.WHITE, true, -1.0, true)
+				"arc": cv.draw_arc(c, 20.0, 0.0, 2.0, 14, Color.WHITE, 3.0, false)
+				"arc_aa": cv.draw_arc(c, 20.0, 0.0, 2.0, 14, Color.WHITE, 3.0, true)
+				"line": cv.draw_line(c, c + Vector2(40, 10), Color.WHITE, 3.0, false)
+				"line_aa": cv.draw_line(c, c + Vector2(40, 10), Color.WHITE, 3.0, true)
+				"rect": cv.draw_rect(Rect2(c, Vector2(20, 20)), Color.WHITE)
+				"rect_out": cv.draw_rect(Rect2(c, Vector2(20, 20)), Color.WHITE, false, 2.0)
+				"poly": cv.draw_colored_polygon(PackedVector2Array([c, c + Vector2(20, 0), c + Vector2(10, 20)]), Color.WHITE)
+				"polyline": cv.draw_polyline(PackedVector2Array([c, c + Vector2(20, 0), c + Vector2(10, 20)]), Color.WHITE, 2.0)
+				"polyline1": cv.draw_polyline(PackedVector2Array([c, c + Vector2(20, 0), c + Vector2(10, 20)]), Color.WHITE)
+				"multiline": cv.draw_multiline(PackedVector2Array([c, c + Vector2(20, 0), c + Vector2(10, 20), c + Vector2(30, 20)]), Color.WHITE, 2.0)
+				"primitive": cv.draw_primitive(PackedVector2Array([c, c + Vector2(20, 0), c + Vector2(10, 20)]), PackedColorArray([Color.WHITE]), PackedVector2Array())
+				"string": cv.draw_string(ThemeDB.fallback_font, c, "Test %d" % Engine.get_frames_drawn())
+				"tex":
+					if tex0 != null:
+						cv.draw_texture(tex0, c)
+				"stylebox":
+					var sbx := StyleBoxFlat.new()
+					sbx.bg_color = Color.WHITE
+					sbx.set_corner_radius_all(6)
+					cv.draw_style_box(sbx, Rect2(c, Vector2(60, 30)))
+				"stylebox0":
+					var sb0 := StyleBoxFlat.new()
+					sb0.bg_color = Color.WHITE
+					sb0.anti_aliasing = false
+					cv.draw_style_box(sb0, Rect2(c, Vector2(60, 30)))
+				"kit":
+					# wszystkie zamienniki z uikit naraz, ze zmiennymi rozmiarami
+					var ph := float(Engine.get_frames_drawn() % 60) / 60.0
+					K.circle(cv, c, 4.0 + ph * 30.0, Color(1, 1, 1, 0.5))
+					K.ring(cv, c + Vector2(80, 0), 4.5, Color.WHITE, 1.4)
+					K.arc(cv, c + Vector2(160, 0), 30.0, 0.0, TAU * ph, 20, Color.WHITE, 4.0)
+					K.polyline(cv, PackedVector2Array([c + Vector2(0, 80), c + Vector2(60, 90 + ph * 20.0), c + Vector2(120, 80)]), Color.WHITE, 5.0)
+					K.poly(cv, PackedVector2Array([c + Vector2(200, 80), c + Vector2(240, 90), c + Vector2(215, 100), c + Vector2(230, 130)]), Color.WHITE)
+					K.rbox(cv, Rect2(c + Vector2(0, 150), Vector2(120 + ph * 80.0, 40)), Color(0.1, 0.1, 0.14), 8, Color.WHITE, 1)
+				"ninepatch":
+					cv.draw_style_box(K.pill(Color.WHITE, 4), Rect2(c, Vector2(60 + Engine.get_frames_drawn() % 30, 8)))
+				_: pass
+		)
+		ui.hud.add_child(cv)
+		set_meta("drawtest", cv)
+		if kind == "progress":
+			var pb := K.bar(0.0, 100.0)
+			pb.custom_minimum_size = Vector2(200, 8)
+			pb.position = Vector2(300, 300)
+			pb.size = Vector2(200, 8)
+			cv.add_child(pb)
+			set_meta("drawtest_pb", pb)
+	if args.has("uilist"):
+		var rc: Node = ui.get_child(0) if ui.get_child_count() > 0 else ui
+		for i9 in range(rc.get_child_count()):
+			var c9: Node = rc.get_child(i9)
+			print("UICH %d %s <%s> vis=%s kids=%d script=%s" % [i9, c9.get_class(), c9.name, (c9 as CanvasItem).visible if c9 is CanvasItem else true, c9.get_child_count(), c9.get_script() != null])
+			if c9.get_child_count() > 4 and c9 is Control and (c9 as Control).visible:
+				for j9 in range(c9.get_child_count()):
+					var d9: Node = c9.get_child(j9)
+					print("UICH    %d.%d %s <%s> vis=%s kids=%d" % [i9, j9, d9.get_class(), d9.name, (d9 as CanvasItem).visible if d9 is CanvasItem else true, d9.get_child_count()])
+	if args.has("uihide"):
+		# ukrywa wskazane (numerami) dzieci głównego kontenera interfejsu — do szukania kosztownego elementu
+		var root_c: Node = ui.get_child(0) if ui.get_child_count() > 0 else ui
+		for part in String(args.uihide).split(","):
+			var seg := part.split(".")
+			var ix := int(seg[0])
+			if ix >= 0 and ix < root_c.get_child_count() and root_c.get_child(ix) is CanvasItem:
+				var tgt: Node = root_c.get_child(ix)
+				if seg.size() > 1 and int(seg[1]) < tgt.get_child_count():
+					tgt = tgt.get_child(int(seg[1]))
+				if tgt is CanvasItem:
+					(tgt as CanvasItem).visible = false
 	if args.has("noui"):
 		# czysty kadr do grafik: bez całego interfejsu (także pasów przerywnika)
 		G.test_hide_hud = true
@@ -1757,8 +1984,40 @@ func _tour() -> void:
 func _shot() -> void:
 	var frames := int(args.get("frames", "150"))
 	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+	# --bench: uczciwy pomiar — bez VSync i bez dynamicznej rozdzielczości, mediana czasu klatki po rozgrzewce
+	var bench_on := args.has("bench")
+	var times: Array = []
+	if bench_on:
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+		Engine.max_fps = 0
+		env.dyn_on = false
+		env.dyn = 1.0
+		env.apply_scale()
+	var last_us := Time.get_ticks_usec()
 	for i in range(frames):
 		await get_tree().process_frame
+		var now_us := Time.get_ticks_usec()
+		if has_meta("drawtest"):
+			(get_meta("drawtest") as Control).queue_redraw()
+		if has_meta("drawtest_pb"):
+			(get_meta("drawtest_pb") as ProgressBar).value = float(i % 100)
+		if args.has("hudstress"):
+			# typowe zmiany interfejsu w ruchu: kondycja, podpowiedź z postępem, minimapa, cel w zasięgu wzroku
+			var hs := String(args.hudstress)
+			if hs == "1" or hs.contains("stam"):
+				player.stamina = player.max_stamina() * (0.5 + 0.4 * sin(i * 0.2))
+			if (hs == "1" or hs.contains("prompt")) and not has_meta("hs_prompt"):
+				# po wszystkich _process, tuż przed rysowaniem (gra sama co klatkę chowa podpowiedź, gdy nie ma na co celować)
+				set_meta("hs_prompt", true)
+				ui.test_prompt_lock = true
+				RenderingServer.frame_pre_draw.connect(func(): ui.set_prompt("Test", fmod(Engine.get_frames_drawn() * 0.02, 1.0)))
+			if hs == "1" or hs.contains("mini"):
+				settings.minimap = true
+				G.S.nav_on = true
+			ui.hud_t = 0.0
+		if bench_on and i >= 60:
+			times.append((now_us - last_us) / 1000.0)
+		last_us = now_us
 		if i == 30 and args.has("ui"):
 			_test_ui(String(args.ui))
 		if i == 30 and args.has("prostage") and G.prologue != null:
@@ -1809,6 +2068,9 @@ func _shot() -> void:
 	print("COUNT ", cnt)
 	if prof[2] > 0:
 		print("PROF env_ms=%.3f npc_ms=%.3f ui_ms=%.3f (średnio na klatkę)" % [prof[0] / 1000.0 / prof[2], prof[1] / 1000.0 / prof[2], ui.prof_us / 1000.0 / maxf(1.0, ui.prof_n)])
+	if times.size() > 4:
+		times.sort()
+		print("BENCH med_ms=%.2f p90_ms=%.2f min_ms=%.2f scale=%.2f n=%d" % [times[int(times.size() / 2.0)], times[int(times.size() * 0.9)], times[0], get_viewport().scaling_3d_scale, times.size()])
 	print("SHOT ", args.shot, " fps=", Engine.get_frames_per_second(), " draw_calls=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 		" objects=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
 		" tris=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),

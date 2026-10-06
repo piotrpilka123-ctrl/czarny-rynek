@@ -190,6 +190,9 @@ func set_quality(q: String) -> void:
 	if sun != null:
 		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if sq != "low" else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 		sun.directional_shadow_max_distance = 110.0 if sq == "high" else (80.0 if sq == "med" else 60.0)
+		# półcień zależny od odległości (PCSS) kosztuje ok. 2 ms na klatkę w 1440p — tylko na najwyższym poziomie
+		sun.light_angular_distance = 0.8 if sq == "high" else 0.0
+		sun.shadow_blur = 1.0 if sq == "high" else 1.4
 
 
 ## Dynamiczna rozdzielczość: gdy klatek jest za mało, obraz 3D rysuje się w nieco niższej

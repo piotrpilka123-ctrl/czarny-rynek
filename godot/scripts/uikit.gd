@@ -49,8 +49,8 @@ static func theme() -> Theme:
 	th.set_stylebox("panel", "PanelContainer", sb(C_PANEL, 12, C_LINE, 1, 14))
 	th.set_color("font_color", "Label", C_TXT)
 	th.set_color("default_color", "RichTextLabel", C_TXT)
-	th.set_stylebox("background", "ProgressBar", sb(Color(0.1, 0.12, 0.18), 4, Color(0, 0, 0, 0), 0, 0))
-	th.set_stylebox("fill", "ProgressBar", sb(C_ACC, 4, Color(0, 0, 0, 0), 0, 0))
+	th.set_stylebox("background", "ProgressBar", pill(Color(0.1, 0.12, 0.18), 3))
+	th.set_stylebox("fill", "ProgressBar", pill(C_ACC, 3))
 	th.set_stylebox("panel", "TooltipPanel", sb(Color(0.02, 0.025, 0.04, 0.97), 6, C_LINE, 1, 8))
 	th.set_color("font_color", "TooltipLabel", C_TXT)
 	return th
@@ -213,6 +213,158 @@ static func icon(name: String, size := 18.0, color := C_TXT) -> TextureRect:
 	return t
 
 
+## Zaokrąglony pasek z tekstury (dziewięć pól) zamiast StyleBoxFlat. Powód: StyleBoxFlat z zaokrągleniem,
+## koła, łuki i wielokąty to dla karty graficznej nowe bufory przy każdym przerysowaniu — rysowane co klatkę
+## wstrzymują ją i czas klatki rośnie dwukrotnie. Prostokąty, linie, tekst i tekstury tego nie robią.
+static var _pill_tex := {}
+static var _pill_sb := {}
+
+static func pill_tex(radius: int) -> ImageTexture:
+	if _pill_tex.has(radius):
+		return _pill_tex[radius]
+	var n := radius * 2 + 2
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var c := Vector2(n * 0.5, n * 0.5)
+	for y in range(n):
+		for x in range(n):
+			# odległość od środkowego kwadratu 2×2 — wygładzona krawędź koła
+			var d := (Vector2(x + 0.5, y + 0.5) - c).abs() - Vector2(1.0, 1.0)
+			var dist := Vector2(maxf(d.x, 0.0), maxf(d.y, 0.0)).length()
+			img.set_pixel(x, y, Color(1, 1, 1, clampf(float(radius) - dist + 0.5, 0.0, 1.0)))
+	var t := ImageTexture.create_from_image(img)
+	_pill_tex[radius] = t
+	return t
+
+
+static func pill(color: Color, radius := 4) -> StyleBoxTexture:
+	var key := "%s|%d" % [color.to_html(), radius]
+	if _pill_sb.has(key):
+		return _pill_sb[key]
+	var s := StyleBoxTexture.new()
+	s.texture = pill_tex(radius)
+	s.set_texture_margin_all(float(radius))
+	s.modulate_color = color
+	_pill_sb[key] = s
+	return s
+
+
+# ---------------------------------------------------------------- rysowanie, które nie wstrzymuje karty graficznej
+# Zamienniki draw_circle / draw_arc / draw_polyline / draw_colored_polygon / zaokrąglonych ramek dla wszystkiego,
+# co przerysowuje się co klatkę (celownik, znaczniki, mapa, animowane panele).
+static var _disc := {}
+static var _ringt := {}
+
+static func _bucket(r: float) -> int:
+	for b in [4, 8, 16, 32, 64, 128]:
+		if r * 2.0 <= float(b):
+			return b
+	return 128
+
+
+## białe koło (promień `px` tekseli) albo pierścień o grubości `tpx`
+static func disc_tex(px: int, tpx := 0) -> ImageTexture:
+	var key := px * 1000 + tpx
+	var store: Dictionary = _disc if tpx == 0 else _ringt
+	if store.has(key):
+		return store[key]
+	var n := px * 2
+	var data := PackedByteArray()
+	data.resize(n * n * 4)
+	data.fill(255)
+	for y in range(px):
+		var dy := float(px) - (y + 0.5)
+		for x in range(px):
+			var dx := float(px) - (x + 0.5)
+			var dist := sqrt(dx * dx + dy * dy)
+			var a := clampf(float(px) - dist + 0.5, 0.0, 1.0)
+			if tpx > 0:
+				a *= clampf(dist - float(px - tpx) + 0.5, 0.0, 1.0)
+			var v := int(a * 255.0)
+			# cztery ćwiartki naraz
+			data[(y * n + x) * 4 + 3] = v
+			data[(y * n + (n - 1 - x)) * 4 + 3] = v
+			data[((n - 1 - y) * n + x) * 4 + 3] = v
+			data[((n - 1 - y) * n + (n - 1 - x)) * 4 + 3] = v
+	var t := ImageTexture.create_from_image(Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, data))
+	store[key] = t
+	return t
+
+
+static func circle(cv: CanvasItem, pos: Vector2, r: float, color: Color) -> void:
+	if r <= 0.05 or color.a <= 0.0:
+		return
+	cv.draw_texture_rect(disc_tex(_bucket(r)), Rect2(pos - Vector2(r, r), Vector2(r, r) * 2.0), false, color)
+
+
+## pierścień o stałym rozmiarze (tekstura); do zmiennych promieni lepszy jest `arc`
+static func ring(cv: CanvasItem, pos: Vector2, r: float, color: Color, w := 1.5) -> void:
+	var outer := r + w * 0.5
+	var px := _bucket(outer)
+	var t := disc_tex(px, maxi(1, int(round(w / outer * float(px)))))
+	cv.draw_texture_rect(t, Rect2(pos - Vector2(outer, outer), Vector2(outer, outer) * 2.0), false, color)
+
+
+static func arc(cv: CanvasItem, c: Vector2, r: float, a0: float, a1: float, n: int, color: Color, w := 1.0) -> void:
+	var prev := c + Vector2(cos(a0), sin(a0)) * r
+	for i in range(1, n + 1):
+		var a := lerpf(a0, a1, float(i) / float(n))
+		var pt := c + Vector2(cos(a), sin(a)) * r
+		cv.draw_line(prev, pt, color, w, true)
+		prev = pt
+
+
+static func polyline(cv: CanvasItem, pts: PackedVector2Array, color: Color, w := 1.0) -> void:
+	for i in range(pts.size() - 1):
+		cv.draw_line(pts[i], pts[i + 1], color, w, true)
+	if w >= 3.0 and color.a >= 0.99:
+		for i in range(1, pts.size() - 1):
+			circle(cv, pts[i], w * 0.5, color)
+
+
+static func poly(cv: CanvasItem, pts: PackedVector2Array, color: Color) -> void:
+	var cols := PackedColorArray([color])
+	var no_uv := PackedVector2Array()
+	if pts.size() == 3:
+		cv.draw_primitive(pts, cols, no_uv)
+		return
+	var tri := Geometry2D.triangulate_polygon(pts)
+	for i in range(0, tri.size() - 2, 3):
+		cv.draw_primitive(PackedVector2Array([pts[tri[i]], pts[tri[i + 1]], pts[tri[i + 2]]]), cols, no_uv)
+
+
+static func _corners(cv: CanvasItem, t: Texture2D, r: Rect2, q: float, c: Color) -> void:
+	var px := float(t.get_width()) * 0.5
+	cv.draw_texture_rect_region(t, Rect2(r.position, Vector2(q, q)), Rect2(0, 0, px, px), c)
+	cv.draw_texture_rect_region(t, Rect2(r.position + Vector2(r.size.x - q, 0), Vector2(q, q)), Rect2(px, 0, px, px), c)
+	cv.draw_texture_rect_region(t, Rect2(r.position + Vector2(0, r.size.y - q), Vector2(q, q)), Rect2(0, px, px, px), c)
+	cv.draw_texture_rect_region(t, Rect2(r.end - Vector2(q, q), Vector2(q, q)), Rect2(px, px, px, px), c)
+
+
+## zaokrąglona ramka z wypełnieniem i obwódką (jak StyleBoxFlat, ale z prostokątów i ćwiartek koła z tekstury)
+static func rbox(cv: CanvasItem, r: Rect2, c: Color, rad := 8, border := Color(0, 0, 0, 0), bw := 0) -> void:
+	if r.size.x <= 0.0 or r.size.y <= 0.0:
+		return
+	var q := minf(float(rad), minf(r.size.x, r.size.y) * 0.5)
+	if q < 0.75:
+		if c.a > 0.0:
+			cv.draw_rect(r, c)
+		q = 0.0
+	elif c.a > 0.0:
+		_corners(cv, disc_tex(_bucket(q)), r, q, c)
+		cv.draw_rect(Rect2(r.position + Vector2(q, 0), Vector2(r.size.x - 2.0 * q, r.size.y)), c)
+		cv.draw_rect(Rect2(r.position + Vector2(0, q), Vector2(q, r.size.y - 2.0 * q)), c)
+		cv.draw_rect(Rect2(r.position + Vector2(r.size.x - q, q), Vector2(q, r.size.y - 2.0 * q)), c)
+	if bw > 0 and border.a > 0.0:
+		var b := float(bw)
+		if q > 0.0:
+			var px := _bucket(q)
+			_corners(cv, disc_tex(px, maxi(1, int(round(b / q * float(px))))), r, q, border)
+		cv.draw_rect(Rect2(r.position + Vector2(q, 0), Vector2(r.size.x - 2.0 * q, b)), border)
+		cv.draw_rect(Rect2(r.position + Vector2(q, r.size.y - b), Vector2(r.size.x - 2.0 * q, b)), border)
+		cv.draw_rect(Rect2(r.position + Vector2(0, q), Vector2(b, r.size.y - 2.0 * q)), border)
+		cv.draw_rect(Rect2(r.position + Vector2(r.size.x - b, q), Vector2(b, r.size.y - 2.0 * q)), border)
+
+
 static func bar(value: float, maxv: float, color := C_ACC, h := 7.0) -> ProgressBar:
 	var b := ProgressBar.new()
 	b.show_percentage = false
@@ -220,7 +372,8 @@ static func bar(value: float, maxv: float, color := C_ACC, h := 7.0) -> Progress
 	b.value = value
 	b.custom_minimum_size = Vector2(0, h)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.add_theme_stylebox_override("fill", sb(color, 4, Color(0, 0, 0, 0), 0, 0))
+	b.add_theme_stylebox_override("fill", pill(color, clampi(int(h * 0.5), 1, 4)))
+	b.add_theme_stylebox_override("background", pill(Color(0.1, 0.12, 0.18), clampi(int(h * 0.5), 1, 4)))
 	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return b
 

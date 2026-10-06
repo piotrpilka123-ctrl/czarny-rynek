@@ -146,8 +146,8 @@ func build() -> void:
 	bar.max_value = 100.0
 	bar.custom_minimum_size = Vector2(430, 4)
 	bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	bar.add_theme_stylebox_override("background", K.sb(Color(1, 1, 1, 0.14), 2, Color(0, 0, 0, 0), 0, 0))
-	bar.add_theme_stylebox_override("fill", K.sb(K.C_ACC, 2, Color(0, 0, 0, 0), 0, 0))
+	bar.add_theme_stylebox_override("background", K.pill(Color(1, 1, 1, 0.14), 2))
+	bar.add_theme_stylebox_override("fill", K.pill(K.C_ACC, 2))
 	col.add_child(bar)
 	var row := HBoxContainer.new()
 	row.custom_minimum_size = Vector2(430, 0)
