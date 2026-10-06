@@ -747,13 +747,24 @@ func _sim_one(days: int, run_i: int) -> String:
 				for sz in D.WHOLESALE_SIZES:
 					if sz <= G.wholesale_max() and sz <= maxf(5.0, float(need[p]) * 1.6) and sz + 2 <= G.capacity():
 						want = sz
-				var high: bool = int(S.lvl) >= 5 and p != "dym"
-				var cost := G.wholesale_price(p, want, high)
-				var credit: bool = S.cash < cost + 50.0
-				if G.order_block(p, want, credit, high) == "":
-					G.order_goods(p, want, high, credit)
-				elif G.order_block(p, 5, S.cash < G.wholesale_price(p, 5, high) + 30.0, high) == "":
-					G.order_goods(p, 5, high, S.cash < G.wholesale_price(p, 5, high) + 30.0)
+				# Giełda: czysty towar od Chemika (przedpłata, od 10 g) tylko dla najbardziej wymagających
+				# i tylko gdy jest gotówka; poza tym standard od Wiktora — w razie czego na zeszyt
+				var MK = G.Market
+				var picky := false
+				for c2 in D.CLIENTS:
+					if S.cust[c2.id].unlocked and String(c2.prod) == p and int(c2.minpur) > 78:
+						picky = true
+				var vid := "wiktor"
+				if picky and want >= 10 and S.cash > MK.price("chemik", p, want) + 200.0 and MK.block("chemik", p, want, "drop", false) == "":
+					vid = "chemik"
+				var cost: float = MK.price(vid, p, want)
+				var credit: bool = vid == "wiktor" and S.cash < cost + 50.0
+				if MK.block(vid, p, want, "drop", credit) == "":
+					MK.order(vid, p, want, "drop", credit)
+				elif MK.block("wiktor", p, 5, "drop", S.cash < MK.price("wiktor", p, 5) + 30.0) == "":
+					MK.order("wiktor", p, 5, "drop", S.cash < MK.price("wiktor", p, 5) + 30.0)
+				elif G.order_block(p, 5, true, false) == "":
+					G.order_goods(p, 5, false, true)
 		# pieniądze: zeszyt przed terminem, rata w dniu spłaty (albo wcześniej, gdy jest zapas)
 		if float(S.credit) > 0.0 and not G.flag("hurt_on") and S.cash >= float(S.credit):
 			G.pay_credit(1e9)

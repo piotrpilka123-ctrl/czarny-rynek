@@ -33,16 +33,16 @@ void sky() {
 const SUN_UV := {"day": [0.5996, 38.0], "late": [0.6, 7.7], "dusk": [0.6, 2.4], "night": [0.143, 33.8]}
 ## klatki kluczowe doby: [godzina, niebo, azymut słońca (°), energia światła, barwa, jasność nieba, gęstość mgły]
 const KEYS := [
-	[0.0, "night", 150.0, 0.07, Color(0.55, 0.65, 1.0), 0.045, 0.022],
-	[4.6, "night", 215.0, 0.07, Color(0.55, 0.65, 1.0), 0.045, 0.026],
+	[0.0, "night", 150.0, 0.17, Color(0.55, 0.65, 1.0), 0.045, 0.022],
+	[4.6, "night", 215.0, 0.17, Color(0.55, 0.65, 1.0), 0.045, 0.026],
 	[6.0, "dusk", 92.0, 0.55, Color(1.0, 0.6, 0.38), 0.55, 0.03],
 	[7.6, "late", 108.0, 1.25, Color(1.0, 0.82, 0.58), 0.75, 0.018],
 	[9.8, "day", 135.0, 1.55, Color(1.0, 0.95, 0.88), 0.8, 0.0038],
 	[15.2, "day", 228.0, 1.55, Color(1.0, 0.95, 0.88), 0.8, 0.0038],
 	[17.0, "late", 250.0, 1.3, Color(1.0, 0.8, 0.55), 0.75, 0.012],
 	[18.7, "dusk", 268.0, 0.6, Color(1.0, 0.56, 0.34), 0.6, 0.02],
-	[20.3, "night", 120.0, 0.07, Color(0.55, 0.65, 1.0), 0.045, 0.024],
-	[24.0, "night", 150.0, 0.07, Color(0.55, 0.65, 1.0), 0.045, 0.022],
+	[20.3, "night", 120.0, 0.17, Color(0.55, 0.65, 1.0), 0.045, 0.024],
+	[24.0, "night", 150.0, 0.17, Color(0.55, 0.65, 1.0), 0.045, 0.022],
 ]
 
 var we: WorldEnvironment
@@ -333,8 +333,11 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		sun.light_color = sun_c.lerp(Color(0.8, 0.84, 0.9), ov * 0.7)
 		sun.light_energy = sun_e * (1.0 - ov * 0.8)
 		sun.light_volumetric_fog_energy = lerpf(1.25, 0.6, night)
-		env.ambient_light_energy = lerpf(0.9, 1.0, night)
-		env.tonemap_exposure = lerpf(0.92, 1.05, night) * bright
+		# nocą do światła nieba dochodzi słabe, niebieskawe wypełnienie — cienie nie są smoliście czarne
+		env.ambient_light_sky_contribution = lerpf(1.0, 0.5, night)
+		env.ambient_light_color = Color(0.17, 0.21, 0.36)
+		env.ambient_light_energy = lerpf(0.9, 1.3, night)
+		env.tonemap_exposure = lerpf(0.92, 1.2, night) * bright
 		env.glow_hdr_threshold = lerpf(1.2, 0.85, night)
 		env.fog_light_color = (sun_c * 0.5 + Color(0.4, 0.45, 0.5) * 0.5) * lerpf(1.0, 0.08, night)
 		env.fog_light_energy = lerpf(0.8, 0.3, night)

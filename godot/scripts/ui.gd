@@ -717,7 +717,10 @@ func dialog(d: Dictionary) -> void:
 		else:
 			lines.append({"n": l.get("n", d.get("name", "")), "t": l.t})
 	var nm := String(d.get("name", ""))
-	var voice: float = d.get("voice", 0.8 + float(absi(nm.hash()) % 30) / 100.0)
+	# każdy rozmówca ma własną wysokość głosu (z imienia); kobiece imiona brzmią wyżej
+	var last := nm.get_slice(" ", nm.get_slice_count(" ") - 1).to_lower()
+	var fem: bool = last.ends_with("a") and not last in ["kuba", "numer"]
+	var voice: float = d.get("voice", (1.26 if fem else 0.8) + float(absi(nm.hash()) % 30) / 100.0)
 	dlg = {"lines": lines, "i": 0, "choices": d.get("choices", []), "on_end": d.get("on_end", Callable()), "typed": 0.0, "done": false, "voice": voice, "said": 0}
 	modal.visible = false
 	skill_box.visible = false

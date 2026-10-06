@@ -2278,12 +2278,35 @@ func _build_story() -> void:
 			"done": func(): return S.paid >= float(D.DEBT_SCHEDULE[0].due)},
 		{"id": "lvl3", "text": func(): return "Zdobądź poziom 3 i wybierz pierwszą umiejętność (telefon → Rozwój).",
 			"done": func(): return int(S.lvl) >= 3 and not S.skills.is_empty()},
+		{"id": "gielda1", "text": func(): return "Giełda w telefonie to nie tylko Wiktor. Zamów coś u innego dostawcy albo skorzystaj z okazji dnia — i wybierz, jak ma dotrzeć: skrytka, skrytkomat czy kurier.",
+			"done": func(): return _other_vendor_orders() > 0},
+		{"id": "ciuchy1", "text": func(): return "Zajrzyj do „Taniej Odzieży” przy Hutniczej i kup strój pasujący do roboty: szybszy, mniej rzucający się w oczy albo… kominiarkę.",
+			"done": func(): return not S.get("outfits", {}).is_empty(), "marker": func(): return {"loc": "out", "x": D.DOORS.ciuchy.x, "z": D.DOORS.ciuchy.z}},
 		{"ch": "Rozdział 3: Kryjówka", "id": "garaz", "text": func(): return "Kup Garaż nr 14 (%s, poziom %d) — pierwszą własną kryjówkę." % [money(prop_def("garaz").price), int(prop_def("garaz").lvl)],
 			"done": func(): return owns("garaz"), "marker": _garage_marker},
 		{"id": "meble", "text": func(): return "Urządź garaż: w środku naciśnij [B] i wstaw stół roboczy oraz regał.",
 			"done": func(): return _has_furn("garage", "pack") and _has_furn("garage", "stash")},
+		{"id": "uprawa1", "text": func(): return "Czas znów produkować. Wstaw w kryjówce namiot uprawowy i suszarkę [B], kup nasiona u Stasia i zasiej konopie.",
+			"done": func(): return _any_job() or int(S.stats.grown) > 0, "marker": _garage_marker},
+		{"id": "zbior1", "text": func(): return "Doglądaj uprawy: woda, nawóz, przycinanie. Zbierz plon, wysusz go i zważ. Nadwyżki sprzedasz hurtem na Giełdzie. (%d g)" % int(S.stats.grown),
+			"done": func(): return int(S.stats.grown) > 0, "marker": _garage_marker},
 		{"ch": "Wolna gra", "id": "free", "text": func(): return "Rozwijaj interes i spłacaj raty. Dług: %s" % money(S.debt), "done": func(): return false},
 	]
+
+
+func _other_vendor_orders() -> int:
+	var n := 0
+	for vid in S.get("vendors", {}):
+		if String(vid) != "wiktor":
+			n += int(S.vendors[vid].get("orders", 0))
+	return n
+
+
+func _any_job() -> bool:
+	for room in Prod.ROOMS:
+		if S.hide.has(room) and not Prod.hide(room).jobs.is_empty():
+			return true
+	return false
 
 
 ## samouczek: pierwsza paczka odebrana, a towaru luzem już nie ma (zaporcjowany, rozsypany albo stracony)
