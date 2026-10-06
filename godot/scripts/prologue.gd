@@ -21,7 +21,11 @@ var cop_b = null
 var _grace := 0.0               # sekundy po powrocie pod drzwi, w których patrol jeszcze nie „łapie”
 var extra: Array = []           # patrole dostawione na czas prologu (znikają po nim)
 ## dalsze patrole (plan miasta): [x, z, x2, z2] chodzi tam i z powrotem, [x, z, obrót] stoi i się rozgląda
-const FAR_PATROLS := [[150.0, -160.0, 178.0, -162.0], [204.0, -150.0, -0.44], [150.0, -40.0, 150.0, -12.0], [158.0, -42.0, -1.57], [100.0, -150.0, 122.0, -150.0]]
+const FAR_PATROLS := [[207.0, -138.0, 0.9], [152.0, -140.0, 168.0, -146.0], [153.0, -62.0, 2.6], [150.0, -40.0, 150.0, -12.0], [100.0, -150.0, 122.0, -150.0]]
+## Furgony antyterrorystów odcinają pozostałe drogi (plan miasta: x, z, obrót). Kto podejdzie bliżej niż CORDON_R, wraca pod drzwi —
+## zostaje jedna droga: na zachód, pod siatką za torami.
+const SWAT_VANS := [[201.0, -133.0, 1.2], [158.0, -145.0, 0.25], [149.5, -57.0, -1.35]]
+const CORDON_R := 8.5
 var siwy = null
 var _bang := 0.0
 var _shout := 0.0
@@ -362,6 +366,25 @@ func _setup_world() -> void:
 		M.add_child(li)
 		nodes.append(li)
 		flashes.append(li)
+	# furgony AT z niebieskimi kogutami: kordon od północy, wschodu i południa
+	for e in SWAT_VANS:
+		var vp := P(float(e[0]), float(e[1]))
+		var van: Node3D = Models.car("swat")
+		M.add_child(van)
+		nodes.append(van)
+		van.position = Vector3(vp.x, W.height(vp.x, vp.y), vp.y)
+		van.rotation.y = float(e[2])
+		for dome in van.get_meta("siren", []):
+			(dome as Node3D).visible = true
+		var vl := OmniLight3D.new()
+		vl.light_color = Color(0.15, 0.35, 1.0)
+		vl.omni_range = 20.0
+		vl.light_energy = 0.0
+		vl.shadow_enabled = false
+		vl.position = Vector3(vp.x, W.height(vp.x, vp.y) + 2.4, vp.y)
+		M.add_child(vl)
+		nodes.append(vl)
+		flashes.append(vl)
 	for st in N.statics:
 		if String(st.name) == "Siwy":
 			siwy = st
@@ -483,10 +506,10 @@ func on_outside() -> void:
 	_reset_cops()
 	for l in M.world.lab_fx.get("flash", []):
 		l.light_energy = 0.0
-	G.notify("Radiowozy stoją od frontu. Z tyłu kręcą się dwa patrole z latarkami — dalsze przeczesują teren w oddali.", "warn")
+	G.notify("Radiowozy stoją od frontu, a z boków furgony antyterrorystów zamknęły kordon. Zostaje jedna droga: na zachód, obok patroli z latarkami, pod siatką za torami.", "warn")
 
 
-func _caught() -> void:
+func _caught(why := "") -> void:
 	if G.busy:
 		return
 	G.busy = true
@@ -500,7 +523,7 @@ func _caught() -> void:
 	await get_tree().create_timer(0.5).timeout
 	await M.ui.fade(false)
 	G.busy = false
-	G.notify("Zobaczyli Cię. Jeszcze raz: na kucaka [%s], bokiem od światła latarek, i dopiero gdy patrol idzie plecami do Ciebie." % G.kn("crouch"), "warn")
+	G.notify(why if why != "" else "Zobaczyli Cię. Jeszcze raz: na kucaka [%s], bokiem od światła latarek, i dopiero gdy patrol idzie plecami do Ciebie." % G.kn("crouch"), "warn")
 
 
 func _process(dt: float) -> void:
@@ -555,6 +578,12 @@ func _process(dt: float) -> void:
 			if t > 9.0 and not _hinted.has("eye"):
 				_hinted["eye"] = true
 				G.tip("oko", "Kto Cię widzi", "Ikona oka przy pasku kondycji pokazuje, jak bardzo rzucasz się w oczy: przekreślone oko = prawie Cię nie widać. Żółty łuk przy celowniku wskazuje stronę, z której ktoś właśnie Cię zauważa — im pełniejszy, tym mniej masz czasu.", 9.0)
+			# kordon: przy furgonach AT nie ma przejścia
+			for e in SWAT_VANS:
+				var vp2 := P(float(e[0]), float(e[1]))
+				if Vector2(pp.x - vp2.x, pp.z - vp2.y).length() < CORDON_R:
+					_caught("Kordon antyterrorystów — tamtędy nie przejdziesz. Jedyna droga prowadzi na zachód, pod siatką za torami.")
+					return
 			# każdy patrol obławy cofa pod drzwi — także te dalsze, z boków (tuż po powrocie masz chwilę na ruch)
 			_grace = maxf(0.0, _grace - dt)
 			if _grace <= 0.0:
@@ -717,6 +746,8 @@ func _boom() -> void:
 	var car_t := -1.0
 	var voiced := false
 	var swung := false
+	var thud := false
+	var lunge_from := Vector3.ZERO
 	var grabbed := 0
 	var out_dir := (Vector2(apos.x - eye.x, apos.y - eye.z)).normalized()
 	var best_free := -1
@@ -847,13 +878,23 @@ func _boom() -> void:
 			M.ui.cut_line("— Kuba.")
 		if not swung and tm >= t_swing:
 			swung = true
-			Chars.one_shot(arig, "Melee_Hook")
+			# zamach rurką znad barku (z doskokiem), nie cios pięścią
+			Chars.one_shot(arig, "Sword_Attack" if (arig.anim as AnimationPlayer).has_animation("Sword_Attack") else "Melee_Hook")
+			(arig.anim as AnimationPlayer).speed_scale = 1.25
+			lunge_from = arig.root.position
+		if swung and not hit:
+			var lk := clampf((tm - t_swing) / maxf(0.05, hit_at - t_swing), 0.0, 1.0)
+			var toward := Vector3(eye.x - lunge_from.x, 0.0, eye.z - lunge_from.z)
+			if toward.length() > 0.9:
+				arig.root.position = lunge_from + toward.normalized() * minf(0.55, toward.length() - 0.85) * lk * lk
 		if not hit and tm >= hit_at:
 			hit = true
-			Sfx.knock()
-			M.ui.flash(0.95)
+			Sfx.play("punch", 12.0)
+			Sfx.stun(7.0)
+			M.ui.flash(0.7)
 			M.ui.cut_line("")
-			shake = 1.8
+			shake = 2.4
+			_stun_fx(1.0)
 			var bp2 := Vector2(eye.x, eye.z) + out_dir * 0.75 - md * 0.25
 			drop_bag.position = Vector3(bp2.x, W.height(bp2.x, bp2.y), bp2.y)
 			drop_bag.rotation.y = 0.9
@@ -892,6 +933,11 @@ func _boom() -> void:
 				open = minf(1.0, (ht - 4.3) / 0.3) * (1.0 - clampf((ht - 5.9) / 0.8, 0.0, 1.0))
 			_lids(open)
 			M.ui.fade_rect.color.a = (0.2 + 0.07 * sin(ht * 2.4)) if open > 0.02 else 0.0
+			# ogłuszenie: obraz dwoi się i pływa, kolory bledną; z każdym mrugnięciem trochę mniej
+			_stun_fx(clampf(1.0 - ht / 9.0, 0.35, 1.0) * (0.85 + 0.15 * sin(ht * 3.1)))
+			if not thud and ht >= 0.42:
+				thud = true
+				Sfx.play("thud", 8.0)
 			if grabbed == 0 and ht >= 0.6:
 				grabbed = 1
 				# w ciemności bandyta staje nad torbą, twarzą do leżącego
@@ -927,7 +973,49 @@ func _boom() -> void:
 		await get_tree().process_frame
 	M.ui.fade_rect.color.a = 1.0
 	_lids(-1.0)
+	_stun_fx(-1.0)
 	_finish()
+
+
+var _stun_rect: ColorRect = null
+
+## Obraz po ciosie: podwójne widzenie, wyblakłe kolory, ciemne brzegi. k = siła (0…1), ujemne = sprzątnij.
+const SH_STUN := """
+shader_type canvas_item;
+uniform sampler2D scr : hint_screen_texture, filter_linear;
+uniform float k = 0.0;
+void fragment() {
+	vec2 uv = SCREEN_UV;
+	vec2 off = vec2(0.016, 0.005) * k * (1.0 + 0.4 * sin(TIME * 2.3));
+	vec3 a = texture(scr, uv + off).rgb;
+	vec3 b = texture(scr, uv - off).rgb;
+	vec3 c = mix(texture(scr, uv).rgb, (a + b) * 0.5, clamp(k * 1.2, 0.0, 1.0));
+	float g = dot(c, vec3(0.3, 0.59, 0.11));
+	c = mix(c, vec3(g), 0.65 * k);
+	float v = smoothstep(0.2, 0.8, length(uv - 0.5)) * k;
+	COLOR = vec4(c * (1.0 - v * 0.85), 1.0);
+}
+"""
+
+func _stun_fx(k: float) -> void:
+	if k < 0.0:
+		if _stun_rect != null and is_instance_valid(_stun_rect):
+			_stun_rect.queue_free()
+		_stun_rect = null
+		Sfx.stun_off()
+		return
+	if _stun_rect == null or not is_instance_valid(_stun_rect):
+		_stun_rect = ColorRect.new()
+		_stun_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_stun_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sh := Shader.new()
+		sh.code = SH_STUN
+		var sm := ShaderMaterial.new()
+		sm.shader = sh
+		_stun_rect.material = sm
+		M.ui.cut.add_child(_stun_rect)
+		M.ui.cut.move_child(_stun_rect, 0)
+	(_stun_rect.material as ShaderMaterial).set_shader_parameter("k", k)
 
 
 var _lid: Array = []
@@ -1026,6 +1114,7 @@ func _finish() -> void:
 	if _finishing:
 		return
 	_finishing = true
+	_stun_fx(-1.0)
 	stage = "done"
 	G.busy = true
 	if M.ui.mode != "":

@@ -10,6 +10,7 @@ const FILES := {
 	"cash": ["handlecoins", "handlecoins2"], "door": ["dooropen_1", "dooropen_2"], "door_close": ["doorclose_1", "doorclose_2"],
 	"hit": ["select_002"], "miss": ["error_001"], "pickup": ["handlesmallleather", "cloth1"], "place": ["impactsoft_medium_000", "impactsoft_medium_001"],
 	"pack": ["cloth2", "cloth3", "bookflip1"], "sms": ["pluck_001"], "drop": ["drop_001"],
+	"punch": ["impactpunch_medium_000", "impactpunch_medium_001"], "thud": ["impactsoft_medium_002", "impactsoft_medium_001"],
 }
 ## głośność w dB dla poszczególnych efektów (wszystko celowo ciche)
 const VOL := {"click": -16.0, "open": -14.0, "close": -14.0, "back": -14.0, "select": -14.0, "toggle": -14.0, "tick": -18.0, "good": -12.0, "level": -8.0,
@@ -186,6 +187,37 @@ func siren(on: bool) -> void:
 		siren_player.play()
 	elif not on and siren_player.playing:
 		siren_player.stop()
+
+
+## Ogłuszenie: cały dźwięk gry na chwilę głuchnie (filtr dolnoprzepustowy na szynie głównej) i powoli wraca.
+var _stun_fx: AudioEffectLowPassFilter = null
+
+func stun(secs := 6.0) -> void:
+	var bi := AudioServer.get_bus_index("Master")
+	if _stun_fx == null:
+		_stun_fx = AudioEffectLowPassFilter.new()
+		_stun_fx.resonance = 0.7
+		AudioServer.add_bus_effect(bi, _stun_fx)
+	var idx := AudioServer.get_bus_effect_count(bi) - 1
+	for i in range(AudioServer.get_bus_effect_count(bi)):
+		if AudioServer.get_bus_effect(bi, i) == _stun_fx:
+			idx = i
+	AudioServer.set_bus_effect_enabled(bi, idx, true)
+	_stun_fx.cutoff_hz = 380.0
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_interval(secs * 0.45)
+	tw.tween_property(_stun_fx, "cutoff_hz", 16000.0, secs * 0.55).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func(): AudioServer.set_bus_effect_enabled(bi, idx, false))
+
+
+func stun_off() -> void:
+	if _stun_fx == null:
+		return
+	var bi := AudioServer.get_bus_index("Master")
+	for i in range(AudioServer.get_bus_effect_count(bi)):
+		if AudioServer.get_bus_effect(bi, i) == _stun_fx:
+			AudioServer.set_bus_effect_enabled(bi, i, false)
 
 
 ## syrenę słychać tym głośniej, im bliżej jest najbliższy ścigający patrol (metry)

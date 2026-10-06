@@ -19,7 +19,18 @@ static func run(T) -> void:
 	var pr = G.prologue
 	T.ok(pr != null and P.loc == "lab" and M.cut_hour > 4.0 and M.cut_hour < 5.5, "prolog startuje w laboratorium, przed świtem")
 	T.ok(W.mill_burnt != null and not W.mill_burnt.visible and not W.door_tape.visible, "w prologu huta jeszcze stoi nietknięta")
-	T.ok(pr.cop_a != null and pr.cop_b != null and pr.cop_b.beat != null and pr.flashes.size() == 4, "dwa patrole z latarkami i radiowozy z kogutami na miejscach")
+	T.ok(pr.cop_a != null and pr.cop_b != null and pr.cop_b.beat != null and pr.flashes.size() == 4 + pr.SWAT_VANS.size(), "dwa patrole z latarkami, radiowozy i furgony AT z kogutami na miejscach")
+	var e0: Vector2 = pr.exit_pos()
+	var gap0: Vector2 = pr.gap()
+	var cordon_ok := true
+	for sv in pr.SWAT_VANS:
+		var vp: Vector2 = pr.P(float(sv[0]), float(sv[1]))
+		# kordon nie może obejmować drzwi ani drogi do dziury w siatce
+		for k in range(11):
+			var q: Vector2 = e0.lerp(gap0, float(k) / 10.0)
+			if q.distance_to(vp) < pr.CORDON_R + 3.0:
+				cordon_ok = false
+	T.ok(cordon_ok and N.cops.size() >= 2 + pr.FAR_PATROLS.size(), "kordon AT zamyka boczne drogi, ale nie drzwi ani trasę do siatki (%d patroli w obławie)" % N.cops.size())
 	pr.jump("lab")
 	await T.frames(2)
 	T.ok(pr.stage == "lab" and String(G.cur_step().text.call()).contains("spakuj") and G.chapter().begins_with("Prolog"), "cel prologu zastępuje zwykłe zadania")
