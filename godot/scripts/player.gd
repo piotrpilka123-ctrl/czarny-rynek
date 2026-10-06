@@ -4,7 +4,11 @@ extends CharacterBody3D
 const WALK := 3.9
 const SPRINT := 6.5
 const SNEAK := 2.0
-const BASE_STAMINA := 6.0
+## Kondycja liczona w sekundach biegu. Po biegu chwilę łapiesz oddech, potem wraca coraz szybciej;
+## stojąc albo kucając odpoczywasz najszybciej. Pełne wyczerpanie = zadyszka: bez biegu i trochę wolniejszy krok.
+const BASE_STAMINA := 11.0
+const REST_DELAY := 0.9       # ile sekund po biegu, zanim oddech zacznie wracać
+const WINDED_AT := 0.22       # od jakiej części paska znów da się biec po wyczerpaniu
 const EYE := 1.66
 const EYE_LOW := 0.92
 const BODY_H := 1.75
@@ -18,6 +22,8 @@ var loc := "safe"
 var stamina := BASE_STAMINA
 var sprinting := false
 var tired := false
+var rest_t := 0.0            # czas od końca biegu (sterowanie powrotem oddechu)
+var winded := 0.0            # zadyszka po wyczerpaniu: sekundy wolniejszego kroku
 var moving := false
 var bob := 0.0
 var step_t := 0.0
@@ -88,6 +94,22 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ---------------------------------------------------------------- kucanie
 ## czy nad głową jest miejsce, żeby wstać
+## Zużycie i powrót oddechu w jednej klatce (korzysta z pól sprinting / moving / crouching).
+func stamina_tick(dt: float) -> void:
+	var ms := max_stamina()
+	if sprinting:
+		# w pościgu adrenalina niesie: bieg kosztuje o jedną czwartą mniej
+		stamina = maxf(0.0, stamina - dt * (0.75 if G.S.wanted else 1.0))
+		rest_t = 0.0
+	else:
+		rest_t += dt
+		if rest_t > REST_DELAY:
+			# oddech wraca najpierw powoli, po chwili pełnym tempem; w ruchu wolniej niż stojąc czy kucając
+			var ramp := clampf((rest_t - REST_DELAY) / 2.0, 0.35, 1.0)
+			var rate := 1.9 if not moving else (1.5 if crouching else 0.95)
+			stamina = minf(ms, stamina + dt * rate * ramp * (1.25 if G.has_skill("kondycja2") else 1.0))
+
+
 func can_stand() -> bool:
 	if not is_inside_tree():
 		return true
@@ -176,19 +198,18 @@ func _physics_process(dt: float) -> void:
 		dir = dir.normalized()
 	var want_sprint := G.key_down("sprint") and moving
 	var ms := max_stamina()
-	if stamina <= 0.05:
+	if stamina <= 0.05 and not tired:
 		tired = true
-	if stamina > ms * 0.3:
+		winded = 2.5
+	if stamina > ms * WINDED_AT:
 		tired = false
+	winded = maxf(0.0, winded - dt)
 	# bieg podrywa z kucek (o ile jest miejsce nad głową)
 	if want_sprint and crouching and not tired:
 		set_crouch(false)
 	sprinting = want_sprint and not tired and not crouching
-	if sprinting:
-		stamina = maxf(0.0, stamina - dt)
-	else:
-		stamina = minf(ms, stamina + dt * (0.5 if moving else 1.0))
-	var sp := (SPRINT * (1.08 if G.has_skill("kondycja2") else 1.0)) if sprinting else (SNEAK if crouching else WALK)
+	stamina_tick(dt)
+	var sp := (SPRINT * (1.08 if G.has_skill("kondycja2") else 1.0)) if sprinting else (SNEAK if crouching else WALK * (0.86 if winded > 0.0 else 1.0))
 	sp *= G.outfit_stat("speed", 1.0)
 	var gp := global_position
 	var outside := loc == "out" and G.world != null
@@ -198,6 +219,9 @@ func _physics_process(dt: float) -> void:
 		var h1: float = G.world.height(gp.x + dir.x * 0.8, gp.z + dir.z * 0.8)
 		var grade := (h1 - h0) / 0.8
 		sp *= clampf(1.0 - maxf(0.0, grade) * 0.75, 0.45, 1.0)
+		# bieg pod górę męczy wyraźnie bardziej
+		if sprinting and grade > 0.08:
+			stamina = maxf(0.0, stamina - dt * minf(0.6, grade * 1.5))
 	velocity = Vector3(dir.x * sp, 0.0, dir.z * sp)
 	# ciężki plecak męczy szybciej podczas biegu
 	if sprinting:

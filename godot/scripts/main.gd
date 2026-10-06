@@ -1803,7 +1803,7 @@ func _slow() -> void:
 func _cop_population() -> void:
 	var S: Dictionary = G.S
 	var pp: Vector3 = player.global_position
-	var want: int = clampi(2 + int(S.heat / 25.0) + (1 if G.is_night() else 0), 2, 6)
+	var want: int = G.cop_quota()
 	var cnt := 0
 	var post = null
 	for c in npcs.cops:
@@ -1813,6 +1813,12 @@ func _cop_population() -> void:
 			cnt += 1
 	if cnt < want:
 		npcs.spawn_cop(true)
+	elif cnt > want and not S.wanted and want == 0 and player.loc != "out":
+		# pierwsze dni: po wezwaniu patrol wraca na komendę, gdy tylko gracz zejdzie z ulicy
+		for c in npcs.cops:
+			if not c.post and not c.get("temp", false) and c.state == "patrol":
+				npcs.remove_cop(c)
+				break
 	elif cnt > want and not S.wanted:
 		for c in npcs.cops:
 			if not c.post and not c.get("temp", false) and c.state == "patrol" and (player.loc != "out" or Vector2(c.x - pp.x, c.z - pp.z).length() > 70.0):

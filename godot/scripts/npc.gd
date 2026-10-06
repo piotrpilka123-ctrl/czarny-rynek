@@ -34,8 +34,7 @@ var aware: Array = []        # patrole, które właśnie zauważają gracza: {x,
 func build() -> void:
 	for i in range(9):
 		spawn_citizen(i)
-	for i in range(2):
-		spawn_cop(false)
+	# patrole dochodzą z czasem gry (G.cop_quota) — pierwszego dnia ulice są puste
 	_build_static()
 	_build_car()
 	_build_dog()
@@ -494,7 +493,7 @@ func _update_car(dt: float, pp: Vector3, outside: bool) -> void:
 	if d < 0.6:
 		car.seg = (int(car.seg) + 1) % CAR_ROUTE.size()
 		if int(car.seg) == 0 or int(car.seg) == CAR_ROUTE.size() - 1:
-			car.wait = randf_range(50.0, 110.0)
+			car.wait = randf_range(50.0, 110.0) * G.car_pause()
 		elif int(car.seg) == 4:
 			car.wait = randf_range(8.0, 20.0)
 		return
@@ -787,12 +786,22 @@ func _begin_search(c: Dictionary, secs: float, hunt := false) -> void:
 	c.hunt = hunt
 	var pts: Array = []
 	var o: Vector2 = c.inv if c.inv != null else Vector2(c.x, c.z)
-	var a0 := randf() * TAU
+	# po zgubionym pościgu nie krąży na ślepo: idzie tam, dokąd uciekałeś, potem sprawdza boki
+	var dir: Vector2 = c.get("flee_dir", Vector2.ZERO)
+	var a0 := atan2(dir.y, dir.x) if (hunt and dir.length() > 0.3) else randf() * TAU
 	for k in range(3 if hunt else 1):
-		var a := a0 + k * TAU / 3.0 + randf_range(-0.4, 0.4)
+		var a = a0 + [0.0, 1.15, -1.15][k] + randf_range(-0.3, 0.3)
 		var q: Vector2 = G.world.near_free(o.x + cos(a) * randf_range(5.0, 9.0), o.y + sin(a) * randf_range(5.0, 9.0))
 		if q.distance_to(o) < 14.0:
 			pts.append(q)
+	if hunt:
+		# altanka śmietnikowa tuż obok? Doświadczony patrol do niej zajrzy
+		for h in G.world.hides:
+			var hp := Vector2(float(h.get("ox", h.get("x", 0.0))), float(h.get("oz", h.get("z", 0.0))))
+			if hp.distance_to(o) < 13.0 and randf() < 0.45:
+				pts.insert(mini(1, pts.size()), G.world.near_free(hp.x, hp.y))
+				c["check_hide"] = h
+				break
 	c.search_pts = pts
 
 
@@ -843,6 +852,11 @@ func nearest_buyer() -> Variant:
 # ---------------------------------------------------------------- pościgi
 func dispatch_to(x: float, z: float, count: int) -> void:
 	var avail := cops.filter(func(c): return c.state == "patrol" or c.state == "search")
+	# nikogo w okolicy (pierwsze dni gry)? Zgłoszenie i tak ktoś przyjmie — patrol wyjeżdża z komendy
+	while avail.size() < count and cops.size() < 6 and G.prologue == null:
+		var nc: Dictionary = spawn_cop(true)
+		nc["resp"] = true
+		avail.append(nc)
 	avail.sort_custom(func(a, b): return Vector2(a.x - x, a.z - z).length() < Vector2(b.x - x, b.z - z).length())
 	for i in range(mini(count, avail.size())):
 		avail[i].state = "investigate"
@@ -1077,6 +1091,21 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 	var P = G.player
 	var noise_r: float = P.noise() if outside else 0.0
 	aware.clear()
+	# radio: gdy choć jeden ścigający Cię widzi, wszyscy ścigający wiedzą, gdzie jesteś;
+	# najbliższy goni wprost, reszta odcina drogę
+	var radio_seen := false
+	var lead_cop = null
+	var lead_d := 1e9
+	for c0 in cops:
+		if c0.state == "chase":
+			if c0.sees:
+				radio_seen = true
+			var d0 := Vector2(pp.x - float(c0.x), pp.z - float(c0.z)).length()
+			if d0 < lead_d:
+				lead_d = d0
+				lead_cop = c0
+	var pv := Vector2(P.velocity.x, P.velocity.z)
+	pv = pv.normalized() if pv.length() > 0.3 else Vector2.ZERO
 	for c in cops.duplicate():
 		c.node.visible = outside
 		if not outside:
@@ -1209,6 +1238,12 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 						if sp0.distance_to(Vector2(c.x, c.z)) < 0.9:
 							c.search_pts.remove_at(0)
 							c.sp_wait = 2.4
+							# doszedł do kryjówki, do której miał zajrzeć: jeśli tam siedzisz, już wie
+							var ch = c.get("check_hide")
+							if ch != null and P.hidden and is_same(G.main.hide_at, ch) and dist < 4.5:
+								c.know = true
+								c.erase("check_hide")
+								start_chase(c)
 						else:
 							move_speed = 2.5
 							tgt = sp0
@@ -1220,6 +1255,12 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 				if c.sees:
 					c.last_seen = G.now
 					c.inv = Vector2(pp.x, pp.z)
+					c["flee_dir"] = pv
+				elif radio_seen:
+					# ktoś z patrolu ma Cię na oku i podaje przez radio — pozostali wiedzą, gdzie biec
+					c.last_seen = G.now
+					c.inv = Vector2(pp.x, pp.z)
+					c["flee_dir"] = pv
 				if c.inv == null:
 					c.inv = Vector2(pp.x, pp.z)
 				var at_last: bool = not c.sees and Vector2(c.inv.x - c.x, c.inv.y - c.z).length() < 1.6
@@ -1236,6 +1277,10 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 					c.node.rotation.y += _ang_diff(atan2(pp.x - c.x, pp.z - c.z), c.node.rotation.y) * minf(1.0, dt * 9.0)
 				else:
 					var goal: Vector2 = Vector2(pp.x, pp.z) if c.sees else c.inv
+					# najbliższy biegnie prosto za Tobą, pozostali odcinają drogę: celują w miejsce, do którego zmierzasz
+					if (c.sees or radio_seen) and not is_same(c, lead_cop) and pv.length() > 0.3 and dist > 6.0:
+						var cut: Vector2 = G.world.near_free(pp.x + pv.x * clampf(dist * 0.55, 4.0, 14.0), pp.z + pv.y * clampf(dist * 0.55, 4.0, 14.0))
+						goal = cut
 					if (goal - Vector2(c.x, c.z)).length() > 0.5:
 						move_speed = 5.5 + minf(1.0, G.S.heat / 100.0) * 0.5
 						tgt = goal

@@ -1752,6 +1752,8 @@ func update_hud() -> void:
 	bar_stam.max_value = P.max_stamina()
 	bar_stam.value = P.stamina
 	bar_stam.modulate.a = 0.55 if (P.stamina >= P.max_stamina() - 0.01 and not P.crouching) else 1.0
+	# zadyszka: pasek czerwienieje, dopóki nie da się znów biec
+	bar_stam.self_modulate = Color(1.0, 0.45, 0.4) if P.tired else Color.WHITE
 	# „oko”: jak bardzo rzucasz się w oczy (postawa, ruch, ciemność, światło latarni, krzaki)
 	var vis: float = P.visibility() if P.loc == "out" else 1.0
 	ic_stance.texture = K.tex("eye_off" if vis < 0.5 else "eye")

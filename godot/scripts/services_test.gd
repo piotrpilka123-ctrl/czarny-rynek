@@ -294,6 +294,97 @@ static func run(T) -> void:
 	T.ok(s_hi - s_lo > 0.7 and absf(angle_difference(b_lo, b_hi)) > (s_hi - s_lo) * 0.6, "patrol rozgląda się z latarką: barki %d°, snop %d°" % [int(rad_to_deg(s_hi - s_lo)), int(rad_to_deg(absf(angle_difference(b_lo, b_hi))))])
 	N.remove_cop(cp)
 	G.ui.close_all()
+	# --- policja: na początku prawie jej nie ma, z czasem coraz więcej; wezwana przyjeżdża z komendy
+	var t_keep: float = S.t
+	var heat_keep: float = S.heat
+	var inv_keep: float = S.invest
+	S.heat = 0.0
+	S.invest = 0.0
+	S.wanted = false
+	var q := []
+	for dd9 in [0, 2, 8, 20]:
+		S.t = float(dd9) * 1440.0 + 12.0 * 60.0
+		q.append(G.cop_quota())
+	T.ok(q == [0, 1, 2, 3], "patrole przybywają z czasem gry: dzień 1 — %d, dzień 3 — %d, dzień 9 — %d, dzień 21 — %d" % [q[0], q[1], q[2], q[3]])
+	S.t = 12.0 * 60.0
+	S.heat = 65.0
+	S.invest = 50.0
+	var q_hot: int = G.cop_quota()
+	S.wanted = true
+	T.ok(q_hot == 3 and G.cop_quota() >= 2 and G.car_pause() > 3.0, "hałas i śledztwo ściągają patrole nawet pierwszego dnia (%d), a radiowóz na początku jeździ rzadko" % q_hot)
+	S.wanted = false
+	S.heat = 0.0
+	S.invest = 0.0
+	for c9 in N.cops.duplicate():
+		N.remove_cop(c9)
+	var pp0: Vector3 = G.player.global_position
+	N.dispatch_to(pp0.x + 30.0, pp0.z, 2)
+	T.ok(N.cops.size() == 2 and N.cops[0].state == "investigate" and N.cops[0].get("resp", false), "zgłoszenie, gdy nikogo nie ma w okolicy: dwóch policjantów wychodzi z komendy")
+	if N.cops.size() == 2:
+		var ca: Dictionary = N.cops[0]
+		var cb: Dictionary = N.cops[1]
+		ca.x = pp0.x + 5.0
+		ca.z = pp0.z
+		cb.x = pp0.x + 30.0
+		cb.z = pp0.z + 30.0
+		for cc in [ca, cb]:
+			cc.state = "chase"
+			cc.look_t = 9.0
+			cc.last_seen = G.now
+			cc.inv = Vector2(float(cc.x), float(cc.z))
+		ca.sees = true
+		cb.sees = false
+		S.wanted = true
+		N._update_cops(0.05, pp0, true)
+		T.ok((cb.inv as Vector2).distance_to(Vector2(pp0.x, pp0.z)) < 0.1, "radio: gdy jeden ścigający Cię widzi, drugi też wie, gdzie biec")
+		cb["flee_dir"] = Vector2(1.0, 0.0)
+		cb.inv = Vector2(pp0.x, pp0.z)
+		N._begin_search(cb, 15.0, true)
+		var ahead := false
+		if not (cb.search_pts as Array).is_empty():
+			ahead = (cb.search_pts[0] as Vector2).x > pp0.x + 1.0
+		T.ok(cb.state == "search" and ahead, "zgubiony trop: patrol szuka najpierw tam, dokąd uciekałeś")
+		S.wanted = false
+	for c9 in N.cops.duplicate():
+		N.remove_cop(c9)
+	S.t = t_keep
+	S.heat = heat_keep
+	S.invest = inv_keep
+	# --- kondycja: większy zapas, chwila na złapanie oddechu, adrenalina w pościgu
+	var PL = G.player
+	var st_keep: float = PL.stamina
+	S.wanted = false
+	PL.stamina = PL.max_stamina()
+	PL.sprinting = true
+	PL.moving = true
+	for i in range(100):
+		PL.stamina_tick(0.1)
+	T.ok(PL.BASE_STAMINA >= 11.0 and absf(PL.stamina - maxf(0.0, PL.max_stamina() - 10.0)) < 0.05, "kondycja: %d s biegu bez przerwy (w tym stroju %.1f s)" % [int(PL.BASE_STAMINA), PL.max_stamina()])
+	S.wanted = true
+	PL.stamina = PL.max_stamina()
+	for i in range(100):
+		PL.stamina_tick(0.1)
+	T.ok(absf(PL.stamina - maxf(0.0, PL.max_stamina() - 7.5)) < 0.05, "w pościgu adrenalina oszczędza oddech (po 10 s biegu zostaje %.1f s)" % PL.stamina)
+	S.wanted = false
+	PL.stamina = 2.0
+	PL.sprinting = false
+	PL.moving = false
+	PL.rest_t = 0.0
+	for i in range(8):
+		PL.stamina_tick(0.1)
+	var after_pause: float = PL.stamina
+	for i in range(40):
+		PL.stamina_tick(0.1)
+	var rest_stand: float = PL.stamina - after_pause
+	PL.stamina = 2.0
+	PL.moving = true
+	PL.rest_t = 0.0
+	for i in range(48):
+		PL.stamina_tick(0.1)
+	T.ok(after_pause == 2.0 and rest_stand > 4.0 and PL.stamina - 2.0 < rest_stand * 0.7, "po biegu chwila bez oddechu, potem wraca — stojąc szybciej niż idąc (+%.1f / +%.1f s)" % [rest_stand, PL.stamina - 2.0])
+	PL.stamina = st_keep
+	PL.sprinting = false
+	PL.moving = false
 	# --- otwarte okna nie zatrzymują świata: telefon, rozmowa; staje tylko menu pauzy
 	G.arresting = false
 	var t_a := float(S.t)

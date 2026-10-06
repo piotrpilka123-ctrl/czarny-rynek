@@ -1178,6 +1178,31 @@ func on_chase_start() -> void:
 	wanted_grace = 0.0
 
 
+## Ilu pieszych patroli krąży po mieście. W pierwszych dniach prawie nikogo — policja nie wie, że istniejesz.
+## Potem obecność rośnie z czasem gry, a doraźnie z hałasem (uwaga), śledztwem i porą nocy.
+func cop_quota() -> int:
+	var d := day()
+	var base := 0
+	if d >= 3:
+		base = 1
+	if d >= 8:
+		base = 2
+	if d >= 16:
+		base = 3
+	var extra := int(S.heat / 30.0) + (1 if S.invest >= 40.0 else 0)
+	if is_night() and d >= 5:
+		extra += 1
+	if S.wanted:
+		return clampi(maxi(2, base + extra), 2, 6)
+	return clampi(base + extra, 0, 6)
+
+
+## radiowóz: w pierwszych dniach przejeżdża rzadko, z czasem coraz częściej
+func car_pause() -> float:
+	var d := day()
+	return 5.0 if d <= 2 else (2.4 if d <= 7 else (1.4 if d <= 15 else 1.0))
+
+
 func bribe_chance(a: float) -> float:
 	return clampf(0.08 + a / 5500.0 - S.invest / 400.0 - (0.1 if carry_value() > 3000.0 else 0.0) + (0.15 if has_skill("uklad") else 0.0), 0.04, 0.9)
 
