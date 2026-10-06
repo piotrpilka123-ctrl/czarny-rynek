@@ -442,6 +442,21 @@ def chain_icon(name):
     _cloth(name, dr)
 
 
+def knuckles_icon(name):
+    """kastet: mosiężna listwa z czterema oczkami i oparciem na dłoń"""
+    def dr(d):
+        brass, dark, hi = (198, 158, 62, 255), (120, 90, 30, 255), (240, 214, 130, 255)
+        d.rounded_rectangle([P(30), P(108), P(162), P(146)], P(18), fill=brass, outline=dark, width=P(3))
+        for k in range(4):
+            cx = 50 + k * 31
+            d.ellipse([P(cx - 19), P(52), P(cx + 19), P(104)], fill=brass, outline=dark, width=P(3))
+            d.ellipse([P(cx - 10), P(64), P(cx + 10), P(96)], fill=(0, 0, 0, 0), outline=dark, width=P(3))
+            d.arc([P(cx - 15), P(56), P(cx + 15), P(100)], 200, 300, fill=hi, width=P(3))
+        d.line([(P(44), P(118)), (P(148), P(118))], fill=hi, width=P(3))
+        d.rounded_rectangle([P(58), P(128), P(134), P(138)], P(4), fill=dark)
+    _cloth(name, dr)
+
+
 def scarf_icon(name, col):
     def dr(d):
         d.ellipse([P(40), P(54), P(152), P(130)], fill=col + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
@@ -562,6 +577,7 @@ paper_bag('cukier', (236, 236, 228), 'CUKIER PUDER', (60, 100, 170))
 seeds('nasiona')
 pot('doniczka')
 phone('burner')
+knuckles_icon('kastet')
 bottle('nawoz', (70, 130, 80), 'NAWÓZ')
 canister('chemia', (60, 90, 150), 'ODCZYNNIK')
 canister('woda', (70, 150, 200), 'WODA')

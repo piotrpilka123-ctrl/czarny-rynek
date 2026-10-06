@@ -107,13 +107,13 @@ func new_state() -> Dictionary:
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store()},
-		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0}, "upg": {}, "pockets": [null, null, null, null],
+		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
 		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "special": null, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
-		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0},
+		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0, "hospital": 0},
 		"pos": null, "mom_day": 0,
 	}
 
@@ -223,6 +223,12 @@ func outfit_stat(key: String, def := 1.0) -> float:
 		var st: Dictionary = D.ITEMS[id].get("stats", {})
 		if st.has(key):
 			v = (v + float(st[key])) if key == "cap" else (v * float(st[key]))
+	# po szpitalu: obolały szybciej się męczy i wolniej biega
+	if hurt():
+		if key == "speed":
+			v *= 0.93
+		elif key == "stamina":
+			v *= 0.75
 	return v
 
 
@@ -289,7 +295,8 @@ func stat_traits(o: Dictionary) -> Array:
 	var out := []
 	var pct := func(v: float) -> String: return "%+d%%" % int(round((v - 1.0) * 100.0))
 	for e in [["speed", "szybkość", true], ["stamina", "kondycja", true], ["noise", "hałas kroków", false], ["vis", "widoczność", false], ["vis_night", "widoczność nocą", false],
-			["attention", "podejrzliwość patroli", false], ["witness", "świadkowie i śledztwo", false], ["charm", "ceny u klientów", true]]:
+			["attention", "podejrzliwość patroli", false], ["witness", "świadkowie i śledztwo", false], ["charm", "ceny u klientów", true],
+			["conceal", "kontrola przy wejściu", false]]:
 		if o.has(e[0]):
 			var v := float(o[e[0]])
 			out.append({"text": "%s %s" % [e[1], pct.call(v)], "good": (v > 1.0) == bool(e[2])})
@@ -301,7 +308,7 @@ func stat_traits(o: Dictionary) -> Array:
 ## łączne cechy tego, co masz na sobie (strój + ubrania)
 func worn_traits() -> Array:
 	var tot := {}
-	for key in ["speed", "stamina", "noise", "vis", "vis_night", "attention", "witness", "charm"]:
+	for key in ["speed", "stamina", "noise", "vis", "vis_night", "attention", "witness", "charm", "conceal"]:
 		var v := outfit_stat(key, 1.0)
 		if absf(v - 1.0) > 0.004:
 			tot[key] = v
@@ -543,7 +550,7 @@ func entries(st: Dictionary) -> Array:
 	if money_n >= 1.0:
 		out.append({"kind": "cash", "p": "", "pur": 0, "id": "cash", "n": floorf(money_n), "name": "Gotówka", "sub": "nic nie waży", "icon": "cash", "tier": -1,
 			"qty": money(money_n), "usize": 0.0, "uw": 0.0, "step": 1.0, "unit": "zł", "size": 0.0, "weight": 0.0,
-			"desc": "Banknoty. Nie zajmują miejsca w plecaku. Przy zatrzymaniu policja zabiera to, co masz przy sobie — resztę trzymaj w skrytce."})
+			"desc": "Banknoty. Nie zajmują miejsca w plecaku. Na komendzie stracisz z nich grzywnę, w szpitalu 20–70%%. Powyżej %s przy sobie policja uzna Cię za hurtownika i zacznie węszyć po kryjówkach — nadwyżkę trzymaj w skrytce." % money(big_cash())})
 	return out
 
 
@@ -949,26 +956,217 @@ func _bribe_fail() -> void:
 func surrender() -> void:
 	busy = true
 	await ui.fade(true)
-	var fine: float = minf(S.cash, round(S.cash * 0.35 + 200.0))
-	S.cash -= fine
-	var lost := carry_goods()
-	S.inv.bulk = new_store().bulk
-	S.inv.pack = new_store().pack
-	S.arrests = int(S.arrests) + 1
-	S.heat = 25.0
-	S.wanted = false
-	Sfx.siren(false)
-	npcs.end_chase()
-	add_invest(10.0)
-	add_minutes(360.0)
-	main.teleport("out", Vector3(-181.0 * D.SC, 0.0, 12.6 * D.SC), PI)
-	notify("Zatrzymany (%d/%d)! Konfiskata: %s, grzywna %s." % [int(S.arrests), D.MAX_ARRESTS, grams(lost), money(fine)], "bad")
+	var res := arrest_apply()
+	var txt := "Zatrzymany (%d/%d)! Konfiskata: %s, grzywna %s." % [int(S.arrests), D.MAX_ARRESTS, loot_text(res), money(res.fine)]
+	main.wake_in("komisariat")
+	notify(txt, "bad")
+	if res.big:
+		notify("Tyle gotówki przy sobie? Policja bierze Cię za hurtownika — przez %d dni będą węszyć po Twoich kryjówkach." % int(D.WATCH_DAYS), "bad")
 	await get_tree().create_timer(0.7).timeout
 	await ui.fade(false)
 	busy = false
 	arresting = false
 	if int(S.arrests) >= D.MAX_ARRESTS:
 		main.ending("wyrok")
+		return
+	main.release_talk(res)
+
+
+## rozliczenie zatrzymania (bez ekranu): grzywna, konfiskata, śledztwo. Duża gotówka = podejrzenie hurtu i naloty.
+func arrest_apply() -> Dictionary:
+	var cash0 := float(S.cash)
+	var fine: float = minf(S.cash, round(S.cash * 0.35 + 200.0))
+	S.cash -= fine
+	var res := confiscate()
+	res["fine"] = fine
+	res["big"] = cash0 >= big_cash()
+	S.arrests = int(S.arrests) + 1
+	S.heat = 25.0
+	S.wanted = false
+	Sfx.siren(false)
+	if npcs != null:
+		npcs.end_chase()
+	add_invest(10.0 + (5.0 if res.weapon else 0.0))
+	if res.big:
+		add_invest(D.CASH_SUSPECT_INVEST)
+		S.flags["watch_until"] = S.t + D.WATCH_DAYS * 1440.0
+	add_minutes(360.0)
+	return res
+
+
+# ================================================================ klub, szpital, komenda
+## czy pozycja z plecaka jest nielegalna: towar i mieszanki, chemia, nasiona, broń
+func is_illegal(e: Dictionary) -> bool:
+	if e.kind == "pack" or e.kind == "bulk":
+		return true
+	return e.kind == "item" and bool(D.ITEMS[e.id].get("illegal", false))
+
+
+func illegal_entries() -> Array:
+	var out := []
+	for e in entries(S.inv):
+		if is_illegal(e):
+			out.append(e)
+	return out
+
+
+## ile miejsca w kieszeniach zajmuje kontrabanda
+func illegal_size() -> float:
+	var n := 0.0
+	for e in illegal_entries():
+		n += float(e.size)
+	return n
+
+
+func has_weapon() -> bool:
+	for id in D.ITEMS:
+		if D.ITEMS[id].get("weapon", false) and int(S.items.get(id, 0)) > 0:
+			return true
+	return false
+
+
+## policja zabiera wszystko, co nielegalne. Zwraca {goods: gramy, items: sztuki, weapon}
+func confiscate() -> Dictionary:
+	var res := {"goods": carry_goods(), "items": 0, "weapon": has_weapon()}
+	S.inv.bulk = new_store().bulk
+	S.inv.pack = new_store().pack
+	for id in D.ITEMS:
+		if D.ITEMS[id].get("illegal", false) and int(S.items.get(id, 0)) > 0:
+			res.items = int(res.items) + int(S.items[id])
+			S.items[id] = 0
+	return res
+
+
+func loot_text(res: Dictionary) -> String:
+	var parts := []
+	if float(res.goods) > 0.0:
+		parts.append(grams(res.goods) + " towaru")
+	if int(res.items) > 0:
+		parts.append("%d szt. nielegalnych rzeczy" % int(res.items))
+	return ", ".join(parts) if not parts.is_empty() else "nic"
+
+
+## próg gotówki przy sobie, od którego policja widzi w Tobie hurtownika (rośnie z poziomem, czyli z obrotem)
+func big_cash() -> float:
+	return D.CASH_SUSPECT + D.CASH_SUSPECT_LVL * float(int(S.lvl) - 1)
+
+
+## czy policja po dużej wpadce węszy po kryjówkach
+func watched() -> bool:
+	return S.t < float(S.flags.get("watch_until", 0.0))
+
+
+func hurt() -> bool:
+	return S.t < float(S.flags.get("hurt_until", 0.0))
+
+
+func club_open() -> bool:
+	var h := hour()
+	return h >= D.CLUB_OPEN or h < D.CLUB_CLOSE
+
+
+## numer „nocy klubowej” (zmienia się w południe, żeby noc po północy była tą samą nocą)
+func club_night() -> int:
+	return int(floor((S.t - 720.0) / 1440.0))
+
+
+## ile razy tej nocy ochroniarz coś przy Tobie znalazł
+func club_tries() -> int:
+	var c: Dictionary = S.flags.get("club", {})
+	return int(c.get("n", 0)) if int(c.get("night", -99)) == club_night() else 0
+
+
+## szansa, że ochroniarz wymaca kontrabandę. Broń piszczy na bramce zawsze; małą paczkę da się przemycić.
+func frisk_chance() -> float:
+	var sz := illegal_size()
+	if sz <= 0.0:
+		return 0.0
+	if has_weapon():
+		return 1.0
+	var c := (0.2 + sz * 0.05) * outfit_stat("conceal", 1.0) * (1.0 + 0.2 * float(club_tries()))
+	return clampf(c, 0.12, 0.97)
+
+
+## kontrola przy wejściu do klubu: {ok, why, found, tries, beaten, chance}
+func club_frisk(roll := -1.0) -> Dictionary:
+	var res := {"ok": true, "why": "", "found": "", "tries": club_tries(), "beaten": false, "chance": frisk_chance()}
+	if outfit_masked():
+		res.ok = false
+		res.why = "mask"
+		return res
+	var r := randf() if roll < 0.0 else roll
+	if r >= float(res.chance):
+		return res
+	res.ok = false
+	res.why = "found"
+	var best = null
+	for e in illegal_entries():
+		if best == null or (e.kind == "item" and D.ITEMS[e.id].get("weapon", false)) or float(e.size) > float(best.size):
+			best = e
+			if e.kind == "item" and D.ITEMS[e.id].get("weapon", false):
+				break
+	res.found = String(best.name) if best != null else "coś"
+	var n := club_tries() + 1
+	S.flags["club"] = {"night": club_night(), "n": n}
+	res.tries = n
+	res.beaten = n >= D.CLUB_TRIES
+	return res
+
+
+## ile gotówki z kieszeni znika w szpitalu (20–70 %)
+func hospital_loss(roll := -1.0) -> float:
+	var r := randf() if roll < 0.0 else roll
+	return roundf(float(S.cash) * lerpf(float(D.HOSPITAL_LOSS[0]), float(D.HOSPITAL_LOSS[1]), clampf(r, 0.0, 1.0)))
+
+
+## rozliczenie pobytu w szpitalu (bez ekranu). reason: "beaten" (ochrona klubu) albo "shot" (policja).
+## Pobity: znika część gotówki, towar zostaje w kieszeniach. Postrzelony przez policję: dodatkowo wszystko jak przy zatrzymaniu.
+func hospital_apply(reason: String, roll := -1.0) -> Dictionary:
+	var res := {"reason": reason, "cash": hospital_loss(roll), "goods": 0.0, "items": 0, "weapon": false, "fine": 0.0, "big": false}
+	S.cash -= float(res.cash)
+	S.wanted = false
+	Sfx.siren(false)
+	if npcs != null:
+		npcs.end_chase()
+	if reason == "shot":
+		var cash0 := float(S.cash)
+		res.merge(confiscate(), true)
+		res.big = cash0 >= big_cash()
+		S.arrests = int(S.arrests) + 1
+		S.heat = 25.0
+		add_invest(12.0 + (5.0 if res.weapon else 0.0))
+		if res.big:
+			add_invest(D.CASH_SUSPECT_INVEST)
+			S.flags["watch_until"] = S.t + D.WATCH_DAYS * 1440.0
+		add_minutes(20.0 * 60.0)
+		S.flags["hurt_until"] = S.t + 36.0 * 60.0
+	else:
+		S.heat = maxf(0.0, float(S.heat) - 10.0)
+		add_minutes(9.0 * 60.0)
+		S.flags["hurt_until"] = S.t + 12.0 * 60.0
+	S.flags["club"] = {"night": club_night(), "n": 0}
+	S.stats["hospital"] = int(S.stats.get("hospital", 0)) + 1
+	return res
+
+
+## utrata przytomności i pobudka na sali
+func hospitalize(reason: String) -> void:
+	if busy and not arresting:
+		return
+	busy = true
+	arresting = true
+	ui.close_all()
+	await main.blackout(reason)
+	var res := hospital_apply(reason)
+	main.wake_in("szpital")
+	await get_tree().create_timer(1.0).timeout
+	await ui.fade(false)
+	busy = false
+	arresting = false
+	if reason == "shot" and int(S.arrests) >= D.MAX_ARRESTS:
+		main.ending("wyrok")
+		return
+	main.hospital_talk(res)
 
 
 # ================================================================ zdarzenia czasowe
@@ -976,6 +1174,7 @@ func surrender() -> void:
 func on_tick() -> void:
 	Prod.tick(10.0)
 	Prod.raid_tick()
+	Prod.flat_raid_tick()
 	for o in S.orders.duplicate():
 		var st: Dictionary = S.cust[o.cust]
 		if o.status == "new" and S.t > float(o.respond_by):
@@ -1463,7 +1662,7 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 			d.speech = String(d.speech) + " „Ile można czekać?”"
 			d.notes.append("Spóźnienie: nastrój −%d" % int(late))
 	if float(st.get("owes", 0.0)) > 0.0:
-		if randf() < float(who.get("reliable", 0.8)):
+		if randf() < float(who.get("reliable", 0.8)) + (0.25 if has_weapon() else 0.0):
 			S.cash += float(st.owes)
 			d.notes.append("Oddał dług: +%s" % money(st.owes))
 			st.owes = 0.0

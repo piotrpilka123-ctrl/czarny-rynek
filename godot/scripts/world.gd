@@ -45,6 +45,10 @@ var _lamp_pts: PackedVector3Array = PackedVector3Array()
 var lamp_mat: StandardMaterial3D
 var sirens: Array = []
 var rooms := {}
+## gdzie gracz budzi się po wypadku albo zatrzymaniu: pokój -> [pozycja, obrót]
+var wake := {}
+var club_spots: Array = []
+var club_ball: Node3D = null
 var furn := {}                 # pokój -> Node3D z meblami
 var furn_body := {}
 var body: StaticBody3D
@@ -1216,6 +1220,8 @@ func _lamp(x: float, z: float, ry: float, broken := false) -> void:
 ## drzwi budynku, do którego da się wejść (współrzędne świata)
 func door(id: String) -> void:
 	var dd: Dictionary = D.DOORS[id]
+	if dd.get("custom", false):
+		return
 	var dz: float = dd.dz
 	var x: float = dd.x
 	var z: float = float(dd.z) - dz * 1.4 * SC
@@ -1292,14 +1298,43 @@ func _buildings() -> void:
 	_garages()
 	# napisy, szyldy
 	var gy := hd(8.0, -77.0)
-	_sign("POLICJA", Vector3(-181.0, 9.2, 8.12), Color(0.9, 0.92, 1.0), 150, 0.0, 0.008, 8)
-	_sign("KOMISARIAT III", Vector3(-181.0, 7.6, 8.12), Color(0.75, 0.8, 0.9), 60, 0.0, 0.006, 6)
+	# komenda: podświetlany kaseton nad wejściem
+	var ks := _place(Stations.model("kom_szyld"), -181.0, 8.0, 0.0)
+	ks.position.y += 4.3
+	_sign("3RD PRECINCT", Vector3(-181.0, 7.3, 8.12), Color(0.75, 0.8, 0.9), 60, 0.0, 0.006, 6)
+	# szpital po drugiej stronie ulicy: daszek izby przyjęć i kaseton z krzyżem
+	building(-200.0, 33.0, -162.0, 51.0, 11.4, "urzad", Color(0.88, 0.9, 0.88), Color(0.72, 0.22, 0.22), 0.0)
+	_place(Stations.model("szp_wiata"), -181.0, 33.0, PI)
+	var hs := _place(Stations.model("szp_szyld"), -172.0, 33.0, PI)
+	hs.position.y += 5.6
+	for e in [[-177.8, 30.3], [-184.2, 30.3]]:
+		add_col(e[0] - 0.2, e[0] + 0.2, e[1] - 0.2, e[1] + 0.2, 3.0)
+		rects.pop_back()
+	var hl := OmniLight3D.new()
+	hl.position = Vector3(-181.0, hd(-181.0, 31.0) + 2.7, 31.0)
+	hl.light_color = Color(0.9, 0.95, 1.0)
+	hl.light_energy = 1.4
+	hl.omni_range = 8.0
+	hl.distance_fade_enabled = true
+	hl.distance_fade_begin = 45.0
+	hl.distance_fade_length = 15.0
+	city.add_child(hl)
 	var ne := _sign("NEON", Vector3(-7.85, 8.0, 128.0), Color(1.0, 0.3, 0.85), 330, PI / 2.0, 0.01, 10)
 	ne.shaded = false
 	var ne2 := _sign("KLUB • DISCO • BAR", Vector3(-7.85, 5.6, 128.0), Color(0.3, 0.95, 1.0), 70, PI / 2.0, 0.008, 6)
 	ne2.shaded = false
-	Models.box(city, Vector3(0.3, 2.6, 2.2), Vector3(-7.9, 1.3, 128.0), Models.mat("0c0c10", 0.4, 0.3))
-	Models.box(city, Vector3(0.1, 0.25, 2.4), Vector3(-7.7, 2.85, 128.0), Models.mat("ff3bd0", 0.4, 0.0, 4.0))
+	# wejście do klubu: stalowy portal z neonowym łukiem, chodnik i słupki z liną
+	if Stations.model("klub_drzwi") != null:
+		_place(Stations.model("klub_drzwi"), -8.0, 128.0, PI / 2.0)
+		for e in [[-6.9, 125.85], [-6.9, 130.15], [-3.2, 125.85], [-3.2, 130.15]]:
+			add_col(e[0] - 0.25, e[0] + 0.25, e[1] - 0.25, e[1] + 0.25, 1.0)
+			rects.pop_back()
+	else:
+		Models.box(city, Vector3(0.3, 2.6, 2.2), Vector3(-7.9, 1.3, 128.0), Models.mat("0c0c10", 0.4, 0.3))
+		Models.box(city, Vector3(0.1, 0.25, 2.4), Vector3(-7.7, 2.85, 128.0), Models.mat("ff3bd0", 0.4, 0.0, 4.0))
+	inter.append({"loc": "out", "x": -7.6 * SC, "z": 128.0 * SC, "y0": 0.0, "y1": 2.5, "r": 1.1, "reach": 3.0, "id": "door_club",
+		"label": func(): return "Klub Neon — wejście (kontrola osobista)" if G.club_open() else "Klub Neon — otwarte od %d:00" % int(D.CLUB_OPEN),
+		"act": func(): G.main.club_door()})
 	var cl := OmniLight3D.new()
 	cl.position = Vector3(-6.2, 3.2, 128.0)
 	cl.light_color = Color(1.0, 0.25, 0.8)
@@ -3003,6 +3038,9 @@ func _interiors() -> void:
 	Interior.stain(g4, Vector3(c4, 0.9, R4.d * 0.5 - 0.012), Vector3(0, PI, 0), Vector2(2.6, 1.6), Color(0.05, 0.07, 0.05, 0.35))
 	Interior.note(g4, Vector3(c4 + R4.w * 0.5 - 0.01, 1.4, 1.2), -PI / 2.0, "PIWNICA NR 4\nNIE ZASTAWIAĆ ZAWORU", 0.36, 0.22)
 	_lab_room()
+	_hospital_room()
+	_station_room()
+	_club_room()
 	_clothes_room()
 	for id in ["garage", "basement"]:
 		var fg := Node3D.new()
@@ -3134,6 +3172,217 @@ func _lm(g: Node3D, name: String, x: float, z: float, ry := 0.0, y := 0.0, col :
 
 ## Laboratorium w Starej Hucie (prolog): linia syntezy pod wschodnią ścianą, reaktor, suszarnia i prasa,
 ## magazyn chemii, stół do pakowania pośrodku. Ciemna hala oświetlona lampami roboczymi; na ścianach ładunki.
+# ---------------- SZPITAL: sala, na której budzisz się po pobiciu albo postrzale ----------------
+func _hospital_room() -> void:
+	var R: Dictionary = D.ROOMS.szpital
+	var cx: float = R.cx
+	var w: float = R.w
+	var d: float = R.d
+	var h: float = R.h
+	var g := _room("szpital", "dirty_tiles", "beige_wall_001", "e4e6e2", Color(0.82, 0.92, 0.86), 0.6)
+	Interior.baseboards(g, cx, w, d, "9fb4a8")
+	# lamperia: pas olejnej farby do wysokości 1,3 m
+	var lam := Models.mat("7fa89a", 0.5)
+	Models.box(g, Vector3(w, 1.3, 0.012), Vector3(cx, 0.65, -d * 0.5 + 0.006), lam, Vector3.ZERO, false)
+	Models.box(g, Vector3(0.012, 1.3, d), Vector3(cx - w * 0.5 + 0.006, 0.65, 0), lam, Vector3.ZERO, false)
+	Models.box(g, Vector3(0.012, 1.3, d), Vector3(cx + w * 0.5 - 0.006, 0.65, 0), lam, Vector3.ZERO, false)
+	for lx in [-1.9, 1.9]:
+		Interior.ceiling_lamp(g, Vector3(cx + lx, h, 0.0), "tube", Color(0.9, 0.97, 1.0))
+		var li := _room_light(g, cx + lx, 0.0, h - 0.15, 1.15, Color(0.86, 0.95, 1.0), 8.0)
+		li.shadow_enabled = lx < 0.0
+	var bz := -d * 0.5 + 1.1
+	for k in range(3):
+		var bx := cx + (k - 1) * 2.5
+		_lm(g, "szp_lozko", bx, bz, 0.0, 0.0, Vector2(0.5, 1.05))
+		_lm(g, "szp_szafka", bx + 0.78, -d * 0.5 + 0.3, 0.0, 0.0, Vector2(0.24, 0.22))
+		if k < 2:
+			var pw := _lm(g, "szp_parawan", bx + 1.25, bz + 0.2, PI / 2.0, 0.0, Vector2(0.06, 0.85))
+			Interior._tint(pw, Color(0.72, 0.86, 0.82))
+	# środkowe łóżko jest Twoje: kroplówka i monitor
+	_lm(g, "szp_stojak", cx - 0.72, -d * 0.5 + 0.5, 0.6)
+	_lm(g, "szp_monitor", cx - 0.75, -d * 0.5 + 1.5, PI * 0.6)
+	var ml := _room_light(g, cx - 0.6, -d * 0.5 + 1.4, 1.2, 0.25, Color(0.4, 1.0, 0.55), 1.8)
+	ml.shadow_enabled = false
+	_lm(g, "szp_umywalka", cx + w * 0.5, 1.4, -PI / 2.0)
+	_lm(g, "kom_lawka", cx - 2.2, d * 0.5 - 0.35, PI, 0.0, Vector2(0.9, 0.3))
+	_rp(g, "wall_clock", cx, d * 0.5 - 0.04, PI, 0.3, 2.25)
+	Interior.note(g, Vector3(cx - w * 0.5 + 0.01, 1.7, 1.2), PI / 2.0, "VISITING HOURS\n15:00 – 18:00", 0.42, 0.3)
+	for wx in [-2.5, 2.5]:
+		windows.append(Interior.window(g, Vector3(cx + wx, 1.85, -d * 0.5), 1.2, 0.9, "n", "blinds", false))
+	wake["szpital"] = [Vector3(cx + 0.05, 0.0, -d * 0.5 + 2.75), PI]
+
+
+# ---------------- KOMENDA: cela, z której wychodzisz po zatrzymaniu ----------------
+func _station_room() -> void:
+	var R: Dictionary = D.ROOMS.komisariat
+	var cx: float = R.cx
+	var w: float = R.w
+	var d: float = R.d
+	var h: float = R.h
+	var g := _room("komisariat", "concrete_floor_worn_001", "blue_plaster_weathered", "d0d2d0", Color(0.8, 0.84, 0.9), 0.6)
+	Interior.baseboards(g, cx, w, d, "4a5560")
+	for lx in [-2.0, 2.0]:
+		Interior.ceiling_lamp(g, Vector3(cx + lx, h, 0.3), "tube", Color(0.85, 0.92, 1.0))
+		var li := _room_light(g, cx + lx, 0.3, h - 0.15, 1.0, Color(0.82, 0.9, 1.0), 8.0)
+		li.shadow_enabled = lx < 0.0
+	# cela w północno-zachodnim rogu: krata od południa, ściana od wschodu
+	var x0 := cx - w * 0.5
+	var kz := -d * 0.5 + 2.5
+	var kr := _lm(g, "kom_krata", x0 + 1.6, kz, 0.0)
+	var leaf := Stations._find(kr, "Drzwi") as Node3D
+	if leaf != null:
+		# skrzydło uchylone na oścież: obrót wokół zawiasu (oś modelu jest w zawiasie)
+		leaf.rotation.y = -1.9
+	add_col(x0, x0 + 1.95, kz - 0.06, kz + 0.06, h, true, -1.0)
+	rects.pop_back()
+	add_col(x0 + 2.9, x0 + 3.2, kz - 0.06, kz + 0.06, h, true, -1.0)
+	rects.pop_back()
+	Models.box(g, Vector3(0.14, h, 2.5), Vector3(x0 + 3.27, h * 0.5, -d * 0.5 + 1.25), Props.pbr("concrete_wall_008", 0.5, Color(0.7, 0.74, 0.8)))
+	add_col(x0 + 3.2, x0 + 3.34, -d * 0.5, kz + 0.06, h, true, -1.0)
+	rects.pop_back()
+	_lm(g, "kom_prycza", x0, -d * 0.5 + 1.2, PI / 2.0, 0.0, Vector2(0.34, 0.95))
+	Models.cyl(g, 0.16, 0.13, 0.3, Vector3(x0 + 2.8, 0.15, -d * 0.5 + 0.35), Models.mat("6a6e72", 0.4, 0.7), Vector3.ZERO, 12)
+	# dyżurka: biurko, szafki depozytowe, tablica z listami gończymi, ławka dla czekających
+	_lm(g, "kom_biurko", cx + 1.9, -d * 0.5 + 1.5, PI, 0.0, Vector2(0.82, 0.4))
+	_lm(g, "kom_tablica", cx + 1.9, -d * 0.5, 0.0, 1.65)
+	_lm(g, "kom_szafa", cx + w * 0.5 - 0.27, 1.3, -PI / 2.0, 0.0, Vector2(0.27, 0.56))
+	_lm(g, "kom_lawka", cx - 2.4, d * 0.5 - 0.35, PI, 0.0, Vector2(0.9, 0.3))
+	_rp(g, "wall_clock", cx + 3.4, -d * 0.5 + 0.04, 0.0, 0.3, 2.2)
+	Interior.note(g, Vector3(cx + w * 0.5 - 0.01, 1.7, -1.2), -PI / 2.0, "NO SMOKING\nNO PHONES IN CELLS", 0.42, 0.3)
+	wake["komisariat"] = [Vector3(x0 + 1.5, 0.0, -d * 0.5 + 1.3), PI * 1.15]
+
+
+# ---------------- KLUB NEON: parkiet, bar, DJ, loże ----------------
+const SH_DANCE := """shader_type spatial;
+uniform float bpm = 124.0;
+void fragment() {
+	vec2 uv = UV * vec2(8.0, 6.0);
+	vec2 id = floor(uv);
+	vec2 f = fract(uv);
+	float beat = floor(TIME * bpm / 120.0);
+	float hh = fract(sin(dot(id + beat * 0.37, vec2(12.9898, 78.233))) * 43758.5453);
+	vec3 col = mix(vec3(1.0, 0.1, 0.7), vec3(0.1, 0.8, 1.0), step(0.5, hh));
+	col = mix(col, vec3(0.55, 0.2, 1.0), step(0.8, hh));
+	float on = step(0.4, fract(hh * 7.0));
+	float edge = smoothstep(0.0, 0.05, f.x) * smoothstep(0.0, 0.05, f.y) * smoothstep(0.0, 0.05, 1.0 - f.x) * smoothstep(0.0, 0.05, 1.0 - f.y);
+	float pulse = 0.65 + 0.35 * (1.0 - fract(TIME * bpm / 60.0));
+	ALBEDO = vec3(0.03);
+	ROUGHNESS = 0.2;
+	METALLIC = 0.3;
+	EMISSION = col * on * edge * pulse * 1.3 + vec3(0.02) * edge;
+}
+"""
+
+
+func _club_room() -> void:
+	var R: Dictionary = D.ROOMS.club
+	var cx: float = R.cx
+	var w: float = R.w
+	var d: float = R.d
+	var h: float = R.h
+	var g := _room("club", "concrete_floor_worn_001", "concrete_wall_008", "08080b", Color(0.2, 0.17, 0.26), 0.5)
+	# bramka z wykrywaczem tuż za drzwiami
+	_lm(g, "klub_bramka", cx, d * 0.5 - 2.4, 0.0)
+	for sx in [-1.0, 1.0]:
+		add_col(cx + sx * 0.44 - 0.08, cx + sx * 0.44 + 0.08, d * 0.5 - 2.7, d * 0.5 - 2.1, 2.0, true, -1.0)
+		rects.pop_back()
+	# parkiet z podświetlanych płyt
+	var fx := cx - 2.2
+	var fz := -1.2
+	var floor_mi := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(6.4, 4.8)
+	floor_mi.mesh = pm
+	var sm := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = SH_DANCE
+	sm.shader = sh
+	floor_mi.material_override = sm
+	floor_mi.position = Vector3(fx, 0.012, fz)
+	floor_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	g.add_child(floor_mi)
+	Models.box(g, Vector3(6.6, 0.02, 5.0), Vector3(fx, 0.0, fz), Models.mat("101014", 0.4, 0.6), Vector3.ZERO, false)
+	# kratownica z reflektorami i kula lustrzana nad parkietem
+	for tz in [fz - 1.6, fz + 1.6]:
+		for tx in [fx - 1.5, fx + 1.5]:
+			var tr := _lm(g, "klub_krata", tx, tz, 0.0, h - 0.35)
+			Props._no_shadow(tr)
+	var k := 0
+	for e in [[-2.2, -1.6], [2.2, -1.6], [-2.2, 1.6], [2.2, 1.6]]:
+		var rf := _lm(g, "klub_reflektor", fx + e[0], fz + e[1], atan2(-e[0], -e[1]), h - 0.5)
+		Props._no_shadow(rf)
+		var sp := SpotLight3D.new()
+		sp.position = Vector3(fx + e[0], h - 0.8, fz + e[1])
+		sp.rotation.x = -PI / 2.0
+		sp.spot_range = 9.0
+		sp.spot_angle = 26.0
+		sp.spot_angle_attenuation = 0.7
+		sp.light_energy = 5.0
+		sp.light_volumetric_fog_energy = 3.0
+		sp.shadow_enabled = false
+		sp.set_meta("i", k)
+		g.add_child(sp)
+		club_spots.append(sp)
+		k += 1
+	var ball := _lm(g, "klub_kula", fx, fz, 0.0, h)
+	Props._no_shadow(ball)
+	club_ball = Stations._find(ball, "Kula") as Node3D
+	# DJ pod północną ścianą, kolumny po bokach
+	_lm(g, "klub_dj", fx, -d * 0.5 + 1.15, 0.0, 0.0, Vector2(1.16, 0.42))
+	for sx in [-2.2, 2.2]:
+		_lm(g, "klub_glosnik", fx + sx, -d * 0.5 + 0.55, -sx * 0.12, 0.0, Vector2(0.38, 0.34))
+	var djl := _room_light(g, fx, -d * 0.5 + 1.2, 2.0, 0.7, Color(1.0, 0.25, 0.8), 4.5)
+	djl.shadow_enabled = false
+	# bar pod wschodnią ścianą
+	var bxr := cx + w * 0.5
+	_lm(g, "klub_regal", bxr, -1.0, -PI / 2.0, 0.0, Vector2(0.22, 2.1))
+	_lm(g, "klub_bar", bxr - 1.75, -1.0, -PI / 2.0, 0.0, Vector2(0.34, 2.15))
+	for bz in [-2.5, -1.5, -0.5, 0.5]:
+		_lm(g, "klub_stolek", bxr - 2.45, bz, 0.0, 0.0, Vector2(0.17, 0.17))
+	for bz in [-2.0, 0.0]:
+		var bl := _room_light(g, bxr - 1.0, bz, 2.3, 0.75, Color(1.0, 0.45, 0.75), 4.5)
+		bl.shadow_enabled = false
+	inter.append({"loc": "club", "x": bxr - 1.75, "z": -1.0, "y0": 0.8, "y1": 1.5, "r": 1.6, "reach": 2.8, "id": "club_bar",
+		"label": func(): return "Bar — zamów coś", "act": func(): G.main.club_bar()})
+	# loże pod zachodnią ścianą i wysokie stoliki
+	var xw := cx - w * 0.5
+	for lz in [-3.6, -0.9, 1.8]:
+		_lm(g, "klub_kanapa", xw + 0.42, lz, PI / 2.0, 0.0, Vector2(0.4, 1.02))
+		_lm(g, "klub_stolik", xw + 1.5, lz, lz, 0.0, Vector2(0.24, 0.24))
+	for e in [[2.4, 2.4], [4.6, 3.4], [-4.2, 4.2]]:
+		_lm(g, "klub_stolik", cx + e[0], e[1], e[0], 0.0, Vector2(0.24, 0.24))
+	var ll := _room_light(g, xw + 1.4, -0.9, 2.4, 0.5, Color(0.5, 0.3, 1.0), 6.0)
+	ll.shadow_enabled = false
+	# neony na ścianach i tabliczki
+	var sg := Signs.text("NEON", "bebas", 220, Color(1.0, 0.3, 0.85), 0.008, 10, Color(0, 0, 0, 0.6))
+	sg.position = Vector3(fx, 3.1, -d * 0.5 + 0.03)
+	sg.shaded = false
+	g.add_child(sg)
+	var s2 := Signs.text("BAR", "bebas", 120, Color(0.3, 0.95, 1.0), 0.008, 8, Color(0, 0, 0, 0.6))
+	s2.position = Vector3(bxr - 0.5, 3.2, 1.7)
+	s2.rotation.y = -PI / 2.0
+	s2.shaded = false
+	g.add_child(s2)
+	var s3 := Signs.text("EXIT", "bebas", 60, Color(0.3, 1.0, 0.5), 0.006, 6, Color(0, 0, 0, 0.6))
+	s3.position = Vector3(cx, 2.45, d * 0.5 - 0.03)
+	s3.rotation.y = PI
+	s3.shaded = false
+	g.add_child(s3)
+	var fill := _room_light(g, cx, 1.5, h - 0.3, 0.3, Color(0.45, 0.3, 0.9), 13.0)
+	fill.shadow_enabled = false
+
+
+## światła klubu: reflektory krążą po parkiecie i zmieniają barwę, kula się kręci
+func club_lights(t: float) -> void:
+	for sp in club_spots:
+		var i := float(sp.get_meta("i"))
+		sp.rotation.x = -PI / 2.0 + sin(t * 1.3 + i * 1.7) * 0.42
+		sp.rotation.z = cos(t * 0.9 + i * 2.1) * 0.42
+		sp.light_color = Color.from_hsv(fmod(t * 0.07 + i * 0.25, 1.0), 0.85, 1.0)
+	if club_ball != null:
+		club_ball.rotation.y = t * 0.6
+
+
 func _lab_room() -> void:
 	var R: Dictionary = D.ROOMS.lab
 	var cx: float = R.cx

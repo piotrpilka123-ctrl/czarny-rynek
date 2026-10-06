@@ -10,6 +10,8 @@ const EYE_LOW := 0.92
 const BODY_H := 1.75
 const BODY_LOW := 1.0
 
+## 0..1: osuwanie się na ziemię (cios, postrzał) — przechyla i opuszcza kamerę
+var fall := 0.0
 var yaw := 0.0
 var pitch := 0.0
 var loc := "safe"
@@ -223,7 +225,8 @@ func _physics_process(dt: float) -> void:
 	var by := sin(bob) * (0.06 if sprinting else (0.018 if crouching else 0.03)) if moving else 0.0
 	cam.position = Vector3(cos(bob * 0.5) * 0.018 if moving else 0.0, eye_y + by, 0)
 	rotation = Vector3(0, yaw + randf_range(-1.0, 1.0) * shake * 0.02, 0)
-	cam.rotation = Vector3(pitch + randf_range(-1.0, 1.0) * shake * 0.02, 0, 0)
+	cam.rotation = Vector3(pitch + randf_range(-1.0, 1.0) * shake * 0.02 - fall * 0.5, 0, fall * 1.15)
+	cam.position.y -= fall * 1.1
 	var fov := base_fov + (5.0 if sprinting else 0.0)
 	cam.fov = lerpf(cam.fov, fov, minf(1.0, dt * 8.0))
 

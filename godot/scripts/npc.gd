@@ -13,6 +13,10 @@ const CAR_ROUTE := [[-152.0, 20.0], [-106.0, 20.0], [-106.0, -130.0], [95.0, -13
 
 var all: Array = []
 var cops: Array = []
+## strzały w pościgu: ile sekund uciekasz na widoku, etap (0 nic, 1 okrzyk, 2 po strzale ostrzegawczym), odstęp między strzałami
+var flee_t := 0.0
+var flee_stage := 0
+var shot_cd := 0.0
 var citizens: Array = []
 var customers: Array = []
 var statics: Array = []
@@ -228,6 +232,31 @@ func _static(o: Dictionary) -> Dictionary:
 	return n
 
 
+## klub Neon od środka: barman, DJ i imprezowicze na parkiecie, którzy kupują od ręki
+func _build_club() -> void:
+	var R: Dictionary = D.ROOMS.club
+	var cx: float = R.cx
+	var fx := cx - 2.2
+	var fz := -1.2
+	_static({"loc": "club", "x": cx + float(R.w) * 0.5 - 0.95, "z": -1.3, "rot": -PI / 2.0, "pose": "arms", "name": "Barman Igor", "label": "Barman Igor", "track": true, "range": 3.2,
+		"look": {"model": "m07", "kind": "shirt", "top": "101014", "bottom": "101014", "beard": true, "seed": 61}, "act": func(): G.main.club_bar()})
+	_static({"loc": "club", "x": fx, "z": -float(R.d) * 0.5 + 0.5, "rot": 0.0, "pose": "dance", "name": "DJ Mrok",
+		"look": {"model": "m11", "kind": "tshirt", "top": "1a1a1e", "bottom": "15151a", "hat": "cap", "seed": 62},
+		"lines": ["*pokazuje na słuchawki i kręci głową*", "Nie teraz, leci set!", "Zagadaj po trzeciej, jak zejdę z konsolety."]})
+	var names := ["Kinga", "Patryk", "Sandra", "Dawid", "Oliwia", "Kamil", "Wera", "Bartek"]
+	var spots := [[-2.0, -1.0], [-0.6, 0.4], [1.2, -0.8], [2.2, 0.9], [-1.4, 1.2], [0.4, -1.6], [0.9, 1.5], [-2.4, 0.3]]
+	var rg := RandomNumberGenerator.new()
+	rg.seed = 9041
+	for k in range(spots.size()):
+		var fem: bool = k % 2 == 0
+		var n := _static({"loc": "club", "x": fx + float(spots[k][0]), "z": fz + float(spots[k][1]), "rot": rg.randf() * TAU, "pose": "dance", "name": names[k], "range": 2.4,
+			"look": {"model": (D.PEOPLE_F if fem else D.PEOPLE_M)[rg.randi() % 11], "female": fem, "seed": 300 + k}, "act": func(): pass})
+		n["wealth"] = rg.randf_range(1.15, 1.5)
+		n["want"] = ["szron", "snieg", "dym", "krysztal"][rg.randi() % 4]
+		n["user"] = true
+		n.interact.act = func(): G.main.club_buyer(n)
+
+
 func remove_static(n: Dictionary) -> void:
 	statics.erase(n)
 	all.erase(n)
@@ -241,10 +270,23 @@ func _build_static() -> void:
 		"look": {"model": "m03", "kind": "shirt", "top": "5b6b4a", "bottom": "2b2622", "hair": "hair_simpleparted", "hair_color": "9a9a9a", "beard": true, "skin": 0.85, "build": 1.15, "height": 1.74, "seed": 3},
 		"act": func(): G.main.talk_stasiu()})
 	# ochroniarze klubu
-	for z in [126.2, 129.8]:
-		_static({"x": -6.5, "z": z, "rot": PI / 2.0, "pose": "arms", "name": "Ochroniarz",
+	for z in [124.9, 131.1]:
+		_static({"x": -6.2, "z": z, "rot": PI / 2.0, "pose": "arms", "name": "Ochroniarz", "hours": [D.CLUB_OPEN - 0.5, D.CLUB_CLOSE + 0.5],
 			"look": {"model": "sm1", "tall": 1.07, "kind": "jacket", "top": "0b0b0d", "bottom": "0b0b0d", "shoes": "0c0c0e", "bald": true, "build": 1.2, "height": 1.93, "seed": int(z)},
-			"lines": ["Lista zamknięta.", "Nie dzisiaj, kolego.", "Bez awantur pod klubem."]})
+			"range": 3.0, "act": func(): G.main.club_door()})
+	_build_club()
+	# szpital i komenda
+	var hx: float = D.ROOMS.szpital.cx
+	_static({"loc": "szpital", "x": hx + 1.25, "z": 0.2, "rot": PI * 1.2, "pose": "arms", "name": "Pielęgniarka", "label": "Pielęgniarka", "track": true,
+		"look": {"model": "f07", "female": true, "kind": "shirt", "top": "e8f0ee", "bottom": "dfe8e6", "shoes": "f0f0f0", "seed": 41},
+		"lines": ["Leż spokojnie, dopóki nie zakręci Ci się w głowie.", "Następnym razem może nie być tyle szczęścia.", "Wyjście korytarzem prosto. I uważaj na siebie."]})
+	var kx: float = D.ROOMS.komisariat.cx
+	var duty := COP_LOOK.duplicate()
+	duty["model"] = D.PEOPLE_COP[1]
+	duty["seed"] = 52
+	duty.erase("hat")
+	_static({"loc": "komisariat", "x": kx + 1.9, "z": -float(D.ROOMS.komisariat.d) * 0.5 + 0.75, "rot": 0.0, "pose": "arms", "name": "Dyżurny", "label": "Dyżurny", "track": true, "look": duty,
+		"lines": ["Wypuszczony? To zjeżdżaj, zanim się rozmyślę.", "Jeszcze się zobaczymy. Zawsze się widzimy.", "Depozytu nie wydajemy. Zwłaszcza takiego."]})
 	# sprzedawczyni w „Taniej Odzieży”
 	_static({"loc": "ciuchy", "x": float(D.ROOMS.ciuchy.cx) + float(D.ROOMS.ciuchy.w) * 0.5 - 1.3, "z": -float(D.ROOMS.ciuchy.d) * 0.5 + 0.55, "rot": 0.0, "pose": "arms", "name": "Pani Grażyna",
 		"label": "Pani Grażyna", "look": {"model": "f12", "female": true, "seed": 77}, "range": 3.2, "act": func(): G.main.talk_clothes()})
@@ -917,6 +959,8 @@ func update(dt: float) -> void:
 			Chars.animate(n.rig, dt, 0.0, "talk" if (n.track and dp3 < 3.4) else n.pose)
 
 	_update_cops(dt, pp, outside)
+	if outside:
+		update_shots(dt, pp, P.moving)
 	_update_car(dt, pp, outside)
 	_update_dog(dt, pp, outside)
 
@@ -1067,6 +1111,10 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 				elif G.now - float(c.last_seen) > 7.5 or (at_last and G.now - float(c.last_seen) > 1.2):
 					# zgubił trop: przeczesuje okolicę ostatniego miejsca, w którym Cię widział
 					_begin_search(c, 15.0, true)
+				elif float(c.get("aim_t", 0.0)) > 0.0:
+					# staje i mierzy: strzał kosztuje go kilka metrów dystansu
+					c.aim_t = float(c.aim_t) - dt
+					c.node.rotation.y += _ang_diff(atan2(pp.x - c.x, pp.z - c.z), c.node.rotation.y) * minf(1.0, dt * 9.0)
 				else:
 					var goal: Vector2 = Vector2(pp.x, pp.z) if c.sees else c.inv
 					if (goal - Vector2(c.x, c.z)).length() > 0.5:
@@ -1115,6 +1163,75 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 			pose = "aim" if (c.sees and c.state == "chase") else "gun"
 		if dist < 90.0:
 			Chars.animate(c.rig, dt, move_speed, pose)
+
+
+# ---------------------------------------------------------------- strzały w pościgu
+## szansa trafienia z danej odległości (kucanie i noc pomagają uciekającemu)
+func shot_chance(dist: float) -> float:
+	var p := clampf(0.55 - dist * 0.015 - (0.1 if G.player.crouching else 0.0), 0.08, 0.5)
+	return p * (0.75 if G.is_night() else 1.0)
+
+
+## Długa ucieczka na oczach patrolu: najpierw okrzyk, potem strzał ostrzegawczy, potem strzały celowane.
+## Zatrzymanie się albo zniknięcie z widoku cofa licznik; trafienie kończy się w szpitalu pod strażą.
+func update_shots(dt: float, pp: Vector3, moving: bool) -> void:
+	if G.prologue != null or G.busy or G.arresting or not G.S.wanted:
+		flee_t = 0.0
+		flee_stage = 0
+		return
+	var best = null
+	var bd := 999.0
+	for c in cops:
+		if c.state == "chase" and c.sees:
+			var dd := Vector2(c.x - pp.x, c.z - pp.z).length()
+			if dd < bd:
+				bd = dd
+				best = c
+	var fleeing: bool = best != null and bd > 5.0 and bd < 28.0 and moving and not G.player.hidden
+	if fleeing:
+		flee_t += dt
+	else:
+		flee_t = maxf(0.0, flee_t - dt * 0.6)
+		if flee_t <= 0.0:
+			flee_stage = 0
+	if not fleeing:
+		return
+	if flee_stage == 0 and flee_t > 6.0:
+		flee_stage = 1
+		G.ui.shout("STÓJ, BO STRZELAM!", 2.4)
+		Sfx.play("alert")
+	elif flee_stage == 1 and flee_t > 9.0:
+		flee_stage = 2
+		shot_cd = 2.6
+		_fire(best)
+		G.notify("Strzał ostrzegawczy! Następny będzie do Ciebie — stań albo zniknij im z oczu.", "bad")
+	elif flee_stage >= 2:
+		shot_cd -= dt
+		if shot_cd <= 0.0:
+			shot_cd = 2.4
+			_fire(best)
+			if randf() < shot_chance(bd):
+				G.hospitalize("shot")
+			else:
+				G.player.shake = 0.5
+				G.notify("Kula świsnęła tuż obok!", "bad")
+
+
+func _fire(c: Dictionary) -> void:
+	c.aim_t = 1.0
+	Sfx.gunshot()
+	if G.test_mode:
+		return
+	var fl := OmniLight3D.new()
+	fl.light_color = Color(1.0, 0.85, 0.55)
+	fl.light_energy = 7.0
+	fl.omni_range = 9.0
+	fl.shadow_enabled = false
+	add_child(fl)
+	fl.global_position = c.node.global_position + Vector3(0, 1.45, 0) + c.node.global_transform.basis.z * 0.6
+	var tw := create_tween()
+	tw.tween_property(fl, "light_energy", 0.0, 0.09)
+	tw.tween_callback(fl.queue_free)
 
 
 # ---------------------------------------------------------------- rozmowy

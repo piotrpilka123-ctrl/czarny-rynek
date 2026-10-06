@@ -480,6 +480,9 @@ func enter(id: String) -> void:
 	if dd.has("prop") and not G.owns(dd.prop):
 		ui.open_property(dd.prop)
 		return
+	if dd.has("locked"):
+		G.notify(String(dd.locked), "warn")
+		return
 	var pp: Vector3 = player.global_position
 	if G.S.wanted:
 		for c in npcs.cops:
@@ -507,12 +510,153 @@ func exit_room() -> void:
 	G.busy = true
 	Sfx.play("door_close")
 	await ui.fade(true)
-	teleport("out", Vector3(dd.x, 0.0, float(dd.z) + float(dd.dz) * 1.2), PI if float(dd.dz) > 0.0 else 0.0)
+	var out_pos := Vector3(dd.x, 0.0, float(dd.z) + float(dd.dz) * 1.2)
+	if dd.get("custom", false):
+		out_pos = Vector3(dd.x, 0.0, dd.z)
+	teleport("out", out_pos, deg_to_rad(float(dd.yaw_out)) if dd.has("yaw_out") else (PI if float(dd.dz) > 0.0 else 0.0))
 	if G.prologue != null:
 		player.yaw = PI / 2.0
 		G.prologue.on_outside()
 	await ui.fade(false)
 	G.busy = false
+
+
+# ================================================================ klub, szpital, komenda
+## kontrola przy wejściu do klubu Neon: ochroniarz nie wpuści nikogo, przy kim coś znajdzie
+func club_door() -> void:
+	if G.busy or ui.mode != "":
+		return
+	if not G.club_open():
+		G.notify("Klub Neon wpuszcza od %d:00 do %d:00." % [int(D.CLUB_OPEN), int(D.CLUB_CLOSE)], "warn")
+		return
+	if G.S.wanted:
+		G.notify("Z policją na karku nikt Cię tu nie wpuści.", "bad")
+		return
+	var ch := G.frisk_chance()
+	var tries := G.club_tries()
+	var line: String = ["Stop. Ręce na boki, kontrola.", "Znowu ty? Ręce na boki.", "Ostatni raz Cię sprawdzam. Ręce."][mini(tries, 2)]
+	var risk := "nic przy sobie nie masz" if ch <= 0.0 else ("bramka zapiszczy na pewno" if ch >= 1.0 else "ryzyko wpadki ok. %d%%" % int(round(ch * 100.0)))
+	ui.dialog({"name": "Ochroniarz", "lines": [line], "choices": [
+		{"label": "Wchodzę (%s)" % risk, "kind": "warn" if ch > 0.0 else "", "act": club_try},
+		{"label": "Jednak nie.", "act": func(): pass}]})
+
+
+func club_try() -> void:
+	var res: Dictionary = G.club_frisk()
+	if res.ok:
+		G.notify("Ochroniarz kiwa głową: wchodź.", "good")
+		enter("club")
+		return
+	if res.why == "mask":
+		ui.dialog({"name": "Ochroniarz", "lines": ["W kominiarce? Zdejmij to z gęby albo spadaj."]})
+		return
+	Sfx.play("alert")
+	if res.beaten:
+		ui.dialog({"name": "Ochroniarz", "lines": ["%s. Trzeci raz tej nocy." % String(res.found), "Mówiłem, że to ostatnie ostrzeżenie."], "on_end": func(): G.hospitalize("beaten")})
+		return
+	var said: String = ["A to co? %s. Z tym nie wejdziesz. Zostaw to gdzieś i wróć — albo nie wracaj.", "Znowu? %s. Jeszcze jeden numer i wyniosą Cię stąd na noszach."][mini(int(res.tries) - 1, 1)] % String(res.found)
+	G.notify("Wpadka przy kontroli (%d/%d tej nocy)." % [int(res.tries), D.CLUB_TRIES], "bad")
+	ui.dialog({"name": "Ochroniarz", "lines": [said]})
+
+
+## cios albo strzał: obraz przechyla się i gaśnie
+func blackout(reason: String) -> void:
+	if reason == "shot":
+		Sfx.gunshot()
+	else:
+		Sfx.knock()
+	if not G.test_mode:
+		player.shake = 1.0
+		var tw := create_tween()
+		tw.tween_property(player, "fall", 1.0, 0.55).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	await ui.fade(true)
+	player.fall = 0.0
+
+
+## pobudka w łóżku szpitalnym albo na pryczy w celi
+func wake_in(room: String) -> void:
+	ui.close_all()
+	var wk: Array = world.wake.get(room, [Vector3(float(D.ROOMS[room].cx), 0.0, 0.0), 0.0])
+	teleport(room, wk[0], float(wk[1]))
+	player.pitch = 0.0
+
+
+func hospital_talk(res: Dictionary) -> void:
+	var lines := []
+	if String(res.reason) == "shot":
+		lines.append("Spokojnie, nie wstawaj tak szybko. Kula przeszła przez udo, miałeś szczęście.")
+		lines.append("Policjant siedział tu przy łóżku całą noc. Wszystko, co miałeś w kieszeniach, zabrali na komendę: %s." % G.loot_text(res))
+	else:
+		lines.append("No, wróciłeś do nas. Ktoś Cię przywiózł spod Neonu i zostawił na izbie przyjęć.")
+		lines.append("Wstrząśnienie mózgu, dwa żebra stłuczone. Pożyjesz.")
+	if float(res.cash) > 0.0:
+		lines.append("Aha — w kieszeniach miałeś tylko %s. Jak było więcej, to ktoś Ci pomógł, zanim trafiłeś na oddział." % G.money(G.S.cash))
+	lines.append("Przez najbliższą dobę będziesz obolały: wolniej biegasz i szybciej łapiesz zadyszkę. Wyjście prosto korytarzem.")
+	ui.dialog({"name": "Pielęgniarka", "lines": lines})
+	if float(res.cash) > 0.0:
+		G.notify("W szpitalu zniknęło Ci z kieszeni %s." % G.money(res.cash), "bad")
+	if bool(res.big):
+		G.notify("Policja znalazła przy Tobie dużą gotówkę — przez %d dni będą węszyć po kryjówkach." % int(D.WATCH_DAYS), "bad")
+
+
+func release_talk(res: Dictionary) -> void:
+	var lines := ["Wstawaj. Prokurator nie ma dziś na Ciebie czasu, więc wychodzisz."]
+	if float(res.goods) > 0.0 or int(res.items) > 0:
+		lines.append("To, co przy Tobie znaleźliśmy, zostaje w depozycie: %s. Na zawsze." % G.loot_text(res))
+	if bool(res.weapon):
+		lines.append("Za kastet masz osobny zarzut. Jeszcze o nim usłyszysz.")
+	if bool(res.big):
+		lines.append("I jeszcze jedno. Skąd bezrobotny ma w kieszeni tyle gotówki? Przyjrzymy się, gdzie mieszkasz i gdzie bywasz.")
+	lines.append("Zatrzymanie numer %d. Przy piątym nikt Cię już nie wypuści." % int(G.S.arrests))
+	ui.dialog({"name": "Dyżurny", "lines": lines})
+
+
+## imprezowicz w klubie: bierze od ręki i płaci lepiej niż ulica — o ile przemyciłeś towar przez bramkę
+func club_buyer(n: Dictionary) -> void:
+	if G.busy or ui.mode != "":
+		return
+	if G.packed_total(G.S.inv) <= 0:
+		ui.dialog({"name": n.name, "lines": [["Masz coś? Nie? To nie zawracaj głowy, leci mój kawałek!", "Co?! Nie słyszę! Chodź tańczyć!", "Stary, jak nie masz nic na rozkręcenie, to stawiaj kolejkę."].pick_random()]})
+		return
+	if G.S.t - float(n.get("last_deal", -9999.0)) < 300.0:
+		ui.dialog({"name": n.name, "lines": ["Mam jeszcze z tamtego. Wróć za parę godzin."]})
+		return
+	var prods := []
+	for p in G.S.inv.pack:
+		if G.packed_total(G.S.inv, p) > 0:
+			prods.append(p)
+	var prod: String = n.want if prods.has(n.want) else prods.pick_random()
+	var who := {"name": n.name, "bio": "Imprezowicz z Neonu. Płaci za to, że nie musi wychodzić z klubu.", "wealth": float(n.wealth) * D.CLUB_PREMIUM, "patience": 3, "minpur": 50, "nerv": 0.05,
+		"type": ["luzak", "impulsywny", "gadula"].pick_random(), "like": "luz", "hate": "", "reliable": 0.0, "st": {"loy": 10.0, "sat": 70.0, "hunger": 0.8}}
+	var ctx := {"who": who, "product": prod, "grams": randi_range(1, 3), "street": true, "npc": n, "on_done": func(r: Dictionary): _club_sold(n, r)}
+	ui.dialog({"name": n.name, "lines": [["Ej, ty jesteś ten od towaru? Dawaj, zanim ochrona spojrzy.", "No w końcu ktoś z czymś konkretnym. Ile za to chcesz?", "Słyszałam, że coś masz. Pokaż."].pick_random()],
+		"on_end": func(): ui.open_deal(ctx)})
+
+
+func _club_sold(n: Dictionary, res: Dictionary) -> void:
+	if int(res.get("sold", 0)) > 0:
+		n["last_deal"] = G.S.t
+
+
+func club_bar() -> void:
+	if G.busy or ui.mode != "":
+		return
+	var price := 25.0
+	ui.dialog({"name": "Barman Igor", "lines": [["Co podać?", "Siema. To co zwykle?", "Mów głośniej, nic nie słyszę!"].pick_random()], "choices": [
+		{"label": "Piwo (%s)" % G.money(price), "disabled": G.S.cash < price, "act": func(): _club_drink(price)},
+		{"label": "Nic, dzięki.", "act": func(): pass}]})
+
+
+func _club_drink(price: float) -> void:
+	G.S.cash -= price
+	G.add_minutes(20.0)
+	Sfx.play("good")
+	ui.dialog({"name": "Barman Igor", "lines": [[
+		"Jak chcesz tu coś sprzedać, to nie przy barze. Ci na parkiecie biorą wszystko i nie pytają o cenę.",
+		"Ochrona maca kieszenie, ale w kurtce z wewnętrznymi kieszeniami mało co znajdą. Tak tylko mówię.",
+		"Trzy razy Cię złapią z towarem jednej nocy i wyjedziesz stąd karetką. Bogdan nie żartuje.",
+		"W piątki i soboty schodzi tu wszystko. Szron i śnieg najlepiej.",
+		"Jak masz przy sobie za dużo gotówki, a zgarną Cię psy, to zaczną grzebać głębiej. Trzymaj kasę w domu."].pick_random()]})
 
 
 func sleep() -> void:
@@ -1491,6 +1635,16 @@ func _slow() -> void:
 	world.update_stations()
 	world.club_tick()
 	var club_d := pp.distance_to(world.club_door) if player.loc == "out" else 999.0
+	if world.club_player != null:
+		# w środku klubu muzyka gra znad parkietu, na ulicy dudni zza drzwi
+		var in_club: bool = player.loc == "club"
+		var want: Vector3 = Vector3(float(D.ROOMS.club.cx), 2.5, 0.0) if in_club else world.club_door
+		if world.club_player.position.distance_to(want) > 0.1:
+			world.club_player.position = want
+			world.club_player.unit_size = 22.0 if in_club else 10.0
+		if in_club:
+			club_d = 0.0
+			world.club_lights(G.now)
 	Sfx.set_club_open(clampf(1.0 - (club_d - 3.0) / 16.0, 0.0, 1.0))
 	Sfx.ambient(player.loc == "out", G.night, G.rain)
 	cop_t -= 0.25

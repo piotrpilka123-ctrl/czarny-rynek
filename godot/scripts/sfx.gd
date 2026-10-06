@@ -326,6 +326,18 @@ func boom(vol_db := 0.0) -> void:
 	p.play()
 
 
+func gunshot(vol_db := 0.0) -> void:
+	if muted:
+		return
+	boom_prepare()
+	var p: AudioStreamPlayer = pool[pool_i]
+	pool_i = (pool_i + 1) % pool.size()
+	p.stream = _boom
+	p.volume_db = -5.0 + vol_db
+	p.pitch_scale = randf_range(2.5, 2.9)
+	p.play()
+
+
 ## odgłosy doglądania roślin (generowane przy pierwszym użyciu): lanie wody, grzechot granulek, sekator
 var _care := {}
 

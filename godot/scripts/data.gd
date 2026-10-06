@@ -56,6 +56,7 @@ const SHOP := [
 	{"id": "nawoz", "name": "Nawóz (3 dawki)", "price": 45, "n": 3, "lvl": 4, "desc": "Dawka na krzak: plon większy o 25%, ale roślina pije więcej wody. Tylko dopóki rośnie."},
 	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 800, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Jeden zestaw = jedna synteza przy stole laboratoryjnym."},
 	{"id": "burner", "name": "Telefon na kartę", "price": 420, "n": 1, "lvl": 2, "use": true, "desc": "Nowy numer: śledztwo policji spada o 25."},
+	{"id": "kastet", "name": "Kastet (spod lady)", "price": 350, "n": 1, "lvl": 3, "desc": "Dłużnicy „na zeszyt” oddają o wiele chętniej. Nielegalny: nie wejdziesz z nim do klubu, a policja doliczy zarzut."},
 ]
 const UPGRADES := [
 	{"id": "plecak1", "name": "Plecak szkolny (40 miejsc)", "price": 380, "lvl": 2, "cap": 40, "desc": "Zamiast upychać towar po kieszeniach."},
@@ -146,10 +147,12 @@ const ITEMS := {
 	"majeranek": {"name": "Majeranek", "icon": "majeranek", "size": 0.25, "w": 1.0, "unit": "g", "desc": "Przyprawa. Domieszana do marihuany podbija wagę i psuje jakość."},
 	"cukier": {"name": "Cukier puder", "icon": "cukier", "size": 0.2, "w": 1.0, "unit": "g", "desc": "Wypełniacz do proszków. Więcej gramów, gorszy towar."},
 	"doniczka": {"name": "Doniczka z ziemią", "icon": "doniczka", "size": 3.0, "w": 2200.0, "unit": "szt.", "desc": "Postaw w kryjówce [B], a potem posadź w niej nasiono."},
-	"nasiona": {"name": "Nasiona konopi", "icon": "nasiona", "size": 0.1, "w": 1.0, "unit": "szt.", "desc": "Jedno nasiono = jeden krzak. Sadzisz je, celując w pustą doniczkę."},
+	"nasiona": {"name": "Nasiona konopi", "icon": "nasiona", "size": 0.1, "w": 1.0, "unit": "szt.", "illegal": true, "desc": "Jedno nasiono = jeden krzak. Sadzisz je, celując w pustą doniczkę."},
 	"nawoz": {"name": "Nawóz", "icon": "nawoz", "size": 0.4, "w": 90.0, "unit": "dawek", "desc": "Dawka na jeden krzak: plon większy o 25%, ale roślina pije więcej wody."},
-	"chemia": {"name": "Zestaw chemikaliów", "icon": "chemia", "size": 4.0, "w": 1800.0, "unit": "szt.", "desc": "Prekursory i rozpuszczalniki na jedną syntezę przy stole laboratoryjnym."},
+	"chemia": {"name": "Zestaw chemikaliów", "icon": "chemia", "size": 4.0, "w": 1800.0, "unit": "szt.", "illegal": true, "desc": "Prekursory i rozpuszczalniki na jedną syntezę przy stole laboratoryjnym."},
 	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
+	"kastet": {"name": "Kastet", "icon": "kastet", "size": 0.5, "w": 180.0, "unit": "szt.", "illegal": true, "weapon": true,
+		"desc": "Mosiądz na cztery palce. Dłużnicy oddają chętniej, gdy go widzą. Ochroniarz znajdzie go zawsze, a przy zatrzymaniu to osobny zarzut."},
 	# --- UBRANIA: lekkie przedmioty z polem `slot`. Założone (przeciągnięte na postać) nic nie ważą i nie zajmują miejsca.
 	# Cechy są celowo niewielkie — strój pomaga, ale nie robi gry za gracza.
 	"czapka_daszek": {"name": "Czapka z daszkiem", "icon": "ub_czapka_daszek", "size": 0.5, "w": 80.0, "unit": "szt.", "slot": "glowa", "price": 90, "lvl": 1,
@@ -165,7 +168,7 @@ const ITEMS := {
 	"bluza_kaptur": {"name": "Bluza z kapturem", "icon": "ub_bluza", "size": 1.0, "w": 320.0, "unit": "szt.", "slot": "gora", "price": 220, "lvl": 1,
 		"stats": {"vis_night": 0.94, "cap": 2}, "desc": "Kaptur na głowę, ręce w kieszeni-kangurce. Dwa dodatkowe miejsca na towar."},
 	"kurtka_kieszenie": {"name": "Kurtka z kieszeniami", "icon": "ub_kurtka", "size": 1.0, "w": 380.0, "unit": "szt.", "slot": "gora", "price": 380, "lvl": 2,
-		"stats": {"cap": 4, "speed": 0.99}, "desc": "Cztery wewnętrzne kieszenie. Trochę krępuje ruchy."},
+		"stats": {"cap": 4, "speed": 0.99, "conceal": 0.9}, "desc": "Cztery wewnętrzne kieszenie — ochroniarzowi trudniej coś w nich wymacać. Trochę krępuje ruchy."},
 	"koszula": {"name": "Koszula w kratę", "icon": "ub_koszula", "size": 1.0, "w": 200.0, "unit": "szt.", "slot": "gora", "price": 260, "lvl": 3,
 		"stats": {"attention": 0.96, "charm": 1.02}, "desc": "Wyglądasz jak ktoś, kto idzie do pracy. Patrole zerkają rzadziej."},
 	"rekawiczki": {"name": "Rękawiczki robocze", "icon": "ub_rekawiczki", "size": 0.5, "w": 60.0, "unit": "szt.", "slot": "dlonie", "price": 50, "lvl": 1,
@@ -177,7 +180,7 @@ const ITEMS := {
 	"jeansy": {"name": "Jeansy", "icon": "ub_jeansy", "size": 1.0, "w": 340.0, "unit": "szt.", "slot": "spodnie", "price": 180, "lvl": 1,
 		"stats": {"attention": 0.97}, "desc": "Zwyczajne spodnie zwyczajnego człowieka."},
 	"bojowki": {"name": "Bojówki", "icon": "ub_bojowki", "size": 1.0, "w": 360.0, "unit": "szt.", "slot": "spodnie", "price": 240, "lvl": 2,
-		"stats": {"cap": 3}, "desc": "Kieszenie na udach: trzy dodatkowe miejsca."},
+		"stats": {"cap": 3, "conceal": 0.92}, "desc": "Kieszenie na udach: trzy dodatkowe miejsca, a przy kontroli mało kto tam zagląda."},
 	"trampki": {"name": "Trampki", "icon": "ub_trampki", "size": 1.0, "w": 300.0, "unit": "szt.", "slot": "buty", "price": 150, "lvl": 1,
 		"stats": {"noise": 0.92}, "desc": "Miękka podeszwa. Kroki słychać z mniejszej odległości."},
 	"buty_bieg": {"name": "Buty do biegania", "icon": "ub_buty_bieg", "size": 1.0, "w": 280.0, "unit": "szt.", "slot": "buty", "price": 280, "lvl": 2,
@@ -318,6 +321,9 @@ const ROOMS := {
 	"basement": {"cx": 1300.0, "w": 9.0, "d": 10.0, "h": 2.4, "name": "Piwnica"},
 	"lab": {"cx": 1400.0, "w": 14.0, "d": 11.0, "h": 3.6, "name": "Laboratorium w Starej Hucie"},
 	"ciuchy": {"cx": 1500.0, "w": 8.0, "d": 6.4, "h": 2.9, "name": "Tania Odzież"},
+	"club": {"cx": 1600.0, "w": 15.0, "d": 12.0, "h": 4.2, "name": "Klub Neon"},
+	"szpital": {"cx": 1700.0, "w": 7.6, "d": 6.2, "h": 2.8, "name": "Szpital miejski"},
+	"komisariat": {"cx": 1800.0, "w": 8.4, "d": 6.0, "h": 2.8, "name": "Komisariat III"},
 }
 ## drzwi zewnętrzne: punkt przed drzwiami i kierunek „na zewnątrz” (dz)
 var DOORS := {
@@ -328,7 +334,29 @@ var DOORS := {
 	"ciuchy": {"x": 42.0, "z": 11.4, "dz": 1.0, "title": "TANIA ODZIEŻ", "color": "e85ab8"},
 	# tylne drzwi laboratorium w Starej Hucie: otwarte tylko w prologu, potem zaplombowane
 	"lab": {"x": 182.0, "z": -113.4, "dz": -1.0, "title": "", "color": "8a7a66", "sealed": true},
+	# klub: wejście w ścianie wschodniej, pilnowane przez ochroniarzy (własny model drzwi i własna interakcja)
+	"club": {"x": -5.6, "z": 128.0, "dz": 1.0, "title": "", "color": "ff3bd0", "custom": true, "yaw_out": -90.0},
+	# szpital i komenda: wychodzi się stąd po wypadku albo zatrzymaniu, z ulicy nie ma po co wchodzić
+	"szpital": {"x": -181.0, "z": 31.6, "dz": -1.0, "title": "EMERGENCY", "color": "e85a5a", "locked": "Izba przyjęć. Na szczęście nic Ci nie dolega — nie masz tu czego szukać."},
+	"komisariat": {"x": -181.0, "z": 9.4, "dz": 1.0, "title": "POLICE", "color": "9ab4ff", "locked": "Sam z siebie na komendę? Lepiej nie kusić losu."},
 }
+
+# ---------------------------------------------------------------- klub, szpital, komenda
+## klub Neon wpuszcza od 20:00 do 5:00; trzecia wpadka przy kontroli jednej nocy kończy się w szpitalu
+const CLUB_OPEN := 20.0
+const CLUB_CLOSE := 5.0
+const CLUB_TRIES := 3
+## imprezowicze w środku płacą więcej niż ulica
+const CLUB_PREMIUM := 1.35
+## szpital: tyle gotówki z kieszeni „znika”, zanim się ockniesz (od–do)
+const HOSPITAL_LOSS := [0.2, 0.7]
+## komenda: gotówka przy sobie powyżej tego progu (rośnie z poziomem) robi z Ciebie hurtownika
+const CASH_SUSPECT := 3000.0
+const CASH_SUSPECT_LVL := 1500.0
+const CASH_SUSPECT_INVEST := 12.0
+## przez tyle dni po takiej wpadce policja węszy po kryjówkach; dzienna szansa nalotu na każdą z nich
+const WATCH_DAYS := 3.0
+const WATCH_RAID := 0.22
 
 # ---------------------------------------------------------------- nieruchomości i meble
 const PROPERTIES := [

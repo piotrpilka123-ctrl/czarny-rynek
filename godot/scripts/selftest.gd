@@ -574,6 +574,9 @@ func run() -> void:
 	# --- stroje: sklep z ubraniami, cechy, kominiarka
 	await load("res://scripts/outfit_test.gd").run(self)
 
+	# --- klub, szpital, komenda
+	await load("res://scripts/services_test.gd").run(self)
+
 	# --- Giełda: dostawcy, dostawy, okazje, skup
 	await load("res://scripts/market_test.gd").run(self)
 

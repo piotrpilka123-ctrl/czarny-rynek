@@ -773,9 +773,13 @@ static func daily() -> void:
 			G.notify("Prąd w kryjówce (%s): −%s" % [String(D.ROOMS[room].name), G.money(bill)])
 		if h.has("raid_at"):
 			continue
-		if randf() < raid_chance(float(st.risk)):
+		# po wpadce z dużą gotówką policja sprawdza kryjówki niezależnie od zapachu i prądu
+		if randf() < maxf(raid_chance(float(st.risk)), D.WATCH_RAID if G.watched() else 0.0):
 			h["raid_at"] = G.S.t + randf_range(7.0, 15.0) * 60.0
 			h["raid_warned"] = false
+	if G.watched() and not G.S.flags.has("flat_raid_at") and randf() < D.WATCH_RAID:
+		G.S.flags["flat_raid_at"] = G.S.t + randf_range(7.0, 15.0) * 60.0
+		G.S.flags["flat_raid_warned"] = false
 
 
 ## nalot: 3 godziny wcześniej ostrzeżenie; w chwili nalotu liczy się AKTUALNE ryzyko
@@ -794,6 +798,56 @@ static func raid_tick() -> void:
 			h.erase("raid_at")
 			h.erase("raid_warned")
 			raid(room)
+
+
+## przeszukanie mieszkania (tylko gdy policja węszy po wpadce z dużą gotówką): przepada zawartość skrytki w szafie
+static func flat_raid_tick() -> void:
+	if not G.S.flags.has("flat_raid_at"):
+		return
+	var at := float(G.S.flags.flat_raid_at)
+	if not G.S.flags.get("flat_raid_warned", false) and G.S.t >= at - 180.0:
+		G.S.flags["flat_raid_warned"] = true
+		G.chat("stas", "Kuba, pod Twoim blokiem stoi nieoznakowany. Jak masz coś w szafie — masz ze trzy godziny, żeby to wynieść.")
+	if G.S.t >= at:
+		G.S.flags.erase("flat_raid_at")
+		G.S.flags.erase("flat_raid_warned")
+		flat_raid()
+
+
+static func flat_raid() -> Dictionary:
+	var st: Dictionary = G.S.stash.safe
+	var goods := G.goods_total(st)
+	var its: Dictionary = G.store_items(st)
+	var bad_items := 0
+	for id in its:
+		if D.ITEMS.has(id) and D.ITEMS[id].get("illegal", false):
+			bad_items += int(its[id])
+	var cash := float(st.get("cash", 0.0))
+	var res := {"room": "safe", "found": false, "lost_g": 0.0, "lost_cash": 0.0}
+	if goods < 1.0 and bad_items == 0 and cash < G.big_cash() * 0.5:
+		G.add_invest(-8.0)
+		G.S.flags.erase("watch_until")
+		G.chat("stas", "Przetrzepali Ci mieszkanie i wyszli z niczym. Chyba dadzą Ci spokój.")
+		G.notify("Przeszukanie mieszkania — nic nie znaleźli.", "good")
+		return res
+	res.found = true
+	res.lost_g = goods
+	res.lost_cash = cash
+	var fresh := G.new_store()
+	var keep := {}
+	for id in its:
+		if not (D.ITEMS.has(id) and D.ITEMS[id].get("illegal", false)):
+			keep[id] = its[id]
+	fresh["items"] = keep
+	G.S.stash["safe"] = fresh
+	G.add_heat(20.0, false)
+	G.add_invest(18.0)
+	G.S.stats["raids"] = int(G.S.stats.get("raids", 0)) + 1
+	G.chat("stas", "Weszli do Ciebie z nakazem. Szafa pusta — towar i gotówka pojechały na komendę.")
+	G.notify("PRZESZUKANIE mieszkania! Straciłeś %s towaru i %s." % [G.grams(res.lost_g), G.money(res.lost_cash)], "bad")
+	if G.player != null and G.player.loc == "safe" and G.main != null:
+		G.main.raided_inside()
+	return res
 
 
 static func raid(room: String) -> Dictionary:
