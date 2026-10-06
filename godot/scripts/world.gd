@@ -1414,7 +1414,7 @@ func _estate() -> void:
 	_hide_shed(-70.0, -110.0, 0.0, false)
 	for e in [[56.6, -106.5, 0.4], [50.4, -106.4, 1.9], [55.2, -111.6, 2.6], [-66.8, -108.2, 1.0], [-72.5, -107.8, 0.2]]:
 		_prop("trashbag", e[0], e[1], e[2], 0.5, 0.0, false)
-	_prop("old_tyre", 51.2, -111.8, 0.3, 0.0, 0.0, false).rotation.x = PI / 2.0 - 0.2
+	_prop("old_tyre", 51.2, -111.8, 0.3, 0.16, 0.0, false)
 	_prop("cardboard_box_01", 56.0, -110.6, 0.8, 0.34, 0.0, false)
 	# plac zabaw i trzepak
 	_place(Props.swing(), -9.0, -111.0, 0.3, 1.6, 0.9, 2.4)
@@ -1520,7 +1520,8 @@ func _lower_town() -> void:
 	_prop("old_tyre", 107.1, 109.25, 0.5, 0.16, 0.0, false, 0.17)
 	_prop("old_tyre", 106.9, 109.1, 1.1, 0.16, 0.0, false, 0.34)
 	_prop("old_tyre", 107.05, 109.2, 1.7, 0.16, 0.0, false, 0.51)
-	_prop("old_tyre", 109.6, 108.4, 0.3, 0.6, 0.0, false).rotation.z = 0.25
+	# jedna oparta na sztorc o stos
+	_prop("old_tyre^", 107.72, 109.2, PI / 2.0, 0.6, 0.0, true).rotation.z = 0.2
 	_prop("barrel_01", 104.6, 108.0, 0.0, 0.9, 0.3)
 	_prop("barrel_01", 45.2, 73.4, 0.0, 0.9, 0.3)
 	_prop("plastic_monobloc_chair_01", 80.0, 74.2, 2.8, 0.86, 0.0, false)

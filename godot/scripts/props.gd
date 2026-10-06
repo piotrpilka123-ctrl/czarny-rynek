@@ -69,7 +69,13 @@ static func exists(name: String) -> bool:
 
 ## Rekwizyt ustawiony podstawą na (0,0,0). height > 0 skaluje model do zadanej wysokości,
 ## fit > 0 skaluje do największego wymiaru poziomego.
+## modele, które w pliku „stoją” na sztorc, a w świecie mają leżeć (opona, felga); nazwa z „^” na końcu = zostaw na stojąco
+const LAID := ["old_tyre", "rusted_wheel_rim_01"]
+
 static func make(name: String, height := 0.0, fit := 0.0, shadows := true) -> Node3D:
+	var lay := name in LAID
+	if name.ends_with("^"):
+		name = name.trim_suffix("^")
 	var path := _path(name)
 	if not _scene.has(path):
 		_scene[path] = load(path) if ResourceLoader.exists(path) else null
@@ -80,14 +86,17 @@ static func make(name: String, height := 0.0, fit := 0.0, shadows := true) -> No
 		root.set_meta("size", Vector3(0.5, 0.5, 0.5))
 		return root
 	var inst: Node3D = ps.instantiate()
-	if not _aabb.has(path):
+	if lay:
+		inst.rotation.x = -PI / 2.0
+	var akey := path + ("|lay" if lay else "")
+	if not _aabb.has(akey):
 		var boxes: Array = []
 		_collect(inst, Transform3D.IDENTITY, boxes)
 		var bb := AABB()
 		for i in range(boxes.size()):
 			bb = boxes[i] if i == 0 else bb.merge(boxes[i])
-		_aabb[path] = bb
-	var ab: AABB = _aabb[path]
+		_aabb[akey] = bb
+	var ab: AABB = _aabb[akey]
 	var s := 1.0
 	if height > 0.0 and ab.size.y > 0.0001:
 		s = height / ab.size.y
