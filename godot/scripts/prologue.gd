@@ -18,6 +18,7 @@ var flashes: Array = []     # koguty radiowozów przed hutą
 var fire_lights: Array = [] # światła pożaru po wybuchach
 var cop_a = null
 var cop_b = null
+var _grace := 0.0               # sekundy po powrocie pod drzwi, w których patrol jeszcze nie „łapie”
 var extra: Array = []           # patrole dostawione na czas prologu (znikają po nim)
 ## dalsze patrole (plan miasta): [x, z, x2, z2] chodzi tam i z powrotem, [x, z, obrót] stoi i się rozgląda
 const FAR_PATROLS := [[150.0, -160.0, 178.0, -162.0], [204.0, -150.0, -0.44], [150.0, -40.0, 150.0, -12.0], [158.0, -42.0, -1.57], [100.0, -150.0, 122.0, -150.0]]
@@ -377,6 +378,14 @@ func _setup_world() -> void:
 
 func _reset_cops() -> void:
 	var W = M.world
+	# po wpadce nikt z obławy nie „pamięta”, że Cię widział — także dalsze patrole
+	for c0 in M.npcs.cops:
+		c0.notice = 0.0
+		c0.sees = false
+		c0.susp = 0.0
+		c0.hear_t = 0.0
+		c0.look_t = 0.6
+	_grace = 2.0
 	if cop_a != null:
 		var a := P(134.0, -112.0)
 		cop_a.x = a.x
@@ -546,11 +555,13 @@ func _process(dt: float) -> void:
 			if t > 9.0 and not _hinted.has("eye"):
 				_hinted["eye"] = true
 				G.tip("oko", "Kto Cię widzi", "Ikona oka przy pasku kondycji pokazuje, jak bardzo rzucasz się w oczy: przekreślone oko = prawie Cię nie widać. Żółty łuk przy celowniku wskazuje stronę, z której ktoś właśnie Cię zauważa — im pełniejszy, tym mniej masz czasu.", 9.0)
-			# każdy patrol obławy cofa pod drzwi — także te dalsze, z boków
-			for c in M.npcs.cops:
-				if c != null and c.sees:
-					_caught()
-					return
+			# każdy patrol obławy cofa pod drzwi — także te dalsze, z boków (tuż po powrocie masz chwilę na ruch)
+			_grace = maxf(0.0, _grace - dt)
+			if _grace <= 0.0:
+				for c in M.npcs.cops:
+					if c != null and c.sees:
+						_caught()
+						return
 			if pp.x < 128.2 * D.SC and absf(pp.z - gap().y) < 12.0:
 				stage = "run"
 				t = 0.0

@@ -106,6 +106,7 @@ static func run(T) -> void:
 
 	# --- wpadka: powrót pod drzwi i druga próba
 	P.global_position = Vector3(e.x - 6.0, W.height(e.x - 6.0, e.y), e.y)
+	pr._grace = 0.0
 	a.sees = true
 	var guard := 0
 	while pr.tries == 0 and guard < 60:
