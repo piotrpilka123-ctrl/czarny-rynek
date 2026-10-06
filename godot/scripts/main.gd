@@ -1466,6 +1466,10 @@ func _apply_test_args() -> void:
 	if args.has("nohud"):
 		G.test_hide_hud = true
 		ui.hud.visible = false
+	if args.has("noui"):
+		# czysty kadr do grafik: bez całego interfejsu (także pasów przerywnika)
+		G.test_hide_hud = true
+		ui.visible = false
 	if args.has("train"):
 		world.train.wait = 0.0
 		world.tick_train(0.01, env.night if "night" in env else 0.0)
