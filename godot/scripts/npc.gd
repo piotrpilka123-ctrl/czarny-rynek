@@ -950,6 +950,8 @@ func update(dt: float) -> void:
 		var vis: bool = n.loc == P.loc and _hours_ok(n.hours, h)
 		n.node.visible = vis
 		if not vis:
+			# postać w innym miejscu (klub, szpital, komenda…) nie może mielić animacji, gdy nikt jej nie widzi
+			Chars.set_active(n.rig, false)
 			continue
 		var dp3 := Vector2(pp.x - n.x, pp.z - n.z).length()
 		if n.track and dp3 < 10.0:

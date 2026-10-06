@@ -1249,7 +1249,19 @@ func door(id: String) -> void:
 	var g := Node3D.new()
 	g.position = Vector3(x, gy, z)
 	add_child(g)
-	if id == "garage":
+	var own: Node3D = Stations.model("ul_brama" if id == "garage" else "ul_wejscie")
+	if own != null:
+		# drzwi z modelu: przód modelu patrzy na zewnątrz budynku; skrzydło barwione zależnie od miejsca
+		own.rotation.y = 0.0 if dz > 0.0 else PI
+		g.add_child(own)
+		Props.set_range(own, 140.0)
+		var leaf_col: Color = {"shop": Color(0.24, 0.42, 0.33), "garage": Color(0.62, 0.66, 0.7), "szpital": Color(0.86, 0.88, 0.86), "komisariat": Color(0.3, 0.38, 0.55),
+			"ciuchy": Color(0.7, 0.42, 0.55), "basement": Color(0.42, 0.36, 0.3)}.get(id, Color(0.5, 0.52, 0.5))
+		Interior._tint(own, leaf_col)
+		var dl := Stations._find(own, "Swiatlo") as MeshInstance3D
+		if dl != null:
+			dl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	elif id == "garage":
 		Models.box(g, Vector3(2.5, 2.25, 0.14), Vector3(0, 1.12, dz * 0.08), Props.pbr("painted_metal_shutter", 0.5, Color(0.75, 0.8, 0.85)))
 		Models.box(g, Vector3(2.7, 0.14, 0.2), Vector3(0, 2.32, dz * 0.1), Models.mat("2a2c30", 0.6, 0.4))
 	else:
@@ -1323,7 +1335,7 @@ func _buildings() -> void:
 	_sign("3RD PRECINCT", Vector3(-181.0, 7.3, 8.12), Color(0.75, 0.8, 0.9), 60, 0.0, 0.006, 6)
 	# szpital po drugiej stronie ulicy: daszek izby przyjęć i kaseton z krzyżem
 	building(-200.0, 33.0, -162.0, 51.0, 11.4, "urzad", Color(0.88, 0.9, 0.88), Color(0.72, 0.22, 0.22), 0.0)
-	_place(Stations.model("szp_wiata"), -181.0, 33.0, PI)
+	Props.set_range(_place(Stations.model("szp_wiata"), -181.0, 33.0, PI), 160.0)
 	var hs := _place(Stations.model("szp_szyld"), -172.0, 33.0, PI)
 	hs.position.y += 5.6
 	for e in [[-177.8, 30.3], [-184.2, 30.3]]:
@@ -1344,7 +1356,7 @@ func _buildings() -> void:
 	ne2.shaded = false
 	# wejście do klubu: stalowy portal z neonowym łukiem, chodnik i słupki z liną
 	if Stations.model("klub_drzwi") != null:
-		_place(Stations.model("klub_drzwi"), -8.0, 128.0, PI / 2.0)
+		Props.set_range(_place(Stations.model("klub_drzwi"), -8.0, 128.0, PI / 2.0), 120.0)
 		for e in [[-6.9, 125.85], [-6.9, 130.15], [-3.2, 125.85], [-3.2, 130.15]]:
 			add_col(e[0] - 0.25, e[0] + 0.25, e[1] - 0.25, e[1] + 0.25, 1.0)
 			rects.pop_back()

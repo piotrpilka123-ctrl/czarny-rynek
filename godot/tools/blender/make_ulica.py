@@ -340,3 +340,90 @@ only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else
 for f in ALL:
     if not only or f.__name__ in only:
         f()
+
+
+def ul_wejscie():
+    """wejście do klatki (ściana w y=0): stalowe drzwi z szybą zbrojoną, samozamykacz, pochwyt, domofon, betonowy daszek na wspornikach z lampą, stopień z wycieraczką"""
+    reset()
+    con = mat('beton', 'b4b2aa', 0.9)
+    st = mat('stal', '3a3f45', 0.5, 0.6)
+    p = []
+    for sx in (-1, 1):
+        p.append(rbox('oscieznica', (0.12, 0.22, 2.3), st, 0.008, (sx * 0.62, -0.06, 1.15)))
+        p.append(rbox('wspornik', (0.1, 1.1, 0.14), con, 0.01, (sx * 1.05, -0.55, 2.62), (math.radians(-6), 0, 0)))
+    p.append(rbox('nadproze', (1.36, 0.22, 0.14), st, 0.008, (0, -0.06, 2.3)))
+    p.append(rbox('daszek', (2.7, 1.35, 0.13), con, 0.02, (0, -0.66, 2.78), (math.radians(-3), 0, 0)))
+    p.append(rbox('okapnik', (2.74, 0.05, 0.05), mat('blacha', '6a6f75', 0.45, 0.6), 0.006, (0, -1.34, 2.72)))
+    p.append(rbox('stopien', (2.4, 1.0, 0.16), con, 0.012, (0, -0.5, 0.08)))
+    p.append(rbox('wycieraczka', (0.9, 0.5, 0.02), mat('krata', '2a2c30', 0.6, 0.5), 0.004, (0, -0.42, 0.168)))
+    for k in range(9):
+        p.append(rbox('pret', (0.86, 0.012, 0.012), mat('krata', '2a2c30', 0.6, 0.5), 0.002, (0, -0.63 + k * 0.052, 0.182)))
+    # domofon i skrzynka na ogłoszenia
+    p.append(rbox('domofon', (0.16, 0.035, 0.3), mat('domofon', '8a8f95', 0.4, 0.7), 0.008, (0.86, -0.02, 1.4)))
+    for r in range(4):
+        for c in range(3):
+            p.append(rbox('przycisk', (0.028, 0.008, 0.028), mat('przycisk', '2a2c30', 0.6), 0.004, (0.82 + c * 0.04, -0.04, 1.27 + r * 0.04)))
+    for k in range(4):
+        p.append(rbox('glosnik', (0.1, 0.004, 0.006), mat('przycisk', '2a2c30', 0.6), 0.0, (0.86, -0.039, 1.47 + k * 0.016), segs=1))
+    p.append(rbox('gablota', (0.5, 0.03, 0.62), mat('gablota', '5a4a3a', 0.6), 0.008, (-1.0, -0.015, 1.5)))
+    for k in range(3):
+        p.append(rbox('kartka%d' % k, (0.16 + 0.03 * k, 0.003, 0.2), mat('papier', 'e8e2cf', 0.95), 0.0, (-1.12 + k * 0.13, -0.033, 1.52 - 0.05 * (k % 2)), (0, 0.05 * (k - 1), 0), segs=1))
+    p.append(lathe('oprawa', [(0.0, 0.0), (0.09, 0.0), (0.09, 0.03), (0.07, 0.05), (0.0, 0.05)], st, 14, loc=(0, -0.6, 2.67)))
+    ob = join('Wejscie', p)
+    weather([ob], 1024, 0.7, 0.55)
+    d = [rbox('skrzydlo', (1.1, 0.05, 2.14), mat('lakier', 'c9cbc8', 0.5, 0.3), 0.006, (0, -0.06, 1.09))]
+    d.append(rbox('przetloczenie', (0.86, 0.012, 0.72), mat('lakier', 'c9cbc8', 0.5, 0.3), 0.02, (0, -0.088, 0.52)))
+    d.append(rbox('kopniak', (1.06, 0.008, 0.2), mat('kopniak', '9a9ea4', 0.35, 0.8), 0.004, (0, -0.09, 0.13)))
+    d.append(rbox('ramka', (0.42, 0.014, 1.02), mat('lakier', 'c9cbc8', 0.5, 0.3), 0.006, (0.18, -0.088, 1.5)))
+    dj = join('TintSkrzydlo', d)
+    weather([dj], 1024, 0.6, 0.6)
+    o = [rbox('szyba', (0.34, 0.008, 0.94), mat('szyba', '1c2a30', 0.1, 0.3), 0.0, (0.18, -0.092, 1.5), segs=1)]
+    for k in range(7):
+        o.append(rbox('drut', (0.34, 0.002, 0.004), mat('drut', '6a6f75', 0.5), 0.0, (0.18, -0.097, 1.1 + k * 0.135), segs=1))
+    for k in range(3):
+        o.append(rbox('drut_p', (0.004, 0.002, 0.94), mat('drut', '6a6f75', 0.5), 0.0, (0.07 + k * 0.11, -0.097, 1.5), segs=1))
+    hd = mat('chrom', 'b9bcc2', 0.25, 0.9)
+    o.append(tube('pochwyt', [(-0.38, -0.09, 0.9), (-0.38, -0.15, 0.93), (-0.38, -0.15, 1.3), (-0.38, -0.09, 1.33)], 0.016, hd, 10))
+    o.append(lathe('zamek', [(0.0, 0.0), (0.022, 0.0), (0.022, 0.006), (0.0, 0.006)], hd, 12, loc=(-0.38, -0.089, 0.78)))
+    o[-1].rotation_euler = (R90, 0, 0)
+    o.append(rbox('samozamykacz', (0.24, 0.05, 0.06), hd, 0.008, (-0.25, -0.11, 2.12)))
+    o.append(tube('ramie', [(-0.16, -0.12, 2.12), (0.1, -0.16, 2.2), (0.3, -0.06, 2.24)], 0.008, hd, 6))
+    join('Okucia', o)
+    lathe('Swiatlo', [(0.0, -0.06), (0.05, -0.05), (0.07, -0.02), (0.07, 0.0), (0.0, 0.0)], mat('klosz', 'fff0cc', 0.3, 0.0, 2.5), 14, loc=(0, -0.6, 2.67))
+    export('ul_wejscie')
+
+
+def ul_brama():
+    """brama garażowa uchylna 2,5 × 2,25 m (ściana w y=0): tłoczone panele, rama z kątownika, klamka z zamkiem, wywietrzniki, uszczelka, numer"""
+    reset()
+    st = mat('rama', '3a3f45', 0.5, 0.6)
+    p = []
+    for sx in (-1, 1):
+        p.append(rbox('slupek', (0.09, 0.14, 2.34), st, 0.006, (sx * 1.3, -0.04, 1.17)))
+    p.append(rbox('nadproze', (2.7, 0.14, 0.12), st, 0.006, (0, -0.04, 2.31)))
+    p.append(rbox('uszczelka', (2.5, 0.03, 0.03), mat('guma', '141416', 0.9), 0.008, (0, -0.07, 0.015)))
+    fr = join('Rama', p)
+    weather([fr], 512, 0.7, 0.7)
+    pl = mat('blacha', 'c9cbc8', 0.5, 0.4)
+    d = [rbox('plat', (2.5, 0.03, 2.24), pl, 0.004, (0, -0.07, 1.13))]
+    for k in range(11):
+        d.append(rbox('tloczenie', (2.42, 0.014, 0.1), pl, 0.02, (0, -0.088, 0.16 + k * 0.196)))
+    for sx in (-0.83, 0.0, 0.83):
+        d.append(rbox('wzmocnienie', (0.035, 0.02, 2.2), pl, 0.004, (sx, -0.095, 1.13)))
+    dj = join('TintPlat', d)
+    weather([dj], 1024, 0.75, 0.7, (0.12, 0.09, 0.06))
+    o = [rbox('szyld', (0.09, 0.012, 0.16), mat('chrom', 'b9bcc2', 0.3, 0.9), 0.006, (0, -0.108, 0.95))]
+    o.append(tube('klamka', [(0, -0.115, 0.98), (0, -0.15, 0.98), (0.1, -0.15, 0.98)], 0.01, mat('chrom', 'b9bcc2', 0.3, 0.9), 8))
+    o.append(lathe('wkladka', [(0.0, 0.0), (0.012, 0.0), (0.012, 0.006), (0.0, 0.006)], mat('mosiadz', 'b89a4a', 0.3, 0.9), 10, loc=(0, -0.114, 0.9)))
+    o[-1].rotation_euler = (R90, 0, 0)
+    for sx in (-0.7, 0.7):
+        for k in range(5):
+            o.append(rbox('wywietrznik', (0.3, 0.004, 0.012), mat('cien', '0c0c0e', 0.9), 0.0, (sx, -0.097, 0.3 + k * 0.03), segs=1))
+    join('Okucia', o)
+    export('ul_brama')
+
+
+if not only or 'ul_wejscie' in only:
+    ul_wejscie()
+if not only or 'ul_brama' in only:
+    ul_brama()

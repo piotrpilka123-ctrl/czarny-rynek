@@ -554,6 +554,7 @@ static func fire_barrel(lights: Array) -> Node3D:
 static func trzepak() -> Node3D:
 	var tm: Node3D = StationsRef.model("ul_trzepak")
 	if tm != null:
+		set_range(tm, 110.0)
 		return tm
 	var g := Node3D.new()
 	var m := Models.mat("3d5a48", 0.6, 0.5)
@@ -567,6 +568,7 @@ static func trzepak() -> Node3D:
 static func swing() -> Node3D:
 	var sm0: Node3D = StationsRef.model("ul_hustawka")
 	if sm0 != null:
+		set_range(sm0, 110.0)
 		return sm0
 	var g := Node3D.new()
 	var m := Models.mat("7a2f24", 0.6, 0.5)
@@ -585,6 +587,7 @@ static func swing() -> Node3D:
 static func slide() -> Node3D:
 	var sl0: Node3D = StationsRef.model("ul_zjezdzalnia")
 	if sl0 != null:
+		set_range(sl0, 110.0)
 		return sl0
 	var g := Node3D.new()
 	var m := Models.mat("5a6a7a", 0.5, 0.6)
@@ -612,6 +615,7 @@ static func trash_shed() -> Node3D:
 			dm.rotation.y = 0.08 * (k0 - 1)
 			InteriorRef._tint(dm, tints[k0])
 			ws.add_child(dm)
+		set_range(ws, 110.0)
 		return ws
 	var g := Node3D.new()
 	var wall := pbr("concrete_wall_008", 0.4, Color(0.8, 0.8, 0.78))
@@ -634,6 +638,7 @@ static func trash_shed() -> Node3D:
 static func bus_stop() -> Node3D:
 	var bs0: Node3D = StationsRef.model("ul_przystanek")
 	if bs0 != null:
+		set_range(bs0, 130.0)
 		return bs0
 	var g := Node3D.new()
 	var fr := Models.mat("3a4048", 0.5, 0.6)
