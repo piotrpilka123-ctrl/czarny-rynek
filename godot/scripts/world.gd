@@ -42,6 +42,7 @@ var lab_fx := {}                # światła i rekwizyty laboratorium sterowane p
 var lab_exit := Vector2.ZERO    # gdzie w hali są tylne drzwi (znacznik ucieczki w prologu)
 var mill_door_light: SpotLight3D = null   # reflektor nad tylnymi drzwiami huty od zewnątrz
 var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
+var litter_count := 0               # ile drobnych śmieci leży na mieście
 var camp_fire: Node3D = null      # ognisko w obozowisku bezdomnych
 var box_door: Node3D = null       # drzwiczki skrzynki Wiktora (uchylają się, gdy wkładasz pieniądze)
 var starter: Node3D = null        # paczka na start przy drzwiach kawalerki
@@ -588,6 +589,7 @@ func build(loader = null) -> void:
 		door(id)
 	set_mill_burnt(true)
 	_markers()
+	_litter()
 
 
 func _facade_mats() -> void:
@@ -1986,7 +1988,8 @@ func _lower_town() -> void:
 	_prop("plastic_crate_01", -8.0, -11.0, 0.2, 0.28, 0.0, false)
 	_prop("wooden_crate_02", 20.0, -11.4, 0.3, 0.5, 0.5)
 	_prop("exterior_aircon_unit", -6.0, -10.3, 0.0, 0.8, 0.0, false, 2.6)
-	_prop("utility_box_01", 14.6, -10.5, 0.0, 1.1, 0.3)
+	# (stała luzem w przejściu między kamienicami — teraz wisi przy tylnej ścianie kamienicy D)
+	_prop("utility_box_01", 19.2, -10.42, 0.0, 1.1, 0.3)
 	_prop("power_box_01", -57.0, -10.12, 0.0, 0.5, 0.0, false, 1.2)
 	_prop("water_manhole_cover", -27.0, -14.0, 0.0, 0.0, 0.0, false, 0.01)
 	_prop("water_manhole_cover", 30.0, 20.0, 0.0, 0.0, 0.0, false, 0.01)
@@ -2937,6 +2940,96 @@ func _multimesh(xforms: Array, size: Vector3, material: Material, shadow: bool) 
 	if not shadow:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	city.add_child(mi)
+
+
+## Drobne śmieci na ziemi: puszki, butelki, paczki po papierosach, gazety, reklamówki, kubki, szkło, niedopałki, ulotki.
+## Kilkaset sztuk — gęściej tam, gdzie ludzie przesiadują (ławki, wiaty, pawilon, przystanek, klub, garaże, obozowisko),
+## rzadziej wzdłuż chodników. Rysowane hurtem w kratach po 36 m, więc kosztują tyle, co nic.
+const LITTER := [["smiec_niedopalki", 22], ["smiec_puszka", 16], ["smiec_butelka", 10], ["smiec_paczka", 10], ["smiec_reklamowka", 9],
+	["smiec_pet", 8], ["smiec_ulotka", 7], ["smiec_gazeta", 6], ["smiec_kubek", 6], ["smiec_szklo", 6]]
+## miejsca, gdzie śmieci jest najwięcej (plan miasta): [x, z, promień, ile]
+const LITTER_SPOTS := [[22.0, -69.0, 4.0, 16], [-14.5, -104.3, 2.5, 5], [4.0, -104.3, 2.5, 5], [-12.0, -106.3, 2.5, 4], [6.6, -104.4, 2.0, 6],
+	[53.0, -108.0, 5.0, 14], [-70.0, -110.0, 5.0, 14], [44.0, -121.0, 14.0, 14], [78.0, -44.5, 12.0, 22], [80.0, -59.5, 8.0, 12], [70.0, -58.8, 2.0, 3],
+	[66.0, 12.0, 4.0, 12], [-58.0, 12.4, 3.0, 6], [-84.0, -13.5, 5.0, 10], [5.4, 124.0, 6.0, 20], [-26.0, 142.5, 6.0, 10], [58.0, 84.0, 12.0, 18],
+	[108.0, 110.0, 5.0, 8], [-88.0, 66.0, 4.0, 10], [-70.0, 128.0, 10.0, 10], [126.0, 20.0, 6.0, 14], [100.0, 142.0, 7.5, 26], [8.0, -75.6, 3.0, 6],
+	[-60.0, -75.4, 3.0, 6], [-27.0, -16.5, 3.0, 6], [60.0, -16.5, 3.0, 6], [-193.0, 20.0, 5.0, 6], [-181.0, 11.0, 4.0, 3], [-181.0, 30.5, 4.0, 4], [172.0, 30.0, 6.0, 10]]
+
+func _litter() -> void:
+	var lr := RandomNumberGenerator.new()
+	lr.seed = 77031
+	var meshes: Array = []
+	var total_w := 0
+	for e in LITTER:
+		var ps: PackedScene = load("res://assets/models/%s.glb" % String(e[0])) if ResourceLoader.exists("res://assets/models/%s.glb" % String(e[0])) else null
+		if ps == null:
+			continue
+		var inst: Node = ps.instantiate()
+		var mis := inst.find_children("*", "MeshInstance3D", true, false)
+		if not mis.is_empty():
+			var mi0: MeshInstance3D = mis[0]
+			meshes.append([mi0.mesh, mi0.transform, int(e[1])])
+			total_w += int(e[1])
+		inst.free()
+	if meshes.is_empty():
+		return
+	var pts: Array = []
+	for sp in LITTER_SPOTS:
+		for i in range(int(sp[3])):
+			var a := lr.randf() * TAU
+			var r := sqrt(lr.randf()) * float(sp[2])
+			pts.append(Vector2((float(sp[0]) + cos(a) * r) * SC, (float(sp[1]) + sin(a) * r) * SC))
+	# wzdłuż chodników i ścieżek: co kilkanaście metrów coś leży przy krawędzi
+	for n in wp:
+		for j in n.links:
+			if int(j) <= int(n.i):
+				continue
+			var a2 := Vector2(float(n.x), float(n.z))
+			var b2 := Vector2(float(wp[j].x), float(wp[j].z))
+			var ln := a2.distance_to(b2)
+			var side := (b2 - a2).orthogonal().normalized() if ln > 0.1 else Vector2.RIGHT
+			var d := lr.randf_range(3.0, 12.0)
+			while d < ln:
+				if lr.randf() < 0.5:
+					pts.append(a2.lerp(b2, d / ln) + side * lr.randf_range(0.6, 1.7) * (1.0 if lr.randf() < 0.5 else -1.0))
+				d += lr.randf_range(8.0, 16.0)
+	var groups := {}
+	var placed := 0
+	for p0 in pts:
+		var q: Vector2 = p0
+		if not is_free(q.x, q.y, 0.15):
+			continue
+		# wybór rodzaju według wag
+		var roll := lr.randi_range(0, total_w - 1)
+		var kind := 0
+		for k in range(meshes.size()):
+			roll -= int(meshes[k][2])
+			if roll < 0:
+				kind = k
+				break
+		var key := "%d|%d|%d" % [kind, int(floor(q.x / 36.0)), int(floor(q.y / 36.0))]
+		if not groups.has(key):
+			groups[key] = []
+		var sc := lr.randf_range(0.9, 1.15)
+		var xf := Transform3D(Basis(Vector3.UP, lr.randf() * TAU).scaled(Vector3(sc, sc, sc)), Vector3(q.x, height(q.x, q.y) + 0.004, q.y))
+		(groups[key] as Array).append(xf * (meshes[kind][1] as Transform3D))
+		placed += 1
+	for key in groups:
+		var arr: Array = groups[key]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = meshes[int(String(key).get_slice("|", 0))][0]
+		mm.instance_count = arr.size()
+		for i in range(arr.size()):
+			mm.set_instance_transform(i, arr[i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mmi.visibility_range_end = 52.0
+		mmi.visibility_range_end_margin = 6.0
+		add_child(mmi)
+	litter_count = placed
+	if G.test_mode:
+		print("SMIECI: %d sztuk w %d grupach" % [placed, groups.size()])
 
 
 ## Znaki skrytek: mały biały szablon sprejem (liść, czaszka, woreczek…) u stóp najbliższej ściany albo grata.

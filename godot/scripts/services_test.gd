@@ -411,6 +411,7 @@ static func run(T) -> void:
 		if String(ch0.name).begins_with("plac_") or String(ch0.scene_file_path).contains("plac_"):
 			has_play += 1
 	T.ok(has_play >= 20, "plac zabaw: piaskownica, karuzela, ważka, drabinka i płotek (%d elementów)" % has_play)
+	T.ok(G.world.litter_count > 300 and G.world.litter_count < 900, "na mieście leżą drobne śmieci (%d sztuk)" % G.world.litter_count)
 	# --- radiowóz: jedzie prawym pasem, skręca stopniowo, na końcu trasy zawraca
 	var car: Dictionary = N.car
 	var car_keep := {"seg": car.seg, "x": car.x, "z": car.z, "rot": car.rot, "wait": car.wait, "speed": car.speed}
