@@ -3395,7 +3395,7 @@ func _club_room() -> void:
 	club_ball = Stations._find(ball, "Kula") as Node3D
 	# DJ pod północną ścianą, kolumny po bokach
 	_lm(g, "klub_dj", fx, -d * 0.5 + 1.15, 0.0, 0.0, Vector2(1.16, 0.42))
-	for sx in [-2.2, 2.2]:
+	for sx in [-1.95, 1.95]:
 		_lm(g, "klub_glosnik", fx + sx, -d * 0.5 + 0.55, -sx * 0.12, 0.0, Vector2(0.38, 0.34))
 	var djl := _room_light(g, fx, -d * 0.5 + 1.2, 2.0, 0.7, Color(1.0, 0.25, 0.8), 4.5)
 	djl.shadow_enabled = false
@@ -3412,9 +3412,43 @@ func _club_room() -> void:
 		"label": func(): return "Bar — zamów coś", "act": func(): G.main.club_bar()})
 	# loże pod zachodnią ścianą i wysokie stoliki
 	var xw := cx - w * 0.5
-	for lz in [-3.6, -0.9, 1.8]:
+	for lz in [-0.6, 2.0]:
 		_lm(g, "klub_kanapa", xw + 0.42, lz, PI / 2.0, 0.0, Vector2(0.4, 1.02))
 		_lm(g, "klub_stolik", xw + 1.5, lz, lz, 0.0, Vector2(0.24, 0.24))
+	# loża VIP na podeście w rogu (za liną): rozmawia się z gośćmi zza barierki
+	_lm(g, "klub_vip", xw + 1.45, -d * 0.5 + 1.7, 0.0, 0.0, Vector2(1.5, 1.72))
+	var vl := _room_light(g, xw + 1.6, -d * 0.5 + 1.6, 2.2, 1.2, Color(1.0, 0.78, 0.4), 5.0)
+	vl.shadow_enabled = false
+	# neony na ścianach: [model, x, z, obrót, wysokość, kolor poświaty]
+	for e in [["klub_neon_drink", cx - 4.6, d * 0.5, PI, 2.2, Color(1.0, 0.25, 0.8)], ["klub_neon_palma", cx + 4.4, d * 0.5, PI, 2.2, Color(0.4, 1.0, 0.5)],
+			["klub_neon_serce", xw, 0.7, PI / 2.0, 2.6, Color(1.0, 0.25, 0.8)], ["klub_neon_fale", xw, 3.6, PI / 2.0, 2.5, Color(0.6, 0.4, 1.0)],
+			["klub_neon_piorun", cx + 2.6, -d * 0.5, 0.0, 2.3, Color(1.0, 0.8, 0.3)], ["klub_neon_fale", cx + 4.2, -d * 0.5, 0.0, 3.2, Color(0.3, 0.9, 1.0)],
+			["klub_neon_drink", cx + w * 0.5, 3.6, -PI / 2.0, 2.3, Color(0.3, 0.9, 1.0)]]:
+		var nn := _lm(g, String(e[0]), float(e[1]), float(e[2]), float(e[3]), float(e[4]))
+		Props._no_shadow(nn)
+		var fwd := Vector3(sin(float(e[3])), 0.0, cos(float(e[3])))
+		var nl := _room_light(g, float(e[1]) + fwd.x * 0.7, float(e[2]) + fwd.z * 0.7, float(e[4]), 1.1, e[5], 5.0)
+		nl.shadow_enabled = false
+	# kinkiety LED: kolorowe plamy na ścianach w górę i w dół
+	var kc := [Color(1.0, 0.25, 0.8), Color(0.3, 0.9, 1.0), Color(0.6, 0.4, 1.0)]
+	var ki := 0
+	for e in [[cx - 6.2, d * 0.5, PI], [cx - 2.4, d * 0.5, PI], [cx + 2.2, d * 0.5, PI], [cx + 6.2, d * 0.5, PI], [xw, -1.9, PI / 2.0], [xw, 5.0, PI / 2.0],
+			[cx + 0.6, -d * 0.5, 0.0], [cx + 6.4, -d * 0.5, 0.0], [cx + w * 0.5, 5.0, -PI / 2.0]]:
+		var kk := _lm(g, "klub_kinkiet", float(e[0]), float(e[1]), float(e[2]), 1.9)
+		Props._no_shadow(kk)
+		var col: Color = kc[ki % 3]
+		Interior._tint(kk, col, true)
+		var fw2 := Vector3(sin(float(e[2])), 0.0, cos(float(e[2])))
+		var kl := _room_light(g, float(e[0]) + fw2.x * 0.3, float(e[1]) + fw2.z * 0.3, 1.9, 0.9, col, 3.6)
+		kl.shadow_enabled = false
+		ki += 1
+	# girlandy kolorowych żarówek nad parkietem
+	for e in [[fx, fz - 1.1, 0.0], [fx, fz + 1.1, 0.0], [fx - 0.2, fz, 0.62], [fx + 0.2, fz, -0.62]]:
+		var gi := _lm(g, "klub_girlanda", float(e[0]), float(e[1]), float(e[2]), h - 0.62)
+		Props._no_shadow(gi)
+	for e in [[fx - 1.8, fz, Color(1.0, 0.6, 0.3)], [fx + 1.8, fz, Color(0.5, 0.8, 1.0)]]:
+		var gl2 := _room_light(g, float(e[0]), float(e[1]), h - 1.3, 0.8, e[2], 5.5)
+		gl2.shadow_enabled = false
 	for e in [[2.4, 2.4], [4.6, 3.4], [-4.2, 4.2]]:
 		_lm(g, "klub_stolik", cx + e[0], e[1], e[0], 0.0, Vector2(0.24, 0.24))
 	var ll := _room_light(g, xw + 1.4, -0.9, 2.4, 0.5, Color(0.5, 0.3, 1.0), 6.0)
@@ -3434,8 +3468,9 @@ func _club_room() -> void:
 	s3.rotation.y = PI
 	s3.shaded = false
 	g.add_child(s3)
-	var fill := _room_light(g, cx, 1.5, h - 0.3, 0.3, Color(0.45, 0.3, 0.9), 13.0)
-	fill.shadow_enabled = false
+	for e in [[cx - 3.5, 2.5], [cx + 3.5, 2.5], [cx, -2.5]]:
+		var fill := _room_light(g, float(e[0]), float(e[1]), h - 0.3, 0.55, Color(0.55, 0.4, 0.95), 11.0)
+		fill.shadow_enabled = false
 
 
 ## światła klubu: reflektory krążą po parkiecie i zmieniają barwę, kula się kręci

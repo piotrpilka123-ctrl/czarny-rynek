@@ -148,7 +148,7 @@ const HAIR_F := ["hair_long", "hair_buns", "hair_long", "hair_buzzedfemale", "ha
 ## naturalna prędkość animacji (m/s) do synchronizacji kroków
 const ANIM_SPEED := {"Walk_Swagger": 0.97, "Walk_Hunched": 0.9, "Walk_Phone": 0.97, "Walk_Folded": 0.97, "Walk_Stiff": 0.97, "Walk_Loose": 0.97, "Walk": 0.97, "Walk_Formal": 0.97, "Jog_Fwd": 5.36, "Sprint": 8.25, "Zombie_Walk_Fwd": 1.05, "Walk_Carry": 0.65, "Crouch_Fwd": 0.75}
 const POSES := {"": "Idle", "phone": "Idle_TalkingPhone", "talk": "Idle_Talking", "arms": "Idle_FoldArms", "lean": "Idle_Rail", "smoke": "Idle",
-	"sit": "Sitting_Idle", "sit_talk": "Sitting_Talking", "dance": "Dance", "junkie": "Zombie_Idle", "kneel": "Fixing_Kneeling", "no": "Idle_No",
+	"sit": "Sitting_Idle", "sit_talk": "Sitting_Talking", "dance": "Dance", "dance2": "Dance_Sway", "dance3": "Dance_Wild", "dance4": "Dance_Drink", "dance5": "Dance_Hips", "dance6": "Dance_Cool", "junkie": "Zombie_Idle", "kneel": "Fixing_Kneeling", "no": "Idle_No",
 	"crouch": "Crouch_Idle", "handsup": "Idle", "lantern": "Idle_Lantern", "drive": "Driving", "gun": "Pistol_Idle", "aim": "Pistol_Aim_Neutral"}
 
 const USED := ["Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Idle_No", "Yes", "Interact", "PickUp_Table", "Sitting_Idle", "Sitting_Talking",
@@ -231,6 +231,7 @@ static func _library(female: bool) -> AnimationLibrary:
 		inst.free()
 	tgt.free()
 	_walk_variants(lib)
+	_dance_variants(lib)
 	_lib[key] = lib
 	return lib
 
@@ -308,6 +309,41 @@ static func _mix_cycle(a: Animation, src: Animation, bones: Array, w: float) -> 
 			var tt := a.track_get_key_time(t, k) / maxf(0.01, a.length) * src.length
 			var q: Quaternion = a.track_get_key_value(t, k)
 			a.track_set_key_value(t, k, q.slerp(src.rotation_track_interpolate(ts, tt), w).normalized())
+
+
+## Jedna animacja tańca to za mało na cały parkiet: z tego samego cyklu powstaje kilka odmian
+## (kołysanie, szaleństwo, taniec z drinkiem, biodra, „za fajny, żeby tańczyć”), a każdy tancerz dostaje też własne tempo.
+static func _dance_variants(lib: AnimationLibrary) -> void:
+	if not lib.has_animation("Dance"):
+		return
+	var base: Animation = lib.get_animation("Dance")
+	var made := {}
+	for nm in ["Dance_Sway", "Dance_Wild", "Dance_Drink", "Dance_Hips", "Dance_Cool"]:
+		var a: Animation = base.duplicate(true)
+		a.loop_mode = Animation.LOOP_LINEAR
+		made[nm] = a
+	_scale_motion(made["Dance_Sway"], ARMS, 0.4)
+	_scale_motion(made["Dance_Sway"], ["spine_02", "spine_03", "pelvis"], 0.6)
+	_scale_motion(made["Dance_Sway"], LEGS, 0.55)
+	_scale_motion(made["Dance_Wild"], ARMS, 1.55)
+	_scale_motion(made["Dance_Wild"], ["spine_02", "spine_03", "clavicle_l", "clavicle_r"], 1.5)
+	_scale_motion(made["Dance_Wild"], ["pelvis", "Head", "neck_01"], 1.35)
+	if lib.has_animation("Consume"):
+		_take_pose(made["Dance_Drink"], lib.get_animation("Consume"), ["clavicle_r", "upperarm_r", "lowerarm_r", "hand_r"], "_r", 0.25, 0.8)
+	_scale_motion(made["Dance_Drink"], ["upperarm_l", "lowerarm_l"], 0.7)
+	_scale_motion(made["Dance_Drink"], LEGS, 0.7)
+	_scale_motion(made["Dance_Hips"], ["pelvis"], 1.9)
+	_scale_motion(made["Dance_Hips"], ["spine_02", "spine_03"], 1.3)
+	_scale_motion(made["Dance_Hips"], ARMS, 0.65)
+	if lib.has_animation("Idle_FoldArms"):
+		var fa: Animation = lib.get_animation("Idle_FoldArms")
+		_take_pose(made["Dance_Cool"], fa, ["clavicle_l", "upperarm_l", "lowerarm_l", "hand_l"], "_l", 0.4, 0.75)
+		_take_pose(made["Dance_Cool"], fa, ["clavicle_r", "upperarm_r", "lowerarm_r", "hand_r"], "_r", 0.4, 0.75)
+	_scale_motion(made["Dance_Cool"], LEGS, 0.5)
+	_scale_motion(made["Dance_Cool"], ["Head", "neck_01"], 1.6)
+	for nm in made:
+		if not lib.has_animation(nm):
+			lib.add_animation(nm, made[nm])
 
 
 static func _walk_variants(lib: AnimationLibrary) -> void:

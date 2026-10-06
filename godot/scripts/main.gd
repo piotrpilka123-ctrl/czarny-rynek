@@ -617,6 +617,14 @@ func release_talk(res: Dictionary) -> void:
 func club_buyer(n: Dictionary) -> void:
 	if G.busy or ui.mode != "":
 		return
+	var vip: bool = n.get("vip", false)
+	if vip and int(G.S.lvl) < D.CLUB_VIP_LVL:
+		ui.dialog({"name": n.name, "lines": [["Nie znam cię. A ja nie rozmawiam z ludźmi, których nie znam.", "Chłopcze, wróć, jak ktoś za ciebie poręczy.", "Ochrona? Ten pan się zgubił."].pick_random()]})
+		G.notify("Goście loży VIP rozmawiają dopiero z kimś, o kim słyszeli (poziom %d)." % D.CLUB_VIP_LVL, "warn")
+		return
+	if vip and G.packed_total(G.S.inv, "snieg") <= 0:
+		ui.dialog({"name": n.name, "lines": [["Biorę tylko śnieg. Czysty. Reszty nie tykam.", "Jak będziesz miał coś białego i porządnego — wiesz, gdzie siedzę.", "Trawę zostaw dzieciakom na parkiecie."].pick_random()]})
+		return
 	if G.packed_total(G.S.inv) <= 0:
 		ui.dialog({"name": n.name, "lines": [["Masz coś? Nie? To nie zawracaj głowy, leci mój kawałek!", "Co?! Nie słyszę! Chodź tańczyć!", "Stary, jak nie masz nic na rozkręcenie, to stawiaj kolejkę."].pick_random()]})
 		return
@@ -630,9 +638,19 @@ func club_buyer(n: Dictionary) -> void:
 	var prod: String = n.want if prods.has(n.want) else prods.pick_random()
 	var who := {"name": n.name, "bio": "Imprezowicz z Neonu. Płaci za to, że nie musi wychodzić z klubu.", "wealth": float(n.wealth) * D.CLUB_PREMIUM, "patience": 3, "minpur": 50, "nerv": 0.05,
 		"type": ["luzak", "impulsywny", "gadula"].pick_random(), "like": "luz", "hate": "", "reliable": 0.0, "st": {"loy": 10.0, "sat": 70.0, "hunger": 0.8}}
-	var ctx := {"who": who, "product": prod, "grams": randi_range(1, 3), "street": true, "npc": n, "on_done": func(r: Dictionary): _club_sold(n, r)}
-	ui.dialog({"name": n.name, "lines": [["Ej, ty jesteś ten od towaru? Dawaj, zanim ochrona spojrzy.", "No w końcu ktoś z czymś konkretnym. Ile za to chcesz?", "Słyszałam, że coś masz. Pokaż."].pick_random()],
-		"on_end": func(): ui.open_deal(ctx)})
+	var hello: String = ["Ej, ty jesteś ten od towaru? Dawaj, zanim ochrona spojrzy.", "No w końcu ktoś z czymś konkretnym. Ile za to chcesz?", "Słyszałam, że coś masz. Pokaż."].pick_random()
+	var amount := randi_range(1, 3)
+	if vip:
+		# szychy z loży: tylko czysty śnieg, za to dużo i bez targowania się o grosze
+		who.bio = "Gość loży VIP. Bierze tylko czysty śnieg, płaci jak za zboże i nie lubi czekać."
+		who.minpur = 80
+		who.patience = 2
+		who.type = "konkret"
+		who.like = "konkret"
+		amount = randi_range(3, 6)
+		hello = ["Podejdź bliżej. Podobno masz coś, co nie jest mąką.", "Siadać nie proponuję. Pokaż towar i mów cenę.", "Mam gości z Warszawy. Potrzebuję czegoś, czego nie będę się wstydził."].pick_random()
+	var ctx := {"who": who, "product": prod, "grams": amount, "street": true, "npc": n, "on_done": func(r: Dictionary): _club_sold(n, r)}
+	ui.dialog({"name": n.name, "lines": [hello], "on_end": func(): ui.open_deal(ctx)})
 
 
 func _club_sold(n: Dictionary, res: Dictionary) -> void:

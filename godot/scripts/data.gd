@@ -399,6 +399,8 @@ const CLUB_CLOSE := 5.0
 const CLUB_TRIES := 3
 ## imprezowicze w środku płacą więcej niż ulica
 const CLUB_PREMIUM := 1.35
+## goście loży VIP rozmawiają dopiero z kimś, kto ma już nazwisko na mieście
+const CLUB_VIP_LVL := 5
 ## szpital: tyle gotówki z kieszeni „znika”, zanim się ockniesz (od–do)
 const HOSPITAL_LOSS := [0.2, 0.7]
 ## komenda: gotówka przy sobie powyżej tego progu (rośnie z poziomem) robi z Ciebie hurtownika

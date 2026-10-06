@@ -248,19 +248,50 @@ func _build_club() -> void:
 	_static({"loc": "club", "x": fx, "z": -float(R.d) * 0.5 + 0.5, "rot": 0.0, "pose": "dance", "name": "DJ Mrok",
 		"look": {"model": "m11", "kind": "tshirt", "top": "1a1a1e", "bottom": "15151a", "hat": "cap", "seed": 62},
 		"lines": ["*pokazuje na słuchawki i kręci głową*", "Nie teraz, leci set!", "Zagadaj po trzeciej, jak zejdę z konsolety."]})
-	var names := ["Kinga", "Patryk", "Sandra", "Dawid", "Oliwia", "Kamil", "Wera", "Bartek"]
-	var spots := [[-2.0, -1.0], [-0.6, 0.4], [1.2, -0.8], [2.2, 0.9], [-1.4, 1.2], [0.4, -1.6], [0.9, 1.5], [-2.4, 0.3]]
+	var names := ["Kinga", "Patryk", "Sandra", "Dawid", "Oliwia", "Kamil", "Wera", "Bartek", "Julka", "Mati"]
+	var spots := [[-2.0, -1.0], [-0.6, 0.4], [1.2, -0.8], [2.2, 0.9], [-1.4, 1.2], [0.4, -1.6], [0.9, 1.5], [-2.4, 0.3], [2.4, -1.5], [-0.2, -0.5]]
+	# każdy tańczy po swojemu: inna odmiana kroku, inne tempo, inny moment taktu
+	var moves := ["dance", "dance3", "dance5", "dance2", "dance4", "dance", "dance6", "dance3", "dance5", "dance2"]
 	var rg := RandomNumberGenerator.new()
 	rg.seed = 9041
 	for k in range(spots.size()):
 		var fem: bool = k % 2 == 0
-		var n := _static({"loc": "club", "x": fx + float(spots[k][0]), "z": fz + float(spots[k][1]), "rot": rg.randf() * TAU, "pose": "dance", "name": names[k], "range": 2.4,
+		var n := _static({"loc": "club", "x": fx + float(spots[k][0]), "z": fz + float(spots[k][1]), "rot": rg.randf() * TAU, "pose": moves[k], "name": names[k], "range": 2.4,
 			"look": {"model": (D.PEOPLE_F if fem else D.PEOPLE_M)[rg.randi() % 11], "female": fem, "seed": 300 + k}, "act": func(): pass})
 		n["wealth"] = rg.randf_range(1.15, 1.5)
 		n["want"] = ["szron", "snieg", "dym", "krysztal"][rg.randi() % 4]
 		n["user"] = true
+		n["anim_speed"] = rg.randf_range(0.82, 1.22)
+		n.rig.anim.seek(rg.randf() * 4.0, true)
 		n.interact.act = func(): G.main.club_buyer(n)
-
+	# ludzie przy stolikach: stoją z drinkiem, gadają
+	for e in [[2.9, 2.6, 2.4, "talk", "Seba z ekipą"], [1.9, 2.3, -0.7, "dance4", "Paula"], [5.1, 3.5, 2.9, "arms", "Rysiek"], [-3.7, 4.3, 0.9, "talk", "Aga"], [-4.7, 4.1, -1.2, "dance4", "Ziomek Agi"]]:
+		var s2 := _static({"loc": "club", "x": cx + float(e[0]), "z": float(e[1]), "rot": float(e[2]), "pose": String(e[3]), "name": String(e[4]),
+			"look": {"model": (D.PEOPLE_F if String(e[4]).ends_with("a") else D.PEOPLE_M)[rg.randi() % 11], "female": String(e[4]).ends_with("a"), "seed": 340 + rg.randi() % 50},
+			"lines": ["Co?! Nie słyszę!", "Najlepsza impreza w mieście, mówię ci.", "Stary, widziałeś, kto siedzi w loży? Sama śmietanka.", "Postaw kolejkę, to pogadamy."]})
+		s2["anim_speed"] = rg.randf_range(0.85, 1.1)
+	# loża VIP: szychy na kanapach, ochroniarz przy linie
+	var xw := cx - float(R.w) * 0.5
+	var vx := xw + 1.45
+	var vz := -float(R.d) * 0.5 + 1.7
+	var vips := [
+		[vx - 0.94, vz + 0.95, PI / 2.0, "sit_talk", "Prezes Malinowski", "mb4", false],
+		[vx - 0.94, vz + 0.1, PI / 2.0, "sit", "Mecenas Wrona", "mb7", false],
+		[vx + 0.0, vz - 1.19, 0.0, "sit_talk", "Pani Ilona", "fb2", true],
+		[vx + 0.9, vz - 1.19, 0.0, "sit", "Radny Koziej", "mg1", false],
+	]
+	for e in vips:
+		var v := _static({"loc": "club", "x": float(e[0]), "z": float(e[1]), "y": 0.25, "rot": float(e[2]), "pose": String(e[3]), "name": String(e[4]), "label": String(e[4]), "range": 3.8,
+			"look": {"model": String(e[5]), "female": bool(e[6]), "seed": 400 + rg.randi() % 50}, "act": func(): pass})
+		v["wealth"] = rg.randf_range(1.9, 2.3)
+		v["want"] = "snieg"
+		v["vip"] = true
+		v["user"] = true
+		v["anim_speed"] = rg.randf_range(0.8, 1.0)
+		v.interact.act = func(): G.main.club_buyer(v)
+	_static({"loc": "club", "x": vx + 1.9, "z": vz + 1.95, "rot": PI * 0.75, "pose": "arms", "name": "Ochroniarz loży",
+		"look": {"model": "sm1", "tall": 1.06, "bald": true, "build": 1.2, "seed": 77},
+		"lines": ["Loża tylko dla gości. Gadaj zza liny, jak chcą z tobą gadać.", "Ręce przy sobie i żadnych numerów.", "Prezes nie lubi, jak mu się przeszkadza. Chyba że masz coś dobrego."]})
 
 func remove_static(n: Dictionary) -> void:
 	statics.erase(n)
@@ -964,6 +995,8 @@ func update(dt: float) -> void:
 		Chars.set_active(n.rig, dp3 < 60.0)
 		if dp3 < 60.0:
 			Chars.animate(n.rig, dt, 0.0, "talk" if (n.track and dp3 < 3.4) else n.pose)
+			if n.has("anim_speed"):
+				n.rig.anim.speed_scale = float(n.anim_speed)
 
 	_update_cops(dt, pp, outside)
 	if outside:
