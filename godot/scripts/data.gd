@@ -310,7 +310,7 @@ var DROPS := [
 	{"id": "trzepak", "name": "Pod trzepakiem", "x": -33.0, "z": -110.4, "turf": "dom"},
 	{"id": "zaulek", "name": "Zaułek za kamienicą", "x": -84.0, "z": -13.5, "turf": "klatka5"},
 	{"id": "pawilon", "name": "Za pawilonem", "x": 84.0, "z": -59.0, "turf": "dom"},
-	{"id": "piaskownica", "name": "Przy placu zabaw", "x": -1.0, "z": -113.0, "turf": "plac"},
+	{"id": "piaskownica", "name": "Za płotkiem placu zabaw", "x": -15.2, "z": -120.8, "turf": "plac"},
 	{"id": "wiata", "name": "Za wiatą przystanku", "x": 69.0, "z": 9.4, "turf": "przystanek"},
 	{"id": "podworze", "name": "Trzepak za kamienicą", "x": -66.0, "z": 56.0, "turf": "brama"},
 	{"id": "opony", "name": "Stos opon za garażami", "x": 108.5, "z": 110.0, "turf": "garaze"},

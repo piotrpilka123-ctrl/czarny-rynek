@@ -372,6 +372,10 @@ func _paint() -> void:
 	_path(3, [[172.0, 30.0], [180.0, 56.0], [192.0, 62.0]], 2.4)
 	_path(3, [[47.0, -111.5], [47.0, -104.0]], 1.2)
 	_path(3, [[-84.0, -13.5], [-92.0, -13.5]], 1.4)
+	# plac zabaw: wydeptana ziemia, pod huśtawką i zjeżdżalnią żwir
+	_pr(3, PLAY[0] + 0.4, PLAY[1] + 0.4, PLAY[2] - 0.4, PLAY[3] - 0.3)
+	_pr(4, -7.6, -118.4, 0.8, -113.4)
+	_pr(4, 2.2, -116.6, 7.4, -110.6)
 	# --- jezdnie
 	# (poszerzone o pół metra: Hutnicza 5,6 m, pozostałe 4,5 m — dwa auta mijają się bez wjeżdżania na chodnik)
 	_pr(0, -208.0, 15.0, 208.0, 25.0)
@@ -1603,6 +1607,65 @@ func _stairs(sx: float) -> void:
 		rects.pop_back()
 
 
+## Plac zabaw za blokiem: wydeptana ziemia z piaskiem, piaskownica, huśtawka, karuzela, ważka, zjeżdżalnia,
+## drabinka łukowa, kolorowy płotek z wejściem od chodnika, ławki, kosz i „klasy” narysowane kredą.
+const PLAY := [-16.5, -119.6, 8.5, -105.4]      # x0, z0, x1, z1 (plan miasta)
+
+func _playground() -> void:
+	var x0: float = PLAY[0]
+	var z0: float = PLAY[1]
+	var x1: float = PLAY[2]
+	var z1: float = PLAY[3]
+	for e in [["plac_piaskownica", -11.5, -110.2, 0.06, 1.55, 1.55, 0.3], ["plac_karuzela", -3.0, -109.2, 0.3, 1.0, 1.0, 1.0],
+			["plac_wazka", 3.6, -107.8, 0.2, 1.6, 0.3, 0.7], ["plac_drabinka", -11.8, -116.6, 0.05, 1.7, 0.5, 1.0]]:
+		var m := Stations.model(String(e[0]))
+		if m != null:
+			Props.set_range(_place(m, float(e[1]), float(e[2]), float(e[3]), float(e[4]), float(e[5]), float(e[6])), 95.0)
+	_place(Props.swing(), -3.4, -115.8, 0.0, 1.6, 0.9, 2.4)
+	_place(Props.slide(), 4.4, -113.2, -0.45, 0.6, 1.8, 1.7)
+	_bench(-14.5, -104.3, PI)
+	_bench(4.0, -104.3, PI)
+	_bench(-12.0, -106.3, PI)
+	_bin(6.6, -104.4, 0.0)
+	_prop("dirty_football", -6.4, -112.3, 0.0, 0.22, 0.0, false)
+	# płotek dookoła, od chodnika wejście między ławkami
+	var seg := 2.0 * INV
+	var runs := [[x0, z0, x1, z0], [x0, z0, x0, z1], [x1, z0, x1, z1], [x0, z1, -6.6, z1], [0.4, z1, x1, z1]]
+	for r in runs:
+		var a := Vector2(float(r[0]), float(r[1]))
+		var b := Vector2(float(r[2]), float(r[3]))
+		var n := maxi(1, int(round(a.distance_to(b) / seg)))
+		var stepv := (b - a) / float(n)
+		for i in range(n):
+			var c := a + stepv * (float(i) + 0.5)
+			var fm := Stations.model("plac_plotek")
+			if fm == null:
+				break
+			var fn := _place(fm, c.x, c.y, 0.0 if absf(stepv.x) > absf(stepv.y) else PI / 2.0)
+			# przęsło ma 2 m — dociągamy je do równego podziału boku
+			fn.scale = Vector3(INV * stepv.length() / seg, 1.0, INV) if absf(stepv.x) > absf(stepv.y) else Vector3(INV * stepv.length() / seg, 1.0, INV)
+			Props.set_range(fn, 70.0)
+		add_col(minf(a.x, b.x) - 0.1, maxf(a.x, b.x) + 0.1, minf(a.y, b.y) - 0.1, maxf(a.y, b.y) + 0.1, 0.9)
+		rects.pop_back()
+	# „klasy” kredą na chodniku przed wejściem
+	if ResourceLoader.exists("res://assets/tex/gen_klasy.png"):
+		var kd := Decal.new()
+		kd.texture_albedo = load("res://assets/tex/gen_klasy.png")
+		kd.modulate = Color(0.95, 0.95, 0.9)
+		kd.albedo_mix = 0.75
+		kd.size = Vector3(1.2, 1.0, 3.0)
+		var kx := -3.2 * SC
+		var kz := -103.2 * SC
+		kd.position = Vector3(kx, height(kx, kz) + 0.2, kz)
+		kd.rotation.y = PI / 2.0 + 0.06
+		kd.normal_fade = 0.2
+		kd.cull_mask = 1
+		kd.distance_fade_enabled = true
+		kd.distance_fade_begin = 22.0
+		kd.distance_fade_length = 6.0
+		add_child(kd)
+
+
 # ---------------------------------------------------------------- osiedle (góra)
 func _estate() -> void:
 	for sx in STAIRS:
@@ -1647,12 +1710,8 @@ func _estate() -> void:
 	_prop("old_tyre", 51.2, -111.8, 0.3, 0.16, 0.0, false)
 	_prop("cardboard_box_01", 56.0, -110.6, 0.8, 0.34, 0.0, false)
 	# plac zabaw i trzepak
-	_place(Props.swing(), -9.0, -111.0, 0.3, 1.6, 0.9, 2.4)
-	_place(Props.slide(), 1.0, -110.5, -0.5, 0.6, 1.8, 1.7)
+	_playground()
 	_place(Props.trzepak(), -33.0, -108.5, 0.1, 1.3, 0.1, 2.0)
-	_bench(-14.5, -104.6, PI)
-	_bench(4.0, -104.6, PI)
-	_prop("dirty_football", -4.0, -108.2, 0.0, 0.22, 0.0, false)
 	_prop("plastic_monobloc_chair_01", -31.0, -106.5, 2.2, 0.86, 0.0, false)
 	# ławki pod klatkami, śmietniki, krzesła
 	_bench(12.5, -76.2, 0.0)
@@ -1709,6 +1768,8 @@ func _yard() -> void:
 		if (absf(x - 8.0) < 5.0 or absf(x + 60.0) < 5.0) and z > -78.0 and z < -62.0:
 			continue
 		if z < -72.6 and z > -78.5 and x > -3.0 and x < 41.0:
+			continue
+		if x > PLAY[0] - 1.5 and x < PLAY[2] + 1.5 and z > PLAY[1] - 1.5 and z < PLAY[3] + 1.5:
 			continue
 		var edge: bool = _path_dist(x, z) < 6.5 or not (_soft_ground(x - 4.0, z) and _soft_ground(x + 4.0, z) and _soft_ground(x, z - 4.0) and _soft_ground(x, z + 4.0))
 		if edge and by_path >= 2:
