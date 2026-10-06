@@ -191,8 +191,8 @@ func _party() -> void:
 		[8.7, "P", "spiew", 3.7, 1.3, -7.0, 1.0],
 		[9.9, "P", "smiech_2", 0.2, 1.65, -2.0, 1.03],
 		[11.4, "P", "brawa_bar", 0.0, 5.4, -1.0, 1.0], [12.0, "DROP"], [12.1, "P", "okrzyki_2", 0.0, 3.8, -1.0, 1.0],
-		[12.9, "T:(ktoś sieka kreskę kartą na blacie)"],
-		[13.0, "LINE"],
+		[13.4, "T:(ktoś sypie kreskę na blat)"],
+		[14.4, "LINE"],
 		[14.2, "P", "spiew", 0.25, 2.9, -8.0, 1.0],
 		[18.3, "T:— O kurwa. O, tak. Podgłośnij to!"],
 		[19.0, "P", "spiew", 7.1, 3.55, -4.0, 1.04],
@@ -241,8 +241,8 @@ func _party() -> void:
 			elif what == "P":
 				Sfx.party_sfx(String(e0[2]), float(e0[5]), float(e0[6]), false, float(e0[3]), float(e0[4]))
 			elif what == "LINE":
-				# siekanie kartą, zgarnianie, dwa stuknięcia — i dopiero długie wciągnięcie
-				sniff_at = tt + Sfx.party_line()
+				# samo długie wciągnięcie (siekania kartą Piotr nie chciał)
+				sniff_at = tt + Sfx.party_line(false)
 			elif what == "STEPS":
 				Sfx.party_steps(6, 0.18)
 			elif what == "DOOR":
@@ -546,7 +546,8 @@ func _process(dt: float) -> void:
 			if t > 9.0 and not _hinted.has("eye"):
 				_hinted["eye"] = true
 				G.notify("Ikona oka przy pasku kondycji pokazuje, jak bardzo rzucasz się w oczy. Łuk przy celowniku — z której strony ktoś Cię zauważa.")
-			for c in [cop_a, cop_b]:
+			# każdy patrol obławy cofa pod drzwi — także te dalsze, z boków
+			for c in M.npcs.cops:
 				if c != null and c.sees:
 					_caught()
 					return

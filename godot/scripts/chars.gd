@@ -1227,7 +1227,7 @@ const SH_GLARE := """
 shader_type spatial;
 render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
 uniform vec3 tint : source_color = vec3(0.9, 0.95, 1.0);
-uniform float size = 1.5;
+uniform float size = 0.42;
 varying float k;
 void vertex() {
 	vec3 org = MODEL_MATRIX[3].xyz;
@@ -1246,7 +1246,7 @@ void fragment() {
 	// krótkie promienie na krzyż, jak w prawdziwym obiektywie
 	float rays = pow(max(0.0, 1.0 - abs(d.y) * 26.0), 2.0) * r + pow(max(0.0, 1.0 - abs(d.x) * 34.0), 2.0) * r * 0.6;
 	ALBEDO = tint;
-	ALPHA = clamp(pow(r, 3.0) * (0.25 + k * 1.3) + pow(r, 14.0) * 2.5 + rays * k * 0.7, 0.0, 1.0);
+	ALPHA = clamp(pow(r, 4.0) * (0.15 + k * 0.55) + pow(r, 16.0) * 1.2 + rays * k * 0.25, 0.0, 1.0);
 }
 """
 
@@ -1259,8 +1259,8 @@ static var _glare_mat: ShaderMaterial = null
 static func torch_fx(sp: SpotLight3D, half_angle: float, reach: float) -> void:
 	if _torch_cookie == null:
 		var gr := Gradient.new()
-		gr.offsets = PackedFloat32Array([0.0, 0.3, 0.55, 0.78, 0.9, 1.0])
-		gr.colors = PackedColorArray([Color(1, 1, 1), Color(0.95, 0.95, 0.95), Color(0.5, 0.5, 0.5), Color(0.3, 0.3, 0.3), Color(0.42, 0.42, 0.42), Color(0, 0, 0)])
+		gr.offsets = PackedFloat32Array([0.0, 0.3, 0.6, 0.85, 1.0])
+		gr.colors = PackedColorArray([Color(1, 1, 1), Color(0.92, 0.92, 0.92), Color(0.5, 0.5, 0.5), Color(0.16, 0.16, 0.16), Color(0, 0, 0)])
 		_torch_cookie = GradientTexture2D.new()
 		_torch_cookie.gradient = gr
 		_torch_cookie.fill = GradientTexture2D.FILL_RADIAL
@@ -1277,32 +1277,15 @@ static func torch_fx(sp: SpotLight3D, half_angle: float, reach: float) -> void:
 		_glare_mat = ShaderMaterial.new()
 		_glare_mat.shader = gs
 	sp.light_projector = _torch_cookie
-	var blen := minf(reach * 0.55, 9.0)
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.035
-	cone.bottom_radius = blen * tan(half_angle * 0.9)
-	cone.height = blen
-	cone.radial_segments = 20
-	cone.rings = 1
-	cone.cap_top = false
-	cone.cap_bottom = false
-	var bm := MeshInstance3D.new()
-	bm.name = "Snop"
-	bm.mesh = cone
-	var mat := _beam_mat.duplicate() as ShaderMaterial
-	mat.set_shader_parameter("len", blen)
-	bm.material_override = mat
-	bm.rotation.x = PI / 2.0
-	bm.position = Vector3(0, 0, -blen * 0.5 - 0.03)
-	bm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	sp.add_child(bm)
+	# Stożek w powietrzu i duży odblask dawały z bliska białe obręcze — zostaje samo światło
+	# (snop w mgle rysuje silnik) i mały punkt szkła, który nie rośnie.
 	var q := QuadMesh.new()
 	q.size = Vector2(1.0, 1.0)
 	var gl := MeshInstance3D.new()
 	gl.name = "Odblask"
 	gl.mesh = q
 	gl.material_override = _glare_mat
-	gl.extra_cull_margin = 2.5
+	gl.extra_cull_margin = 1.0
 	gl.position = Vector3(0, 0, -0.03)
 	gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sp.add_child(gl)

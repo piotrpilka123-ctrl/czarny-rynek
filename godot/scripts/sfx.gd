@@ -497,9 +497,12 @@ func party_low(k: float) -> void:
 
 ## Robienie kreski tuż przy uchu: siekanie kartą po blacie (dwie serie), zgarnianie w kreskę, dwa stuknięcia
 ## na wyrównanie — i dopiero długie wciągnięcie. Zwraca czas (s), po którym zaczyna się wciągnięcie.
-func party_line() -> float:
+func party_line(chop := true) -> float:
 	if muted:
-		return 3.6
+		return 3.6 if chop else 0.4
+	if not chop:
+		_party_at(0.4, "wciagniecie" if party_sounds.has("wciagniecie") else "wciaganie_1", 1.0, 1.0)
+		return 0.4
 	var taps: Array = []
 	var t := 0.0
 	for i in range(8):
