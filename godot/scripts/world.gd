@@ -5,6 +5,7 @@ extends Node3D
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
 const Stations = preload("res://scripts/stations.gd")
+const Interior = preload("res://scripts/interior.gd")
 const Signs = preload("res://scripts/signs.gd")
 const Facade = preload("res://scripts/facade.gd")
 const Details = preload("res://scripts/details.gd")
@@ -37,6 +38,7 @@ var lamps: Array = []
 var door_tape: Node3D = null    # taśmy na drzwiach laboratorium (po prologu)
 var mill_burnt: Node3D = null   # okopcenia i gruz pod Starą Hutą (po prologu)
 var lab_fx := {}                # światła i rekwizyty laboratorium sterowane przez prolog
+var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
 var covers: Array = []          # krzaki, za którymi da się przyczaić: Vector3(x, z, promień) w metrach świata
 var hides: Array = []           # kryjówki na czas pościgu (altanki śmietnikowe): {x, z, rot, name}
 var _lamp_pts: PackedVector3Array = PackedVector3Array()
@@ -2668,24 +2670,29 @@ func _rp(g: Node3D, name: String, x: float, z: float, ry := 0.0, h := 0.0, y := 
 
 func _interiors() -> void:
 	# ---------------- KAWALERKA ----------------
+	# Wynajęta dziupla: stół z wagą, łóżko polowe, kanapa po poprzednim lokatorze, pudła, których nikt nie rozpakował.
 	var R: Dictionary = D.ROOMS.safe
 	var cx: float = R.cx
 	var h: float = R.h
 	var w: float = R.w
 	var d: float = R.d
 	var g := _room("safe", "old_linoleum_flooring_01", "decrepit_wallpaper", "d6d2c8", Color(0.95, 0.92, 0.85), 0.7)
-	var bulb := _rp(g, "pull_chain_light_socket", cx, 0.2, 0.0, 0.22, h - 0.22)
-	Props._no_shadow(bulb)
-	_room_light(g, cx, 0.2, h, 1.5, Color(1.0, 0.82, 0.58), 8.0)
-	# dywan
-	Models.box(g, Vector3(2.6, 0.02, 1.8), Vector3(cx - 1.7, 0.011, 0.5), Props.pbr("dirty_carpet", 0.6, Color(0.8, 0.7, 0.65)), Vector3.ZERO, false)
-	# łóżko
+	Interior.baseboards(g, cx, w, d, "cfc8b6")
+	Interior.ceiling_lamp(g, Vector3(cx, h, 0.2), "shade")
+	_room_light(g, cx, 0.2, h - 0.1, 1.35, Color(1.0, 0.82, 0.58), 8.0)
+	Interior.rug(g, Vector3(cx - 1.7, 0, 0.75), Vector2(2.4, 1.6), 0.04)
+	# łóżko pod zachodnią ścianą
 	_rp(g, "old_bed_frame", cx - w * 0.5 + 0.62, -d * 0.5 + 1.1, 0.0, 1.0, 0.0, 0.55, 1.05)
 	Models.box(g, Vector3(0.84, 0.16, 1.86), Vector3(cx - w * 0.5 + 0.62, 0.42, -d * 0.5 + 1.1), Models.mat("b9b4a6", 0.95))
-	Models.box(g, Vector3(0.8, 0.07, 1.2), Vector3(cx - w * 0.5 + 0.62, 0.52, -d * 0.5 + 1.4), Models.mat("3d4f66", 0.95))
-	Models.box(g, Vector3(0.55, 0.1, 0.36), Vector3(cx - w * 0.5 + 0.62, 0.54, -d * 0.5 + 0.42), Models.mat("d8d4c8", 0.95))
+	Models.box(g, Vector3(0.8, 0.07, 1.2), Vector3(cx - w * 0.5 + 0.62, 0.52, -d * 0.5 + 1.4), Models.mat("3d4f66", 0.95), Vector3(0, 0.05, 0))
+	Models.box(g, Vector3(0.55, 0.1, 0.36), Vector3(cx - w * 0.5 + 0.62, 0.54, -d * 0.5 + 0.42), Models.mat("d8d4c8", 0.95), Vector3(0, -0.1, 0.04))
 	inter.append({"loc": "safe", "x": cx - w * 0.5 + 0.62, "z": -d * 0.5 + 1.1, "y0": 0.1, "y1": 0.75, "r": 0.9, "reach": 2.5, "id": "bed",
 		"label": func(): return "Łóżko — sen", "act": func(): G.main.sleep()})
+	Interior.picture(g, Vector3(cx - w * 0.5 + 0.01, 1.55, -d * 0.5 + 1.0), PI / 2.0, 0.7, "pic_koncert")
+	Interior.picture(g, Vector3(cx - w * 0.5 + 0.01, 1.62, -d * 0.5 + 1.75), PI / 2.0, 0.5, "pic_boks")
+	Interior.bottle(g, Vector3(cx - w * 0.5 + 1.25, 0, -d * 0.5 + 0.5), "5a3414")
+	Interior.bottle(g, Vector3(cx - w * 0.5 + 1.38, 0, -d * 0.5 + 0.62), "3a6a3a", true)
+	Interior.papers(g, Vector3(cx - w * 0.5 + 1.3, 0, -d * 0.5 + 1.5), 0.4, 2)
 	# stół roboczy z wagą (jedyne stanowisko w mieszkaniu)
 	var tx := cx + 0.9
 	var tz := -d * 0.5 + 0.62
@@ -2693,6 +2700,8 @@ func _interiors() -> void:
 	_scale_set(g, Vector3(tx - 0.35, 0.8, tz))
 	_rp(g, "desk_lamp_arm_01", tx + 0.75, tz - 0.15, 0.6, 0.55, 0.8)
 	_rp(g, "cigarette_pack", tx + 0.08, tz + 0.26, 0.4, 0.09, 0.8)
+	Interior.ashtray(g, Vector3(tx + 0.22, 0.8, tz + 0.3))
+	Interior.mug(g, Vector3(tx - 0.78, 0.8, tz + 0.2), "8a3a2a")
 	# laptop: jedyne miejsce zapisu gry w mieszkaniu
 	_rp(g, "classic_laptop", tx + 0.55, tz + 0.05, 0.0, 0.24, 0.8)
 	inter.append({"loc": "safe", "x": tx + 0.55, "z": tz + 0.05, "y0": 0.78, "y1": 1.08, "r": 0.3, "reach": 2.5, "id": "save_safe",
@@ -2702,95 +2711,203 @@ func _interiors() -> void:
 	_rp(g, "painted_wooden_chair_01", tx - 0.1, tz + 0.85, PI, 0.92)
 	inter.append({"loc": "safe", "x": tx - 0.38, "z": tz, "y0": 0.6, "y1": 1.05, "r": 0.5, "reach": 2.5, "id": "pack_safe",
 		"label": func(): return "Waga i woreczki — porcjowanie towaru", "act": func(): G.ui.open_pack("safe")})
+	Interior.wall_shelf(g, Vector3(tx + 0.1, 1.72, -d * 0.5 + 0.01), 0.0, 1.0, 7)
+	_rp(g, "wall_clock", cx + 2.35, -d * 0.5 + 0.04, 0.0, 0.3, 1.82)
 	# skrytka: szafa
 	_rp(g, "painted_wooden_cabinet", cx + w * 0.5 - 0.42, 0.6, -PI / 2.0, 1.75, 0.0, 0.4, 0.65)
 	inter.append({"loc": "safe", "x": cx + w * 0.5 - 0.42, "z": 0.6, "y0": 0.1, "y1": 1.7, "r": 0.62, "reach": 2.5, "id": "stash_safe",
 		"label": func(): return "Skrytka w szafie", "act": func(): G.ui.open_stash("safe")})
-	# kanapa, TV
+	Interior.note(g, Vector3(cx + w * 0.5 - 0.01, 1.62, 1.75), -PI / 2.0, "WYBUCH W STAREJ HUCIE\nPolicja szuka świadków. Jedna osoba zatrzymana.", 0.46, 0.3)
+	Interior.picture(g, Vector3(cx + w * 0.5 - 0.01, 1.55, 2.35), -PI / 2.0, 0.46, "pic_kalendarz")
+	# kanapa, ława, telewizor
 	_rp(g, "sofa_02", cx - 2.05, d * 0.5 - 0.55, PI, 0.72, 0.0, 0.95, 0.45)
+	_rp(g, "throw_pillows_01", cx - 2.5, d * 0.5 - 0.6, 2.6, 0.3, 0.42)
+	_rp(g, "coffeetable_01", cx - 2.05, d * 0.5 - 1.5, 0.0, 0.4, 0.0, 0.5, 0.3)
+	Interior.pizza_box(g, Vector3(cx - 2.25, 0.4, d * 0.5 - 1.5), 0.3, 2)
+	Interior.can(g, Vector3(cx - 1.82, 0.4, d * 0.5 - 1.42), "b0382c")
+	Interior.can(g, Vector3(cx - 1.72, 0.4, d * 0.5 - 1.6), "2a6ac8", true)
+	Interior.can(g, Vector3(cx - 1.3, 0.0, d * 0.5 - 1.1), "b0382c", true)
 	_rp(g, "side_table_01", cx - 1.55, -d * 0.5 + 0.4, 0.0, 0.5, 0.0, 0.3, 0.3)
 	_rp(g, "television_02", cx - 1.55, -d * 0.5 + 0.4, 0.0, 0.42, 0.5)
 	var tvl := _room_light(g, cx - 1.55, -d * 0.5 + 0.9, 1.3, 0.35, Color(0.5, 0.65, 1.0), 3.0)
 	tvl.shadow_enabled = false
 	tvl.set_meta("tv", true)
 	lamps.append(tvl)
-	# aneks kuchenny
-	_rp(g, "electric_stove", cx + w * 0.5 - 0.4, -d * 0.5 + 0.42, -PI / 2.0, 0.86, 0.0, 0.38, 0.38)
-	_rp(g, "vintage_microwave", cx + w * 0.5 - 0.4, -d * 0.5 + 1.25, -PI / 2.0, 0.3, 0.86)
-	Models.box(g, Vector3(0.62, 0.86, 0.7), Vector3(cx + w * 0.5 - 0.36, 0.43, -d * 0.5 + 1.25), Models.mat("c9c4b6", 0.7))
-	add_col(cx + w * 0.5 - 0.7, cx + w * 0.5, -d * 0.5 + 0.05, -d * 0.5 + 1.62, 1.0, true, -1.0)
+	# aneks kuchenny pod wschodnią ścianą: szafki ze zlewem, kuchenka, lodówka
+	Interior.kitchenette(g, Vector3(cx + w * 0.5 - 0.3, 0.0, -d * 0.5 + 0.72), 1.3, -PI / 2.0)
+	_rp(g, "vintage_microwave", cx + w * 0.5 - 0.32, -d * 0.5 + 0.42, -PI / 2.0, 0.3, 0.89)
+	Interior.mug(g, Vector3(cx + w * 0.5 - 0.42, 0.89, -d * 0.5 + 1.2), "d9d4c8")
+	Interior.bottle(g, Vector3(cx + w * 0.5 - 0.2, 0.89, -d * 0.5 + 1.28), "c9c4b6")
+	_rp(g, "electric_stove", cx + w * 0.5 - 0.4, -d * 0.5 + 1.72, -PI / 2.0, 0.86)
+	Interior.fridge(g, Vector3(cx + w * 0.5 - 0.33, 0.0, -d * 0.5 + 2.36), -PI / 2.0)
+	add_col(cx + w * 0.5 - 0.72, cx + w * 0.5, -d * 0.5 + 0.05, -d * 0.5 + 2.66, 1.0, true, -1.0)
 	rects.pop_back()
-	_rp(g, "wall_clock", cx + 2.4, -d * 0.5 + 0.04, 0.0, 0.3, 1.75)
+	# przy drzwiach: wieszak, buty, włącznik, nierozpakowane pudła
+	Interior.coat_rack(g, Vector3(cx + 1.0, 1.7, d * 0.5 - 0.01), PI)
+	Interior.shoes(g, Vector3(cx + 0.95, 0, d * 0.5 - 0.22), 0.3)
+	Interior.shoes(g, Vector3(cx + 1.3, 0, d * 0.5 - 0.2), -0.2, "6a4a2a")
+	Interior.switch_plate(g, Vector3(cx - 0.75, 1.25, d * 0.5 - 0.01), PI)
+	Models.box(g, Vector3(0.9, 0.012, 0.5), Vector3(cx, 0.007, d * 0.5 - 0.45), Models.mat("3a3630", 0.95), Vector3.ZERO, false)
 	_rp(g, "cardboard_box_01", cx + 2.6, d * 0.5 - 0.5, 0.4, 0.34)
 	_rp(g, "cardboard_box_01", cx + 2.2, d * 0.5 - 0.42, 1.2, 0.3)
-	# okno z widokiem na osiedle
-	Models.box(g, Vector3(1.5, 1.2, 0.04), Vector3(cx - 1.4, 1.55, -d * 0.5 + 0.02), Models.mat("8fa9c4", 0.2, 0.0, 1.1))
-	for sx in [-0.78, 0.0, 0.78]:
-		Models.box(g, Vector3(0.06, 1.28, 0.08), Vector3(cx - 1.4 + sx, 1.55, -d * 0.5 + 0.04), Models.mat("e8e6e0", 0.7))
-	Models.box(g, Vector3(1.66, 0.06, 0.16), Vector3(cx - 1.4, 0.92, -d * 0.5 + 0.08), Models.mat("e8e6e0", 0.7))
-	Models.box(g, Vector3(1.4, 0.55, 0.1), Vector3(cx - 1.4, 0.45, -d * 0.5 + 0.08), Models.mat("c9c4b6", 0.6, 0.3))
-	var po := Label3D.new()
-	po.text = "WYBUCH W STAREJ HUCIE\npolicja szuka świadków"
-	po.font_size = 40
-	po.pixel_size = 0.004
-	po.modulate = Color(0.2, 0.2, 0.25)
-	po.position = Vector3(cx + w * 0.5 - 0.02, 1.7, 2.0)
-	po.rotation.y = -PI / 2.0
-	g.add_child(po)
+	Interior.moving_boxes(g, Vector3(cx + 2.75, 0, d * 0.5 - 1.25), 3)
+	_rp(g, "vintage_suitcase", cx + 3.25, d * 0.5 - 0.35, 0.2, 0.5)
+	# okno z firanką: w dzień rzuca plamę światła na podłogę
+	windows.append(Interior.window(g, Vector3(cx - 1.4, 1.55, -d * 0.5), 1.5, 1.2, "n", "sheer", false))
+	Interior.picture(g, Vector3(cx - 2.75, 1.6, -d * 0.5 + 0.01), 0.0, 0.52, "pic_jelen", "5a4326")
+	# zacieki na ścianach i suficie
+	Interior.stain(g, Vector3(cx + 2.9, h - 0.01, 1.6), Vector3(PI / 2.0, 0, 0), Vector2(1.6, 1.2), Color(0.3, 0.24, 0.14, 0.28))
+	Interior.stain(g, Vector3(cx - 3.0, h - 0.01, -1.9), Vector3(PI / 2.0, 0, 0), Vector2(1.2, 1.0), Color(0.3, 0.24, 0.14, 0.22))
+	Interior.stain(g, Vector3(cx + 0.2, 1.9, -d * 0.5 + 0.012), Vector3.ZERO, Vector2(0.9, 1.4), Color(0.14, 0.1, 0.06, 0.25))
+	Interior.stain(g, Vector3(cx + w * 0.5 - 0.012, 0.5, 1.9), Vector3(0, -PI / 2.0, 0), Vector2(1.3, 0.9), Color(0.1, 0.08, 0.05, 0.3))
 
 	# ---------------- SKLEP U STASIA ----------------
 	var R2: Dictionary = D.ROOMS.shop
 	var sx2: float = R2.cx
 	var h2: float = R2.h
+	var d2: float = R2.d
+	var w2: float = R2.w
 	var g2 := _room("shop", "dirty_tiles", "beige_wall_001", "d0ccc2", Color(0.9, 0.9, 0.85), 0.6)
+	Interior.baseboards(g2, sx2, w2, d2, "8a8272", 0.12)
 	_room_light(g2, sx2 - 2.0, 0.0, h2, 1.5, Color(0.9, 0.95, 1.0), 9.0)
-	_room_light(g2, sx2 + 2.0, 0.0, h2, 1.3, Color(0.9, 0.95, 1.0), 9.0)
+	_room_light(g2, sx2 + 2.0, 0.0, h2, 1.3, Color(0.9, 0.95, 1.0), 9.0).shadow_enabled = false
 	for lx in [-2.0, 2.0]:
 		Props._no_shadow(_rp(g2, "mounted_fluorescent_lights", sx2 + lx, 0.0, PI / 2.0, 0.0, h2 - 0.08))
+	# lada z gablotą, kasą i wagą
 	Models.box(g2, Vector3(5.0, 1.0, 0.7), Vector3(sx2, 0.5, -1.2), Props.pbr("old_wood_floor", 0.6, Color(0.7, 0.6, 0.5)))
 	Models.box(g2, Vector3(5.2, 0.05, 0.8), Vector3(sx2, 1.02, -1.2), Models.mat("2a2a2c", 0.5))
 	add_col(sx2 - 2.6, sx2 + 2.6, -1.6, -0.8, 1.1, true, -1.0)
 	rects.pop_back()
 	_rp(g2, "cashregister_01", sx2 + 1.3, -1.2, PI, 0.45, 1.05)
+	Models.box(g2, Vector3(1.3, 0.32, 0.5), Vector3(sx2 - 1.4, 1.21, -1.2), Models.mat("cfe6ee", 0.08, 0.0, 0.0, 0.25), Vector3.ZERO, false)
+	for k in range(9):
+		Models.box(g2, Vector3(0.1, 0.05 + (k % 3) * 0.03, 0.14), Vector3(sx2 - 1.92 + k * 0.13, 1.08 + (k % 3) * 0.015, -1.2), Models.mat(["c8322a", "e8c22a", "2a6ac8", "3a8a4a"][k % 4], 0.6), Vector3(0, k * 0.2, 0), false)
+	_scale_set(g2, Vector3(sx2 + 0.35, 1.045, -1.15))
+	Interior.papers(g2, Vector3(sx2 - 0.3, 1.045, -1.05), 0.2, 3)
+	Interior.mug(g2, Vector3(sx2 + 2.1, 1.045, -1.3), "3a5a8a")
+	# regały za ladą: towar stoi rzędami w przegródkach
+	var cols := ["a16207", "15803d", "1d4ed8", "be123c", "d9d4c8", "c2410c", "7c3aed", "0f766e"]
 	for k in range(4):
-		_rp(g2, "wooden_display_shelves_01", sx2 - 3.3 + k * 2.2, -R2.d * 0.5 + 0.3, PI / 2.0, 1.9)
-	add_col(sx2 - 4.4, sx2 + 4.4, -R2.d * 0.5, -R2.d * 0.5 + 0.6, 2.0, true, -1.0)
+		var shx := sx2 - 3.3 + k * 2.2
+		_rp(g2, "wooden_display_shelves_01", shx, -d2 * 0.5 + 0.3, PI / 2.0, 1.9)
+		for row in range(1, 3):
+			for cell in range(3):
+				var cxs := shx + (cell - 1) * 0.438
+				var y0 := 0.03 + row * 0.633
+				var kind := (k * 7 + row * 3 + cell) % 4
+				var n_items := 3 if kind != 3 else 2
+				for i in range(n_items):
+					var px := cxs - 0.12 + i * (0.24 / maxi(1, n_items - 1))
+					var col: String = cols[(k + row * 2 + cell + i) % cols.size()]
+					if kind == 0:
+						Models.box(g2, Vector3(0.1, 0.22 + (i % 2) * 0.05, 0.18), Vector3(px, y0 + 0.11 + (i % 2) * 0.025, -d2 * 0.5 + 0.32), Models.mat(col, 0.8), Vector3.ZERO, false)
+					elif kind == 1:
+						Models.cyl(g2, 0.04, 0.04, 0.16, Vector3(px, y0 + 0.08, -d2 * 0.5 + 0.36), Models.mat(col, 0.35, 0.6), Vector3.ZERO, 8).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+						Models.cyl(g2, 0.04, 0.04, 0.16, Vector3(px, y0 + 0.08, -d2 * 0.5 + 0.26), Models.mat(col, 0.35, 0.6), Vector3.ZERO, 8).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					elif kind == 2:
+						Interior.bottle(g2, Vector3(px, y0, -d2 * 0.5 + 0.32), ["3a6a3a", "5a3414", "c9c4b6"][i % 3])
+					else:
+						Models.box(g2, Vector3(0.17, 0.12, 0.2), Vector3(px, y0 + 0.06, -d2 * 0.5 + 0.32), Models.mat(col, 0.85), Vector3(0, 0.1 * i, 0), false)
+						Models.box(g2, Vector3(0.17, 0.12, 0.2), Vector3(px, y0 + 0.182, -d2 * 0.5 + 0.32), Models.mat(cols[(k + cell + i + 3) % cols.size()], 0.85), Vector3(0, -0.08 * i, 0), false)
+	add_col(sx2 - 4.4, sx2 + 4.4, -d2 * 0.5, -d2 * 0.5 + 0.6, 2.0, true, -1.0)
 	rects.pop_back()
-	var cols := ["a16207", "15803d", "1d4ed8", "be123c", "d9d4c8", "c2410c"]
-	for s in range(4):
-		for k in range(16):
-			if rng.randf() < 0.25:
-				continue
-			var hh := rng.randf_range(0.14, 0.26)
-			Models.box(g2, Vector3(rng.randf_range(0.18, 0.4), hh, 0.2), Vector3(sx2 - 4.1 + k * 0.54, 0.24 + s * 0.44 + hh * 0.5, -R2.d * 0.5 + 0.32), Models.mat(cols[rng.randi_range(0, 5)], 0.8), Vector3.ZERO, false)
-	_rp(g2, "plastic_crate_01", sx2 - 3.6, 2.4, 0.3, 0.28, 0.0, 0.3, 0.3)
-	_rp(g2, "plastic_crate_01", sx2 - 3.6, 2.4, 0.7, 0.28, 0.28)
+	# stojak z papierosami i tablica z cenami nad ladą
+	Models.box(g2, Vector3(1.6, 0.6, 0.12), Vector3(sx2 + 1.5, 2.25, -d2 * 0.5 + 0.08), Models.mat("2a2c30", 0.6), Vector3.ZERO, false)
+	for k in range(24):
+		Models.box(g2, Vector3(0.055, 0.085, 0.02), Vector3(sx2 + 0.78 + (k % 12) * 0.13, 2.12 + int(k / 12.0) * 0.26, -d2 * 0.5 + 0.15), Models.mat(["d9d4c8", "b0382c", "1d4ed8", "e8c22a"][k % 4], 0.6), Vector3.ZERO, false)
+	# chłodziarka z napojami pod zachodnią ścianą
+	var fx := sx2 - w2 * 0.5 + 0.42
+	Models.box(g2, Vector3(0.7, 1.95, 1.2), Vector3(fx, 0.975, 1.2), Models.mat("d8d8d4", 0.4, 0.2))
+	Models.box(g2, Vector3(0.03, 1.6, 1.08), Vector3(fx + 0.35, 0.95, 1.2), Models.mat("bfe0ee", 0.08, 0.0, 0.35, 0.3), Vector3.ZERO, false)
+	Models.box(g2, Vector3(0.6, 0.22, 1.16), Vector3(fx + 0.02, 1.82, 1.2), Models.mat("c8322a", 0.5, 0.0, 0.6), Vector3.ZERO, false)
+	for sy in range(4):
+		Models.box(g2, Vector3(0.56, 0.015, 1.06), Vector3(fx, 0.22 + sy * 0.38, 1.2), Models.mat("9aa0a6", 0.4, 0.6), Vector3.ZERO, false)
+		for k in range(7):
+			Interior.bottle(g2, Vector3(fx + 0.12, 0.228 + sy * 0.38, 0.75 + k * 0.15), ["3a6a3a", "c8322a", "e8a22a", "2a6ac8"][(k + sy) % 4])
+	var cool := _room_light(g2, fx + 0.5, 1.2, 1.6, 0.5, Color(0.75, 0.9, 1.0), 2.4)
+	cool.shadow_enabled = false
+	add_col(fx - 0.38, fx + 0.38, 0.58, 1.82, 2.0, true, -1.0)
+	rects.pop_back()
+	# skrzynki, kartony, wycieraczka, stojak z gazetami
+	_rp(g2, "plastic_crate_01", sx2 - 3.6, 2.6, 0.3, 0.28, 0.0, 0.3, 0.3)
+	_rp(g2, "plastic_crate_01", sx2 - 3.6, 2.6, 0.7, 0.28, 0.28)
+	_rp(g2, "plastic_crate_01", sx2 - 2.95, 2.75, 1.1, 0.28)
 	_rp(g2, "cardboard_box_01", sx2 + 3.6, 2.2, 0.2, 0.4, 0.0, 0.3, 0.3)
 	_rp(g2, "cardboard_box_01", sx2 + 3.5, 1.5, 1.4, 0.34)
 	_rp(g2, "plastic_container", sx2 + 3.7, -0.4, PI / 2.0, 0.42, 0.0, 0.35, 0.5)
+	Models.box(g2, Vector3(1.3, 0.014, 0.7), Vector3(sx2, 0.008, d2 * 0.5 - 0.55), Models.mat("2f3a2f", 0.95), Vector3.ZERO, false)
+	Models.box(g2, Vector3(0.5, 0.9, 0.3), Vector3(sx2 + 1.5, 0.45, d2 * 0.5 - 0.25), Models.mat("3a3d42", 0.6, 0.4))
+	Interior.papers(g2, Vector3(sx2 + 1.45, 0.9, d2 * 0.5 - 0.27), 0.1, 4)
+	# reklamy i ogłoszenia na ścianach
+	Interior.picture(g2, Vector3(sx2 + w2 * 0.5 - 0.01, 1.7, 0.6), -PI / 2.0, 0.9, "poster_01")
+	Interior.picture(g2, Vector3(sx2 + w2 * 0.5 - 0.01, 1.75, 1.6), -PI / 2.0, 0.7, "poster_07")
+	Interior.picture(g2, Vector3(sx2 + w2 * 0.5 - 0.01, 1.6, -0.6), -PI / 2.0, 0.8, "poster_12")
+	Interior.picture(g2, Vector3(sx2 - w2 * 0.5 + 0.01, 1.75, -0.6), PI / 2.0, 0.8, "poster_04")
+	Interior.picture(g2, Vector3(sx2 - 1.6, 1.7, d2 * 0.5 - 0.01), PI, 0.7, "poster_10")
+	Interior.note(g2, Vector3(sx2 + 1.3, 1.5, d2 * 0.5 - 0.01), PI, "NA KRESKĘ NIE DAJEMY\n(chyba że Kubie)", 0.4, 0.26, "f2e8a8")
+	windows.append(Interior.window(g2, Vector3(sx2 + 2.9, 1.55, d2 * 0.5), 1.6, 1.3, "n", "blinds", false))
+	var win_n: Node3D = g2.get_child(g2.get_child_count() - 1)
+	win_n.rotation.y = PI
 	var ns := Label3D.new()
 	ns.text = "U STASIA — WSZYSTKO, CZEGO TRZEBA"
 	ns.font_size = 40
 	ns.pixel_size = 0.005
 	ns.modulate = Color(0.25, 0.5, 0.3)
-	ns.position = Vector3(sx2, h2 - 0.35, -R2.d * 0.5 + 0.03)
+	ns.position = Vector3(sx2 - 1.2, h2 - 0.32, -d2 * 0.5 + 0.03)
 	g2.add_child(ns)
 
 	# ---------------- GARAŻ ----------------
+	# Detale tylko na ścianach i suficie — podłoga zostaje wolna na meble gracza.
 	var R3: Dictionary = D.ROOMS.garage
 	var g3 := _room("garage", "garage_floor", "concrete_wall_008", "5a5a58", Color(0.75, 0.75, 0.72), 0.5)
-	_room_light(g3, R3.cx, 0.0, R3.h, 1.2, Color(1.0, 0.85, 0.6), 9.0)
-	Props._no_shadow(_rp(g3, "pull_chain_light_socket", R3.cx, 0.0, 0.0, 0.22, R3.h - 0.22))
-	_rp(g3, "old_tyre", R3.cx - R3.w * 0.5 + 0.4, -R3.d * 0.5 + 0.4, 0.0, 0.16)
-	_rp(g3, "old_tyre", R3.cx - R3.w * 0.5 + 0.42, -R3.d * 0.5 + 0.42, 0.6, 0.16, 0.16)
+	var c3: float = R3.cx
+	_room_light(g3, c3, 0.0, R3.h, 1.2, Color(1.0, 0.85, 0.6), 9.0)
+	Interior.ceiling_lamp(g3, Vector3(c3, R3.h, 0.0), "bulb")
+	Interior.ceiling_lamp(g3, Vector3(c3, R3.h, -3.0), "tube", Color(0.9, 0.95, 1.0))
+	var tl3 := _room_light(g3, c3, -3.0, R3.h, 0.7, Color(0.85, 0.92, 1.0), 6.0)
+	tl3.shadow_enabled = false
+	Interior.pegboard(g3, Vector3(c3 + R3.w * 0.5 - 0.01, 1.55, -1.2), -PI / 2.0, 1.6, 0.9)
+	Interior.picture(g3, Vector3(c3 - R3.w * 0.5 + 0.01, 1.6, 1.4), PI / 2.0, 0.8, "pic_auto")
+	Interior.picture(g3, Vector3(c3 - R3.w * 0.5 + 0.01, 1.7, 2.3), PI / 2.0, 0.55, "pic_kalendarz")
+	Interior.note(g3, Vector3(c3 + R3.w * 0.5 - 0.01, 1.5, 1.6), -PI / 2.0, "OLEJ 5W40 — 3 l\nKLOCKI PRZÓD\nODDAĆ KLUCZ 13", 0.3, 0.36)
+	Interior.pipe(g3, Vector3(c3 - R3.w * 0.5 + 0.12, R3.h - 0.18, -R3.d * 0.5 + 0.1), Vector3(c3 - R3.w * 0.5 + 0.12, R3.h - 0.18, R3.d * 0.5 - 0.1), 0.035, "6a6a66", 0.5)
+	Interior.pipe(g3, Vector3(c3 - R3.w * 0.5 + 0.12, 0.0, -R3.d * 0.5 + 0.12), Vector3(c3 - R3.w * 0.5 + 0.12, R3.h - 0.18, -R3.d * 0.5 + 0.12), 0.035, "6a6a66", 0.5)
+	Interior.pipe(g3, Vector3(c3 - 1.0, R3.h - 0.08, -R3.d * 0.5 + 0.2), Vector3(c3 + R3.w * 0.5 - 0.1, R3.h - 0.08, -R3.d * 0.5 + 0.2), 0.02, "1a1a1a", 0.0)
+	_rp(g3, "power_box_01", c3 + R3.w * 0.5 - 0.1, 3.1, -PI / 2.0, 0.5, 1.2)
+	_rp(g3, "old_tyre", c3 - R3.w * 0.5 + 0.4, -R3.d * 0.5 + 0.4, 0.0, 0.16)
+	_rp(g3, "old_tyre", c3 - R3.w * 0.5 + 0.42, -R3.d * 0.5 + 0.42, 0.6, 0.16, 0.16)
+	_rp(g3, "old_tyre", c3 - R3.w * 0.5 + 0.4, -R3.d * 0.5 + 0.4, 1.3, 0.16, 0.32)
+	Interior.stain(g3, Vector3(c3 + 0.4, 0.004, 0.8), Vector3(-PI / 2.0, 0, 0), Vector2(1.8, 1.3), Color(0.03, 0.03, 0.03, 0.55))
+	Interior.stain(g3, Vector3(c3 - 0.9, 0.004, -1.6), Vector3(-PI / 2.0, 0, 0), Vector2(0.9, 0.7), Color(0.03, 0.03, 0.03, 0.45))
+	Interior.stain(g3, Vector3(c3 + R3.w * 0.5 - 0.012, 0.6, 3.2), Vector3(0, -PI / 2.0, 0), Vector2(1.6, 1.2), Color(0.1, 0.09, 0.07, 0.35))
+	Interior.stain(g3, Vector3(c3 - 1.6, R3.h - 0.012, 2.4), Vector3(PI / 2.0, 0, 0), Vector2(1.8, 1.4), Color(0.12, 0.1, 0.07, 0.35))
 
 	# ---------------- PIWNICA ----------------
 	var R4: Dictionary = D.ROOMS.basement
 	var g4 := _room("basement", "concrete_floor_worn_001", "brick_wall_10", "4a4744", Color(0.8, 0.75, 0.72), 0.5)
-	_room_light(g4, R4.cx - 2.0, -1.5, R4.h, 1.0, Color(1.0, 0.8, 0.55), 8.0)
-	_room_light(g4, R4.cx + 2.0, 2.0, R4.h, 0.9, Color(1.0, 0.8, 0.55), 8.0)
-	Models.cyl(g4, 0.06, 0.06, R4.w, Vector3(R4.cx, R4.h - 0.2, -R4.d * 0.5 + 0.5), Props.pbr("rusty_painted_metal", 0.5), Vector3(0, 0, PI / 2.0), 8)
-	Models.cyl(g4, 0.04, 0.04, R4.d, Vector3(R4.cx + R4.w * 0.5 - 0.3, R4.h - 0.3, 0), Props.pbr("rusty_painted_metal", 0.5), Vector3(PI / 2.0, 0, 0), 8)
+	var c4: float = R4.cx
+	_room_light(g4, c4 - 2.0, -1.5, R4.h, 1.9, Color(1.0, 0.8, 0.55), 9.5)
+	_room_light(g4, c4 + 2.0, 2.0, R4.h, 1.7, Color(1.0, 0.8, 0.55), 9.5)
+	Interior.ceiling_lamp(g4, Vector3(c4 - 2.0, R4.h, -1.5), "bulb")
+	Interior.ceiling_lamp(g4, Vector3(c4 + 2.0, R4.h, 2.0), "bulb")
+	Models.cyl(g4, 0.06, 0.06, R4.w, Vector3(c4, R4.h - 0.2, -R4.d * 0.5 + 0.5), Props.pbr("rusty_painted_metal", 0.5), Vector3(0, 0, PI / 2.0), 8)
+	Models.cyl(g4, 0.04, 0.04, R4.d, Vector3(c4 + R4.w * 0.5 - 0.3, R4.h - 0.3, 0), Props.pbr("rusty_painted_metal", 0.5), Vector3(PI / 2.0, 0, 0), 8)
+	Interior.pipe(g4, Vector3(c4 - R4.w * 0.5 + 0.14, 0.0, 3.0), Vector3(c4 - R4.w * 0.5 + 0.14, R4.h, 3.0), 0.07, "5a4a3a", 0.5)
+	Interior.pipe(g4, Vector3(c4 - R4.w * 0.5 + 0.14, 0.0, 3.4), Vector3(c4 - R4.w * 0.5 + 0.14, R4.h, 3.4), 0.045, "6a3a2a", 0.5)
+	Interior.pipe(g4, Vector3(c4 - R4.w * 0.5 + 0.1, R4.h - 0.5, -R4.d * 0.5 + 0.1), Vector3(c4 - R4.w * 0.5 + 0.1, R4.h - 0.5, R4.d * 0.5 - 0.1), 0.03, "8a8a86", 0.6)
+	_rp(g4, "power_box_01", c4 + R4.w * 0.5 - 0.1, -3.2, -PI / 2.0, 0.6, 1.1)
+	_rp(g4, "utility_box_01", c4 - 2.6, -R4.d * 0.5 + 0.1, 0.0, 0.5, 1.2)
+	# piwniczne okienko z kratą: w dzień wpada przez nie smuga światła
+	var bw: Dictionary = Interior.window(g4, Vector3(c4 + 2.4, R4.h - 0.42, -R4.d * 0.5), 0.9, 0.42, "n", "none", false)
+	bw.base = 1.6
+	windows.append(bw)
+	for k in range(5):
+		Models.cyl(g4, 0.012, 0.012, 0.5, Vector3(c4 + 2.04 + k * 0.18, R4.h - 0.42, -R4.d * 0.5 + 0.1), Models.mat("2a2c30", 0.5, 0.6), Vector3.ZERO, 5)
+	Interior.stain(g4, Vector3(c4 + 1.2, 0.004, -2.6), Vector3(-PI / 2.0, 0, 0), Vector2(2.2, 1.5), Color(0.04, 0.05, 0.06, 0.5))
+	Interior.stain(g4, Vector3(c4 - 2.8, 0.004, 2.2), Vector3(-PI / 2.0, 0, 0), Vector2(1.4, 1.1), Color(0.04, 0.05, 0.06, 0.4))
+	Interior.stain(g4, Vector3(c4 - R4.w * 0.5 + 0.012, 0.7, -1.0), Vector3(0, PI / 2.0, 0), Vector2(2.2, 1.4), Color(0.05, 0.07, 0.05, 0.4))
+	Interior.stain(g4, Vector3(c4, 0.9, R4.d * 0.5 - 0.012), Vector3(0, PI, 0), Vector2(2.6, 1.6), Color(0.05, 0.07, 0.05, 0.35))
+	Interior.note(g4, Vector3(c4 + R4.w * 0.5 - 0.01, 1.4, 1.2), -PI / 2.0, "PIWNICA NR 4\nNIE ZASTAWIAĆ ZAWORU", 0.36, 0.22)
 	_lab_room()
 	for id in ["garage", "basement"]:
 		var fg := Node3D.new()

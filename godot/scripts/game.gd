@@ -825,6 +825,14 @@ func on_hour() -> void:
 			cs2.hunger = clampf(float(cs2.hunger) + 0.012, 0.0, 1.0)
 	if h == 8:
 		daily_costs()
+	# samouczek nie może utknąć: dopóki uczysz się pierwszej sprzedaży, Dominik odzywa się znowu najdalej po 40 minutach
+	if String(cur_step().get("id", "")) == "sell1" and S.cust.dominik.unlocked and not _has_order("dominik"):
+		S.cust.dominik.next = minf(float(S.cust.dominik.next), S.t + 40.0)
+	# pierwszy towar przepadł (rozsypany, skonfiskowany, oddany za bezcen)? Wiktor i tak otwiera Hurt,
+	# żeby dało się odrobić — zeszyt dalej trzeba spłacić
+	if flag("got_first") and not flag("hurt_on") and all_goods() < 1.0 and S.drops.is_empty():
+		S.flags["hurt_on"] = true
+		chat("wiktor", "Słyszę, że zostałeś z niczym. Dobra — zamawiaj w aplikacji Hurt. Ale to, co wisisz na zeszycie, dalej wisisz.")
 	if not mods.get("sleeping", false) and h >= 10 and h <= 20 and int(S.mom_day) != day() and randf() < 0.1 and day() > 1:
 		S.mom_day = day()
 		chat("mama", D.MOM.pick_random())
@@ -873,9 +881,9 @@ func on_day() -> void:
 	# zeszyt u Wiktora
 	if float(S.credit) > 0.0 and S.t > float(S.credit_due):
 		var over := int((S.t - float(S.credit_due)) / 1440.0)
-		var pen: float = round(float(S.credit) * 0.1)
+		var pen: float = round(float(S.credit) * 0.06)
 		S.credit = float(S.credit) + pen
-		if over >= 2:
+		if over >= 3:
 			missed_payment(float(S.credit), "Zeszyt nie został spłacony.")
 			S.credit_due = S.t + 2.0 * 1440.0
 		else:
@@ -891,6 +899,17 @@ func on_day() -> void:
 
 
 func missed_payment(short: float, why: String) -> void:
+	# drobny niedobór (do 12% raty) to jeszcze nie „wpadka”: Wiktor dopisuje brakujące z procentem
+	var due := 0.0
+	for r in D.DEBT_SCHEDULE:
+		if S.paid < float(r.due):
+			due = float(r.due)
+			break
+	if why.begins_with("Rata") and due > 0.0 and short <= due * 0.12:
+		S.debt += round(short * 0.25)
+		chat("wiktor", "Brakuje %s do raty. Tym razem przymknę oko, ale dopisuję %s. Dopłać dziś." % [money(short), money(round(short * 0.25))])
+		notify("Rata prawie pełna — brakujące %s musisz dopłacić." % money(short), "warn")
+		return
 	S.strikes = int(S.strikes) + 1
 	var penalty: float = round(short * 0.15)
 	S.debt += penalty
@@ -950,7 +969,7 @@ func make_order(c: Dictionary, force_g := 0) -> Dictionary:
 	var spot := spot_def(spots.pick_random())
 	var noise := randf_range(0.94, 1.06)
 	var mx := max_price(c, st, product, maxi(int(c.minpur), 60), g, {"noise": noise})
-	var stated: int = maxi(5, int(round(mx * float(c.honesty) * randf_range(0.86, 0.95))))
+	var stated: int = maxi(5, int(round(mx * float(c.honesty) * randf_range(0.9, 0.98))))
 	# klient nie narzuca godziny: będzie na miejscu ok. godzinę po potwierdzeniu
 	# (chyba że gracz zaproponuje inną porę — wtedy `fixed` = true)
 	var meet: float = default_meet()
@@ -1793,6 +1812,8 @@ const PACK_MODES := [
 
 
 func pack_waste(mode: int) -> float:
+	if int(S.stats.packed) + int(S.stats.wasted) < 5:
+		return 0.0
 	var w := float(PACK_MODES[clampi(mode, 0, 2)].waste)
 	if upg("waga"):
 		w *= 0.4
@@ -1943,6 +1964,12 @@ func move_cash(room: String, deposit: bool, amount: float) -> void:
 func shop_buy(id: String) -> bool:
 	for it in D.SHOP:
 		if it.id == id:
+			if id == "woreczki" and S.cash < float(it.price) and item_at("safe", "woreczki") <= 0 and packed_total(S.inv) + packed_total(S.stash.safe) <= 0:
+				# bez woreczków i bez grosza gra by stanęła — Staś daje paczkę „na krechę”
+				S.items[id] = item(id) + 10
+				notify("Staś: „Masz dziesięć woreczków, oddasz, jak staniesz na nogi.”", "good")
+				Sfx.play("pickup")
+				return true
 			if S.cash < float(it.price) or int(S.lvl) < int(it.lvl):
 				notify("Nie stać Cię albo to jeszcze nie ten poziom.", "warn")
 				return false
@@ -2137,9 +2164,9 @@ func _build_story() -> void:
 		{"id": "drop1", "text": func(): return "Idź do skrytki za altanką śmietnikową i zabierz paczkę (przytrzymaj [E]).",
 			"done": func(): return flag("got_first"), "marker": _drop_marker},
 		{"id": "pack1", "text": func(): return "Wróć do kawalerki i zaporcjuj towar na wadze. (%d/3 g)" % mini(3, int(S.stats.packed)),
-			"done": func(): return int(S.stats.packed) >= 3, "marker": _bench_marker, "on_done": _on_pack_done},
+			"done": func(): return int(S.stats.packed) >= 3 or _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
 		{"id": "sell1", "text": func(): return "Odpisz Dominikowi (Wiadomości) i dostarcz mu towar. (%d/2 g)" % mini(2, int(S.stats.sold)),
-			"done": func(): return int(S.stats.sold) >= 2, "marker": _buyer_marker},
+			"done": func(): return int(S.stats.sold) >= 2 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
 		{"id": "repay1", "text": func(): return "Oddaj Wiktorowi za pierwszą paczkę: telefon → Hurt → Spłać zeszyt. (%s)" % money(S.credit),
 			"done": func(): return float(S.credit) <= 0.0, "on_done": _on_repay_done},
 		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów własny towar w aplikacji Hurt i odbierz go ze skrytki.",
@@ -2156,6 +2183,18 @@ func _build_story() -> void:
 			"done": func(): return _has_furn("garage", "pack") and _has_furn("garage", "stash")},
 		{"ch": "Wolna gra", "id": "free", "text": func(): return "Rozwijaj interes i spłacaj raty. Dług: %s" % money(S.debt), "done": func(): return false},
 	]
+
+
+## samouczek: pierwsza paczka odebrana, a towaru luzem już nie ma (zaporcjowany, rozsypany albo stracony)
+func _tutorial_dry() -> bool:
+	if not flag("got_first") or not S.drops.is_empty():
+		return false
+	for src in [S.inv, S.stash.safe]:
+		for p in src.bulk:
+			for k in src.bulk[p]:
+				if float(src.bulk[p][k]) >= 1.0:
+					return false
+	return true
 
 
 func _has_furn(room: String, fn: String) -> bool:
@@ -2210,6 +2249,10 @@ func _on_repay_done() -> void:
 	S.flags["hurt_on"] = true
 	chat("wiktor", "Uczciwy. Od teraz zamawiasz sam: aplikacja Hurt w telefonie. Płacisz przy odbiorze albo bierzesz na zeszyt — ale zeszyt ma termin.")
 	add_xp(20.0)
+	# to, co zostało po dawnej sieci: paru detalistów z osiedla, którzy brali od Twoich ludzi
+	chat("wiktor", "I jeszcze jedno. Puściłem twój numer dwóm detalistom, którzy brali od twoich chłopaków: Sebie spod bloku 9 i staremu Zenonowi. Drobnica, ale od czegoś trzeba zacząć.", false, true)
+	unlock_client("seba", "Ty jesteś ten od Wiktora? Dobra. Odezwę się, jak będę coś potrzebował.")
+	unlock_client("zenon", "Dzień dobry, panie kolego. Podobno teraz u pana się zaopatrujemy. Będę pisał.")
 
 
 func _garage_marker() -> Variant:

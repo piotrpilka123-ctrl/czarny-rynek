@@ -318,6 +318,16 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		sun.light_energy = 0.0
 		env.tonemap_exposure = 1.0 * bright
 		env.glow_hdr_threshold = 1.0
+		# okna: w dzień jasne szyby i plama światła na podłodze, nocą granat i łuna miasta
+		var day := clampf(1.0 - night, 0.0, 1.0) * (1.0 - ov * 0.5)
+		for wn in world.windows:
+			var pane: StandardMaterial3D = wn.pane
+			pane.emission = Color(0.1, 0.14, 0.26).lerp(sun_c.lerp(Color(0.78, 0.86, 0.98), 0.6), day)
+			pane.emission_energy_multiplier = lerpf(0.22, 1.25, day)
+			var wl: Light3D = wn.light
+			wl.light_energy = float(wn.base) * day
+			wl.light_color = sun_c.lerp(Color(1.0, 0.96, 0.9), 0.5)
+			wl.visible = day > 0.03
 	else:
 		sun.look_at_from_position(sun_dir * 100.0, Vector3.ZERO, Vector3.UP)
 		sun.light_color = sun_c.lerp(Color(0.8, 0.84, 0.9), ov * 0.7)

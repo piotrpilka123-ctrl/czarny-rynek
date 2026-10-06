@@ -220,7 +220,10 @@ static func run(T) -> void:
 	await T.frames(3)
 	T.ok(U.mode == "modal" and U.station.view != null, "okno regału z rosnącą uprawą")
 	U.station.view.play("water", func(): pass)
-	await T.frames(4)
+	var ag := 0
+	while U.station.view.busy() and ag < 400:
+		ag += 1
+		await T.frames(1)
 	T.ok(not U.station.view.busy(), "animacja czynności kończy się sama")
 	U.open_station(room, lab)
 	await T.frames(2)

@@ -30,7 +30,7 @@ const TIER_COLOR := ["9ca3af", "e5e7eb", "60a5fa", "fbbf24"]
 const TIER_MIN := [0, 50, 68, 84]
 
 const PRODUCTS := {
-	"dym": {"name": "Marihuana", "base": 46, "cost": 21, "color": "6fbf4a", "lvl": 1, "form": "susz", "desc": "Suszone kwiaty konopi. Najpopularniejszy towar na osiedlu — bierze student i emeryt."},
+	"dym": {"name": "Marihuana", "base": 46, "cost": 18, "color": "6fbf4a", "lvl": 1, "form": "susz", "desc": "Suszone kwiaty konopi. Najpopularniejszy towar na osiedlu — bierze student i emeryt."},
 	"szron": {"name": "Amfetamina", "base": 112, "cost": 58, "color": "e8dfb8", "lvl": 4, "form": "proszek", "desc": "Biało-żółty proszek dla tych, co nie śpią. Klub Neon bierze go najwięcej."},
 	"krysztal": {"name": "Metamfetamina", "base": 195, "cost": 108, "color": "9ad0ff", "lvl": 7, "form": "kryształ", "desc": "Niebieskawe kryształki dla nocnej zmiany. Mocny towar, mocne ryzyko."},
 	"snieg": {"name": "Kokaina", "base": 330, "cost": 190, "color": "f3f6fb", "lvl": 9, "form": "proszek", "desc": "Najdroższy towar w mieście. Tylko dla klientów z grubym portfelem."},
@@ -42,7 +42,7 @@ const PRODUCT_GEN := {"dym": "marihuany", "szron": "amfetaminy", "krysztal": "me
 const WHOLESALE_SIZES := [5, 10, 20, 50, 100, 250]
 const WHOLESALE_DISC := {5: 0.0, 10: 0.0, 20: 0.04, 50: 0.08, 100: 0.12, 250: 0.16}
 ## maks. jednorazowe zamówienie (g) na danym poziomie
-const WHOLESALE_MAX := [5, 10, 20, 20, 50, 50, 100, 100, 250, 250, 250, 250, 250, 250, 250, 250]
+const WHOLESALE_MAX := [10, 10, 20, 20, 50, 50, 100, 100, 250, 250, 250, 250, 250, 250, 250, 250]
 const PURITY_STD := 75
 const PURITY_HIGH := 90
 
@@ -51,9 +51,9 @@ const SHOP := [
 	{"id": "woreczki", "name": "Woreczki strunowe (20 szt.)", "price": 12, "n": 20, "lvl": 1, "desc": "Bez nich nie zaporcjujesz towaru. 1 woreczek = 1 g."},
 	{"id": "majeranek", "name": "Majeranek (20 g)", "price": 6, "n": 20, "lvl": 1, "desc": "Przyprawa z półki. Domieszany do marihuany podbija wagę, ale obniża czystość — powstaje mieszanka."},
 	{"id": "cukier", "name": "Cukier puder (20 g)", "price": 5, "n": 20, "lvl": 4, "desc": "Do rozrabiania proszków. Więcej gramów, gorszy towar."},
-	{"id": "nasiona", "name": "Nasiona konopi (1 paczka)", "price": 70, "n": 1, "lvl": 5, "desc": "Paczka na jeden cykl uprawy (namiot albo regał)."},
-	{"id": "nawoz", "name": "Nawóz (1 dawka)", "price": 45, "n": 1, "lvl": 5, "desc": "Plon większy o 25%. Jedna dawka na cykl, dopóki rośliny rosną."},
-	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 950, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Jeden zestaw = jedna synteza przy stole laboratoryjnym."},
+	{"id": "nasiona", "name": "Nasiona konopi (1 paczka)", "price": 70, "n": 1, "lvl": 4, "desc": "Paczka na jeden cykl uprawy (namiot albo regał)."},
+	{"id": "nawoz", "name": "Nawóz (1 dawka)", "price": 45, "n": 1, "lvl": 4, "desc": "Plon większy o 25%. Jedna dawka na cykl, dopóki rośliny rosną."},
+	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 800, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Jeden zestaw = jedna synteza przy stole laboratoryjnym."},
 	{"id": "burner", "name": "Telefon na kartę", "price": 420, "n": 1, "lvl": 2, "use": true, "desc": "Nowy numer: śledztwo policji spada o 25."},
 ]
 const UPGRADES := [
@@ -66,7 +66,7 @@ const UPGRADES := [
 ## hours = czas całego cyklu w zwykłym trybie, yield = gramy (dla upraw: na doniczkę), pur = czystość bazowa,
 ## smell = zapach w szczycie, power = zł za dobę, hold = etap kończy się czynnością gracza.
 const RECIPES := {
-	"konopie": {"name": "Konopie", "station": "grow", "product": "dym", "lvl": 5, "input": {"nasiona": 1}, "hours": 30.0, "yield": 9.0, "pur": 56,
+	"konopie": {"name": "Konopie", "station": "grow", "product": "dym", "lvl": 4, "input": {"nasiona": 1}, "hours": 30.0, "yield": 9.0, "pur": 56,
 		"smell": 4.0, "power": 4.0, "wet": true, "water": 4.2,
 		"stages": [{"name": "Sadzonki", "to": 0.2}, {"name": "Wzrost", "to": 0.6}, {"name": "Kwitnienie", "to": 1.0}],
 		"modes": [{"name": "Lampy 18/6", "speed": 1.0, "smell": 1.0, "power": 1.0, "water": 1.0, "pur": 0, "desc": "Zwykły cykl światła."},
@@ -124,15 +124,15 @@ const STASH_BASE := 60
 ## type: charakter (wpływa na taktyki), like/hate: styl powitania
 const CLIENTS := [
 	{"id": "dominik", "name": "Dominik", "nick": "Student", "lvl": 1, "via": "start", "type": "luzak", "like": "luz", "hate": "twardo",
-		"wealth": 0.9, "patience": 5, "minpur": 50, "grams": [4, 6], "every": [14.0, 22.0], "home": "blok5", "prod": "dym", "nerv": 0.1, "honesty": 0.95, "reliable": 0.9,
+		"wealth": 1.0, "patience": 5, "minpur": 50, "grams": [4, 6], "every": [14.0, 22.0], "home": "blok5", "prod": "dym", "nerv": 0.1, "honesty": 0.95, "reliable": 0.9,
 		"spots": ["klatka5", "trzepak", "pawilon"], "bio": "Student zaoczny z bloku obok. Brał od Twoich ludzi, zanim wszystko poszło z dymem. Spłukany, ale lojalny.",
 		"look": {"model": "m20", "kind": "hoodie", "top": "2f4a6d", "bottom": "232a36", "hair": "hair_simpleparted", "hair_color": "3d2a1c", "seed": 11, "walk": "Walk_Stiff"}},
 	{"id": "seba", "name": "Seba", "nick": "Dres", "lvl": 2, "via": "ref:dominik:1", "type": "twardziel", "like": "twardo", "hate": "luz",
-		"wealth": 0.95, "patience": 4, "minpur": 55, "grams": [5, 8], "every": [16.0, 26.0], "home": "blok9", "prod": "dym", "nerv": 0.05, "honesty": 0.8, "reliable": 0.6,
+		"wealth": 1.0, "patience": 4, "minpur": 55, "grams": [5, 8], "every": [16.0, 26.0], "home": "blok9", "prod": "dym", "nerv": 0.05, "honesty": 0.8, "reliable": 0.6,
 		"spots": ["trzepak", "klatka5", "garaze"], "bio": "Stoi pod klatką od zawsze. Szanuje tylko tych, którzy się nie cackają.",
 		"look": {"model": "m17", "kind": "dres", "top": "101114", "top2": "e8e6e0", "bottom": "101114", "stripes": true, "hair": "hair_buzzed", "seed": 12, "build": 1.08, "walk": "Walk_Swagger"}},
 	{"id": "zenon", "name": "Pan Zenon", "nick": "Emeryt", "lvl": 3, "via": "ref:dominik:3", "type": "gadula", "like": "luz", "hate": "twardo",
-		"wealth": 0.8, "patience": 6, "minpur": 45, "grams": [4, 6], "every": [18.0, 28.0], "home": "kam1", "prod": "dym", "nerv": 0.05, "honesty": 0.85, "reliable": 0.95,
+		"wealth": 0.9, "patience": 6, "minpur": 45, "grams": [4, 6], "every": [18.0, 28.0], "home": "kam1", "prod": "dym", "nerv": 0.05, "honesty": 0.85, "reliable": 0.95,
 		"spots": ["park", "przystanek", "plac"], "bio": "„Na kolana, panie, na kolana”. Targuje się z przyzwyczajenia i lubi pogadać.",
 		"look": {"model": "m13", "kind": "jacket", "top": "6b5a45", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "45423c", "seed": 13, "build": 1.1, "height": 1.7, "walk": "Walk_Hunched"}},
 	{"id": "kasia", "name": "Kasia", "nick": "Korpo", "lvl": 3, "via": "ref:dominik:5", "type": "konkret", "like": "konkret", "hate": "luz",
@@ -243,9 +243,9 @@ var DOORS := {
 
 # ---------------------------------------------------------------- nieruchomości i meble
 const PROPERTIES := [
-	{"id": "garaz", "name": "Garaż nr 14", "price": 4500, "lvl": 4, "room": "garage", "where": "Garaże przy Robotniczej",
+	{"id": "garaz", "name": "Garaż nr 14", "price": 2600, "lvl": 4, "room": "garage", "where": "Garaże przy Robotniczej",
 		"desc": "Blaszak z prądem „na lewo”. Miejsce na stół, regały i pierwszy namiot uprawowy."},
-	{"id": "piwnica", "name": "Piwnica w kamienicy", "price": 12000, "lvl": 6, "room": "basement", "where": "Zaułek za kamienicą, ul. Hutnicza",
+	{"id": "piwnica", "name": "Piwnica w kamienicy", "price": 9000, "lvl": 6, "room": "basement", "where": "Zaułek za kamienicą, ul. Hutnicza",
 		"desc": "Sucha, bez okien, sąsiedzi głusi. Dużo miejsca na magazyn i uprawę."},
 	{"id": "kebab", "name": "Lokal „Kebab u Mirka”", "price": 38000, "lvl": 8, "room": "", "where": "Pawilon na osiedlu",
 		"desc": "Przykrywka: legalny interes, przez który przepuścisz gotówkę. (W przygotowaniu)"},
@@ -259,12 +259,12 @@ const FURNITURE := [
 	{"id": "stol", "name": "Stół roboczy z wagą", "price": 480, "model": "painted_wooden_table", "h": 0.86, "size": [1.9, 0.9], "func": "pack", "lvl": 1, "desc": "Porcjowanie i mieszanie towaru na miejscu."},
 	{"id": "regal", "name": "Regał magazynowy", "price": 340, "model": "steel_frame_shelves_01", "h": 1.95, "size": [1.05, 0.5], "func": "stash", "cap": 150, "lvl": 1, "desc": "+150 miejsc w skrytce w tej kryjówce."},
 	{"id": "skrzynia", "name": "Skrzynia", "price": 120, "model": "wooden_crate_02", "h": 0.5, "size": [0.6, 1.2], "func": "stash", "cap": 50, "lvl": 1, "desc": "+50 miejsc w skrytce."},
-	{"id": "namiot", "name": "Namiot uprawowy", "price": 1400, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "pots": 2, "lvl": 5, "desc": "Dwie doniczki pod lampą. Na początek: ok. 18 g marihuany z jednego cyklu."},
-	{"id": "regal_led", "name": "Regał uprawowy LED", "price": 2600, "model": "", "h": 2.1, "size": [1.8, 0.8], "func": "grow", "pots": 4, "lvl": 6, "desc": "Stalowa rama, cztery doniczki i fioletowe LED-y. Ok. 36 g z cyklu. Ustawiaj rzędami."},
-	{"id": "suszarka", "name": "Suszarka siatkowa", "price": 380, "model": "", "h": 1.9, "size": [0.9, 0.9], "func": "dry", "cap": 90, "lvl": 5, "desc": "Świeży zbiór trzeba wysuszyć (8 godzin), zanim trafi na wagę. Mieści 90 g."},
+	{"id": "namiot", "name": "Namiot uprawowy", "price": 900, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "pots": 2, "lvl": 4, "desc": "Dwie doniczki pod lampą. Na początek: ok. 18 g marihuany z jednego cyklu."},
+	{"id": "regal_led", "name": "Regał uprawowy LED", "price": 2200, "model": "", "h": 2.1, "size": [1.8, 0.8], "func": "grow", "pots": 4, "lvl": 6, "desc": "Stalowa rama, cztery doniczki i fioletowe LED-y. Ok. 36 g z cyklu. Ustawiaj rzędami."},
+	{"id": "suszarka", "name": "Suszarka siatkowa", "price": 260, "model": "", "h": 1.9, "size": [0.9, 0.9], "func": "dry", "cap": 90, "lvl": 4, "desc": "Świeży zbiór trzeba wysuszyć (8 godzin), zanim trafi na wagę. Mieści 90 g."},
 	{"id": "zbiornik", "name": "Zbiornik z pompą", "price": 700, "model": "", "h": 1.15, "size": [0.75, 0.75], "func": "tank", "lvl": 6, "desc": "Sam podlewa wszystkie uprawy w tej kryjówce. Nie musisz pamiętać o wodzie."},
-	{"id": "filtr", "name": "Filtr węglowy", "price": 900, "model": "", "h": 1.7, "size": [0.6, 0.6], "func": "filter", "lvl": 5, "desc": "Zapach z tej kryjówki spada o 60%. Mniej zapachu = mniejsze ryzyko nalotu."},
-	{"id": "lab", "name": "Stół laboratoryjny", "price": 4200, "model": "", "h": 0.92, "size": [2.0, 0.9], "func": "lab", "lvl": 5, "desc": "Synteza z zestawu chemikaliów: amfetamina, później metamfetamina. Śmierdzi i wymaga doglądania."},
+	{"id": "filtr", "name": "Filtr węglowy", "price": 700, "model": "", "h": 1.7, "size": [0.6, 0.6], "func": "filter", "lvl": 4, "desc": "Zapach z tej kryjówki spada o 60%. Mniej zapachu = mniejsze ryzyko nalotu."},
+	{"id": "lab", "name": "Stół laboratoryjny", "price": 3600, "model": "", "h": 0.92, "size": [2.0, 0.9], "func": "lab", "lvl": 5, "desc": "Synteza z zestawu chemikaliów: amfetamina, później metamfetamina. Śmierdzi i wymaga doglądania."},
 	{"id": "lozko", "name": "Stare łóżko", "price": 260, "model": "old_bed_frame", "h": 1.0, "size": [1.0, 2.05], "func": "bed", "lvl": 1, "desc": "Sen przewija czas i studzi gorąco na mieście."},
 	{"id": "laptop", "name": "Stolik z laptopem", "price": 420, "model": "", "h": 0.8, "size": [0.7, 0.6], "func": "save", "lvl": 1, "desc": "Zapis gry w tej kryjówce — bez wracania do kawalerki."},
 	{"id": "lampa", "name": "Świetlówka warsztatowa", "price": 110, "model": "", "h": 2.1, "size": [0.4, 0.4], "func": "light", "lvl": 1, "desc": "Porządne światło do pracy."},
@@ -319,18 +319,18 @@ const SKILLS := [
 const BRANCHES := ["Handel", "Ulica", "Towar", "Kontakty"]
 
 # ---------------------------------------------------------------- dług i ryzyko
-const START_CASH := 60
+const START_CASH := 200
 const START_DEBT := 25000
 const DEBT_SCHEDULE := [
-	{"day": 5, "due": 100}, {"day": 9, "due": 220}, {"day": 13, "due": 600}, {"day": 17, "due": 1500}, {"day": 21, "due": 3000}, {"day": 25, "due": 5200},
-	{"day": 29, "due": 8000}, {"day": 33, "due": 11500}, {"day": 37, "due": 15500}, {"day": 41, "due": 20000}, {"day": 45, "due": 25000},
+	{"day": 5, "due": 100}, {"day": 9, "due": 250}, {"day": 13, "due": 600}, {"day": 17, "due": 1300}, {"day": 21, "due": 2500}, {"day": 25, "due": 4300},
+	{"day": 29, "due": 6800}, {"day": 33, "due": 10000}, {"day": 37, "due": 14000}, {"day": 41, "due": 19000}, {"day": 46, "due": 25000},
 ]
 const DEBT_INTEREST := 0.01
 const LIVING_COST := 28
 const MAX_ARRESTS := 5
 const MAX_STRIKES := 3
-const CREDIT_BASE := 300
-const CREDIT_DAYS := 3
+const CREDIT_BASE := 400
+const CREDIT_DAYS := 4
 
 const HINTS := [
 	"Im bliżej ukrytego maksimum klienta zaproponujesz cenę, tym większy zysk. Kontroferta zdradza, ile jest gotów dać.",

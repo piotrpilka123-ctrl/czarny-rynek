@@ -57,6 +57,8 @@ func pack_all(room: String, mode := 0) -> void:
 			guard += 1
 			var n: int = mini(left, 20)
 			var r: Dictionary = G.pack(room, s.p, int(s.pur), n, mode)
+			if M.args.has("simdbg") and int(G.S.stats.pickups) <= 1:
+				print("PACKDBG n=%d mode=%d wynik=%s waste=%.3f wasted=%d packed=%d bulk=%s paczki=%d/%d" % [n, mode, str(r), G.pack_waste(mode), int(G.S.stats.wasted), int(G.S.stats.packed), str(s), G.packed_total(G.S.inv), G.packed_total(G.S.stash.safe)])
 			if int(r.packed) + int(r.lost) <= 0:
 				break
 			left -= int(r.packed) + int(r.lost)
@@ -141,7 +143,14 @@ func run() -> void:
 	# stół roboczy: animowana robota gram po gramie (w teście przyspieszona)
 	var t_before: float = S.t
 	S.upg["waga"] = true
-	ok(G.pack_waste(0) == 0.0 and G.pack_waste(2) > G.pack_waste(1), "waga jubilerska: spokojna robota bez strat, pośpiech kosztuje towar")
+	ok(G.pack_waste(2) == 0.0, "pierwsze gramy w życiu zawsze się udają (samouczek nie może stracić towaru)")
+	var packed_keep: int = S.stats.packed
+	S.stats.packed = 50
+	ok(G.pack_waste(0) == 0.0 and G.pack_waste(2) > G.pack_waste(1) and G.pack_waste(1) > 0.0, "waga jubilerska: spokojna robota bez strat, pośpiech kosztuje towar")
+	S.upg.erase("waga")
+	ok(G.pack_waste(0) > 0.0 and G.pack_waste(0) < G.pack_waste(1), "bez wagi jubilerskiej nawet spokojna robota gubi odrobinę")
+	S.upg["waga"] = true
+	S.stats.packed = packed_keep
 	var bv = U.bench.view
 	var got := [-1, -1]
 	bv.start(3, 0, 0.9, func() -> int: return G.pack_one("safe", "dym", 80, 0), func(a: int, b: int): got[0] = a; got[1] = b)
@@ -248,6 +257,35 @@ func run() -> void:
 		var np: int = G.mix("safe", "dym", int(src.pur), float(src.n), 4)
 		ok(np < int(src.pur), "mieszanie obniża czystość (%d%% → %d%%)" % [int(src.pur), np])
 		ok(absf(G.goods_total(S.inv) + G.goods_total(S.stash.safe) - before - 4.0) < 0.2, "mieszanka waży o 4 g więcej")
+
+	# --- samouczek nie zakleszcza się, gdy pierwszy towar przepadł
+	var tut_S: Dictionary = G.S
+	G.S = G.new_state()
+	G.S.flags["got_first"] = true
+	G.S.stats.packed = 2
+	G.S.stats.wasted = 3
+	G.add_pack(G.S.inv, "dym", 80, 2)
+	ok(G._tutorial_dry(), "samouczek widzi, że towaru luzem już nie ma")
+	G.S.step = 0
+	var pack_i := -1
+	var sell_i := -1
+	for i in range(G.story.size()):
+		if String(G.story[i].get("id", "")) == "pack1":
+			pack_i = i
+		if String(G.story[i].get("id", "")) == "sell1":
+			sell_i = i
+	ok(pack_i >= 0 and G.story[pack_i].done.call(), "krok „zaporcjuj 3 g” zalicza się, gdy z pierwszej paczki zostały tylko 2 woreczki")
+	ok(not G.story[sell_i].done.call(), "krok sprzedaży czeka, dopóki są woreczki do sprzedania")
+	G.take_pack(G.S.inv, "dym", 80, 2)
+	ok(G.story[sell_i].done.call(), "…a gdy towar przepadł całkiem, samouczek idzie dalej")
+	G.on_hour()
+	ok(G.flag("hurt_on"), "bez towaru i bez Hurtu Wiktor sam otwiera zamówienia")
+	G.S.items["woreczki"] = 0
+	G.S.cash = 0.0
+	G.add_bulk(G.S.inv, "dym", 80, 5.0)
+	ok(G.shop_buy("woreczki") and G.item("woreczki") == 10, "spłukany i bez woreczków: Staś daje paczkę na krechę")
+	ok(not G.shop_buy("woreczki"), "…ale tylko wtedy, gdy naprawdę nie ma w co porcjować")
+	G.S = tut_S
 
 	# --- mieszanki nigdy nie układają się w jeden stos z czystym towarem
 	var keep_inv: Dictionary = S.inv
@@ -600,6 +638,7 @@ func _sim_one(days: int, run_i: int) -> String:
 	var lost := ""
 	var guard := 0
 	var missed := 0
+	var prod_visit := 0.0
 	while G.day() <= days and guard < 300000:
 		guard += 1
 		G.story_tick()
@@ -612,17 +651,16 @@ func _sim_one(days: int, run_i: int) -> String:
 				G.pickup_drop(d)
 		# porcjowanie w domu
 		if not G.bench_bulk("safe").is_empty():
-			if G.item_at("safe", "woreczki") < 25 and S.cash >= 12.0:
+			if G.item_at("safe", "woreczki") < 25 and (S.cash >= 12.0 or G.item_at("safe", "woreczki") <= 0):
 				G.shop_buy("woreczki")
 			if G.item_at("safe", "woreczki") > 0:
-				G.add_minutes(8.0)
-				pack_all("safe", 3 if randf() < skill else 2)
+				pack_all("safe", 0 if randf() < skill else 1)
 		_stash_all()
 		# SMS-y
 		for o in S.orders.duplicate():
 			if o.status != "new":
 				continue
-			if randf() < lazy:
+			if randf() < lazy and G.flag("hurt_on"):
 				G.reply_order(o.id, "decline")
 				continue
 			if _stock(o.product) < 1.0 and S.drops.is_empty():
@@ -711,6 +749,8 @@ func _sim_one(days: int, run_i: int) -> String:
 				elif G.order_block(p, 5, S.cash < G.wholesale_price(p, 5, high) + 30.0, high) == "":
 					G.order_goods(p, 5, high, S.cash < G.wholesale_price(p, 5, high) + 30.0)
 		# pieniądze: zeszyt przed terminem, rata w dniu spłaty (albo wcześniej, gdy jest zapas)
+		if float(S.credit) > 0.0 and not G.flag("hurt_on") and S.cash >= float(S.credit):
+			G.pay_credit(1e9)
 		if float(S.credit) > 0.0:
 			var due_in = (float(S.credit_due) - S.t) / 1440.0
 			if S.cash >= float(S.credit) + 20.0 and (due_in < 1.2 or S.cash > float(S.credit) + 250.0):
@@ -722,10 +762,15 @@ func _sim_one(days: int, run_i: int) -> String:
 			var need_r: float = float(ni.due) - S.paid
 			var days_left := int(ni.day) - G.day()
 			var reserve := 200.0 + int(S.lvl) * 150.0
+			if invest and int(S.lvl) >= 4:
+				# odkłada na garaż i sprzęt, o ile do terminu raty zostało jeszcze trochę czasu
+				reserve = (float(G.prop_def("garaz").price) + 900.0 if not G.owns("garaz") else 2600.0) if days_left > 1 else reserve
 			if need_r > 0.0 and days_left <= 0 and G.hour() > 20.0:
 				G.pay_debt(minf(need_r, maxf(0.0, S.cash - 25.0)))
 			elif need_r > 0.0 and S.cash > need_r + reserve + float(S.credit):
 				G.pay_debt(need_r)
+		elif ni.is_empty() and S.debt > 0.0 and S.cash > S.debt + 300.0:
+			G.pay_debt(S.debt)
 		# rozwój
 		if int(S.sp) > 0:
 			for sk in D.SKILLS:
@@ -737,8 +782,11 @@ func _sim_one(days: int, run_i: int) -> String:
 		if invest:
 			if int(S.lvl) >= 3 and not G.upg("szafka") and S.cash > 2200.0:
 				G.upgrade_buy("szafka")
-			if int(S.lvl) >= 4 and not G.owns("garaz") and S.cash > 9000.0:
+			if int(S.lvl) >= 4 and not G.owns("garaz") and S.cash > float(G.prop_def("garaz").price) + 600.0:
 				G.buy_property("garaz")
+			if G.owns("garaz") and S.t - prod_visit > 300.0:
+				prod_visit = S.t
+				_sim_production(skill)
 		# noc
 		var h := G.hour()
 		if h >= 23.5 or h < 7.0:
@@ -757,8 +805,11 @@ func _sim_one(days: int, run_i: int) -> String:
 				stock_v += _stock(pp) * float(D.PRODUCTS[pp].cost)
 			if free:
 				print("ZYSK %d d%02d | poz %2d | majątek %6d | klienci %2d | transakcje %3d | przychód %6d" % [run_i + 1, last_day, int(S.lvl), int(S.cash + stash_cash + stock_v - float(S.credit) - 60.0), G.client_count(), int(S.stats.deals), int(S.stats.earned)])
-			print("SIM %d d%02d | poz %2d | gotówka %5d | spłacono %5d | dług %5d | zeszyt %4d | klienci %2d | transakcje %3d | zarobione %6d | wpadki %d | przegapione %d" % [
-				run_i + 1, last_day, int(S.lvl), int(S.cash + stash_cash), int(S.paid), int(S.debt), int(S.credit), G.client_count(), int(S.stats.deals), int(S.stats.earned), int(S.strikes), missed])
+			if M.args.has("simdbg"):
+				print("SIMDBG %d d%02d krok=%s packed=%d sold=%d woreczki=%d bulk=%s drops=%d zam=%d flagi=%s" % [run_i + 1, last_day, String(G.cur_step().get("id", "?")), int(S.stats.packed), int(S.stats.sold), G.item_at("safe", "woreczki"), str(G.bench_bulk("safe")), S.drops.size(), S.orders.size(), str(S.flags.keys())])
+			print("SIM %d d%02d | poz %2d | gotówka %5d | spłacono %5d | dług %5d | zeszyt %4d | klienci %2d | transakcje %3d | zarobione %6d | wpadki %d | przegapione %d | uprawa %4d g | synteza %4d g | naloty %d" % [
+				run_i + 1, last_day, int(S.lvl), int(S.cash + stash_cash), int(S.paid), int(S.debt), int(S.credit), G.client_count(), int(S.stats.deals), int(S.stats.earned), int(S.strikes), missed,
+				int(S.stats.get("grown", 0)), int(S.stats.get("cooked", 0)), int(S.stats.get("raids", 0))])
 		if int(S.strikes) >= D.MAX_STRIKES:
 			lost = "PRZEGRANA (dług) w dniu %d" % G.day()
 			break
@@ -770,3 +821,73 @@ func _sim_one(days: int, run_i: int) -> String:
 	if lost == "":
 		lost = "koniec symulacji: dzień %d, dług %d, spłacono %d" % [G.day(), int(S.debt), int(S.paid)]
 	return "umiejętność gracza %.2f → %s, poziom %d, klienci %d, transakcje %d, zarobione %d" % [skill, lost, int(S.lvl), G.client_count(), int(S.stats.deals), int(S.stats.earned)]
+
+
+## Wizyta bota w garażu (co ok. 5 godzin): dokupuje stanowiska, dogląda upraw i syntez,
+## wynosi gotowy towar do kawalerki. Dojazd w obie strony doliczany ryczałtem.
+func _sim_production(skill: float) -> void:
+	var S: Dictionary = G.S
+	var P = G.Prod
+	var room := "garage"
+	G.add_minutes(24.0)
+	var have := {}
+	for it in S.hide[room].items:
+		have[String(it.f)] = int(have.get(String(it.f), 0)) + 1
+	# zakupy: najpierw regał na towar, potem uprawa, suszarka, filtr, kolejne regały, na końcu chemia
+	var plan := [["regal", 2.3, -3.9, 0, 1, 200.0], ["namiot", 2.2, -1.9, 0, 4, 300.0], ["suszarka", -2.4, -3.8, 0, 4, 200.0], ["filtr", -2.5, 3.6, 0, 4, 600.0],
+		["regal_led", -1.9, -2.3, 0, 6, 900.0], ["zbiornik", -2.5, 2.5, 0, 6, 700.0], ["lab", 2.5, 1.2, 1, 5, 1500.0], ["regal_led", -1.9, -0.9, 0, 6, 2000.0], ["regal_led", -1.9, 0.5, 0, 7, 3000.0]]
+	var seen := {}
+	for e in plan:
+		var fid: String = e[0]
+		seen[fid] = int(seen.get(fid, 0)) + 1
+		if int(have.get(fid, 0)) >= int(seen[fid]) or int(S.lvl) < int(e[4]):
+			continue
+		if S.cash > float(G.furn_def(fid).price) + float(e[5]):
+			if G.furn_place(room, fid, float(e[1]), float(e[2]), int(e[3])):
+				have[fid] = int(have.get(fid, 0)) + 1
+	var items: Array = S.hide[room].items
+	for i in range(items.size()):
+		var kind: String = P.kind(room, i)
+		var j = P.job(room, i)
+		if kind == "grow":
+			if j == null:
+				if G.item_at(room, "nasiona") <= 0 and S.cash > 150.0:
+					G.shop_buy("nasiona")
+				P.start(room, i, "konopie")
+			elif float(j.prog) >= 1.0:
+				P.collect(room, i)
+			else:
+				if float(j.water) < 60.0:
+					P.water(room, i)
+				if skill > 0.6:
+					if P.can_trim(room, i):
+						P.trim(room, i)
+					if not j.fert and float(j.prog) < 0.6:
+						if G.item_at(room, "nawoz") <= 0 and S.cash > 200.0:
+							G.shop_buy("nawoz")
+						P.fertilize(room, i)
+		elif kind == "dry":
+			if j != null and float(j.prog) >= 1.0:
+				P.collect(room, i)
+				j = null
+			if j == null:
+				P.dry_start(room, i)
+		elif kind == "lab":
+			if j == null:
+				var rid := "metamfetamina" if (int(S.lvl) >= 8 and randf() < 0.5) else "amfetamina"
+				var need: int = int(D.RECIPES[rid].input.chemia)
+				while G.item_at(room, "chemia") < need and S.cash > 1400.0:
+					if not G.shop_buy("chemia"):
+						break
+				if P.start(room, i, rid):
+					P.set_mode(room, i, 0 if skill > 0.8 else 1)
+			elif float(j.prog) >= 1.0:
+				P.collect(room, i)
+			elif int(j.hold) >= 0:
+				P.proceed(room, i)
+	# gotowy towar jedzie do kawalerki (tyle, ile wejdzie do plecaka)
+	for e in G.entries(S.stash[room]):
+		if e.kind != "item":
+			G.move_entry(room, e, false, 1e9)
+	G.add_minutes(22.0)
+	_stash_all()
