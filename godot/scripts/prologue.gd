@@ -151,7 +151,7 @@ func start() -> void:
 	stage = "lab"
 	t = 0.0
 	M.nav_force = true
-	Sfx.score("napiecie", 1.5, 3.0)
+	Sfx.score("napiecie", 1.5, 3.0, 0.0)
 	M.ui.dialog({"name": "Siwy", "lines": [
 		"No, wreszcie. Za kwadrans piąta, Kuba. Trzy dni cię nie było.",
 		"Pół kilo stoi na stole — najczystszy śnieg, jaki z tej huty wyszedł. Wiktor zapłacił z góry i czeka do szóstej.",
@@ -409,7 +409,7 @@ func _begin_raid() -> void:
 	_bang = 0.4
 	_shout = 5.5
 	M.nav_force = true
-	Sfx.score("akcja", 0.9, 0.3)
+	Sfx.score("akcja", 2.5, 0.6, 3.0)
 	Sfx.siren(true)
 	Sfx.megaphone()
 	Sfx.play("alert")
@@ -430,7 +430,7 @@ func on_outside() -> void:
 	stage = "escape"
 	t = 0.0
 	M.nav_force = true
-	Sfx.score("skradanie", 1.6, 1.5)
+	Sfx.score("skradanie", 2.5, 1.5, 3.0)
 	_reset_cops()
 	for l in M.world.lab_fx.get("flash", []):
 		l.light_energy = 0.0
@@ -534,6 +534,8 @@ func _boom() -> void:
 	var pl = M.player
 	var W = M.world
 	M.ui.cut_begin()
+	# skradanie powoli cichnie; odwracasz się na hutę w ciszy i dopiero wybuch przynosi muzykę
+	Sfx.score("", 2.5)
 	var eye: Vector3 = pl.cam.global_position
 	var fw: Vector2 = pl.forward()
 	var look0 := eye + Vector3(fw.x, 0.0, fw.y) * 10.0
@@ -618,6 +620,13 @@ func _boom() -> void:
 		[7.6, "Trzy lata roboty i całe laboratorium — w sześć sekund."],
 		[10.8, "Ale ostatnia partia jest w torbie. Pół kilo. Wystarczy, żeby zacząć od no—"],
 	]
+	# zanim cokolwiek wybuchnie: kilka sekund ciszy i myśli o wspólniku, który został w środku
+	var S0 := 7.2
+	var thoughts := [
+		[1.2, "Siwy został w środku. Sam. „Ja to odpalam” — tak powiedział."],
+		[4.2, "Zdążył wyjść? Powinien już być za torami. No dalej, stary…"],
+	]
+	var thi := 0
 	var booms := [
 		[1.9, P(177.0, -96.0), 2.5, 2.4],
 		[2.8, P(186.0, -84.0), 9.0, 3.4],
@@ -626,8 +635,10 @@ func _boom() -> void:
 		[8.6, P(178.0, -74.0), 3.0, 1.3],
 		[10.1, P(176.5, -101.0), 6.0, 1.1],
 	]
-	var fires := [[2.2, P(175.2, -96.0), 2.0, 1.6], [3.1, P(186.0, -84.0), 15.8, 2.6], [5.5, P(192.0, -70.0), 15.8, 2.0], [3.9, P(175.2, -106.0), 3.0, 1.2],
-		[3.0, P(175.3, -88.0), 6.5, 1.5], [3.4, P(175.3, -80.0), 4.2, 1.3], [4.4, P(175.3, -100.0), 8.0, 1.4], [6.0, P(175.3, -72.0), 7.0, 1.2]]
+	var fires := [[1.92, P(175.2, -96.0), 2.0, 1.6], [2.82, P(186.0, -84.0), 15.8, 2.6], [5.22, P(192.0, -70.0), 15.8, 2.0], [3.52, P(175.2, -106.0), 3.0, 1.2],
+		[2.0, P(175.3, -88.0), 6.5, 1.5], [2.3, P(175.3, -80.0), 4.2, 1.3], [2.9, P(175.3, -100.0), 8.0, 1.4], [3.7, P(175.3, -72.0), 7.0, 1.2]]
+	# pożary odpalają się w kolejności czasu (wcześniej późniejszy wpis blokował wcześniejsze i ogień się spóźniał)
+	fires.sort_custom(func(a, b): return a[0] < b[0])
 	# okna zachodniej ściany: z każdego lecą szyby i bucha ogień
 	var wins: Array = []
 	for wi in range(7):
@@ -669,20 +680,36 @@ func _boom() -> void:
 			out_dir = dd
 		if free >= 8:
 			break
-	while tt < 24.2 and not M.cut_skip:
+	# testy i zrzuty: --boomt=sekundy przeskakuje zegar przerywnika
+	tt = float(M.args.get("boomt", "0"))
+	var tm := -S0
+	var said := false
+	var bent := false
+	while tm < 24.2 and not M.cut_skip:
 		var dt := get_process_delta_time()
 		tt += dt
+		if M.args.has("boomhold"):
+			# zrzuty: zegar staje w wybranej chwili po ciosie
+			tt = minf(tt, S0 + hit_at + float(M.args.boomhold))
+		# tm: czas od chwili, w której kończą się myśli (ujemny = jeszcze cisza przed wybuchem)
+		tm = tt - S0
+		if thi < thoughts.size() and tt >= float(thoughts[thi][0]):
+			M.ui.cut_line(String(thoughts[thi][1]))
+			thi += 1
+		if thi == thoughts.size() and tm > -0.5:
+			thi += 1
+			M.ui.cut_line("")
 		var e := clampf(tt / 1.5, 0.0, 1.0)
 		e = e * e * (3.0 - 2.0 * e)
-		var zoom := clampf((tt - 6.0) / 12.0, 0.0, 1.0)
+		var zoom := clampf((tm - 6.0) / 12.0, 0.0, 1.0)
 		shake = maxf(0.0, shake - dt * 1.4)
 		# --- wybuchy, ogień, szyby
-		while bi < booms.size() and tt >= float(booms[bi][0]):
+		while bi < booms.size() and tm >= float(booms[bi][0]):
 			var bp: Vector2 = booms[bi][1]
 			var bpos := Vector3(bp.x, W.height(bp.x, bp.y) + float(booms[bi][2]), bp.y)
 			Fx.explosion(M, bpos, float(booms[bi][3]))
-			# pierwszy wybuch: skradanie urywa się, wchodzi motyw utraty wszystkiego
-			Sfx.score("dramat", 0.35, 0.05)
+			# pierwszy wybuch: po ciszy i myślach o Siwym wchodzi motyw utraty wszystkiego
+			Sfx.score("dramat", 0.05, 0.05, 0.0)
 			Fx.shards(M, bpos, Vector3(-0.5, 1.0, 0.1), "debris", int(60 * float(booms[bi][3])), 20.0, 55.0, 0.2)
 			shake = maxf(shake, 0.5 + float(booms[bi][3]) * 0.25)
 			M.ui.flash(0.6 if bi == 1 else 0.28)
@@ -693,19 +720,19 @@ func _boom() -> void:
 					a.from = a.c.node.position
 					Chars.one_shot(a.c.rig, "Hit_Knockback")
 			bi += 1
-		while wi2 < wins.size() and tt >= float(wins[wi2][0]):
+		while wi2 < wins.size() and tm >= float(wins[wi2][0]):
 			var wp: Vector2 = wins[wi2][1]
 			var wpos := Vector3(wp.x, W.height(wp.x, wp.y) + float(wins[wi2][2]), wp.y)
 			Fx.shards(M, wpos, Vector3(-1.0, 0.25, 0.0), "glass", 110, 15.0, 26.0, 0.075)
 			Fx.jet(M, wpos, Vector3(-1.0, 0.35, 0.0), 1.0)
 			wi2 += 1
-		while fi < fires.size() and tt >= float(fires[fi][0]):
+		while fi < fires.size() and tm >= float(fires[fi][0]):
 			var fp: Vector2 = fires[fi][1]
 			nodes.append(Fx.fire(M, Vector3(fp.x, W.height(fp.x, fp.y) + float(fires[fi][2]), fp.y), float(fires[fi][3]), fire_lights))
 			fi += 1
 		for i in range(fire_lights.size()):
 			fire_lights[i].light_energy = (4.0 + (i % 5)) * (0.7 + 0.5 * absf(sin(tt * 9.0 + i * 2.0) * sin(tt * 5.3 + i)))
-		glow.light_energy = clampf((tt - 2.6) / 2.0, 0.0, 1.0) * (2.6 + 1.1 * absf(sin(tt * 7.3) * sin(tt * 4.1 + 1.0)))
+		glow.light_energy = clampf((tm - 1.9) / 0.9, 0.0, 1.0) * (2.6 + 1.1 * absf(sin(tt * 7.3) * sin(tt * 4.1 + 1.0)))
 		# --- patrol: odrzut, potem kuli się za osłoną
 		for a in actors:
 			if float(a.kb) < 0.0:
@@ -725,7 +752,7 @@ func _boom() -> void:
 			var kf := int(tt / 0.28)
 			for k in range(car_lights.size()):
 				car_lights[k].light_energy = 7.0 if (kf + k) % 2 == 0 else 0.2
-			if tt >= 6.7:
+			if tm >= 6.7:
 				car_done = true
 				car_t = 0.0
 				car_v = 7.5
@@ -753,22 +780,22 @@ func _boom() -> void:
 				Sfx.play("door", 6.0)
 				nodes.append(Fx.fire(M, boom_car.position + Vector3(0, 0.4, 0), 1.4, fire_lights))
 		# --- narracja
-		if li < lines.size() and tt >= float(lines[li][0]) and not hit:
+		if li < lines.size() and tm >= float(lines[li][0]) and not hit:
 			M.ui.cut_line(String(lines[li][1]))
 			li += 1
 		# --- ktoś idzie od tyłu
-		if si < steps_at.size() and tt >= float(steps_at[si]):
+		if si < steps_at.size() and tm >= float(steps_at[si]):
 			Sfx.step("gravel", false)
 			si += 1
 			arig.root.visible = true
-		if not voiced and tt >= t_voice:
+		if not voiced and tm >= t_voice:
 			voiced = true
 			Sfx.mumble(0.8)
 			M.ui.cut_line("— Kuba.")
-		if not swung and tt >= t_swing:
+		if not swung and tm >= t_swing:
 			swung = true
 			Chars.one_shot(arig, "Melee_Hook")
-		if not hit and tt >= hit_at:
+		if not hit and tm >= hit_at:
 			hit = true
 			Sfx.knock()
 			M.ui.flash(0.95)
@@ -784,7 +811,7 @@ func _boom() -> void:
 		var dir_l := (look0 - cam_pos).normalized()
 		var dir := dir_l.slerp(dir_m, e)
 		var head: Vector3 = arig.root.position + Vector3(0, 1.6, 0)
-		var turn := clampf((tt - t_turn) / 0.55, 0.0, 1.0)
+		var turn := clampf((tm - t_turn) / 0.55, 0.0, 1.0)
 		turn = turn * turn * (3.0 - 2.0 * turn)
 		if turn > 0.0:
 			dir = dir.slerp((head - cam_pos).normalized(), turn)
@@ -794,37 +821,94 @@ func _boom() -> void:
 			fall = minf(1.0, fall + dt / 0.5)
 			var fe := 1.0 - (1.0 - fall) * (1.0 - fall)
 			cam_pos = cam_pos.lerp(Vector3(cam_pos.x - md.x * 0.35, ground + 0.2, cam_pos.z - md.y * 0.35), fe)
-			var low: Vector3 = (drop_bag.position if grabbed < 2 else arig.root.position) + Vector3(0, 0.45, 0)
+			var low: Vector3 = (drop_bag.position.lerp(arig.root.position, 0.5) + Vector3(0, 0.55, 0)) if grabbed < 2 else (arig.root.position + Vector3(0, 0.9, 0))
 			dir = dir.slerp((low - cam_pos).normalized(), fe)
 			fov = lerpf(fov, 78.0, fe)
 		var target := cam_pos + dir * 6.0 + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * shake * 0.25
 		M.cine_cam(cam_pos, target, fov)
 		if hit:
 			M.cine.rotate_object_local(Vector3(0, 0, 1), (1.0 - (1.0 - fall) * (1.0 - fall)) * 1.15)
-			# zamroczenie: ciemno zaraz po ciosie, potem mętny obraz, na końcu czerń
-			var ht := tt - hit_at
-			var dark := lerpf(0.82, 0.3, clampf((ht - 0.25) / 1.2, 0.0, 1.0)) if ht < 4.4 else lerpf(0.3, 1.0, clampf((ht - 4.4) / 1.5, 0.0, 1.0))
-			M.ui.fade_rect.color.a = dark + 0.08 * sin(ht * 2.4)
-			if grabbed == 0 and ht >= 1.3:
+			# powieki: cios → ciemność → mrugnięcie (torba i bandyta nad nią) → ciemność → mrugnięcie (odchodzi, torby już nie ma) → ciemność
+			var ht := tm - hit_at
+			var open := 0.0
+			if ht < 0.45:
+				open = 1.0 - ht / 0.45
+			elif ht >= 1.7 and ht < 3.1:
+				open = minf(1.0, (ht - 1.7) / 0.28) * (1.0 - clampf((ht - 2.85) / 0.25, 0.0, 1.0))
+			elif ht >= 4.3 and ht < 6.7:
+				open = minf(1.0, (ht - 4.3) / 0.3) * (1.0 - clampf((ht - 5.9) / 0.8, 0.0, 1.0))
+			_lids(open)
+			M.ui.fade_rect.color.a = (0.2 + 0.07 * sin(ht * 2.4)) if open > 0.02 else 0.0
+			if grabbed == 0 and ht >= 0.6:
 				grabbed = 1
-				# podchodzi do torby i schyla się po nią
+				# w ciemności bandyta staje nad torbą, twarzą do leżącego
+				var bpos2: Vector3 = drop_bag.position
+				var side := Vector3(out_dir.x, 0.0, out_dir.y) * 0.55
+				arig.root.position = Vector3(bpos2.x + side.x, W.height(bpos2.x + side.x, bpos2.z + side.z), bpos2.z + side.z)
+				arig.root.rotation.y = atan2(cam_pos.x - arig.root.position.x, cam_pos.z - arig.root.position.z)
+				Chars.play(arig, "Idle", 1.0, 0.0)
+			if grabbed == 1 and not said and ht >= 1.9:
+				said = true
+				Sfx.mumble(0.8)
+				M.ui.cut_line("— Leż, leż. Torbę biorę ja. Pozdrów Wiktora.")
+			if grabbed == 1 and not bent and ht >= 2.25:
+				bent = true
 				var bd := Vector2(drop_bag.position.x - arig.root.position.x, drop_bag.position.z - arig.root.position.z)
 				arig.root.rotation.y = atan2(bd.x, bd.y)
 				Chars.one_shot(arig, "PickUp_Table")
-				M.ui.cut_line("— Leż, leż. Torbę biorę ja. Pozdrów Wiktora.")
-			if grabbed == 1 and ht >= 2.5:
+			if grabbed == 1 and ht >= 3.3:
 				grabbed = 2
+				# oczy zamknięte: torba znika, bandyta jest już kilka kroków dalej, plecami do nas
 				drop_bag.visible = false
+				M.ui.cut_line("")
+				var far: Vector3 = drop_bag.position + Vector3(out_dir.x, 0.0, out_dir.y) * 2.4
+				arig.root.position = Vector3(far.x, W.height(far.x, far.z), far.z)
 				arig.root.rotation.y = atan2(out_dir.x, out_dir.y)
-				Chars.play(arig, "Walk", 1.0, 0.3)
+				Chars.play(arig, "Walk", 1.0, 0.0)
 			if grabbed == 2:
 				arig.root.position += Vector3(out_dir.x, 0.0, out_dir.y) * 1.25 * dt
 				arig.root.position.y = W.height(arig.root.position.x, arig.root.position.z)
-			if li == 3 and ht >= 6.3:
+			if li == 3 and ht >= 7.0:
 				li = 4
 				M.ui.cut_line("Kiedy się ocknąłem, nie było torby, Siwego ani laboratorium. Został dług.")
 		await get_tree().process_frame
+	M.ui.fade_rect.color.a = 1.0
+	_lids(-1.0)
 	_finish()
+
+
+var _lid: Array = []
+
+## powieki: dwa czarne pasy schodzące się z góry i z dołu. open = 1 oczy otwarte, 0 zamknięte, ujemne = sprzątnij
+func _lids(open: float) -> void:
+	if open < 0.0:
+		for l in _lid:
+			if is_instance_valid(l):
+				l.queue_free()
+		_lid.clear()
+		return
+	if _lid.is_empty():
+		var host: Node = M.ui.fade_rect.get_parent()
+		for k in range(2):
+			var r := ColorRect.new()
+			r.color = Color.BLACK
+			r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			r.anchor_left = 0.0
+			r.anchor_right = 1.0
+			host.add_child(r)
+			host.move_child(r, M.ui.fade_rect.get_index() + 1)
+			_lid.append(r)
+	var cover := 0.52 * (1.0 - clampf(open, 0.0, 1.0))
+	var top: ColorRect = _lid[0]
+	top.anchor_top = 0.0
+	top.anchor_bottom = cover
+	top.offset_top = 0.0
+	top.offset_bottom = 0.0
+	var bot: ColorRect = _lid[1]
+	bot.anchor_top = 1.0 - cover
+	bot.anchor_bottom = 1.0
+	bot.offset_top = 0.0
+	bot.offset_bottom = 0.0
 
 
 ## zwęglony wrak: wszystkie części dostają czarny, matowy lakier

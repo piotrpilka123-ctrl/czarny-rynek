@@ -944,12 +944,10 @@ func _load_tracks() -> void:
 # ---------------------------------------------------------------- muzyka filmowa prologu
 ## Podkład pod sceny: napięcie w laboratorium → akcja przy nalocie → skradanie na zewnątrz → dramat po wybuchu.
 ## Nagrania z internetu (licencje w LICENCJE.md); dwa odtwarzacze, żeby jeden motyw przechodził płynnie w drugi.
-const SCORE := {"napiecie": "pro_napiecie", "akcja": "pro_akcja", "skradanie": "pro_skradanie", "dramat": "pro_dramat2", "zal": "pro_dramat"}
-const SCORE_DB := {"napiecie": -8.0, "akcja": -7.0, "skradanie": -11.0, "dramat": -3.0, "zal": -7.0}
-## od której sekundy gra motyw: „dramat” wchodzi od razu kulminacją (chór, blacha, kotły), „żal” pomija cichy wstęp
-const SCORE_FROM := {"dramat": 61.3, "zal": 11.6}
-## co gra po czym: kulminacja trwa 21 s, potem zostaje lament po stracie
-const SCORE_NEXT := {"dramat": ["zal", 20.5]}
+const SCORE := {"napiecie": "pro_napiecie", "akcja": "pro_akcja", "skradanie": "pro_skradanie", "dramat": "pro_dramat"}
+const SCORE_DB := {"napiecie": -8.0, "akcja": -7.0, "skradanie": -11.0, "dramat": -4.0}
+## od której sekundy gra motyw (dramat ma 11 s cichego wstępu — wybuch potrzebuje pełnej orkiestry od razu)
+const SCORE_FROM := {"dramat": 11.6}
 var _score_players: Array = []
 var _score_i := 0
 var _score_now := ""
@@ -959,7 +957,7 @@ var _score_streams := {}
 func _score_stream(key: String) -> AudioStream:
 	if not _score_streams.has(key):
 		var st: AudioStream = null
-		for ext in ["ogg", "mp3", "wav"]:
+		for ext in ["ogg", "mp3"]:
 			var path := "res://assets/music/%s.%s" % [String(SCORE.get(key, "")), ext]
 			if ResourceLoader.exists(path):
 				st = load(path)
@@ -974,9 +972,9 @@ func _score_stream(key: String) -> AudioStream:
 
 var _score_token := 0
 
-## Zmienia motyw: poprzedni najpierw wycisza się do zera (`fade` sekund), dopiero potem wchodzi następny (`fade_in`).
-## Pusty `key` = sama cisza.
-func score(key: String, fade := 1.5, fade_in := 0.9) -> void:
+## Zmienia motyw: poprzedni powoli wycisza się do zera (`fade` sekund), potem jest chwila ciszy (`gap`),
+## i dopiero wtedy wchodzi następny (`fade_in`). Pusty `key` = samo wyciszenie.
+func score(key: String, fade := 2.5, fade_in := 1.2, gap := 3.0) -> void:
 	if key == _score_now:
 		return
 	_score_now = key
@@ -995,9 +993,9 @@ func score(key: String, fade := 1.5, fade_in := 0.9) -> void:
 		if (old as AudioStreamPlayer).playing:
 			var tw := create_tween()
 			tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-			tw.tween_property(old, "volume_db", -60.0, maxf(0.05, fade))
+			tw.tween_property(old, "volume_db", -60.0, maxf(0.05, fade)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 			tw.tween_callback((old as AudioStreamPlayer).stop)
-			wait = maxf(0.05, fade)
+			wait = maxf(0.05, fade) + maxf(0.0, gap)
 	var st := _score_stream(key) if key != "" else null
 	if st == null or muted:
 		return
@@ -1013,10 +1011,6 @@ func score(key: String, fade := 1.5, fade_in := 0.9) -> void:
 	var tw2 := create_tween()
 	tw2.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tw2.tween_property(cur, "volume_db", float(SCORE_DB.get(key, -8.0)), maxf(0.05, fade_in))
-	if SCORE_NEXT.has(key):
-		await get_tree().create_timer(float(SCORE_NEXT[key][1]), true).timeout
-		if token == _score_token:
-			score(String(SCORE_NEXT[key][0]), 1.6, 2.5)
 
 
 func score_name() -> String:

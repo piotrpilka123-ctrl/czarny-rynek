@@ -203,6 +203,8 @@ static func fire(parent: Node, pos: Vector3, s := 1.0, lights: Array = []) -> No
 	g.global_position = pos
 	var fl := Props._particles(int(34 * s), 0.9, 1.5 * s, true, [Color(1.0, 0.95, 0.6, 0.0), Color(1.0, 0.7, 0.2, 0.9), Color(1.0, 0.3, 0.05, 0.6), Color(0.4, 0.05, 0.0, 0.0)], Vector2(1.6, 3.4) * s, 0.9 * s, false)
 	fl.visibility_aabb = AABB(Vector3(-8, -2, -8) * s, Vector3(16, 30, 16) * s)
+	# płomień od razu pełny, bez rozpędzania się cząsteczek
+	fl.preprocess = 0.7
 	g.add_child(fl)
 	var sm := Props._particles(int(22 * s), 7.0, 3.4 * s, false, [Color(0.06, 0.06, 0.06, 0.0), Color(0.08, 0.08, 0.08, 0.7), Color(0.15, 0.15, 0.15, 0.4), Color(0.25, 0.25, 0.25, 0.0)], Vector2(2.0, 3.6) * s, 0.8 * s, true)
 	sm.position = Vector3(0, 1.5 * s, 0)
