@@ -350,6 +350,20 @@ static func run(T) -> void:
 	S.t = t_keep
 	S.heat = heat_keep
 	S.invest = inv_keep
+	# --- obrzeża: obozowisko bezdomnych, zamknięty tunel, plac zabaw
+	var names := {}
+	for st0 in N.statics:
+		names[String(st0.name)] = st0
+	T.ok(names.has("Pan Tadek") and names.has("Mietek") and G.world.camp_fire != null and is_instance_valid(G.world.camp_fire), "za garażami jest obozowisko: bezdomni przy ognisku, które się pali")
+	var camp_w: Vector2 = G.world.CAMP * D.SC
+	T.ok(Vector2(float(names["Pan Tadek"].x), float(names["Pan Tadek"].z)).distance_to(camp_w) < 2.5 and names["Pan Tadek"].has("interact"), "z bezdomnym przy ogniu da się pogadać")
+	var wrona = names.get("Posterunkowy Wrona")
+	T.ok(wrona != null and absf(float(wrona.x) - G.world.TUNNEL_X * D.SC) < 8.0 and not G.world.is_free(G.world.TUNNEL_X * D.SC, 8.0 * D.SC, 0.3), "na końcu Hutniczej stoi portal tunelu, a przy barierach policjant")
+	var has_play := 0
+	for ch0 in G.world.city.get_children():
+		if String(ch0.name).begins_with("plac_") or String(ch0.scene_file_path).contains("plac_"):
+			has_play += 1
+	T.ok(has_play >= 20, "plac zabaw: piaskownica, karuzela, ważka, drabinka i płotek (%d elementów)" % has_play)
 	# --- radiowóz: jedzie prawym pasem, skręca stopniowo, na końcu trasy zawraca
 	var car: Dictionary = N.car
 	var car_keep := {"seg": car.seg, "x": car.x, "z": car.z, "rot": car.rot, "wait": car.wait, "speed": car.speed}

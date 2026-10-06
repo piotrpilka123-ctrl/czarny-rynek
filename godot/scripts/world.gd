@@ -4,6 +4,7 @@ extends Node3D
 
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
+const Fx = preload("res://scripts/fx.gd")
 const Stations = preload("res://scripts/stations.gd")
 const Interior = preload("res://scripts/interior.gd")
 const Signs = preload("res://scripts/signs.gd")
@@ -41,6 +42,7 @@ var lab_fx := {}                # światła i rekwizyty laboratorium sterowane p
 var lab_exit := Vector2.ZERO    # gdzie w hali są tylne drzwi (znacznik ucieczki w prologu)
 var mill_door_light: SpotLight3D = null   # reflektor nad tylnymi drzwiami huty od zewnątrz
 var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
+var camp_fire: Node3D = null      # ognisko w obozowisku bezdomnych
 var box_door: Node3D = null       # drzwiczki skrzynki Wiktora (uchylają się, gdy wkładasz pieniądze)
 var starter: Node3D = null        # paczka na start przy drzwiach kawalerki
 var drop_marks := {}            # znaki sprejem przy skrytkach: id → Decal
@@ -372,6 +374,8 @@ func _paint() -> void:
 	_path(3, [[172.0, 30.0], [180.0, 56.0], [192.0, 62.0]], 2.4)
 	_path(3, [[47.0, -111.5], [47.0, -104.0]], 1.2)
 	_path(3, [[-84.0, -13.5], [-92.0, -13.5]], 1.4)
+	# obozowisko bezdomnych na nieużytkach: ubita ziemia wokół ogniska
+	_pr(3, CAMP.x - 7.5, CAMP.y - 6.0, CAMP.x + 8.5, CAMP.y + 7.0)
 	# plac zabaw: wydeptana ziemia, pod huśtawką i zjeżdżalnią żwir
 	_pr(3, PLAY[0] + 0.4, PLAY[1] + 0.4, PLAY[2] - 0.4, PLAY[3] - 0.3)
 	_pr(4, -7.6, -118.4, 0.8, -113.4)
@@ -1088,6 +1092,90 @@ func _bin(x: float, z: float, ry := 0.0) -> void:
 ## rzeczy leżące na ziemi (upuszczone z plecaka i znaleziska): model, podpis i podnoszenie
 var ground_nodes: Array = []
 
+## Obozowisko bezdomnych na nieużytkach za garażami: ognisko w kręgu z cegieł (pali się w nim plastikowy fotel —
+## czarny dym widać z daleka), legowisko z kartonów i materaca, szałas z palet i plandeki, wózek z dobytkiem,
+## dookoła kontenery na śmieci, skrzynki do siedzenia i butelki.
+const CAMP := Vector2(100.0, 142.0)
+
+func _homeless_camp() -> void:
+	var cxp := CAMP.x
+	var czp := CAMP.y
+	for e in [["bezd_ognisko", 0.0, 0.0, 0.4, 0.55, 0.55, 0.4], ["bezd_legowisko", 3.8, 2.6, 0.5, 0.0, 0.0, 0.0],
+			["bezd_szalas", -3.6, 4.0, 1.2, 0.9, 0.9, 1.1], ["bezd_wozek", 2.6, -3.8, 0.7, 0.3, 0.45, 1.0]]:
+		var m := Stations.model(String(e[0]))
+		if m != null:
+			Props.set_range(_place(m, cxp + float(e[1]), czp + float(e[2]), float(e[3]), float(e[4]), float(e[5]), float(e[6])), 95.0)
+	var tints := [Color(0.2, 0.42, 0.28), Color(0.2, 0.33, 0.5), Color(0.62, 0.52, 0.16)]
+	var k := 0
+	for e in [[-6.0, -4.4, 0.35], [6.4, -3.2, -0.5], [7.4, 5.2, 1.3]]:
+		var dm := Stations.model("ul_kontener")
+		if dm != null:
+			Interior._tint(dm, tints[k % 3])
+			Props.set_range(_place(dm, cxp + float(e[0]), czp + float(e[1]), float(e[2]), 0.75, 0.55, 1.3), 95.0)
+		k += 1
+	for e in [["wooden_crate_02", -1.9, 0.9, 0.3, 0.42], ["wooden_crate_02", 0.8, 2.0, 1.1, 0.42], ["cardboard_box_01", -2.4, -2.6, 0.5, 0.34], ["trashbag", 5.2, -4.4, 0.0, 0.5],
+			["trashbag_1", -6.6, -2.6, 1.0, 0.6], ["old_tyre", 4.4, 5.6, 0.2, 0.16], ["cardboard_box_01", 6.0, 3.4, 2.0, 0.34]]:
+		_prop(String(e[0]), cxp + float(e[1]), czp + float(e[2]), float(e[3]), float(e[4]), 0.0, false)
+	# płomień, czarny dym z plastiku i migające światło ogniska (pali się dzień i noc)
+	var fpos := Vector3(cxp * SC, height(cxp * SC, czp * SC) + 0.12, czp * SC)
+	var fire = Fx.fire(self, fpos, 0.32, lamps)
+	camp_fire = fire
+
+
+## Tunel na zachodnim końcu Hutniczej: betonowy portal w miejscu muru granicznego, zamknięty przez policję —
+## bariery w poprzek jezdni, zapory z migającymi lampami, pachołki, radiowóz bokiem i sprzęt po robotach.
+const TUNNEL_X := -203.6
+
+func _tunnel_block() -> void:
+	var pm := Stations.model("tunel_portal")
+	if pm == null:
+		return
+	_place(pm, TUNNEL_X, 20.0, PI / 2.0)
+	Props.set_range(pm, 260.0)
+	# ściany portalu po obu stronach otworu i bariery: tędy nikt nie przejdzie
+	add_col(TUNNEL_X - 2.0, TUNNEL_X + 1.3, 4.0, 11.6, 8.0)
+	add_col(TUNNEL_X - 2.0, TUNNEL_X + 1.3, 28.4, 36.0, 8.0)
+	add_col(-197.2, -196.2, 11.6, 28.4, 1.2)
+	rects.pop_back()
+	var seg := 2.3 * INV
+	var bz := 12.0
+	var bi := 0
+	while bz < 28.0:
+		var bm := Stations.model("bariera_policyjna")
+		if bm != null:
+			Props.set_range(_place(bm, -196.7 + 0.25 * sin(bi * 2.1), bz + seg * 0.5, PI / 2.0 + 0.04 * sin(bi * 1.3)), 110.0)
+		bz += seg
+		bi += 1
+	for e in [[-192.6, 17.2, PI / 2.0 + 0.12], [-192.9, 22.9, PI / 2.0 - 0.1]]:
+		var zm := Stations.model("zapora_drogowa")
+		if zm != null:
+			_place(zm, float(e[0]), float(e[1]), float(e[2]), 0.3, 1.0, 1.2)
+			Props.set_range(zm, 130.0)
+			# żółta lampa ostrzegawcza mruga
+			var wl := OmniLight3D.new()
+			wl.light_color = Color(1.0, 0.7, 0.15)
+			wl.omni_range = 5.0
+			wl.light_energy = 0.0
+			wl.shadow_enabled = false
+			var wx := float(e[0]) * SC
+			var wz := float(e[1]) * SC
+			wl.position = Vector3(wx, height(wx, wz) + 1.2, wz)
+			add_child(wl)
+			var wt := wl.create_tween().set_loops()
+			wt.tween_interval(0.55 + 0.2 * float(int(e[1]) % 2))
+			wt.tween_property(wl, "light_energy", 1.6, 0.04)
+			wt.tween_interval(0.12)
+			wt.tween_property(wl, "light_energy", 0.0, 0.08)
+	for e in [[-190.0, 15.6], [-189.6, 18.4], [-189.9, 21.4], [-190.2, 24.4], [-187.0, 20.0]]:
+		var pc := Stations.model("pacholek")
+		if pc != null:
+			Props.set_range(_place(pc, float(e[0]), float(e[1]), float(e[0]) * 3.0), 70.0)
+	# radiowóz zaparkowany bokiem tuż za barierami i sprzęt po robotach w głębi
+	_car(-200.2, 22.6, 0.25, "sedan", "d9dde2", true)
+	for e in [["cement_bag", -199.4, 14.8, 0.3, 0.18], ["pallet", -200.6, 16.6, 0.8, 0.16], ["cinderblock", -198.6, 16.4, 1.2, 0.3], ["pipes", -201.2, 13.2, 1.55, 1.0]]:
+		_prop(String(e[0]), float(e[1]), float(e[2]), float(e[3]), float(e[4]), 0.0, false)
+
+
 ## Skrzynka Wiktora na pieniądze: stara skrzynka gazowa na tylnej ścianie pawilonu. Zawsze w tym samym miejscu.
 func _wiktor_box() -> void:
 	var bx: float = float(D.WIKTOR_BOX.x) * INV
@@ -1465,6 +1553,8 @@ func _buildings() -> void:
 	_pavilion()
 	_garages()
 	_wiktor_box()
+	_homeless_camp()
+	_tunnel_block()
 	# napisy, szyldy
 	var gy := hd(8.0, -77.0)
 	# komenda: podświetlany kaseton nad wejściem
@@ -2754,6 +2844,9 @@ func _backdrop() -> void:
 	var zw := -168.0
 	while zw < 168.0:
 		for xx in [-208.8, 208.8]:
+			if xx < 0.0 and zw + 6.0 > 0.0 and zw + 6.0 < 40.0:
+				# tu stoi portal tunelu
+				continue
 			var gy2 := hd(xx, zw + 6.0)
 			Models.box(city, Vector3(0.4, 4.6, 11.9), Vector3(xx, gy2 + 1.9, zw + 6.0), wm)
 			Models.box(city, Vector3(0.56, 0.14, 12.0), Vector3(xx, gy2 + 4.25, zw + 6.0), wtop, Vector3.ZERO, false)

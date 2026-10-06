@@ -15,10 +15,13 @@ def reset():
     _mats.clear()
 
 
-def mat(name, color, rough=0.7, metal=0.0, emit=0.0, alpha=1.0):
+def mat(name, color, rough=0.7, metal=0.0, emit=0.0, alpha=1.0, wzor=''):
+    """wzor: faktura wypalana razem z brudem (weather) — 'sztruks', 'drewno', 'karton', 'beton', 'tkanina'"""
     if name in _mats:
         return _mats[name]
     m = bpy.data.materials.new(name)
+    if wzor:
+        m['wzor'] = wzor
     m.use_nodes = True
     b = m.node_tree.nodes['Principled BSDF']
     c = color if isinstance(color, tuple) else tuple(int(color[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
@@ -228,6 +231,76 @@ def bolts(prefix, pts, material, r=0.008, h=0.006, axis='Z'):
     return out
 
 
+def _pattern(nt, kind, base):
+    """faktura materiału jako kolor (wyjście węzła) albo None: prążki sztruksu, słoje drewna, żeberka kartonu, pory betonu, splot tkaniny"""
+    if not kind:
+        return None
+    N = nt.nodes
+    L = nt.links
+    tc = N.new('ShaderNodeTexCoord')
+
+    def shade(fac_out, lo, hi, p0=0.3, p1=0.7):
+        r = N.new('ShaderNodeValToRGB')
+        r.color_ramp.elements[0].position = p0
+        r.color_ramp.elements[0].color = (*[c * lo for c in base[:3]], 1)
+        r.color_ramp.elements[1].position = p1
+        r.color_ramp.elements[1].color = (*[min(1.0, c * hi) for c in base[:3]], 1)
+        L.new(fac_out, r.inputs['Fac'])
+        return r.outputs['Color']
+
+    def wave(direction, scale, dist=0.0, detail=0.0):
+        w = N.new('ShaderNodeTexWave')
+        w.wave_type = 'BANDS'
+        w.bands_direction = direction
+        w.inputs['Scale'].default_value = scale
+        w.inputs['Distortion'].default_value = dist
+        w.inputs['Detail'].default_value = detail
+        L.new(tc.outputs['Object'], w.inputs['Vector'])
+        return w.outputs['Fac']
+
+    def noise(scale, detail=4.0):
+        n = N.new('ShaderNodeTexNoise')
+        n.inputs['Scale'].default_value = scale
+        n.inputs['Detail'].default_value = detail
+        L.new(tc.outputs['Object'], n.inputs['Vector'])
+        return n.outputs['Fac']
+
+    def mul(a, b):
+        m = N.new('ShaderNodeMixRGB')
+        m.blend_type = 'MULTIPLY'
+        m.inputs['Fac'].default_value = 1.0
+        L.new(a, m.inputs['Color1'])
+        L.new(b, m.inputs['Color2'])
+        return m.outputs['Color']
+
+    if kind == 'sztruks':
+        # prążki co ok. centymetr i wyleżane, jaśniejsze placki
+        ribs = shade(wave('X', 95.0, 0.4, 1.0), 0.72, 1.12)
+        wornp = N.new('ShaderNodeValToRGB')
+        wornp.color_ramp.elements[0].position = 0.42
+        wornp.color_ramp.elements[0].color = (0.8, 0.8, 0.8, 1)
+        wornp.color_ramp.elements[1].position = 0.75
+        wornp.color_ramp.elements[1].color = (1.25, 1.2, 1.15, 1)
+        L.new(noise(4.5, 3.0), wornp.inputs['Fac'])
+        return mul(ribs, wornp.outputs['Color'])
+    if kind == 'tkanina':
+        a = shade(wave('X', 150.0), 0.8, 1.1)
+        b = shade(wave('Z', 150.0), 0.8, 1.1)
+        return mul(a, mul(b, shade(noise(7.0, 3.0), 0.95, 1.15)))
+    if kind == 'drewno':
+        # słoje: pasma mocno zniekształcone szumem, do tego sęki i przebarwienia
+        g1 = shade(wave('Y', 16.0, 7.0, 3.0), 0.62, 1.08, 0.25, 0.8)
+        g2 = shade(wave('X', 16.0, 7.0, 3.0), 0.8, 1.05, 0.3, 0.8)
+        return mul(mul(g1, g2), shade(noise(2.5, 2.0), 0.95, 1.2))
+    if kind == 'karton':
+        ribs = shade(wave('Z', 210.0), 0.9, 1.04)
+        return mul(ribs, shade(noise(5.0, 4.0), 0.86, 1.12))
+    if kind == 'beton':
+        pores = shade(noise(160.0, 2.0), 0.7, 1.08, 0.35, 0.55)
+        return mul(pores, shade(noise(3.0, 5.0), 0.82, 1.15))
+    return None
+
+
 def weather(objs, size=1024, dirt=0.55, wear=0.5, grime=(0.09, 0.075, 0.06), samples=24):
     """Zużycie zamiast „plasteliny”: każdy obiekt dostaje jedną teksturę koloru wypaloną z materiałów —
     brud w zakamarkach (AO), wytarte krawędzie, plamy i zacieki z szumu. Metaliczność i chropowatość zostają liczbami."""
@@ -279,6 +352,9 @@ def weather(objs, size=1024, dirt=0.55, wear=0.5, grime=(0.09, 0.075, 0.06), sam
             mix1.blend_type = 'MULTIPLY'
             mix1.inputs['Fac'].default_value = 0.0 if emit else 0.35
             mix1.inputs['Color1'].default_value = base
+            pat = _pattern(nt, m.get('wzor', ''), base) if not emit else None
+            if pat is not None:
+                L.new(pat, mix1.inputs['Color1'])
             ramp2 = N.new('ShaderNodeValToRGB')
             ramp2.color_ramp.elements[0].position = 0.3
             ramp2.color_ramp.elements[0].color = (0.55, 0.55, 0.55, 1)

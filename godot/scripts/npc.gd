@@ -36,6 +36,7 @@ func build() -> void:
 		spawn_citizen(i)
 	# patrole dochodzą z czasem gry (G.cop_quota) — pierwszego dnia ulice są puste
 	_build_static()
+	_build_outskirts()
 	_build_car()
 	_build_dog()
 
@@ -292,11 +293,35 @@ func _build_yard() -> void:
 	gl.shadow_enabled = false
 	grill.node.add_child(gl)
 	gl.global_position = smoke.global_position
-	for e in [[21.4, -69.75, "sit_talk", "Łysy", "m02"], [22.6, -69.7, "sit", "Młody", "m16"]]:
+	# (siedzą bliżej przedniej krawędzi kanapy — wcześniej nogi wchodziły im w siedzisko)
+	for e in [[21.4, -69.38, "sit_talk", "Łysy", "m02"], [22.6, -69.36, "sit", "Młody", "m16"]]:
 		_static({"x": float(e[0]), "z": float(e[1]), "rot": 0.08, "pose": String(e[2]), "name": String(e[3]), "hours": [17.0, 2.0],
 			"look": {"model": String(e[4]), "seed": 510 + int(float(e[0]) * 3.0)},
 			"lines": ["Siema. Siadaj, miejsce jest.", "Masz ognia? Nie? To po co podchodzisz.", "Ta kanapa stoi tu dłużej niż ty żyjesz, szanuj.", "Jak coś ci zginie spod klatki, to nie my. My tu tylko siedzimy.",
 				"Psy jeździły godzinę temu. Dwa kółka i pojechali."]})
+
+
+## Obozowisko bezdomnych za garażami i posterunek przy zamkniętym tunelu.
+func _build_outskirts() -> void:
+	var cx: float = G.world.CAMP.x
+	var cz: float = G.world.CAMP.y
+	_static({"x": cx - 1.9, "z": cz + 0.9, "y": 0.02, "rot": 2.0, "pose": "sit_talk", "name": "Pan Tadek", "label": "Pan Tadek",
+		"look": {"model": "m11", "kind": "hoodie", "top": "4a4436", "bottom": "2c2a28", "seed": 811, "build": 0.95},
+		"lines": ["Siadaj, młody, ogień jest dla wszystkich. Tylko nie stój pod wiatr, bo ten plastik gryzie w oczy.", "Trzydzieści lat na walcowni. Hutę zamknęli, mieszkanie poszło za długi. Teraz mam ognisko i widok na garaże.",
+			"Policja? Przyjeżdżają raz na tydzień, popatrzą i jadą. Dopóki się nie bijemy, mają nas gdzieś.", "Jak masz butelki, to zostaw przy wózku. Skup bierze po trzydzieści groszy.",
+			"Widziałem tych, co kręcą się nocą przy skrytkach. Ja nic nie mówię. Ja tylko patrzę w ogień."]})
+	_static({"x": cx + 1.3, "z": cz - 1.0, "rot": -2.2, "pose": "arms", "name": "Mietek", "label": "Mietek", "hours": [15.0, 9.0],
+		"look": {"model": "m05", "kind": "hoodie", "top": "3a3f4a", "bottom": "33302c", "seed": 823, "build": 1.05},
+		"lines": ["Zimno, nie? Fotel ogrodowy pali się dłużej niż deska. Tylko śmierdzi.", "Nie mam nic, szefie. Ale jak coś znajdziesz w śmietniku i ci niepotrzebne — wiesz, gdzie mieszkam.",
+			"Ten wózek to cały mój dom. Nie ruszaj.", "W nocy lepiej tędy nie chodź z pełnymi kieszeniami. Nie wszyscy tu są tacy mili jak Tadek."]})
+	_static({"x": cx + 4.1, "z": cz + 2.7, "rot": 0.5, "pose": "kneel", "name": "Baśka", "hours": [20.0, 7.0],
+		"look": {"model": "f08", "female": true, "seed": 837},
+		"lines": ["Ciszej. Niektórzy tu próbują spać.", "Daj spokój. Jutro też jest dzień."]})
+	# posterunek przy zamkniętym tunelu: droga nieprzejezdna, trwają prace
+	_static({"x": -194.6, "z": 20.6, "rot": PI / 2.0, "pose": "arms", "name": "Posterunkowy Wrona", "label": "Posterunkowy Wrona", "track": true,
+		"look": COP_LOOK.merged({"seed": 905, "model": D.PEOPLE_COP[0]}), "cop": true,
+		"lines": ["Droga zamknięta. W tunelu trwają prace — zawalił się kanał wentylacyjny.", "Nie wiem, do kiedy. Miesiąc, może dwa. Proszę zawrócić.",
+			"Objazdu nie ma. Kto chce wyjechać z dzielnicy, ten poczeka jak wszyscy.", "Nie kręć się tu. Za barierki wstęp wzbroniony."]})
 
 
 ## klub Neon od środka: barman, DJ i imprezowicze na parkiecie, którzy kupują od ręki

@@ -14,8 +14,8 @@ def plac_piaskownica():
     """piaskownica 3×3 m: betonowe obrzeże z wyszczerbieniami, deski-siedziska na dwóch bokach, pagórek piasku,
     wiaderko, łopatka i foremka"""
     reset()
-    con = mat('beton', 'a9a59b', 0.92)
-    wood = mat('deska', '8a6a44', 0.85)
+    con = mat('beton', 'a9a59b', 0.92, wzor='beton')
+    wood = mat('deska', '8a6a44', 0.85, wzor='drewno')
     S = 3.0
     p = []
     for k, (cx, cy, w, d) in enumerate(((0, -S / 2, S, 0.22), (0, S / 2, S, 0.22), (-S / 2, 0, 0.22, S - 0.22), (S / 2, 0, 0.22, S - 0.22))):
@@ -56,7 +56,7 @@ def plac_karuzela():
     reset()
     steel = mat('stal_cz', 'b5372c', 0.5, 0.3)
     yel = mat('stal_z', 'd9a91e', 0.5, 0.3)
-    wood = mat('deska', '80603e', 0.85)
+    wood = mat('deska', '80603e', 0.85, wzor='drewno')
     dark = mat('ciemny', '2a2c2e', 0.7, 0.4)
     p = [lathe('piasta', [(0.0, 0.0), (0.16, 0.0), (0.16, 0.06), (0.07, 0.1), (0.07, 0.3), (0.0, 0.3)], dark, 14)]
     p.append(lathe('obrecz', [(0.93, 0.27), (1.0, 0.27), (1.0, 0.34), (0.93, 0.34)], steel, 28))
@@ -93,7 +93,7 @@ def plac_wazka():
     reset()
     steel = mat('stal_n', '2f67b3', 0.5, 0.3)
     yel = mat('stal_z', 'd9a91e', 0.5, 0.3)
-    wood = mat('deska', '8a6a44', 0.85)
+    wood = mat('deska', '8a6a44', 0.85, wzor='drewno')
     rub = mat('guma', '18181a', 0.9)
     p = []
     for sy in (-1, 1):

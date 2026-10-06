@@ -12,7 +12,7 @@ MUD = (0.16, 0.12, 0.08)
 def pod_kanapa():
     """stara kanapa wystawiona pod blok: zapadnięte siedzisko, wytarty welur, rozdarcie z gąbką, jedna noga na cegłach, koc"""
     reset()
-    fab = mat('welur', '6a4a3a', 0.95)
+    fab = mat('welur', '6a4a3a', 0.95, wzor='sztruks')
     W = 1.8
     p = [rbox('skrzynia', (W, 0.8, 0.22), fab, 0.03, (0, 0, 0.25), (0, math.radians(-2.5), 0), segs=3)]
     p.append(rbox('plecy', (W, 0.2, 0.5), fab, 0.06, (0, 0.3, 0.55), (math.radians(-10), 0, 0), segs=4))
@@ -39,7 +39,7 @@ def pod_kanapa():
 def pod_stolik():
     """stolik z palety na dwóch skrzynkach: popielniczka pełna petów, trzy szklane lufki, zapalniczka, puszki, talia kart"""
     reset()
-    wood = mat('paleta', '9a7a52', 0.9)
+    wood = mat('paleta', 'b8946a', 0.9, wzor='drewno')
     p = []
     for k in range(5):
         p.append(rbox('deska', (1.0, 0.11, 0.02), wood, 0.004, (0, -0.3 + k * 0.15, 0.4), (0, 0, rnd.uniform(-0.01, 0.01))))
@@ -50,7 +50,7 @@ def pod_stolik():
         for k in range(3):
             p.append(rbox('otwor', (0.2, 0.004, 0.03), mat('cien', '101014', 0.9), 0.0, (sx, -0.252, 0.08 + k * 0.08), segs=1))
     ob = join('Stolik', p)
-    weather([ob], 1024, 0.85, 0.6, MUD)
+    weather([ob], 1024, 0.55, 0.6, MUD)
     gl = mat('szklo', 'd8e8e0', 0.08, 0.0, 0.0, 0.5)
     d = [lathe('popielniczka', [(0.0, 0.0), (0.07, 0.0), (0.078, 0.03), (0.066, 0.03), (0.06, 0.008), (0.0, 0.008)], gl, 14, loc=(0.1, 0.05, 0.41))]
     d.append(lathe('popiol', [(0.0, 0.008), (0.058, 0.009), (0.04, 0.02), (0.0, 0.024)], mat('popiol', '5a5650', 0.95), 10, loc=(0.1, 0.05, 0.41)))
@@ -69,8 +69,20 @@ def pod_stolik():
         s.location = (x, y, 0.417)
         d.append(s)
     d.append(rbox('zapalniczka', (0.022, 0.012, 0.06), mat('zapal', 'c8322a', 0.4), 0.004, (-0.05, -0.18, 0.418), (R90, 0, 0.7)))
+    alu = mat('alu', 'c2c5c9', 0.3, 0.85)
     for k, (x, y) in enumerate(((0.32, -0.2), (0.38, 0.12), (0.26, 0.24))):
-        c = lathe('puszka%d' % k, [(0.0, 0.0), (0.03, 0.0), (0.033, 0.01), (0.033, 0.11), (0.028, 0.122), (0.0, 0.122)], mat('puszka%d' % k, ('c8a23a', '2a6a3a', 'b0382c')[k], 0.3, 0.7), 12, loc=(x, y, 0.41))
+        # puszka po piwie: aluminiowe denko i wieczko z zawleczką, kolorowy płaszcz z jaśniejszym pasem etykiety
+        body = mat('puszka%d' % k, ('c8a23a', '1f5a34', 'a3261c')[k], 0.35, 0.6)
+        band = mat('etykieta%d' % k, ('f1ecd8', 'e8e0c0', 'f1ecd8')[k], 0.45, 0.3)
+        cp = [lathe('dno', [(0.0, 0.004), (0.024, 0.0), (0.033, 0.012)], alu, 14),
+              lathe('plaszcz', [(0.033, 0.012), (0.033, 0.106)], body, 14),
+              lathe('pas', [(0.0334, 0.04), (0.0334, 0.078)], band, 14),
+              lathe('wieczko', [(0.033, 0.106), (0.028, 0.12), (0.026, 0.122), (0.024, 0.118), (0.0, 0.118)], alu, 14),
+              rbox('zawleczka', (0.012, 0.02, 0.002), mat('ciemne', '4a4c50', 0.4, 0.8), 0.001, (0.0, 0.006, 0.119), segs=1),
+              rbox('znak', (0.002, 0.026, 0.026), body, 0.0, (0.0336, 0.0, 0.059), (math.radians(45), 0, 0), segs=1)]
+        c = join('puszka%d' % k, cp)
+        c.location = (x, y, 0.41)
+        c.rotation_euler = (0, 0, k * 1.9)
         if k == 2:
             c.rotation_euler = (R90, 0, 0.6)
             c.location = (x, y, 0.443)
