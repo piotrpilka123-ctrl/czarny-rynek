@@ -271,7 +271,81 @@ static func material() -> ShaderMaterial:
 
 
 ## Zwraca Node3D; przód auta = +Z. Kolor: Color albo napis hex.
+## modele z Blendera (tools/blender/make_auta.py); typ „suv” korzysta z kombi
+const MODELS := {"sedan": "auto_sedan", "hatch": "auto_hatch", "kombi": "auto_kombi", "suv": "auto_kombi", "maluch": "auto_maluch", "van": "auto_van", "swat": "auto_swat"}
+static var _glb := {}
+static var _paint := {}
+
+
+static func _scene(name: String) -> PackedScene:
+	if not _glb.has(name):
+		var path := "res://assets/models/%s.glb" % name
+		_glb[name] = load(path) if ResourceLoader.exists(path) else null
+	return _glb[name]
+
+
+static func _find(n: Node, name: String) -> Node:
+	if String(n.name) == name:
+		return n
+	for c in n.get_children():
+		var r := _find(c, name)
+		if r != null:
+			return r
+	return null
+
+
+## Auto z modelu: lakier w zadanym kolorze (z brudem i przetarciami z wypalonej tekstury), koła jako osobne węzły
+## (meta "wheels" — można nimi kręcić), przy radiowozie klosze belki (meta "siren"). Przód auta = +Z.
 static func car(type := "", color = null, police := false) -> Node3D:
+	if type == "" or not TYPES.has(type) and type != "swat":
+		type = ["sedan", "sedan", "hatch", "hatch", "maluch", "kombi", "van"].pick_random()
+	var T: Dictionary = TYPES["van" if type == "swat" else type]
+	var ps := _scene("auto_policja" if (police and type != "swat") else String(MODELS.get(type, "auto_sedan")))
+	if ps == null:
+		return _car_old(type if type != "swat" else "van", color, police)
+	var root: Node3D = ps.instantiate()
+	var c: Color = color if color is Color else Color.html("#" + String(color if color != null else "8a8f96"))
+	if type == "swat":
+		c = Color(0.07, 0.09, 0.14)
+	var body := _find(root, "TintKaroseria") as MeshInstance3D
+	if body != null:
+		var key := "%s|%s|%s" % [type, c.to_html(false), str(police)]
+		if not _paint.has(key):
+			var src := body.mesh.surface_get_material(0)
+			var m: StandardMaterial3D = (src.duplicate() as StandardMaterial3D) if src is StandardMaterial3D else StandardMaterial3D.new()
+			m.albedo_color = c
+			m.metallic = 0.35
+			m.roughness = 0.42
+			m.clearcoat_enabled = true
+			m.clearcoat = 0.5
+			m.clearcoat_roughness = 0.25
+			_paint[key] = m
+		body.material_override = _paint[key]
+		root.set_meta("body", body)
+	if type == "suv":
+		root.scale = Vector3(1.06, 1.12, 1.0)
+	var wheels: Array = []
+	for i in range(1, 5):
+		var w := _find(root, "Kolo%d" % i)
+		if w != null:
+			wheels.append(w)
+	root.set_meta("wheels", wheels)
+	var lights: Array = []
+	for nm in ["KogutL", "KogutP"]:
+		var l := _find(root, nm)
+		if l != null:
+			l.visible = false
+			lights.append(l)
+	if not lights.is_empty():
+		root.set_meta("siren", lights)
+	for ch in root.find_children("*", "GeometryInstance3D", true, false):
+		(ch as GeometryInstance3D).visibility_range_end = 150.0
+	root.set_meta("car", T)
+	return root
+
+
+## dawna bryła z przekrojów — zostaje jako zapas, gdyby zabrakło modeli
+static func _car_old(type := "", color = null, police := false) -> Node3D:
 	if type == "" or not TYPES.has(type):
 		type = ["sedan", "sedan", "hatch", "hatch", "maluch", "kombi", "van"].pick_random()
 	var T: Dictionary = TYPES[type]

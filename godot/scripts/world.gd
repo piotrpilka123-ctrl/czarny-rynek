@@ -373,13 +373,14 @@ func _paint() -> void:
 	_path(3, [[47.0, -111.5], [47.0, -104.0]], 1.2)
 	_path(3, [[-84.0, -13.5], [-92.0, -13.5]], 1.4)
 	# --- jezdnie
-	_pr(0, -208.0, 15.5, 208.0, 24.5)
-	_pr(0, -3.5, 24.5, 3.5, 150.0)
-	_pr(0, -109.5, -133.5, -102.5, 15.5)
-	_pr(0, -109.5, -133.5, 98.5, -126.5)
-	_pr(0, 91.5, -126.5, 98.5, -60.0)
-	_pr(0, 72.0, 24.5, 78.0, 72.0)
-	_pr(0, 162.5, -100.0, 169.5, 15.5)
+	# (poszerzone o pół metra: Hutnicza 5,6 m, pozostałe 4,5 m — dwa auta mijają się bez wjeżdżania na chodnik)
+	_pr(0, -208.0, 15.0, 208.0, 25.0)
+	_pr(0, -4.0, 25.0, 4.0, 150.0)
+	_pr(0, -110.0, -134.0, -102.0, 15.0)
+	_pr(0, -110.0, -134.0, 99.0, -126.0)
+	_pr(0, 91.0, -126.0, 99.0, -60.0)
+	_pr(0, 71.5, 25.0, 78.5, 72.0)
+	_pr(0, 162.0, -100.0, 170.0, 15.0)
 	# --- oznakowanie
 	var x := -204.0
 	while x < 204.0:
@@ -1047,20 +1048,20 @@ func _parked_cars() -> void:
 	var k := 0
 	var spots := []
 	# parking osiedlowy: auta w wymalowanych zatokach (prostopadle)
-	for x in [24.8, 30.4, 41.6, 52.8, 64.0]:
+	for x in [24.8, 41.6, 64.0]:
 		spots.append([x, -119.9, 0.0 if rng.randf() < 0.6 else PI])
 	# Hutnicza: po polsku, dwoma kołami na chodniku — środek jezdni zostaje wolny dla radiowozu
-	for x in [-124.0, -86.0, -70.0, -15.0, 22.0, 47.0, 98.0, 117.0]:
+	for x in [-124.0, -70.0, 22.0, 98.0]:
 		if rng.randf() < 0.8:
-			spots.append([x, 16.3, PI / 2.0])
-	for x in [-112.0, -80.0, -45.0, -14.0, 36.0, 90.0, 110.0]:
+			spots.append([x, 15.7, PI / 2.0])
+	for x in [-80.0, -14.0, 90.0]:
 		if rng.randf() < 0.8:
-			spots.append([x, 23.7, -PI / 2.0])
+			spots.append([x, 24.3, -PI / 2.0])
 	# Robotnicza: raz z jednej, raz z drugiej strony
-	for z in [44.0, 66.0, 104.0, 140.0]:
-		spots.append([1.9, z, 0.0])
-	for z in [55.0, 92.0]:
-		spots.append([-1.9, z, PI])
+	for z in [44.0, 104.0]:
+		spots.append([2.6, z, 0.0])
+	for z in [92.0]:
+		spots.append([-2.6, z, PI])
 	for sp in spots:
 		var x: float = sp[0] + rng.randf_range(-0.3, 0.3)
 		var z: float = sp[1] + rng.randf_range(-0.1, 0.1)

@@ -46,6 +46,15 @@ def wiktor_skrzynka():
         d.append(tube('zawias', [(0.0, -0.012, z - 0.03), (0.0, -0.012, z + 0.03)], 0.008, dark, 6))
     dr = join('Drzwi', d)
     weather([ob, dr], 1024, 0.75, 0.7, (0.2, 0.11, 0.05))
+    # join zostawia środek obiektu w pierwszej części — przenosimy go na zawias (lewa krawędź, dół),
+    # a potem stawiamy drzwiczki na froncie korpusu
+    bpy.context.view_layer.update()
+    for o in bpy.context.selected_objects:
+        o.select_set(False)
+    dr.select_set(True)
+    bpy.context.view_layer.objects.active = dr
+    bpy.context.scene.cursor.location = (0.0, 0.0, 0.0)
+    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
     dr.location = (-W / 2 + 0.015, -Dp, z0 + 0.015)
     export('wiktor_skrzynka')
 
@@ -73,24 +82,36 @@ def paczka_start():
     biała naklejka) i woreczek strunowy z bladożółtym proszkiem (czerwony pasek zamka)"""
     reset()
     film = mat('folia', 'e8f0ec', 0.1, 0.0, 0.0, 0.14)
-    green = mat('susz', '4f6b2a', 0.95)
-    green2 = mat('susz2', '6f8a3a', 0.95)
+    green = mat('susz', '3f5a22', 0.95)
+    green2 = mat('susz2', '5d7a30', 0.95)
     hair = mat('wloski', 'b0702a', 0.9)
     # --- worek z marihuaną 20 × 13 cm, gruby na 1,6 cm
     W, Dd, Hh = 0.2, 0.13, 0.016
     parts = []
-    for i in range(22):
-        x = rnd.uniform(-W / 2 + 0.03, W / 2 - 0.03)
-        y = rnd.uniform(-Dd / 2 + 0.028, Dd / 2 - 0.035)
-        r = rnd.uniform(0.012, 0.02)
-        b = lathe('szyszka', [(0.0, 0.0), (r * 0.7, r * 0.12), (r, r * 0.3), (r * 0.8, r * 0.5), (0.0, r * 0.58)], green if i % 3 else green2, 7, loc=(x, y, 0.002))
-        b.rotation_euler = (rnd.uniform(-0.2, 0.2), rnd.uniform(-0.2, 0.2), rnd.uniform(0, 6.28))
+    for i in range(16):
+        x = rnd.uniform(-W / 2 + 0.032, W / 2 - 0.032)
+        y = rnd.uniform(-Dd / 2 + 0.03, Dd / 2 - 0.038)
+        r = rnd.uniform(0.013, 0.021)
+        # szyszka: nieregularna grudka (kula z szumem), przypłaszczona folią
+        bm = bmesh.new()
+        bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+        sd = rnd.uniform(0, 50)
+        for v in bm.verts:
+            k = 1.0 + 0.38 * noise.noise(v.co * 2.6 + Vector((sd, sd * 0.7, 3.0))) + 0.16 * noise.noise(v.co * 7.0 + Vector((sd, 1.0, sd)))
+            v.co = Vector((v.co.x * r * k * rnd.uniform(0.9, 1.25), v.co.y * r * k, (v.co.z * 0.5 + 0.5) * r * 0.6 * k))
+        me = bpy.data.meshes.new('szyszka')
+        bm.to_mesh(me)
+        bm.free()
+        b = _finish(me, 'szyszka', green if i % 3 else green2, True, None)
+        b.location = (x, y, 0.0015)
+        b.rotation_euler = (0, 0, rnd.uniform(0, 6.28))
         parts.append(b)
-        if i % 4 == 0:
-            parts.append(rbox('wlosek', (r * 1.1, 0.0016, 0.0016), hair, 0.0, (x, y, r * 0.5), (0, 0, rnd.uniform(0, 3.14)), segs=1))
+        for h in range(3):
+            a = rnd.uniform(0, 6.28)
+            parts.append(rbox('wlosek', (r * 0.55, 0.0012, 0.0012), hair, 0.0, (x + math.cos(a) * r * 0.45, y + math.sin(a) * r * 0.45, r * 0.62), (0, rnd.uniform(-0.5, 0.5), a), segs=1))
     parts.append(rbox('zgrzew', (W, 0.012, 0.0012), mat('zgrzew', 'c8d2ce', 0.3), 0.0, (0, Dd / 2 - 0.008, 0.002), segs=1))
     parts.append(rbox('naklejka', (0.05, 0.03, 0.0008), mat('naklejka', 'f0ece0', 0.8), 0.0, (-W / 2 + 0.045, -Dd / 2 + 0.03, Hh * 0.93), segs=1))
-    parts.append(text('waga', '8 g', 0.016, mat('tusz', '1a1a1c', 0.8), (-W / 2 + 0.045, -Dd / 2 + 0.025, Hh * 0.93 + 0.0012), (0, 0, 0)))
+    parts.append(tube('kreska', [(-W / 2 + 0.028, -Dd / 2 + 0.032, Hh * 0.93 + 0.0012), (-W / 2 + 0.04, -Dd / 2 + 0.027, Hh * 0.93 + 0.0012), (-W / 2 + 0.05, -Dd / 2 + 0.034, Hh * 0.93 + 0.0012), (-W / 2 + 0.062, -Dd / 2 + 0.028, Hh * 0.93 + 0.0012)], 0.0008, mat('tusz', '1a1a4c', 0.8), 4))
     join('ZioloSrodek', parts)
     wz = _worek('ZioloFolia', W, Dd, Hh, film)
     z = empty('Ziolo')

@@ -350,6 +350,55 @@ static func run(T) -> void:
 	S.t = t_keep
 	S.heat = heat_keep
 	S.invest = inv_keep
+	# --- radiowóz: jedzie prawym pasem, skręca stopniowo, na końcu trasy zawraca
+	var car: Dictionary = N.car
+	var car_keep := {"seg": car.seg, "x": car.x, "z": car.z, "rot": car.rot, "wait": car.wait, "speed": car.speed}
+	car.seg = 3
+	car.x = float(N.CAR_ROUTE[3][0]) * D.SC
+	car.z = float(N.CAR_ROUTE[3][1]) * D.SC
+	car.rot = 0.0
+	car.speed = 0.0
+	car.alarm = false
+	var far_pp := Vector3(car.x - 900.0, 0.0, car.z)
+	var max_off := 0.0
+	var max_v := 0.0
+	var seen_segs := {}
+	var turned := false
+	var wheel0 := 0.0
+	if not (car.wheels as Array).is_empty():
+		wheel0 = (car.wheels[0] as Node3D).rotation.length()
+	for i in range(3600):
+		car.wait = 0.0
+		N._update_car(0.05, far_pp, true)
+		seen_segs[int(car.seg)] = true
+		max_v = maxf(max_v, absf(float(car.speed)))
+		if float(car.kturn) > 0.0:
+			turned = true
+		else:
+			var ra: Vector2 = Vector2(float(N.CAR_ROUTE[int(car.seg)][0]), float(N.CAR_ROUTE[int(car.seg)][1])) * D.SC
+			var rb: Vector2 = Vector2(float(N.CAR_ROUTE[(int(car.seg) + 1) % N.CAR_ROUTE.size()][0]), float(N.CAR_ROUTE[(int(car.seg) + 1) % N.CAR_ROUTE.size()][1])) * D.SC
+			var ab := (rb - ra).normalized()
+			var rel := Vector2(float(car.x), float(car.z)) - ra
+			# tuż po zawróceniu auto dopiero wraca na swój pas — liczymy odchyłkę, gdy już jedzie
+			if absf(float(car.speed)) > 4.0:
+				max_off = maxf(max_off, absf(rel.x * -ab.y + rel.y * ab.x))
+	var wheel1 := 0.0
+	if not (car.wheels as Array).is_empty():
+		wheel1 = (car.wheels[0] as Node3D).rotation.length()
+	T.ok(seen_segs.size() >= 3 and turned and max_v > 5.0 and max_v <= 7.3 and max_off < 2.6, "radiowóz przejeżdża kolejne odcinki, nie zjeżdża z jezdni (najdalej %.1f m od osi) i zawraca na końcu ulicy" % max_off)
+	T.ok((car.wheels as Array).size() == 4 and wheel0 != wheel1 and (car.domes as Array).size() == 2, "nowy model radiowozu: cztery obracające się koła i dwa klosze na dachu")
+	# człowiek przed maską: hamuje
+	car.speed = 6.0
+	var front_pp := Vector3(float(car.x) + sin(float(car.rot)) * 4.0, 0.0, float(car.z) + cos(float(car.rot)) * 4.0)
+	for i in range(40):
+		car.wait = 0.0
+		N._update_car(0.05, front_pp, true)
+	T.ok(absf(float(car.speed)) < 0.3 or float(car.kturn) > 0.0, "radiowóz hamuje przed pieszym (%.1f m/s)" % float(car.speed))
+	for kk in car_keep:
+		car[kk] = car_keep[kk]
+	car.alarm = false
+	car.susp = 0.0
+	N._car_move(0.0)
 	# --- kondycja: większy zapas, chwila na złapanie oddechu, adrenalina w pościgu
 	var PL = G.player
 	var st_keep: float = PL.stamina

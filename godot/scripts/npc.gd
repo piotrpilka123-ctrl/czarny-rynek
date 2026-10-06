@@ -436,7 +436,7 @@ func _talk_meet(id: String) -> void:
 
 # ---------------------------------------------------------------- radiowóz
 func _build_car() -> void:
-	var node: Node3D = Models.car("sedan", "ffffff", true)
+	var node: Node3D = Models.car("sedan", "d9dde2", true)
 	add_child(node)
 	var blue := OmniLight3D.new()
 	blue.light_color = Color(0.2, 0.4, 1.0)
@@ -445,8 +445,33 @@ func _build_car() -> void:
 	blue.position = Vector3(0, 1.8, 0)
 	blue.visible = false
 	node.add_child(blue)
-	car = {"node": node, "x": CAR_ROUTE[0][0] * D.SC, "z": CAR_ROUTE[0][1] * D.SC, "rot": 0.0, "seg": 0, "wait": 30.0, "susp": 0.0, "sees": false, "alarm": false, "light": blue, "look_t": 0.0, "speed": 0.0}
+	# reflektory: dwa snopy przed maską, zapalane po zmroku
+	var heads: Array = []
+	for sx in [-0.55, 0.55]:
+		var hl := SpotLight3D.new()
+		hl.position = Vector3(sx, 0.68, 2.1)
+		hl.rotation = Vector3(-0.06, PI, 0.0)
+		hl.spot_range = 26.0
+		hl.spot_angle = 30.0
+		hl.spot_attenuation = 1.1
+		hl.light_color = Color(1.0, 0.95, 0.82)
+		hl.light_energy = 5.0
+		hl.shadow_enabled = false
+		hl.visible = false
+		node.add_child(hl)
+		heads.append(hl)
+	car = {"node": node, "x": CAR_ROUTE[0][0] * D.SC, "z": CAR_ROUTE[0][1] * D.SC, "rot": PI / 2.0, "seg": 0, "wait": 30.0, "susp": 0.0, "sees": false, "alarm": false, "light": blue, "look_t": 0.0, "speed": 0.0,
+		"heads": heads, "wheels": node.get_meta("wheels", []), "domes": node.get_meta("siren", []), "kturn": 0.0}
 	node.position = Vector3(car.x, _h(car.x, car.z), car.z)
+
+
+## koguty na dachu: klosze migają na zmianę, niebieska poświata razem z nimi
+func _car_flash(on: bool) -> void:
+	var ph := fmod(G.now * 4.0, 1.0) < 0.5
+	car.light.visible = on and ph
+	var domes: Array = car.domes
+	for i in range(domes.size()):
+		(domes[i] as Node3D).visible = on and (ph if i == 0 else not ph)
 
 
 func _update_car(dt: float, pp: Vector3, outside: bool) -> void:
@@ -459,11 +484,13 @@ func _update_car(dt: float, pp: Vector3, outside: bool) -> void:
 	if float(car.look_t) <= 0.0:
 		car.look_t = 0.25
 		car.sees = see_level(car.x, car.z, float(car.rot), 30.0, true) > 0.0
+	for hl in car.heads:
+		(hl as Light3D).visible = G.night > 0.35
 	if car.alarm:
-		car.light.visible = fmod(G.now * 5.0, 1.0) < 0.5
+		_car_flash(true)
 		if not G.S.wanted:
 			car.alarm = false
-			car.light.visible = false
+			_car_flash(false)
 			car.wait = 4.0
 		return
 	if car.sees and susp_mult > 0.0:
@@ -485,26 +512,68 @@ func _update_car(dt: float, pp: Vector3, outside: bool) -> void:
 		car.susp = maxf(0.0, float(car.susp) - dt * 0.3)
 	if float(car.wait) > 0.0:
 		car.wait = float(car.wait) - dt
-		car.speed = 0.0
+		car.speed = move_toward(float(car.speed), 0.0, dt * 5.0)
+		_car_move(dt)
 		return
-	var nxt: Array = CAR_ROUTE[(int(car.seg) + 1) % CAR_ROUTE.size()]
-	var to := Vector2(nxt[0] * D.SC - car.x, nxt[1] * D.SC - car.z)
-	var d := to.length()
-	if d < 0.6:
-		car.seg = (int(car.seg) + 1) % CAR_ROUTE.size()
-		if int(car.seg) == 0 or int(car.seg) == CAR_ROUTE.size() - 1:
+	# Jazda jak autem, nie jak pionkiem po sznurku: radiowóz jedzie tam, dokąd patrzy maska, skręca stopniowo,
+	# trzyma się prawego pasa, zwalnia przed zakrętem i przed człowiekiem, a na końcu trasy zawraca „na trzy”.
+	var n := CAR_ROUTE.size()
+	var pa: Array = CAR_ROUTE[int(car.seg) % n]
+	var pb: Array = CAR_ROUTE[(int(car.seg) + 1) % n]
+	var a := Vector2(pa[0], pa[1]) * D.SC
+	var b := Vector2(pb[0], pb[1]) * D.SC
+	var seg_len := maxf(0.01, (b - a).length())
+	var dirv := (b - a) / seg_len
+	var right := Vector2(-dirv.y, dirv.x)
+	var pos := Vector2(car.x, car.z)
+	var done: float = (pos - a).dot(dirv)
+	if seg_len - done < 2.4:
+		car.seg = (int(car.seg) + 1) % n
+		if int(car.seg) == 0 or int(car.seg) == n - 1:
 			car.wait = randf_range(50.0, 110.0) * G.car_pause()
 		elif int(car.seg) == 4:
 			car.wait = randf_range(8.0, 20.0)
 		return
-	car.speed = lerpf(float(car.speed), 6.5 if d > 8.0 else 3.0, minf(1.0, dt * 1.5))
-	car.x += to.x / d * float(car.speed) * dt
-	car.z += to.y / d * float(car.speed) * dt
-	car.rot = float(car.rot) + _ang_diff(atan2(to.x, to.y), float(car.rot)) * minf(1.0, dt * 2.5)
-	var y := _h(car.x, car.z)
-	var yf := _h(car.x + sin(float(car.rot)) * 1.4, car.z + cos(float(car.rot)) * 1.4)
-	node.position = Vector3(car.x, y, car.z)
-	node.rotation = Vector3(-atan2(yf - y, 1.4), float(car.rot), 0.0)
+	var aim: Vector2 = a + dirv * clampf(done + 5.5, 0.0, seg_len) + right * CAR_LANE
+	var diff := _ang_diff(atan2(aim.x - pos.x, aim.y - pos.y), float(car.rot))
+	var fwd_v := Vector2(sin(float(car.rot)), cos(float(car.rot)))
+	if absf(diff) > 1.9 or (float(car.kturn) > 0.0 and absf(diff) > 0.45):
+		# cel jest za plecami: zawracanie na trzy, na przemian do przodu i do tyłu — aż maska spojrzy wzdłuż ulicy
+		car.kturn = float(car.kturn) + dt
+		var ahead: bool = fmod(float(car.kturn), 3.0) < 1.6
+		car.speed = lerpf(float(car.speed), 1.5 if ahead else -1.5, minf(1.0, dt * 3.5))
+		car.rot = float(car.rot) + signf(diff) * dt * 0.8
+	else:
+		car.kturn = 0.0
+		var vmax := 7.2 * clampf(1.0 - absf(diff) * 0.9, 0.32, 1.0)
+		vmax = minf(vmax, 2.2 + (seg_len - done) * 0.5)
+		# człowiek tuż przed maską: hamuje, nie rozjeżdża
+		var top := Vector2(pp.x - car.x, pp.z - car.z)
+		if top.length() < 7.0 and top.normalized().dot(fwd_v) > 0.8:
+			vmax = 0.0
+		var sp := float(car.speed)
+		car.speed = move_toward(sp, vmax, dt * (2.4 if vmax > sp else 6.0))
+		car.rot = float(car.rot) + clampf(diff * 2.4, -1.1, 1.1) * clampf(absf(float(car.speed)) / 4.0, 0.12, 1.0) * dt
+	_car_move(dt)
+
+
+const CAR_LANE := 1.05        # metr z hakiem w prawo od osi jezdni
+
+func _car_move(dt: float) -> void:
+	var node: Node3D = car.node
+	var sp := float(car.speed)
+	car.x += sin(float(car.rot)) * sp * dt
+	car.z += cos(float(car.rot)) * sp * dt
+	var fx := sin(float(car.rot))
+	var fz := cos(float(car.rot))
+	var yf := _h(car.x + fx * 1.3, car.z + fz * 1.3)
+	var yb := _h(car.x - fx * 1.3, car.z - fz * 1.3)
+	var yl := _h(car.x + fz * 0.75, car.z - fx * 0.75)
+	var yr := _h(car.x - fz * 0.75, car.z + fx * 0.75)
+	node.position = Vector3(car.x, (yf + yb) * 0.5, car.z)
+	node.rotation = Vector3(-atan2(yf - yb, 2.6), float(car.rot), atan2(yr - yl, 1.5) * 0.6)
+	for w in car.wheels:
+		(w as Node3D).rotate_object_local(Vector3.UP, sp * dt / 0.31)
 
 
 # ---------------------------------------------------------------- pies
