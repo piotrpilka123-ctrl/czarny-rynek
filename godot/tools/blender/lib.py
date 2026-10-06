@@ -144,6 +144,158 @@ def join(name, objs, parent=None):
     return ob
 
 
+def profile(name, pts, depth, material, bevel=0.003, parent=None, holes=()):
+    """płaski kształt z boku (lista punktów X,Z) wyciągnięty na grubość `depth` wzdłuż Y — do sylwetek (broń, narzędzia)"""
+    cu = bpy.data.curves.new(name, 'CURVE')
+    cu.dimensions = '2D'
+    cu.fill_mode = 'BOTH'
+    cu.extrude = max(0.0005, depth * 0.5 - bevel)
+    cu.bevel_depth = bevel
+    cu.bevel_resolution = 2
+    for loop in (pts,) + tuple(holes):
+        sp = cu.splines.new('POLY')
+        sp.points.add(len(loop) - 1)
+        for i, (x, z) in enumerate(loop):
+            sp.points[i].co = (x, z, 0.0, 1.0)
+        sp.use_cyclic_u = True
+    ob = bpy.data.objects.new(name, cu)
+    bpy.context.scene.collection.objects.link(ob)
+    cu.materials.append(material)
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+    bpy.data.objects.remove(ob)
+    out = _finish(me, name, material, True, parent)
+    out.rotation_euler = (math.radians(90), 0, 0)      # płaszczyzna XY krzywej -> XZ modelu
+    return out
+
+
+def weather(objs, size=1024, dirt=0.55, wear=0.5, grime=(0.09, 0.075, 0.06), samples=24):
+    """Zużycie zamiast „plasteliny”: każdy obiekt dostaje jedną teksturę koloru wypaloną z materiałów —
+    brud w zakamarkach (AO), wytarte krawędzie, plamy i zacieki z szumu. Metaliczność i chropowatość zostają liczbami."""
+    sc = bpy.context.scene
+    sc.render.engine = 'CYCLES'
+    sc.cycles.device = 'CPU'
+    sc.cycles.samples = samples
+    sc.render.bake.use_pass_direct = False
+    sc.render.bake.use_pass_indirect = False
+    sc.render.bake.use_pass_color = True
+    sc.render.bake.margin = 6
+    for ob in objs:
+        if ob.type != 'MESH':
+            continue
+        for o in bpy.context.selected_objects:
+            o.select_set(False)
+        ob.select_set(True)
+        bpy.context.view_layer.objects.active = ob
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.02)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        img = bpy.data.images.new(ob.name + '_kolor', size, size)
+        rough = []
+        metal = []
+        for slot in ob.material_slots:
+            m = slot.material.copy()
+            slot.material = m
+            nt = m.node_tree
+            b = nt.nodes['Principled BSDF']
+            base = tuple(b.inputs['Base Color'].default_value)
+            rough.append(b.inputs['Roughness'].default_value)
+            metal.append(b.inputs['Metallic'].default_value)
+            emit = b.inputs['Emission Strength'].default_value > 0.0
+            N = nt.nodes
+            L = nt.links
+            ao = N.new('ShaderNodeAmbientOcclusion')
+            ao.inputs['Distance'].default_value = 0.05
+            ao.samples = 8
+            geo = N.new('ShaderNodeNewGeometry')
+            n1 = N.new('ShaderNodeTexNoise')
+            n1.inputs['Scale'].default_value = 9.0
+            n1.inputs['Detail'].default_value = 6.0
+            n2 = N.new('ShaderNodeTexNoise')
+            n2.inputs['Scale'].default_value = 70.0
+            n2.inputs['Detail'].default_value = 3.0
+            # 1) drobna nierówność koloru
+            mix1 = N.new('ShaderNodeMixRGB')
+            mix1.blend_type = 'MULTIPLY'
+            mix1.inputs['Fac'].default_value = 0.0 if emit else 0.35
+            mix1.inputs['Color1'].default_value = base
+            ramp2 = N.new('ShaderNodeValToRGB')
+            ramp2.color_ramp.elements[0].position = 0.3
+            ramp2.color_ramp.elements[0].color = (0.55, 0.55, 0.55, 1)
+            ramp2.color_ramp.elements[1].position = 0.75
+            L.new(n2.outputs['Fac'], ramp2.inputs['Fac'])
+            L.new(ramp2.outputs['Color'], mix1.inputs['Color2'])
+            # 2) brud: zakamarki (AO) + duże plamy
+            dramp = N.new('ShaderNodeValToRGB')
+            dramp.color_ramp.elements[0].position = 0.45
+            dramp.color_ramp.elements[1].position = 0.95
+            L.new(ao.outputs['AO'], dramp.inputs['Fac'])
+            pramp = N.new('ShaderNodeValToRGB')
+            pramp.color_ramp.elements[0].position = 0.5
+            pramp.color_ramp.elements[1].position = 0.72
+            L.new(n1.outputs['Fac'], pramp.inputs['Fac'])
+            dmask = N.new('ShaderNodeMath')
+            dmask.operation = 'MULTIPLY'
+            inv = N.new('ShaderNodeInvert')
+            L.new(pramp.outputs['Color'], inv.inputs['Color'])
+            L.new(dramp.outputs['Color'], dmask.inputs[0])
+            L.new(inv.outputs['Color'], dmask.inputs[1])
+            mix2 = N.new('ShaderNodeMixRGB')
+            mix2.inputs['Color1'].default_value = (*grime, 1)
+            L.new(dmask.outputs['Value'], mix2.inputs['Fac'])
+            L.new(mix1.outputs['Color'], mix2.inputs['Color2'])
+            fade = N.new('ShaderNodeMixRGB')
+            fade.inputs['Fac'].default_value = 0.0 if emit else dirt
+            L.new(mix1.outputs['Color'], fade.inputs['Color1'])
+            L.new(mix2.outputs['Color'], fade.inputs['Color2'])
+            # 3) wytarte krawędzie: jaśniejszy podkład tam, gdzie siatka jest wypukła
+            wr = N.new('ShaderNodeValToRGB')
+            wr.color_ramp.elements[0].position = 0.57
+            wr.color_ramp.elements[1].position = 0.7
+            L.new(geo.outputs['Pointiness'], wr.inputs['Fac'])
+            wn = N.new('ShaderNodeMath')
+            wn.operation = 'MULTIPLY'
+            L.new(wr.outputs['Color'], wn.inputs[0])
+            L.new(n2.outputs['Fac'], wn.inputs[1])
+            wm = N.new('ShaderNodeMath')
+            wm.operation = 'MULTIPLY'
+            wm.inputs[1].default_value = 0.0 if emit else wear * 1.1
+            L.new(wn.outputs['Value'], wm.inputs[0])
+            edge = N.new('ShaderNodeMixRGB')
+            lum = 0.3 * base[0] + 0.5 * base[1] + 0.2 * base[2]
+            worn = tuple(min(1.0, c * 1.5 + (0.1 if lum < 0.25 else 0.06)) for c in base[:3])
+            edge.inputs['Color2'].default_value = (*worn, 1)
+            L.new(wm.outputs['Value'], edge.inputs['Fac'])
+            L.new(fade.outputs['Color'], edge.inputs['Color1'])
+            L.new(edge.outputs['Color'], b.inputs['Base Color'])
+            b.inputs['Metallic'].default_value = 0.0      # wypalanie koloru nie znosi metalu
+            tex = N.new('ShaderNodeTexImage')
+            tex.image = img
+            N.active = tex
+        bpy.ops.object.bake(type='DIFFUSE')
+        img.pack()
+        # jeden prosty materiał z wypaloną teksturą
+        mats = [s.material for s in ob.material_slots]
+        emis = [m for m in mats if m.node_tree.nodes['Principled BSDF'].inputs['Emission Strength'].default_value > 0.0]
+        final = bpy.data.materials.new(ob.name + '_mat')
+        final.use_nodes = True
+        fb = final.node_tree.nodes['Principled BSDF']
+        ft = final.node_tree.nodes.new('ShaderNodeTexImage')
+        ft.image = img
+        final.node_tree.links.new(ft.outputs['Color'], fb.inputs['Base Color'])
+        fb.inputs['Roughness'].default_value = min(0.95, sum(rough) / len(rough) + 0.12)
+        fb.inputs['Metallic'].default_value = min(0.6, max(metal) * 0.6)
+        if emis:
+            eb = emis[0].node_tree.nodes['Principled BSDF']
+            final.node_tree.links.new(ft.outputs['Color'], fb.inputs['Emission Color'])
+            fb.inputs['Emission Strength'].default_value = eb.inputs['Emission Strength'].default_value
+        ob.data.materials.clear()
+        ob.data.materials.append(final)
+        for p in ob.data.polygons:
+            p.material_index = 0
+
+
 def export(name):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, name + '.glb')

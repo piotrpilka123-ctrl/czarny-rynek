@@ -23,6 +23,30 @@ var _hinted := {}
 var _nav_was := true
 var _finishing := false
 var _jumped := false        # testy: przeskok do etapu, start() ma się już nie wtrącać
+var _packed := false        # towar przeniesiony ze stołu do torby
+var _party_fx: ColorRect = null
+const BATCH_G := 500.0
+
+const SH_PARTY := """
+shader_type canvas_item;
+uniform float k = 1.0;
+void fragment() {
+	// rozmyte światła imprezy: kilka kolorowych plam pulsujących w rytm basu
+	vec2 uv = UV;
+	float beat = pow(abs(sin(TIME * 6.6)), 6.0);
+	vec3 c = vec3(0.0);
+	for (int i = 0; i < 6; i++) {
+		float fi = float(i);
+		vec2 p = vec2(0.5 + 0.42 * sin(TIME * (0.31 + fi * 0.07) + fi * 2.1), 0.5 + 0.36 * cos(TIME * (0.27 + fi * 0.05) + fi * 1.3));
+		float d = distance(uv, p);
+		vec3 col = 0.5 + 0.5 * cos(vec3(0.0, 2.1, 4.2) + fi * 1.9 + TIME * 0.4);
+		c += col * exp(-d * d * (9.0 - beat * 3.0)) * (0.35 + 0.25 * beat);
+	}
+	// zataczanie się: obraz „pływa” i ciemnieje na brzegach
+	float vig = smoothstep(0.95, 0.2, distance(uv, vec2(0.5 + 0.04 * sin(TIME * 1.3), 0.5)));
+	COLOR = vec4(c * vig * 0.8, k);
+}
+"""
 
 
 static func P(x: float, z: float) -> Vector2:
@@ -47,7 +71,7 @@ func step() -> Dictionary:
 	var R: Dictionary = D.ROOMS.lab
 	match stage:
 		"lab":
-			return {"text": func(): return "Rozejrzyj się myszą, chodź klawiszami [%s][%s][%s][%s]. Podejdź do stołu z cegłami i spakuj partię: naceluj i naciśnij [%s]." % [G.kn("fwd"), G.kn("left"), G.kn("back"), G.kn("right"), G.kn("use")],
+			return {"text": func(): return ("Chodź klawiszami [%s][%s][%s][%s], rozglądaj się myszą. Podejdź do stołu z cegłami, naceluj i naciśnij [%s] — a potem spakuj partię: przeciągnij kokainę ze stołu do swojej torby." % [G.kn("fwd"), G.kn("left"), G.kn("back"), G.kn("right"), G.kn("use")]) if not _packed else "Odbierz telefon.",
 				"done": func(): return false, "marker": func(): return {"loc": "lab", "x": float(R.cx) + 1.6, "z": 2.4}}
 		"raid":
 			return {"text": func(): return "NALOT! Uciekaj tylnymi drzwiami — naceluj na nie i naciśnij [%s]." % G.kn("use"),
@@ -84,9 +108,16 @@ func start() -> void:
 	M.ui.fade_rect.color.a = 1.0
 	M.teleport("lab", Vector3(float(R.cx) - 1.2, 0.0, 3.9), -0.75)
 	M.ui.cut_begin()
+	# ostatnia partia leży na stole — do torby przenosi ją gracz
+	G.S.stash["lab"] = G.new_store()
+	G.add_bulk(G.S.stash.lab, "snieg", 90, BATCH_G)
+	await _party()
+	if _jumped:
+		return
+	if M.cut_skip:
+		_finish()
+		return
 	M.ui.cut_title("STARA HUTA  •  04:47", "OSTATNIA PARTIA PRZED ŚWITEM")
-	if Sfx.intro_ready():
-		Sfx.intro_play(0.0)
 	await _wait(3.0)
 	if _jumped:
 		return
@@ -103,10 +134,53 @@ func start() -> void:
 	t = 0.0
 	M.nav_force = true
 	M.ui.dialog({"name": "Siwy", "lines": [
-		"Kuba, ostatnie cegły do torby i zwijamy się. Wiktor czeka na towar do szóstej.",
-		{"n": "Ty", "t": "Trzy lata bez jednej wpadki. Dowieziemy tę partię i robimy przerwę."},
-		"Ty to zawsze taki ostrożny. Pakuj — ja doglądam kolby.",
+		"No, wreszcie. Śpiąca królewna raczyła zejść do piwnicy. Wiesz, która godzina? Za kwadrans piąta, Kuba.",
+		{"n": "Ty", "t": "Wiem. Trzy dni mnie nie było."},
+		"Trzy dni. Ja tu od trzech dni oddycham acetonem, a ty wracasz z miną, jakbyś pił z diabłem na umór. Dobra, nie moja sprawa.",
+		"Pół kilo stoi na stole. Najczystszy śnieg, jaki z tej huty wyszedł. Wiktor zapłacił z góry i czeka do szóstej — a Wiktor nie lubi czekać.",
+		{"n": "Ty", "t": "Trzy lata bez jednej wpadki. Dowieziemy to i robimy przerwę. Długą."},
+		"Ty i przerwa. Pakuj torbę, ja doglądam kolby. I Kuba — umyj twarz, zanim pójdziesz do ludzi.",
 	]})
+
+
+## Otwarcie: nieprzerwany melanż widziany przez mgłę — plamy świateł, bas zza ściany, strzępy głosów.
+## Potem nagle czarny ekran i jedno zdanie.
+func _party() -> void:
+	var U = M.ui
+	_party_fx = ColorRect.new()
+	_party_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_party_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = SH_PARTY
+	var sm := ShaderMaterial.new()
+	sm.shader = sh
+	_party_fx.material = sm
+	U.cut.add_child(_party_fx)
+	U.cut.move_child(_party_fx, 0)
+	Sfx.party_play()
+	var bits := [[0.8, "— Jeszcze jedną, Kuba! Jeszcze jedną!"], [3.0, "(ktoś wciąga kreskę z blatu)"], [5.2, "— Która to doba? Trzecia? Czwarta?"], [7.3, "(ktoś wymiotuje w łazience)"],
+		[9.4, "— Nie odbieraj. To znowu Siwy."], [11.6, "— Stary, ty w ogóle śpisz?"]]
+	var bi := 0
+	var tt := 0.0
+	while tt < 13.6 and not M.cut_skip and not _jumped:
+		tt += get_process_delta_time()
+		if bi < bits.size() and tt >= float(bits[bi][0]):
+			U.cut_line(String(bits[bi][1]))
+			bi += 1
+		await get_tree().process_frame
+	# cięcie: cisza i czerń
+	Sfx.party_stop()
+	if is_instance_valid(_party_fx):
+		_party_fx.queue_free()
+	_party_fx = null
+	U.cut_line("")
+	if M.cut_skip or _jumped:
+		return
+	await _wait(1.3)
+	U.cut_title("WSZYSTKO SIĘ KIEDYŚ KOŃCZY.", "")
+	await _wait(3.4)
+	U.cut_title("")
+	await _wait(0.9)
 
 
 ## ustawia patrole, radiowozy i wspólnika na czas prologu
@@ -207,20 +281,39 @@ func can_exit() -> bool:
 
 
 func act(what: String) -> void:
-	if what != "pack" or stage != "lab" or G.busy:
+	if what != "pack" or stage != "lab" or G.busy or _packed:
 		return
-	G.busy = true
+	if G.test_mode:
+		# testy: cała partia od razu ląduje w torbie
+		G.take_bulk(G.S.stash.lab, "snieg", 90, BATCH_G)
+		G.add_bulk(G.S.inv, "snieg", 90, BATCH_G)
+		_on_packed(true)
+		return
+	# stół otwiera się jak każda skrytka: po lewej torba, po prawej towar — przeciągasz go do siebie
+	M.ui.open_inventory("lab")
+	G.notify("Przeciągnij kokainę ze stołu (po prawej) do swojej torby (po lewej) i wybierz całą ilość.")
+
+
+func _on_packed(instant := false) -> void:
+	_packed = true
 	Sfx.play("pack")
-	await M.ui.fade(true)
 	var fxd: Dictionary = M.world.lab_fx
 	if not fxd.is_empty():
 		fxd.bag.visible = false
 		for b in fxd.bricks:
 			b.visible = false
-	await get_tree().create_timer(0.45).timeout
-	await M.ui.fade(false)
-	G.busy = false
-	_begin_raid()
+	if instant:
+		_begin_raid()
+		return
+	# telefon od Wiktora — przerywa go megafon
+	Sfx.play("sms")
+	M.ui.dialog({"name": "Wiktor (telefon)", "lines": [
+		"Kuba. Za kwadrans piąta, a ja jeszcze nie śpię — zgadnij przez kogo.",
+		"Zapłaciłem ci z góry dwadzieścia pięć tysięcy, bo twoje słowo było dotąd warte tyle, co gotówka. Dotąd.",
+		{"n": "Ty", "t": "Pół kilo jest spakowane. Za godzinę masz je u siebie."},
+		"Za godzinę. Dobrze. Bo wiesz, co mówią o ludziach, którzy znikają na trzy dni z cudzymi pieniędzmi? Nic nie mówią. Nie ma komu.",
+		"Dowieź towar, Kuba. I odeśpij to, co tam robiłeś. Wyglądasz podobno jak —",
+	], "on_end": _begin_raid})
 
 
 func _begin_raid() -> void:
@@ -237,8 +330,10 @@ func _begin_raid() -> void:
 	if siwy != null:
 		siwy.lines = ["Leć, do cholery! Ja to odpalam!"]
 	M.ui.dialog({"name": "Siwy", "lines": [
-		"Psy?! Skąd oni… Kuba, tylne drzwi. BIEGIEM!",
-		"Ja odpalam zabezpieczenie. Niczego tu nie znajdą. Leć!",
+		"Psy?! Skąd oni… Trzy lata nikt o nas nie wiedział. Ktoś sypnął, Kuba. Ktoś z twoich.",
+		{"n": "Ty", "t": "Siwy, chodź ze mną. Tyłem, przez tory."},
+		"A kto odpali zabezpieczenie? Jak to znajdą, obaj dostaniemy po piętnaście lat. Ja zostaję. Ty masz torbę — torba ma dojść do Wiktora.",
+		"Tylne drzwi. Na kucaka, cieniem, pod siatką za torami. No leć, do cholery!",
 	]})
 
 
@@ -293,6 +388,9 @@ func _process(dt: float) -> void:
 		M.skip_hold = 0.0
 	match stage:
 		"lab":
+			if not _packed and M.ui.mode == "" and not G.busy and G.goods_total(G.S.stash.get("lab", {"bulk": {}, "pack": {}})) < 0.5:
+				_on_packed()
+				return
 			if t > 20.0 and not _hinted.has("table"):
 				_hinted["table"] = true
 				G.notify("Stół z cegłami stoi pod lampką. Podejdź, naceluj na niego i naciśnij [%s]." % G.kn("use"))
@@ -349,10 +447,12 @@ func _boom() -> void:
 	var cam_end := eye + Vector3(1.2, 0.5, 0.4)
 	var lines := [
 		[2.9, "Zabezpieczenie. Wiedziałem o nim tylko ja i Siwy."],
-		[7.4, "Trzy lata roboty, towar za ćwierć miliona i całe laboratorium — w sześć sekund."],
-		[12.4, "Siwego zgarnęli przy bramie. Mnie nie znał tam nikt. Nigdy się nie wychylałem."],
-		[17.0, "Została mi garść numerów do ludzi z samego dołu. I dług u Wiktora."],
+		[7.2, "Trzy lata roboty i całe laboratorium — w sześć sekund."],
+		[11.2, "Ale ostatnia partia jest w torbie. Pół kilo. Wystarczy, żeby zacząć od no—"],
 	]
+	var hit_at := 14.6
+	var hit := false
+	var fall := 0.0
 	var booms := [
 		[1.9, P(177.0, -96.0), 2.5, 2.4],
 		[2.8, P(186.0, -84.0), 9.0, 3.4],
@@ -366,15 +466,36 @@ func _boom() -> void:
 	var tt := 0.0
 	var shake := 0.0
 	var faded := false
-	while tt < 22.5 and not M.cut_skip:
+	while tt < 24.0 and not M.cut_skip:
 		var dt := get_process_delta_time()
 		tt += dt
+		# cios w tył głowy zza garaży: błysk, kamera wali się na ziemię, obraz gaśnie
+		if not hit and tt >= hit_at:
+			hit = true
+			Sfx.knock()
+			M.ui.flash(0.9)
+			M.ui.cut_line("")
+			shake = 1.6
+		if hit:
+			fall = minf(1.0, fall + dt / 0.55)
+			if tt >= hit_at + 1.6 and li == 3:
+				M.ui.cut_line("— Leż, leż. Torbę biorę ja. Pozdrów Wiktora.")
+				li = 4
+			if tt >= hit_at + 5.4 and li == 4:
+				M.ui.cut_line("Kiedy się ocknąłem, nie było torby, Siwego ani laboratorium. Został dług.")
+				li = 5
 		var e := clampf(tt / 1.5, 0.0, 1.0)
 		e = e * e * (3.0 - 2.0 * e)
 		var zoom := clampf((tt - 6.0) / 12.0, 0.0, 1.0)
 		shake = maxf(0.0, shake - dt * 1.4)
 		var target := look0.lerp(mill_pt, e) + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * shake * 1.4
-		M.cine_cam(eye.lerp(cam_end, zoom), target, lerpf(float(pl.cam.fov), 46.0, e * 0.6 + zoom * 0.4))
+		var fe := fall * fall * (3.0 - 2.0 * fall)
+		var cam_pos := eye.lerp(cam_end, zoom)
+		cam_pos.y = lerpf(cam_pos.y, W.height(cam_pos.x, cam_pos.z) + 0.22, fe)
+		target = target.lerp(cam_pos + Vector3(fw.x, 0.25, fw.y) * 4.0, fe)
+		M.cine_cam(cam_pos, target, lerpf(float(pl.cam.fov), 46.0, e * 0.6 + zoom * 0.4) + fe * 18.0)
+		if fe > 0.0:
+			pl.cam.rotation.z = fe * 1.25
 		while bi < booms.size() and tt >= float(booms[bi][0]):
 			var bp: Vector2 = booms[bi][1]
 			Fx.explosion(M, Vector3(bp.x, W.height(bp.x, bp.y) + float(booms[bi][2]), bp.y), float(booms[bi][3]))
@@ -387,12 +508,12 @@ func _boom() -> void:
 			fi += 1
 		for i in range(fire_lights.size()):
 			fire_lights[i].light_energy = (4.0 + i) * (0.7 + 0.5 * absf(sin(tt * 9.0 + i * 2.0) * sin(tt * 5.3 + i)))
-		if li < lines.size() and tt >= float(lines[li][0]):
+		if li < lines.size() and tt >= float(lines[li][0]) and not hit:
 			M.ui.cut_line(String(lines[li][1]))
 			li += 1
-		if not faded and tt >= 21.2:
+		if not faded and tt >= hit_at + 0.9:
 			faded = true
-			M.ui.fade_to(1.0, 1.2)
+			M.ui.fade_to(1.0, 1.6)
 		await get_tree().process_frame
 	_finish()
 
@@ -455,6 +576,13 @@ func _finish() -> void:
 	M.ui.cut_line("")
 	Sfx.siren(false)
 	Sfx.intro_stop(1.0)
+	Sfx.party_stop()
+	if _party_fx != null and is_instance_valid(_party_fx):
+		_party_fx.queue_free()
+	M.player.cam.rotation.z = 0.0
+	# torba z ostatnią partią przepadła za garażami
+	G.S.inv = G.new_store()
+	G.S.stash.erase("lab")
 	var W = M.world
 	for n in nodes:
 		if is_instance_valid(n):

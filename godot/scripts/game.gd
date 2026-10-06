@@ -537,6 +537,9 @@ func carry_value() -> float:
 
 
 func capacity() -> int:
+	# prolog: sportowa torba na całą ostatnią partię
+	if prologue != null:
+		return 600
 	var extra := int(outfit_stat("cap", 0.0))
 	if upg("plecak2"):
 		return 90 + extra
@@ -550,6 +553,8 @@ func upg(id: String) -> bool:
 
 
 func stash_cap(room: String) -> int:
+	if room == "lab":
+		return 1000
 	if room == "safe":
 		return 150 if upg("szafka") else D.STASH_BASE
 	var cap := 0
@@ -931,11 +936,11 @@ func on_hour() -> void:
 	# samouczek nie może utknąć: dopóki uczysz się pierwszej sprzedaży, Dominik odzywa się znowu najdalej po 40 minutach
 	if String(cur_step().get("id", "")) == "sell1" and S.cust.dominik.unlocked and not _has_order("dominik"):
 		S.cust.dominik.next = minf(float(S.cust.dominik.next), S.t + 40.0)
-	# pierwszy towar przepadł (rozsypany, skonfiskowany, oddany za bezcen)? Wiktor i tak otwiera Hurt,
+	# pierwszy towar przepadł (rozsypany, skonfiskowany, oddany za bezcen)? Wiktor i tak otwiera Giełdę,
 	# żeby dało się odrobić — zeszyt dalej trzeba spłacić
 	if flag("got_first") and not flag("hurt_on") and all_goods() < 1.0 and S.drops.is_empty():
 		S.flags["hurt_on"] = true
-		chat("wiktor", "Słyszę, że zostałeś z niczym. Dobra — zamawiaj w aplikacji Hurt. Ale to, co wisisz na zeszycie, dalej wisisz.")
+		chat("wiktor", "Słyszę, że zostałeś z niczym. Dobra — zamawiaj w aplikacji Giełda. Ale to, co wisisz na zeszycie, dalej wisisz.")
 	if not mods.get("sleeping", false) and h >= 10 and h <= 20 and int(S.mom_day) != day() and randf() < 0.1 and day() > 1:
 		S.mom_day = day()
 		chat("mama", D.MOM.pick_random())
@@ -2280,9 +2285,9 @@ func _build_story() -> void:
 			"done": func(): return int(S.stats.packed) >= 3 or _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
 		{"id": "sell1", "text": func(): return "Odpisz Dominikowi (Wiadomości) i dostarcz mu towar. (%d/2 g)" % mini(2, int(S.stats.sold)),
 			"done": func(): return int(S.stats.sold) >= 2 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
-		{"id": "repay1", "text": func(): return "Oddaj Wiktorowi za pierwszą paczkę: telefon → Hurt → Spłać zeszyt. (%s)" % money(S.credit),
+		{"id": "repay1", "text": func(): return "Oddaj Wiktorowi za pierwszą paczkę: telefon → Giełda → Spłać zeszyt. (%s)" % money(S.credit),
 			"done": func(): return float(S.credit) <= 0.0, "on_done": _on_repay_done},
-		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów własny towar w aplikacji Hurt i odbierz go ze skrytki.",
+		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów własny towar w aplikacji Giełda i odbierz go ze skrytki.",
 			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
 		{"id": "lvl2", "text": func(): return "Zdobądź poziom 2. Zadowolony Dominik poleci Cię dalej. (%d/%d PD)" % [int(S.xp), int(D.XP_LEVELS[1])],
 			"done": func(): return int(S.lvl) >= 2},
@@ -2383,7 +2388,7 @@ func _on_pack_done() -> void:
 
 func _on_repay_done() -> void:
 	S.flags["hurt_on"] = true
-	chat("wiktor", "Uczciwy. Od teraz zamawiasz sam: aplikacja Hurt w telefonie. Płacisz przy odbiorze albo bierzesz na zeszyt — ale zeszyt ma termin.")
+	chat("wiktor", "Uczciwy. Od teraz zamawiasz sam: aplikacja Giełda w telefonie. Płacisz przy odbiorze albo bierzesz na zeszyt — ale zeszyt ma termin.")
 	add_xp(20.0)
 	# to, co zostało po dawnej sieci: paru detalistów z osiedla, którzy brali od Twoich ludzi
 	chat("wiktor", "I jeszcze jedno. Puściłem twój numer dwóm detalistom, którzy brali od twoich chłopaków: Sebie spod bloku 9 i staremu Zenonowi. Drobnica, ale od czegoś trzeba zacząć.", false, true)

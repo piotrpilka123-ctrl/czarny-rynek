@@ -156,6 +156,7 @@ func spawn_cop(at_station: bool) -> Dictionary:
 	_cop_i += 1
 	var rig: Dictionary = Chars.make(look)
 	add_child(rig.root)
+	Chars.police_gear(rig)
 	var alert: Label3D = Models.label("!", Color(1, 0.3, 0.3), 96)
 	alert.position = Vector3(0, rig.height + 0.5, 0)
 	alert.visible = false
@@ -1102,6 +1103,12 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 			c.node.rotation.y += _ang_diff(face, c.node.rotation.y) * minf(1.0, dt * 7.0)
 		c.node.position = Vector3(c.x, _h(c.x, c.z), c.z)
 		Chars.set_active(c.rig, dist < 90.0)
+		# broń: wyjęta w pościgu i przy przeszukiwaniu okolicy (w prologu przez cały czas), schowana na zwykłym patrolu
+		var armed: bool = c.state == "chase" or c.get("hunt", false) or G.prologue != null
+		if armed != bool(c.rig.get("armed", false)):
+			Chars.set_armed(c.rig, armed)
+		if armed and move_speed <= 0.15:
+			pose = "aim" if (c.sees and c.state == "chase") else "gun"
 		if dist < 90.0:
 			Chars.animate(c.rig, dt, move_speed, pose)
 

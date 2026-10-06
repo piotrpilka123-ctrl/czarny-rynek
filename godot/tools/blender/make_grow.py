@@ -6,7 +6,7 @@ from lib import *
 
 def doniczka():
     reset()
-    terra = mat('terakota', 'a8623f', 0.9)
+    terra = mat('terakota', '8e5a40', 0.92)
     terra_in = mat('terakota_srodek', '7c452c', 0.95)
     H = 0.27
     # ścianka z rantem i wnętrzem — ziemia leży poniżej krawędzi
@@ -14,7 +14,8 @@ def doniczka():
                          (0.166, H), (0.16, H - 0.006), (0.158, H - 0.045)], terra, 40)
     inner = lathe('PotIn', [(0.158, H - 0.045), (0.15, H - 0.06), (0.0, H - 0.06)], terra_in, 40)
     saucer = lathe('Saucer', [(0.0, -0.001), (0.17, -0.001), (0.196, 0.004), (0.2, 0.022), (0.192, 0.022), (0.186, 0.008), (0.0, 0.008)], terra, 40)
-    join('Pot', [body, inner, saucer])
+    pot = join('Pot', [body, inner, saucer])
+    weather([pot], 1024, 0.7, 0.35, (0.2, 0.17, 0.14))
     # ziemia: lekko wypukła, z grudkami — osobny obiekt, bo gra przyciemnia ją po podlaniu
     soil = lathe('Soil', [(0.156, H - 0.04), (0.15, H - 0.03), (0.09, H - 0.024), (0.0, H - 0.02)], mat('ziemia', '3a2a1e', 1.0), 28)
     import random
@@ -40,9 +41,9 @@ def doniczka():
 
 def konewka():
     reset()
-    green = mat('blacha_zielona', '3f7a4a', 0.38, 0.55)
-    dark = mat('blacha_ciemna', '2a5534', 0.45, 0.55)
-    brass = mat('mosiadz', 'b08a3c', 0.3, 0.9)
+    green = mat('blacha_zielona', '4a6650', 0.5, 0.4)
+    dark = mat('blacha_ciemna', '33473a', 0.55, 0.4)
+    brass = mat('mosiadz', '8a7440', 0.45, 0.6)
     body = lathe('body', [(0.0, 0.0), (0.092, 0.0), (0.098, 0.006), (0.098, 0.012), (0.094, 0.016), (0.09, 0.15), (0.094, 0.154), (0.094, 0.166), (0.088, 0.17), (0.0, 0.172)], green, 36)
     hoop = lathe('hoop', [(0.091, 0.08), (0.096, 0.083), (0.096, 0.09), (0.091, 0.093)], dark, 36)
     # dzióbek w stronę −X, rozszerzony sitkiem
@@ -52,21 +53,23 @@ def konewka():
     rose.location = (-0.285, 0, 0.19)
     handle_back = tube('ucho', [(0.085, 0, 0.14), (0.15, 0, 0.15), (0.17, 0, 0.09), (0.14, 0, 0.03), (0.09, 0, 0.03)], 0.008, dark, 10)
     handle_top = tube('palak', [(-0.07, 0, 0.165), (-0.05, 0, 0.225), (0.03, 0, 0.235), (0.07, 0, 0.165)], 0.008, dark, 10)
-    join('Konewka', [body, hoop, spout, rose, handle_back, handle_top])
+    can = join('Konewka', [body, hoop, spout, rose, handle_back, handle_top])
+    weather([can], 1024, 0.75, 0.9, (0.1, 0.07, 0.04))
     empty('Spout', (-0.31, 0, 0.21))
     export('konewka')
 
 
 def nawoz():
     reset()
-    pl = mat('plastik_zielony', '2f8f4e', 0.35)
+    pl = mat('plastik_zielony', '3d6b4a', 0.5)
     cap = mat('nakretka', 'e8e4d6', 0.45)
     lab = mat('etykieta', 'f0ead2', 0.75)
     body = lathe('body', [(0.0, 0.0), (0.046, 0.0), (0.05, 0.005), (0.05, 0.14), (0.046, 0.152), (0.026, 0.172), (0.021, 0.178), (0.021, 0.186)], pl, 28)
     label = lathe('label', [(0.0508, 0.045), (0.0508, 0.115)], lab, 28)
     stripe = lathe('stripe', [(0.0512, 0.07), (0.0512, 0.085)], mat('pasek', '1f6b38', 0.6), 28)
     c = lathe('cap', [(0.024, 0.182), (0.025, 0.184), (0.025, 0.212), (0.022, 0.216), (0.0, 0.216)], cap, 20)
-    join('Nawoz', [body, label, stripe, c])
+    bt = join('Nawoz', [body, label, stripe, c])
+    weather([bt], 512, 0.6, 0.3)
     empty('Mouth', (0, 0, 0.22))
     export('nawoz')
 
@@ -101,7 +104,8 @@ def lampa_led():
             parts.append(tube('linka', [(sx, sy, H + 0.02), (sx * 0.96, sy * 0.9, H + 0.9)], 0.003, steel, 6))
             parts.append(lathe('zaczep', [(0.0, 0.0), (0.012, 0.0), (0.012, 0.012), (0.0, 0.016)], steel, 10, loc=(sx, sy, H + 0.017)))
     parts.append(tube('kabel', [(0.58, 0, H + 0.08), (0.66, 0.02, H + 0.3), (0.7, 0.0, H + 0.9)], 0.006, mat('kabel', '0c0c0e', 0.8), 8))
-    join('Lampa', parts)
+    lamp = join('Lampa', parts)
+    weather([lamp], 1024, 0.5, 0.7)
     bars = empty('Bars')
     off = empty('BarsOff')
     on_p, off_p = [], []

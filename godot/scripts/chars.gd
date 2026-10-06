@@ -148,13 +148,13 @@ const HAIR_F := ["hair_long", "hair_buns", "hair_long", "hair_buzzedfemale", "ha
 const ANIM_SPEED := {"Walk_Swagger": 0.97, "Walk_Hunched": 0.9, "Walk_Phone": 0.97, "Walk_Folded": 0.97, "Walk_Stiff": 0.97, "Walk_Loose": 0.97, "Walk": 0.97, "Walk_Formal": 0.97, "Jog_Fwd": 5.36, "Sprint": 8.25, "Zombie_Walk_Fwd": 1.05, "Walk_Carry": 0.65, "Crouch_Fwd": 0.75}
 const POSES := {"": "Idle", "phone": "Idle_TalkingPhone", "talk": "Idle_Talking", "arms": "Idle_FoldArms", "lean": "Idle_Rail", "smoke": "Idle",
 	"sit": "Sitting_Idle", "sit_talk": "Sitting_Talking", "dance": "Dance", "junkie": "Zombie_Idle", "kneel": "Fixing_Kneeling", "no": "Idle_No",
-	"crouch": "Crouch_Idle", "handsup": "Idle", "lantern": "Idle_Lantern", "drive": "Driving"}
+	"crouch": "Crouch_Idle", "handsup": "Idle", "lantern": "Idle_Lantern", "drive": "Driving", "gun": "Pistol_Idle", "aim": "Pistol_Aim_Neutral"}
 
 const USED := ["Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Idle_No", "Yes", "Interact", "PickUp_Table", "Sitting_Idle", "Sitting_Talking",
 	"Dance", "Zombie_Idle", "Zombie_Walk_Fwd", "Walk", "Walk_Formal", "Walk_Carry", "Jog_Fwd", "Sprint", "Crouch_Idle", "Fixing_Kneeling", "Consume", "Hit_Chest",
-	"Idle_Lantern", "Driving", "Push", "Sitting_Enter", "Sitting_Exit"]
+	"Idle_Lantern", "Driving", "Push", "Sitting_Enter", "Sitting_Exit", "Pistol_Idle", "Pistol_Aim_Neutral"]
 const LOOPED := ["Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Sitting_Idle", "Sitting_Talking", "Dance", "Zombie_Idle", "Idle_No",
-	"Walk", "Walk_Formal", "Jog_Fwd", "Sprint", "Zombie_Walk_Fwd", "Walk_Carry", "Crouch_Idle", "Fixing_Kneeling", "Idle_Lantern", "Driving", "Push"]
+	"Walk", "Walk_Formal", "Jog_Fwd", "Sprint", "Zombie_Walk_Fwd", "Walk_Carry", "Crouch_Idle", "Fixing_Kneeling", "Idle_Lantern", "Driving", "Push", "Pistol_Idle", "Pistol_Aim_Neutral"]
 ## o ile wyprostować nogi w pozach stojących (0 = oryginał)
 const RELAX := {"Idle": 0.7, "Idle_Talking": 0.7, "Idle_FoldArms": 0.7, "Idle_TalkingPhone": 0.7, "Idle_No": 0.7, "Yes": 0.7, "Consume": 0.6, "Interact": 0.5, "Idle_Lantern": 0.6}
 const LEGS := ["thigh_l", "thigh_r", "calf_l", "calf_r", "foot_l", "foot_r", "ball_l", "ball_r"]
@@ -663,6 +663,35 @@ static func _make_person(o: Dictionary, rng: RandomNumberGenerator, female: bool
 	if o.get("mask", false):
 		_balaclava(skel)
 	return rig
+
+
+## Wyposażenie policjanta: mundur ma własny pas z kaburą, więc dokładamy tylko pistolet w dłoni (przy `armed`). Kości szkieletu Biped: oś X wzdłuż kości, Y do przodu, Z w bok.
+static func police_gear(rig: Dictionary, armed := false) -> void:
+	var skel: Skeleton3D = rig.get("skel")
+	if skel == null:
+		return
+	rig["armed"] = false
+	set_armed(rig, armed)
+
+
+## pistolet w dłoni (wyjęty z kabury) albo schowany
+static func set_armed(rig: Dictionary, on: bool) -> void:
+	var skel: Skeleton3D = rig.get("skel")
+	if skel == null or bool(rig.get("armed", false)) == on:
+		return
+	rig["armed"] = on
+	if on and not rig.has("gun") and skel.find_bone("Bip01 R Hand") >= 0:
+		var St = load("res://scripts/stations.gd")
+		var gun: Node3D = St.model("pistolet")
+		if gun != null:
+			var bg := BoneAttachment3D.new()
+			bg.bone_name = "Bip01 R Hand"
+			skel.add_child(bg)
+			gun.transform = Transform3D(Basis(Vector3(-1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3(0.09, 0.075, 0.0))
+			bg.add_child(gun)
+			rig["gun"] = gun
+	if rig.has("gun"):
+		(rig.gun as Node3D).visible = on
 
 
 ## kominiarka: czarna czapa na całą głowę ze szparą na oczy (przypięta do kości głowy)

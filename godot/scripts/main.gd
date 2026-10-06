@@ -393,8 +393,8 @@ func prologue_act(what: String) -> void:
 func _intro() -> void:
 	ui.dialog({"name": "Nieznany numer", "lines": [
 		"Kuba. Żyjesz. To dobrze — bo mamy do pogadania. Tu Wiktor.",
-		"Partia, za którą zapłaciłem z góry, poszła z dymem razem z twoją hutą. Dwadzieścia pięć tysięcy. Wisisz mi je.",
-		{"n": "Ty", "t": "Nie mam laboratorium, nie mam ludzi, nie mam nic. Siwy siedzi."},
+		"Partia, za którą zapłaciłem z góry, wyparowała. Czy spłonęła z twoją hutą, czy ktoś ci ją zabrał zza garaży — mało mnie to obchodzi. Dwadzieścia pięć tysięcy. Wisisz mi je.",
+		{"n": "Ty", "t": "Ktoś mnie tam czekał, Wiktor. Wiedział, którędy pójdę. Nie mam laboratorium, nie mam ludzi, nie mam nic. Siwy siedzi."},
 		"Masz głowę i parę numerów do detalistów z osiedla, którzy brali od twoich chłopaków. Zaczniesz od nich — sam, na ulicy, jak wszyscy.",
 		"Towar na start dam ci na zeszyt. Pierwsza rata za pięć dni. Zaraz wyślę ci SMS-em, co dalej. I Kuba — tym razem się wychylisz.",
 	], "on_end": _intro_sms})
@@ -1704,6 +1704,28 @@ func _apply_test_args() -> void:
 					(n2 as MeshInstance3D).visible = false
 				if args.has("proprange"):
 					(n2 as MeshInstance3D).visibility_range_end = float(args.proprange)
+	if args.has("showmodel"):
+		# podgląd modeli z Blendera: rząd przed kamerą, z neutralnym światłem (--showmodel=radio,pistolet --showscale=2)
+		var names := String(args.showmodel).split(",")
+		var fwm: Vector2 = player.forward()
+		var rightm := Vector2(-fwm.y, fwm.x)
+		var basem: Vector3 = player.global_position + Vector3(fwm.x, 0, fwm.y) * float(args.get("showdist", "1.2"))
+		var sc0 := float(args.get("showscale", "1"))
+		for mi0 in range(names.size()):
+			var mdl: Node3D = Stations.model(names[mi0])
+			if mdl == null:
+				print("BRAK MODELU ", names[mi0])
+				continue
+			add_child(mdl)
+			var offm := (mi0 - (names.size() - 1) * 0.5) * float(args.get("showgap", "0.6"))
+			mdl.global_position = basem + Vector3(rightm.x, 0, rightm.y) * offm + Vector3(0, float(args.get("showy", "1.1")), 0)
+			mdl.rotation.y = player.yaw + float(args.get("showrot", "0.6"))
+			mdl.scale = Vector3.ONE * sc0
+		var lm := OmniLight3D.new()
+		lm.light_energy = 2.2
+		lm.omni_range = 5.0
+		add_child(lm)
+		lm.global_position = player.global_position + Vector3(0, 1.9, 0)
 	if args.has("treelist"):
 		# najbliższe drzewa z liśćmi (pozycje w jednostkach projektu, do --pos)
 		var found: Array = []
@@ -1917,6 +1939,9 @@ func _apply_test_args() -> void:
 		tc.idle = 9999.0
 		tc.state = "patrol"
 		tc.node.rotation.y = atan2(-fw2.x, -fw2.y) + float(args.get("copturn", "0"))
+		if args.has("coparmed"):
+			# podgląd uzbrojonego patrolu: stan przeszukiwania trzyma broń w dłoni
+			tc.hunt = true
 		if args.has("mult"):
 			G.add_pack(G.S.inv, "dym", 80, 5)
 			G.S.heat = 90.0

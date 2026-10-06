@@ -320,7 +320,7 @@ func _tab_inv() -> void:
 	var lv := K.vbox(8)
 	left.add_child(lv)
 	_title(lv, "backpack", G.bag_name().to_upper(), "%s / %d" % [G.units(used), int(cap)], K.C_BAD if used > cap - 0.5 else K.C_TXT)
-	_list(lv, S.inv, "bag", "Pusto. Towar zamówisz u Wiktora (telefon → Hurt).")
+	_list(lv, S.inv, "bag", "Pusto. Towar zamówisz u Wiktora (telefon → Giełda).")
 	lv.add_child(_cap_bar(used, cap, K.C_BLUE))
 	lv.add_child(_foot("Waga: %s" % G.weight_text(G.store_weight(S.inv)), "Przy zatrzymaniu tracisz wszystko, co masz przy sobie."))
 	left.set_drag_forwarding(Callable(), _can_drop.bind("bag"), _drop.bind("bag"))
@@ -1059,7 +1059,7 @@ func _tab_org() -> void:
 	bv.add_child(K.gap(2))
 	_title(bv, "package", "PACZKI")
 	if S.drops.is_empty():
-		bv.add_child(K.wrap("Żadnej paczki w drodze. Zamów towar: telefon → Hurt.", 13, K.C_DIM))
+		bv.add_child(K.wrap("Żadnej paczki w drodze. Zamów towar: telefon → Giełda.", 13, K.C_DIM))
 	for d in S.drops:
 		var spot := "?"
 		for ds in D.DROPS:

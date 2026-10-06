@@ -368,6 +368,109 @@ func care(what: String) -> void:
 	p.play()
 
 
+## PROLOG: stłumiona impreza zza ściany — bas, gwar, śmiech, wciąganie kreski, torsje. Generowane raz, w locie.
+var _party: AudioStreamWAV = null
+var party_player: AudioStreamPlayer = null
+
+func party_prepare() -> void:
+	if _party != null:
+		return
+	var dur := 15.0
+	var n := int(dur * RATE)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2137
+	var lp := 0.0
+	var lp2 := 0.0
+	var crowd := 0.0
+	var crowd2 := 0.0
+	var ph := 0.0
+	var beat := 60.0 / 126.0
+	# zdarzenia: [czas, rodzaj]  s = wciągnięcie nosem, l = śmiech, r = torsje, g = brzęk szkła
+	var ev := [[1.6, "l"], [3.1, "s"], [3.75, "s"], [5.2, "g"], [6.0, "l"], [7.4, "r"], [8.3, "r"], [9.6, "s"], [10.4, "l"], [11.7, "r"], [12.9, "g"], [13.4, "l"]]
+	for i in range(n):
+		var t := float(i) / RATE
+		var nz := rng.randf_range(-1.0, 1.0)
+		# bas zza ściany: stopa na każdą ćwierćnutę i dudniąca linia, mocno stłumione
+		var tb := fmod(t, beat)
+		var kick := sin(TAU * (48.0 + 60.0 * exp(-tb * 30.0)) * tb) * exp(-tb * 7.0)
+		ph += (55.0 if int(t / (beat * 4.0)) % 2 == 0 else 46.0) / RATE
+		var bass := sin(ph * TAU) * (0.5 + 0.5 * sin(TAU * t / beat * 0.5)) * 0.5
+		lp += ((kick * 0.9 + bass * 0.6) - lp) * 0.06
+		# gwar: szum w paśmie mowy z falującą głośnością
+		crowd += (nz - crowd) * 0.18
+		crowd2 += (crowd - crowd2) * 0.04
+		var murmur := (crowd - crowd2) * (0.5 + 0.3 * sin(t * 3.1) + 0.2 * sin(t * 7.7 + 1.0)) * 0.35
+		var v := lp * 0.95 + murmur
+		for e in ev:
+			var te := t - float(e[0])
+			if te < 0.0 or te > 0.9:
+				continue
+			match String(e[1]):
+				"s":
+					# krótki, ostry wdech nosem: szum z rosnącą wysokością
+					if te < 0.42:
+						lp2 += (nz - lp2) * (0.25 + te * 1.4)
+						v += (nz - lp2) * sin(te / 0.42 * PI) * 0.5
+				"l":
+					# śmiech: seria krótkich „ha” o opadającej wysokości
+					var hk := fmod(te, 0.13)
+					if te < 0.78:
+						v += sin(TAU * (520.0 - te * 260.0) * hk) * exp(-hk * 26.0) * 0.16 * (1.0 - te / 0.78)
+				"r":
+					# torsje: niski, bulgoczący charkot
+					if te < 0.7:
+						v += sin(TAU * (95.0 + 30.0 * sin(te * 55.0)) * te) * sin(te / 0.7 * PI) * 0.3 + nz * sin(te / 0.7 * PI) * 0.07
+				"g":
+					if te < 0.35:
+						v += (sin(TAU * 2900.0 * te) + sin(TAU * 4100.0 * te) * 0.6) * exp(-te * 16.0) * 0.07
+		b[i] = clampf(v * minf(1.0, t / 0.6), -1.0, 1.0)
+	_party = _wav(b)
+
+
+func party_play() -> void:
+	if muted:
+		return
+	party_prepare()
+	if party_player == null:
+		party_player = AudioStreamPlayer.new()
+		party_player.bus = "Efekty"
+		add_child(party_player)
+	party_player.stream = _party
+	party_player.volume_db = -4.0
+	party_player.play()
+
+
+func party_stop() -> void:
+	if party_player != null:
+		party_player.stop()
+
+
+## głuche uderzenie w tył głowy (prolog) i dzwonienie w uszach
+func knock() -> void:
+	if muted:
+		return
+	if not _care.has("knock"):
+		var n := int(2.6 * RATE)
+		var buf := PackedFloat32Array()
+		buf.resize(n)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7
+		for i in range(n):
+			var t := float(i) / RATE
+			var thump := sin(TAU * (70.0 + 90.0 * exp(-t * 40.0)) * t) * exp(-t * 9.0) + rng.randf_range(-1.0, 1.0) * exp(-t * 55.0) * 0.5
+			var ring := sin(TAU * 3150.0 * t) * 0.09 * minf(1.0, t * 3.0) * clampf((2.6 - t) / 1.6, 0.0, 1.0)
+			buf[i] = clampf(thump * 0.95 + ring, -1.0, 1.0)
+		_care["knock"] = _wav(buf)
+	var p: AudioStreamPlayer = pool[pool_i]
+	pool_i = (pool_i + 1) % pool.size()
+	p.stream = _care["knock"]
+	p.volume_db = -2.0
+	p.pitch_scale = 1.0
+	p.play()
+
+
 ## megafon: kilka ostrych, niskich „sylab” (tekst pokazuje napis na ekranie)
 func megaphone() -> void:
 	if muted or _syll.is_empty():
