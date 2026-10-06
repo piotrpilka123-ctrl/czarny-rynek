@@ -1298,10 +1298,12 @@ func _tick(dt: float) -> void:
 
 
 # ================================================================ radio w kawalerce
-const RADIO := ["wyłączone", "Blok FM (bit z osiedla)", "Radio Biesiada (disco)"]
-
 func radio_name() -> String:
-	return RADIO[clampi(int(G.S.get("radio", 0)), 0, 2)]
+	var st := clampi(int(G.S.get("radio", 0)), 0, 2)
+	if st == 0:
+		return "wyłączone"
+	var nm: String = Sfx.radio_track_name(st - 1)
+	return ("Blok FM" if st == 1 else "Radio Impreza") + ((" — " + nm) if nm != "" else "")
 
 
 ## klik 1: pierwsza stacja, klik 2: druga, klik 3: cisza, klik 4: znów pierwsza

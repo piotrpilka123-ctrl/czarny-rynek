@@ -11,6 +11,9 @@ Kod gry i scenariusz: Piotr Piłka (z pomocą Claude). Poniższe zasoby pochodz�
 | Tekstury PBR (asfalt, beton, cegła, tynk, ziemia, blacha…) | Poly Haven — polyhaven.com | CC0 1.0 |
 | Nieba HDRI (dzień, popołudnie, zmierzch, noc, deszcz) | Poly Haven — polyhaven.com | CC0 1.0 |
 | Efekty dźwiękowe interfejsu i otoczenia | Kenney — kenney.nl | CC0 1.0 |
+| Muzyka w klubie: „Night Prowler”, „Sewer Nightclub” | section31 — opengameart.org | CC0 1.0 |
+| Muzyka w radiu: „The Root of All Evil” | Cleyton Kauffman — soundcloud.com/cleytonkauffman (opengameart.org) | CC0 1.0 |
+| Muzyka w radiu: „Funky Disco Beats to Boogie/Woogie to” | Fupi — opengameart.org | CC0 1.0 |
 | Ikony interfejsu | Lucide — lucide.dev | ISC |
 | Czcionki: Barlow, Barlow Condensed, Bebas Neue, Oswald, Sedgwick Ave Display, Rubik Spray Paint | Google Fonts | SIL Open Font License 1.1 |
 | Czcionka: Permanent Marker | Google Fonts | Apache License 2.0 |
@@ -23,6 +26,8 @@ generowane skryptami z `godot/tools/` (czcionki z listy powyżej).
 Pełne teksty licencji czcionek są w `godot/assets/fonts/licencje/`, a licencja ikon Lucide w
 `godot/assets/icons/LICENSE.txt`.
 
-Muzyka w klubie, syrena, deszcz, szum miasta, stukot kolejki i „mamrotanie” postaci są generowane przez grę
-(własna synteza, bez nagrań). Gra nie zawiera żadnych utworów chronionych prawem autorskim; pliki, które sam
-wrzucisz do `godot/muzyka/`, pozostają Twoje i nie są częścią projektu.
+Muzyka (klub, radio w kawalerce, okna bloków) to nagrania na licencji CC0 z tabeli powyżej, w `godot/assets/music/`.
+Syrena, deszcz, szum miasta, stukot kolejki, odgłosy prologu i „mamrotanie” postaci są generowane przez grę
+(własna synteza). Modele z `godot/assets/models/` powstają ze skryptów Blendera w `godot/tools/blender/`.
+Gra nie zawiera żadnych utworów chronionych prawem autorskim; pliki, które sam wrzucisz do `godot/muzyka/`,
+pozostają Twoje i nie są częścią projektu.

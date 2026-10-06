@@ -86,6 +86,7 @@ func _ready() -> void:
 			if ResourceLoader.exists(path):
 				steps[surf].append(load(path))
 	_scan_music()
+	_load_tracks()
 	if muted:
 		AudioServer.set_bus_mute(0, true)
 	else:
@@ -621,6 +622,8 @@ func _generate() -> void:
 			sbuf[i] = soft * a * 0.7
 		syl.append(_wav(sbuf))
 	_set_voice.call_deferred(s4, syl)
+	if not tracks.is_empty():
+		return
 	if club_files.is_empty() and not _abort:
 		var beat := _gen_trap()
 		if not _abort:
@@ -841,7 +844,51 @@ func _scan_music() -> void:
 	club_files.shuffle()
 
 
+## Muzyka z nagrań na licencji CC0 (assets/music, spis w LICENCJE.md): klub, radio w kawalerce, okna bloków.
+const TRACKS := {
+	"night_prowler": "Night Prowler — section31",
+	"sewer_nightclub": "Sewer Nightclub — section31",
+	"root_of_all_evil": "The Root of All Evil — Cleyton Kauffman",
+	"funky_disco": "Funky Disco Beats — Fupi",
+}
+const CLUB_TRACKS := ["night_prowler", "sewer_nightclub"]
+const RADIO_TRACKS := ["root_of_all_evil", "funky_disco"]
+const BLOCK_TRACKS := ["root_of_all_evil", "sewer_nightclub", "night_prowler"]
+var tracks := {}
+var club_i := 0
+
+func _load_tracks() -> void:
+	for id in TRACKS:
+		var path := "res://assets/music/%s.ogg" % id
+		if not ResourceLoader.exists(path):
+			continue
+		var st = load(path)
+		if st is AudioStreamOggVorbis:
+			(st as AudioStreamOggVorbis).loop = true
+			tracks[id] = st
+	radio_streams.clear()
+	for id in RADIO_TRACKS:
+		if tracks.has(id):
+			radio_streams.append(tracks[id])
+	for id in BLOCK_TRACKS:
+		if tracks.has(id):
+			trap_streams.append(tracks[id])
+
+
+func radio_track_name(i: int) -> String:
+	return String(TRACKS.get(RADIO_TRACKS[i], "")) if i >= 0 and i < RADIO_TRACKS.size() else ""
+
+
 func next_club_stream() -> AudioStream:
+	if club_files.is_empty() and not tracks.is_empty():
+		for _try in range(CLUB_TRACKS.size()):
+			var id: String = CLUB_TRACKS[club_i % CLUB_TRACKS.size()]
+			club_i += 1
+			if tracks.has(id):
+				# w klubie utwory lecą po kolei, więc ta kopia się nie zapętla
+				var one: AudioStreamOggVorbis = (tracks[id] as AudioStreamOggVorbis).duplicate()
+				one.loop = false
+				return one
 	if not club_files.is_empty():
 		for _try in range(club_files.size()):
 			var path: String = club_files[club_file_i % club_files.size()]
@@ -859,4 +906,6 @@ func next_club_stream() -> AudioStream:
 func club_track_name() -> String:
 	if not club_files.is_empty():
 		return club_files[(club_file_i - 1 + club_files.size()) % club_files.size()].get_file().get_basename()
+	if not tracks.is_empty():
+		return String(TRACKS.get(CLUB_TRACKS[(club_i - 1 + CLUB_TRACKS.size()) % CLUB_TRACKS.size()], ""))
 	return "Blokowisko 140 (bit z gry)"
