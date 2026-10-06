@@ -2552,9 +2552,8 @@ func _test_ui(what: String) -> void:
 			who["st"] = G.S.cust[n.def.id]
 			ui.open_deal({"who": who, "product": "dym", "grams": int(o.grams), "order": o, "street": true, "npc": n, "agreed": null})
 			if what == "deal2" and not ui.deal.is_empty():
-				G.deal_greet(ui.deal, "luz")
-				ui.deal.price = 70
-				G.deal_offer(ui.deal)
+				G.deal_set(ui.deal, 15)
+				G.deal_hand(ui.deal)
 				ui._render_deal()
 
 

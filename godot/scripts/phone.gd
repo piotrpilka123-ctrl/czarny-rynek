@@ -824,7 +824,7 @@ func _contact() -> void:
 		h.add_child(l)
 		h.add_child(K.bar(e[1], 100.0, e[2]))
 		c2.add_child(h)
-	if G.has_skill("oko2"):
+	if int(st.deals) >= 5 or G.has_skill("oko1"):
 		var h2 := K.hbox(8)
 		var l2 := K.lbl("Głód", 12, K.C_DIM)
 		l2.custom_minimum_size = Vector2(96, 0)

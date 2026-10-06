@@ -94,6 +94,10 @@ var station := {}
 var hud_t := 0.0
 var nav_info := {}
 var cop_bar: ProgressBar = null
+var deal_fill: ColorRect = null      # pasek przytrzymania przy podawaniu towaru
+var deal_watch_l: Label = null
+var deal_cop_l: Control = null
+var deal_holding := false
 var waymark: Control
 var mini_card: PanelContainer
 var ic_stance: TextureRect
@@ -1277,19 +1281,22 @@ func _render_deal() -> void:
 	var saved := deal
 	var who: Dictionary = saved.who
 	var ctx: Dictionary = saved.ctx
-	var typ := ""
-	if saved.st.has("deals") and int(saved.st.deals) >= 2:
-		typ = " • " + String(D.TYPE_NAMES.get(who.get("type", ""), ""))
-	_open_modal(String(who.name), String(who.get("bio", "")) + typ, "bottom", 1010.0)
+	var wants := "chce %d g %s" % [int(saved.want), String(D.PRODUCT_GEN[saved.product])]
+	if ctx.get("agreed") != null:
+		wants += " • umówione %d zł/g" % int(ctx.agreed)
+	_open_modal(String(who.name), wants, "bottom", 860.0)
 	deal = saved
 	deal_npc = ctx.get("npc") if (ctx.get("npc") is Dictionary and ctx.get("npc").get("node") != null) else null
-	var S: Dictionary = G.S
+	deal_fill = null
+	deal_watch_l = null
+	deal_cop_l = null
+	cop_bar = null
 	if String(deal.speech) != deal_said:
 		# gest klienta: podanie ręki przy sprzedaży, kręcenie głową przy odmowie
 		if deal_said != "" and deal_npc != null and deal_npc.get("rig") != null:
 			if deal.sold:
 				Chars.one_shot(deal_npc.rig, "Interact")
-			elif deal.over or int(deal.patience) < int(deal.max_patience):
+			elif deal.over or deal.pushed:
 				Chars.one_shot(deal_npc.rig, "Idle_No")
 			else:
 				Chars.one_shot(deal_npc.rig, "Yes")
@@ -1299,55 +1306,83 @@ func _render_deal() -> void:
 			gt.tween_callback(_deal_anim_done)
 		deal_said = String(deal.speech)
 		var fem: bool = who.get("look", {}).get("female", false)
-		_mumble_burst((1.32 if fem else 0.86) + float(absi(String(who.name).hash()) % 20) / 100.0, clampi(int(deal_said.length() / 11.0), 2, 5))
-	# wskaźniki
-	var meters := K.hbox(18)
-	modal_body.add_child(meters)
-	var mood: float = deal.mood
-	_meter(meters, "smile" if mood > 60.0 else ("meh" if mood > 30.0 else "angry"), "Nastrój", mood, K.C_ACC if mood > 60.0 else (K.C_WARN if mood > 30.0 else K.C_BAD))
-	var ph := K.hbox(6)
-	ph.add_child(K.icon("timer", 15, K.C_BLUE))
-	ph.add_child(K.lbl("Cierpliwość", 11, K.C_DIM))
-	var pips := ""
-	for i in range(maxi(int(deal.max_patience), int(deal.patience))):
-		pips += "●" if i < int(deal.patience) else "○"
-	ph.add_child(K.lbl(pips, 14, K.C_BLUE))
-	meters.add_child(ph)
-	if G.has_skill("oko2"):
-		_meter(meters, "flame", "Głód", float(deal.st.get("hunger", 0.4)) * 100.0, K.C_BAD)
-	meters.add_child(K.spacer())
-	meters.add_child(K.rich("Chce: [b]%d g %s[/b]%s%s" % [int(deal.want), D.PRODUCT_GEN[deal.product],
-		K.col("  (min. %d%%)" % int(who.minpur), K.C_WARN) if (int(deal.st.get("deals", 9)) >= 3 or not deal.st.has("deals")) else "",
-		K.col("   umówione: %d zł/g" % int(ctx.agreed), K.C_ACC) if ctx.get("agreed") != null else ""], 13))
-	cop_bar = null
-	if float(deal.cop_max) > 0.0 and not deal.over:
-		var cw := K.panel(K.sb(Color(0.27, 0.06, 0.06), 8, K.C_BAD, 1, 12))
-		modal_body.add_child(cw)
-		var cv := K.vbox(4)
-		cw.add_child(cv)
-		cv.add_child(K.icon_label("siren", "Policjant ma Was na oku! Kończ szybko!", 14, Color(1, 0.8, 0.8)))
-		cop_bar = K.bar(float(deal.cop_t), float(deal.cop_max), K.C_BAD, 6.0)
-		cv.add_child(cop_bar)
-	# wypowiedź
-	var sp := K.panel(K.sb(Color(0.06, 0.08, 0.125), 12, K.C_WARN, 1, 16))
+		_mumble_burst((1.32 if fem else 0.86) + float(absi(String(who.name).hash()) % 20) / 100.0, clampi(int(deal_said.length() / 14.0), 1, 3))
+	if not deal.over:
+		modal_body.add_child(Trade.watch_row(self))
+	# jedno zdanie klienta — bez rozmowy
+	var sp := K.panel(K.sb(Color(0.06, 0.08, 0.125), 10, K.C_LINE, 1, 10))
 	modal_body.add_child(sp)
-	sp.add_child(K.rich(deal.speech, 17))
+	sp.add_child(K.rich(deal.speech, 15))
 	for n in deal.notes:
 		modal_body.add_child(K.lbl("• " + String(n), 11, K.C_DIM))
 	if deal.over:
+		deal_holding = false
 		modal_body.add_child(K.btn("Zamknij", close_all, "go"))
+		# po udanej wymianie nie ma na co czekać: okno samo znika
+		if deal.sold:
+			var me := deal
+			var ct := create_tween()
+			ct.tween_interval(1.6)
+			ct.tween_callback(func():
+				if mode == "modal" and is_same(deal, me):
+					close_all())
 		return
 	Trade.build(self)
 
 
 func _deal_pick(s: Dictionary) -> void:
 	deal.sel = s
-	deal.phase = "offer"
-	if deal.haggle and deal.ctx.get("agreed") == null:
-		deal.price = int(round(G.market_price(s.p, s.pur)))
-	deal.counter = null
 	deal.qty = clampi(int(deal.qty), 1, int(s.n))
+	if deal.ctx.get("agreed") == null:
+		deal.base = int(round(G.market_price(s.p)))
+		deal.price = G.deal_price_at(deal, int(deal.pct))
 	_render_deal()
+
+
+## Wymiana trwa: przytrzymany przycisk napełnia pasek podania, a patrol, który patrzy, napełnia swój.
+func _deal_tick(dt: float) -> void:
+	if deal.is_empty() or deal.over or mode != "modal":
+		deal_holding = false
+		return
+	var holding: bool = deal_holding or G.key_down("use") or Input.is_physical_key_pressed(KEY_SPACE)
+	var t: float = G.deal_hand_time()
+	deal.hold = clampf(float(deal.hold) + (dt / t if holding else -dt * 2.5), 0.0, 1.0)
+	if deal_fill != null and is_instance_valid(deal_fill):
+		deal_fill.anchor_right = float(deal.hold)
+	# kto patrzy: liczba przechodniów odświeża się na bieżąco, patrol napełnia czerwony pasek
+	var w: Dictionary = G.deal_watchers()
+	if deal_watch_l != null and is_instance_valid(deal_watch_l):
+		var n := int(w.witnesses)
+		var col: Color = K.C_ACC if n == 0 else (K.C_WARN if n <= 2 else K.C_BAD)
+		deal_watch_l.text = "Nikt nie patrzy" if n == 0 else ("W pobliżu: %d %s" % [n, "osoba" if n == 1 else ("osoby" if n < 5 else "osób")])
+		deal_watch_l.add_theme_color_override("font_color", col)
+	var cop = w.cop
+	if cop != null:
+		deal.cop = cop
+		# samo stanie obok klienta budzi podejrzenia powoli; podawanie towaru na oczach patrolu — szybko
+		deal.cop_t = minf(float(deal.cop_max), float(deal.cop_t) + dt * (2.6 if holding else 1.0))
+	else:
+		deal.cop_t = maxf(0.0, float(deal.cop_t) - dt * 0.8)
+	if cop_bar != null and is_instance_valid(cop_bar):
+		cop_bar.value = float(deal.cop_t)
+		cop_bar.visible = float(deal.cop_t) > 0.05
+		if deal_cop_l != null and is_instance_valid(deal_cop_l):
+			deal_cop_l.visible = cop_bar.visible
+	if float(deal.cop_t) >= float(deal.cop_max):
+		var c2 = deal.cop
+		G.deal_finish(deal, {"sold": 0, "interrupted": true})
+		close_all()
+		G.notify("Policjant zauważył wymianę!", "bad")
+		G.add_heat(18.0)
+		G.add_invest(4.0)
+		if c2 != null and G.npcs.cops.has(c2):
+			c2.susp = 1.0
+			G.npcs.start_chase(c2)
+		return
+	if float(deal.hold) >= 1.0:
+		deal_holding = false
+		G.deal_hand(deal)
+		_render_deal()
 
 
 # ---------------------------------------------------------------- ekrany
@@ -1681,20 +1716,8 @@ func _process_ui(dt: float) -> void:
 		if not sk.is_empty():
 			sk.flash = maxf(0.0, float(sk.flash) - dt * 4.0)
 		skill_bar.queue_redraw()
-	if mode == "modal" and not deal.is_empty() and float(deal.cop_t) > 0.0 and not deal.over:
-		deal.cop_t = float(deal.cop_t) - dt
-		if cop_bar != null and is_instance_valid(cop_bar):
-			cop_bar.value = float(deal.cop_t)
-		if float(deal.cop_t) <= 0.0:
-			var cop = deal.cop
-			G.deal_finish(deal, {"sold": 0, "interrupted": true})
-			close_all()
-			G.notify("Policjant zauważył transakcję!", "bad")
-			G.add_heat(18.0)
-			G.add_invest(4.0)
-			if cop != null and G.npcs.cops.has(cop):
-				cop.susp = 1.0
-				G.npcs.start_chase(cop)
+	if mode == "modal" and not deal.is_empty():
+		_deal_tick(dt)
 	if sms_t > 0.0:
 		sms_t -= dt
 		if sms_t <= 0.0:

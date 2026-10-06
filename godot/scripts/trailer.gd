@@ -605,7 +605,6 @@ func s8_ready() -> void:
 	if not U.deal.is_empty():
 		U.deal.cop = null
 		U.deal.cop_t = 0.0
-		U.deal.cop_max = 0.0
 		U._render_deal()
 
 
@@ -614,23 +613,17 @@ func s8_tick(_k: float, f: int) -> void:
 		return
 	var d: Dictionary = U.deal
 	if f == 58:
-		G.deal_greet(d, "luz")
+		G.deal_set(d, 10)
 		U._render_deal()
-	elif f == 104:
-		G.deal_haggle(d)
-		d.price = int(round(float(d.ctx.agreed) * 1.12))
+	elif f == 104 and not d.over:
+		d.hold = 0.5
 		U._render_deal()
 	elif f == 146 and not d.over:
-		G.deal_offer(d)
+		G.deal_hand(d)
 		U._render_deal()
 	elif f == 176 and not d.over:
-		if d.counter != null:
-			G.deal_accept(d)
-		else:
-			d.price = int(d.ctx.agreed)
-			G.deal_offer(d)
-			if not d.over and d.counter != null:
-				G.deal_accept(d)
+		G.deal_set(d, 0)
+		G.deal_hand(d)
 		U._render_deal()
 
 

@@ -930,7 +930,7 @@ func capacity() -> int:
 	# prolog: sportowa torba na całą ostatnią partię
 	if prologue != null:
 		return 600
-	var extra := int(outfit_stat("cap", 0.0))
+	var extra := int(outfit_stat("cap", 0.0)) + (8 if has_skill("kieszenie") else 0)
 	if upg("plecak2"):
 		return 90 + extra
 	if upg("plecak1"):
@@ -1391,7 +1391,7 @@ func frisk_chance() -> float:
 		return 0.0
 	if has_weapon():
 		return 1.0
-	var c := (0.2 + sz * 0.05) * outfit_stat("conceal", 1.0) * (1.0 + 0.2 * float(club_tries()))
+	var c := (0.2 + sz * 0.05) * outfit_stat("conceal", 1.0) * (1.0 + 0.2 * float(club_tries())) * (0.7 if has_skill("kieszenie") else 1.0)
 	return clampf(c, 0.12, 0.97)
 
 
@@ -1693,7 +1693,7 @@ func make_order(c: Dictionary, force_g := 0, force_p := "") -> Dictionary:
 		product = String(wants[0]) if (wants.size() == 1 or randf() < 0.62) else String(wants[randi_range(1, wants.size() - 1)])
 	if force_p != "":
 		product = force_p
-	var g := randi_range(int(c.grams[0]), int(c.grams[1])) + (1 if float(st.loy) >= 40.0 else 0) + (1 if float(st.loy) >= 80.0 else 0)
+	var g := randi_range(int(c.grams[0]), int(c.grams[1])) + (1 if float(st.loy) >= 40.0 else 0) + (1 if float(st.loy) >= 80.0 else 0) + (1 if has_skill("klientela") else 0)
 	if force_g > 0:
 		g = force_g
 	var spots: Array = []
@@ -1747,6 +1747,8 @@ func next_gap(c: Dictionary, st: Dictionary) -> float:
 	var gap := randf_range(float(c.every[0]), float(c.every[1])) * 60.0
 	gap *= 1.0 - minf(100.0, float(st.loy)) / 600.0
 	if has_skill("siec"):
+		gap *= 0.85
+	if has_skill("klientela"):
 		gap *= 0.85
 	return gap
 
@@ -1940,7 +1942,14 @@ func market_price(p: String, _pur = 100) -> float:
 	return float(D.PRODUCTS[p].base) * float(S.demand[p])
 
 
-## zaczyna rozmowę handlową; zwraca {} gdy nie można
+## ================================================================ WYMIANA Z RĘKI DO RĘKI
+## Sprzedaż bez gadania: wybierasz woreczek, ewentualnie lekko podbijasz albo opuszczasz cenę i PODAJESZ towar
+## (przytrzymanie). Świat się nie zatrzymuje — liczy się, kto w tym czasie patrzy.
+## Klient ma ukryty próg, o ile da się go podbić (głód, lojalność, portfel, spóźnienie). Stałych klientów znasz,
+## więc widzisz, czy podbicie przejdzie; u obcych zgadujesz. Odmowa nie kończy wymiany — wraca cena wyjściowa.
+const DEAL_LEVELS := [-10, 0, 5, 10, 15]
+
+## zaczyna wymianę; zwraca {} gdy nie można
 func deal_start(ctx: Dictionary) -> Dictionary:
 	var st_list := stacks(S.inv, "pack")
 	if st_list.is_empty():
@@ -1955,12 +1964,9 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 	var late := 0.0
 	if o != null:
 		late = clampf((S.t - float(o.meet) - 5.0) * 0.45, 0.0, 25.0)
-	var mood := clampf(45.0 + (float(st.get("sat", 55.0)) - 50.0) * 0.5 - late - (8.0 if rain > 0.3 else 0.0), 5.0, 95.0)
-	var pat := int(who.patience) + (1 if has_skill("gadka") else 0) + (1 if mood >= 75.0 else 0) - (1 if mood < 30.0 else 0)
-	var d := {"ctx": ctx, "who": who, "st": st, "product": ctx.product, "want": int(ctx.grams), "qty": int(ctx.grams), "sel": {}, "price": 0,
-		"patience": maxi(1, pat), "max_patience": maxi(1, pat), "mood": mood, "noise": (float(o.noise) if o != null else randf_range(0.93, 1.07)), "boost": 1.0,
-		"used": {}, "counter": null, "speech": "", "over": false, "sold": false, "phase": "greet", "late": late, "credit": false, "upsold": 0,
-		"haggle": ctx.get("agreed") == null, "last_ratio": 0.0, "cop": null, "cop_t": 0.0, "cop_max": 0.0, "notes": []}
+	var d := {"ctx": ctx, "who": who, "st": st, "product": ctx.product, "want": int(ctx.grams), "qty": int(ctx.grams), "sel": {}, "price": 0, "base": 0, "pct": 0,
+		"tol": 0.0, "pushed": false, "hold": 0.0, "speech": "", "over": false, "sold": false, "late": late, "credit": false,
+		"cop": null, "cop_t": 0.0, "cop_max": 6.0, "notes": []}
 	var best = null
 	for s in st_list:
 		if s.p != ctx.product:
@@ -1968,28 +1974,37 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 		if best == null or (int(s.pur) >= int(who.minpur) and (int(best.pur) < int(who.minpur) or int(s.pur) < int(best.pur))):
 			best = s
 	if o != null and o.has("hold"):
-		var hm: Dictionary = o.hold
-		d.mood = clampf(float(hm.mood), 5.0, 95.0)
-		d.patience = maxi(1, int(hm.patience))
-		d.max_patience = maxi(int(d.max_patience), int(d.patience))
-		d.used = hm.used.duplicate()
-		d.notes.append("Wróciłeś do rozmowy — klient pamięta, na czym stanęło.")
+		d.pushed = bool(o.hold.get("pushed", false))
+		d.notes.append("Wróciłeś — klient dalej czeka.")
 	d.sel = best if best != null else st_list[0]
 	d.qty = clampi(int(d.want), 1, int(d.sel.n))
-	d.price = int(ctx.agreed) if ctx.get("agreed") != null else int(round(market_price(d.sel.p, d.sel.pur)))
+	d.base = int(ctx.agreed) if ctx.get("agreed") != null else int(round(market_price(d.sel.p)))
+	d.price = d.base
+	# o ile procent ponad cenę wyjściową klient jeszcze zapłaci
+	var tol := 2.0 + float(st.get("hunger", 0.4)) * 10.0 + minf(100.0, float(st.get("loy", 0.0))) / 100.0 * 6.0 + (float(who.get("wealth", 1.0)) - 1.0) * 20.0
+	tol += (float(st.get("sat", 55.0)) - 50.0) / 50.0 * 4.0 - late * 0.6 - (3.0 if rain > 0.3 else 0.0)
+	if o != null:
+		# cena z SMS-a była już blisko jego granicy
+		tol -= 3.0
+		tol += (float(o.noise) - 1.0) * 60.0
+	else:
+		tol += randf_range(-3.0, 3.0)
+	if has_skill("twarda"):
+		tol += 4.0
+	tol += (outfit_stat("charm", 1.0) - 1.0) * 40.0
+	d.tol = clampf(tol, -12.0, 18.0) if not ctx.get("sting", false) else 99.0
 	if ctx.get("sting", false):
 		d.speech = "„Dawaj, co masz. Biorę wszystko!”"
-		d.phase = "offer"
 	else:
 		var hello := {
-			"luzak": ["„Siema! No w końcu.”", "„Elo, masz to?”"], "twardziel": ["„Jesteś. Dobra.”", "„No.”"], "gadula": ["„O, pan kolega! A już myślałem, że pan nie przyjdzie.”"],
-			"konkret": ["„Dzień dobry. Nie mam dużo czasu.”"], "cwaniak": ["„No proszę, kto przyszedł. Mam nadzieję, że z dobrą ceną.”"], "impulsywny": ["„Wreszcie! Dawaj, dawaj.”"],
+			"luzak": ["„Siema. Masz?”", "„Elo, dawaj.”"], "twardziel": ["„Jesteś. Dawaj.”", "„No.”"], "gadula": ["„O, pan kolega. To co, do rzeczy?”"],
+			"konkret": ["„Dzień dobry. Szybko.”"], "cwaniak": ["„No proszę. Pokaż, co masz.”"], "impulsywny": ["„Wreszcie! Dawaj, dawaj.”"],
 		}
 		var hl: Array = hello.get(who.get("type", "luzak"), hello.luzak)
 		d.speech = hl.pick_random()
 		if late > 8.0:
 			d.speech = String(d.speech) + " „Ile można czekać?”"
-			d.notes.append("Spóźnienie: nastrój −%d" % int(late))
+			d.notes.append("Spóźniłeś się — trudniej będzie coś ugrać.")
 	if float(st.get("owes", 0.0)) > 0.0:
 		if randf() < float(who.get("reliable", 0.8)) + (0.25 if has_weapon() else 0.0):
 			S.cash += float(st.owes)
@@ -1997,294 +2012,153 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 			st.owes = 0.0
 		else:
 			d.notes.append("Wciąż wisi Ci %s („następnym razem…”)" % money(st.owes))
-	if player != null and player.loc == "out" and npcs != null:
-		# patrol przeszkadza tylko wtedy, gdy faktycznie patrzy w Waszą stronę
-		var c = npcs.watcher(22.0)
-		if c != null:
-			d.cop = c
-			d.cop_t = 16.0
-			d.cop_max = 16.0
-			d.mood = maxf(5.0, float(d.mood) - 30.0 * float(who.get("nerv", 0.1)))
 	return d
 
 
-func deal_max(d: Dictionary) -> float:
-	return max_price(d.who, d.st, d.sel.p, d.sel.pur, int(d.qty), {"noise": d.noise, "boost": d.boost, "minpur": d.who.minpur, "mood": d.mood})
+## cena za gram przy danym podbiciu / opuście (w procentach od ceny wyjściowej)
+func deal_price_at(d: Dictionary, pct: int) -> int:
+	return maxi(1, int(round(float(d.base) * (1.0 + float(pct) / 100.0))))
 
 
-## podpowiedź ceny zależna od umiejętności: {lo, hi} albo {}
-func deal_hint(d: Dictionary) -> Dictionary:
-	var err := 0.0
-	if has_skill("oko2"):
-		err = 0.06
-	elif has_skill("oko1"):
-		err = 0.15
-	else:
-		return {}
-	var mx := deal_max(d)
-	var seed_f := float(int(float(d.noise) * 1000.0) % 17) / 17.0 - 0.5
-	var mid := mx * (1.0 + seed_f * err)
-	return {"lo": mid * (1.0 - err), "hi": mid * (1.0 + err)}
-
-
-func deal_greet(d: Dictionary, style: String) -> void:
-	var who: Dictionary = d.who
-	var known: Dictionary = d.st.get("known", {})
-	var good := {"luz": "„Hehe, no i git. Z tobą to się da pogadać.”", "konkret": "„Dobrze. Lubię, jak ktoś nie marnuje mojego czasu.”", "twardo": "„No. Tak się rozmawia.”"}
-	var bad := {"luz": "„Nie jesteśmy kolegami. Do rzeczy.”", "konkret": "„A co tak sztywno? Wyluzuj trochę…”", "twardo": "„Ej, spokojnie! Nie tym tonem.”"}
-	if style == String(who.get("like", "")):
-		d.mood = minf(95.0, float(d.mood) + 14.0)
-		d.speech = good[style]
-		known["like"] = style
-		d.notes.append("Trafiony styl: nastrój +14")
-	elif style == String(who.get("hate", "")):
-		d.mood = maxf(5.0, float(d.mood) - 14.0)
-		d.patience = maxi(1, int(d.patience) - 1)
-		d.speech = bad[style]
-		known["hate"] = style
-		d.notes.append("Zły styl: nastrój −14, cierpliwość −1")
-	else:
-		d.mood = minf(95.0, float(d.mood) + 3.0)
-		d.speech = "„No dobra. Co masz?”"
-	if d.st.has("known"):
-		d.st.known = known
-	d.phase = "offer"
-
-
-func deal_agreed_price(d: Dictionary) -> int:
-	var a := float(d.ctx.agreed)
-	var mq := int(d.who.minpur)
-	if d.sel.p != d.ctx.product:
-		return 0
-	if int(d.sel.pur) < mq - 15:
-		return 0
-	if int(d.sel.pur) < mq:
-		return int(round(a * 0.72))
-	return int(round(a * (1.0 + 0.004 * (int(d.sel.pur) - maxi(60, mq)))))
-
-
-## Doświadczony klient (kupił już sporo albo bierze duże ilości) może rozpoznać
-## rozrobiony towar i odmówić. Zwraca true, jeśli rozmowa się na tym kończy.
-func deal_quality_reject(d: Dictionary) -> bool:
-	if d.over or d.used.has("qcheck_" + str(int(d.sel.pur))) or d.ctx.get("sting", false):
+## ustawia poziom ceny; po jednej odmowie podbić już się nie da
+func deal_set(d: Dictionary, pct: int) -> bool:
+	if d.over or (pct > 0 and d.pushed):
 		return false
-	d.used["qcheck_" + str(int(d.sel.pur))] = true
-	var who: Dictionary = d.who
-	var gap := int(who.minpur) - int(d.sel.pur)
-	if gap <= 0:
-		return false
-	var experience := clampf(float(d.st.get("grams", 0)) / 40.0, 0.0, 1.0)
-	if who.has("grams") and int(who.grams[1]) >= 5:
-		experience = maxf(experience, 0.6)
-	var p := experience * clampf(gap / 20.0, 0.25, 1.0) * (0.7 if has_skill("czysta") else 1.0)
-	if randf() >= p:
-		return false
-	d.over = true
-	d.counter = null
-	var what: String = D.FILLER_NAMES.get(D.FILLER.get(d.sel.p, ""), "wypełniacz").to_lower()
-	d.speech = "„Czekaj… co to ma być? Czuję tu %s. Nie rób ze mnie idioty — tego nie biorę.”" % what
-	d.notes.append("Klient rozpoznał mieszankę (czystość %d%%, oczekuje min. %d%%)." % [int(d.sel.pur), int(who.minpur)])
-	if d.st.has("sat"):
-		d.st.sat = maxf(0.0, float(d.st.sat) - 10.0)
-		d.st.loy = maxf(0.0, float(d.st.get("loy", 0.0)) - 4.0)
-		if d.st.has("known"):
-			d.st.known["minpur"] = true
-	if d.ctx.get("order") != null:
-		drop_order(d.ctx.order)
-	deal_finish(d, {"sold": 0, "rejected": true})
+	d.pct = pct
+	d.price = deal_price_at(d, pct)
 	return true
 
 
-func deal_offer(d: Dictionary) -> void:
-	if d.over or deal_quality_reject(d):
-		return
-	var P := float(d.price)
-	var mx := deal_max(d)
-	var r := P / mx
-	var who: Dictionary = d.who
-	var typ: String = who.get("type", "luzak")
-	d.last_ratio = r
-	d.counter = null
+## Co wiesz o szansie przy danej cenie: "sure" | "ok" | "risk" | "no" | "" (nie wiesz — obcy albo mało transakcji).
+## Im więcej razy handlowałeś z klientem, tym pewniejsza ocena.
+func deal_read(d: Dictionary, pct: int) -> String:
+	if pct <= 0 and float(d.tol) >= float(pct):
+		return "sure"
+	var known := int(d.st.get("deals", 0)) if d.st.has("deals") else 0
+	if has_skill("oko1"):
+		known += 3
+	if known < 3:
+		return ""
+	var fuzz := 0.0 if known >= 8 else 3.0 * (float(int(float(d.tol) * 37.0) % 7) / 3.0 - 1.0)
+	var t: float = float(d.tol) + fuzz
+	if float(pct) <= t - 4.0:
+		return "sure"
+	if float(pct) <= t:
+		return "ok"
+	if float(pct) <= t + 5.0:
+		return "risk"
+	return "no"
+
+
+## ilu ludzi może widzieć wymianę: {witnesses, cop} — na ulicy liczą się przechodnie w pobliżu i patrol, który patrzy
+func deal_watchers() -> Dictionary:
+	if player == null or npcs == null or player.loc != "out":
+		return {"witnesses": 0, "cop": null}
+	var pp: Vector3 = player.global_position
+	var skip := 1 if (ui != null and ui.deal_npc != null and ui.deal_npc is Dictionary and String(ui.deal_npc.get("kind", "")) == "citizen") else 0
+	return {"witnesses": maxi(0, npcs.citizens_near(pp.x, pp.z, 11.0) - skip), "cop": npcs.watcher(22.0)}
+
+
+## czas przytrzymania przy podawaniu towaru (s)
+func deal_hand_time() -> float:
+	return 0.8 if has_skill("reka2") else 1.3
+
+
+## Klient ogląda to, co dostał. Zwraca "" (bierze bez słowa), "meh" (bierze, ale kręci nosem) albo "no" (nie bierze).
+## Mieszanka kosztuje tyle samo, co czysty towar — ryzykujesz właśnie tę chwilę.
+func deal_quality(d: Dictionary) -> String:
 	if d.ctx.get("sting", false):
-		deal_sell(d, P, "„Biorę! Trzymaj kasę.”")
-		return
-	var low_pur := int(d.sel.pur) < int(who.minpur)
-	if r <= 0.9:
-		deal_sell(d, P, "„Stoi! Uczciwa cena.”" if not low_pur else "„Słabizna, ale za tyle wezmę.”")
-		return
-	if r <= 1.0:
-		if randf() < 1.0 - ((r - 0.9) / 0.1) * 0.65:
-			deal_sell(d, P, ["„No dobra, niech stracę.”", "„Okej, biorę.”", "„Niech ci będzie.”"].pick_random())
-			return
-	var lo := 0.9 if has_skill("rekin") else 0.86
-	var hi := 0.98 if has_skill("rekin") else 0.95
-	if r <= 1.12:
-		d.patience = int(d.patience) - 1
-		d.counter = int(round(mx * randf_range(lo, hi)))
-		d.speech = ["„Trochę drogo. %s i po sprawie.”" % money(d.counter), "„Mogę dać %s za gram.”" % money(d.counter), "„Hmm… prawie. %s, nie więcej.”" % money(d.counter)].pick_random()
-	elif r <= 1.4:
-		d.patience = int(d.patience) - (2 if typ in ["twardziel", "cwaniak", "impulsywny"] else 1)
-		d.mood = maxf(5.0, float(d.mood) - 5.0)
-		d.counter = int(round(mx * randf_range(lo - 0.06, hi - 0.05)))
-		d.speech = ["„Przesadzasz. Góra %s.”" % money(d.counter), "„Za drogo! %s, bo idę gdzie indziej.”" % money(d.counter)].pick_random()
-	else:
-		d.patience = int(d.patience) - 2
-		d.mood = maxf(5.0, float(d.mood) - 12.0)
-		d.speech = ["„Chyba żartujesz?!”", "„Ile?! Pogięło cię?”", "„Za kogo ty mnie masz?”"].pick_random()
-		if int(d.patience) > 0:
-			d.counter = int(round(mx * randf_range(0.74, 0.84)))
-	if low_pur and not d.used.has("lowpur"):
-		d.used["lowpur"] = true
-		d.speech = String(d.speech) + " „I co to za syf? Ostatnio było lepsze.”"
-	_deal_check_walk(d)
-
-
-func _deal_check_walk(d: Dictionary) -> void:
-	if int(d.patience) > 0 or d.over:
-		return
-	d.over = true
-	d.counter = null
-	S.stats.walked = int(S.stats.walked) + 1
+		return ""
 	var who: Dictionary = d.who
-	if d.st.has("sat"):
-		d.st.sat = maxf(0.0, float(d.st.sat) - 8.0)
-	var snitch := randf() < float(who.get("nerv", 0.1)) * 0.5 + (0.15 if float(d.last_ratio) > 1.4 else 0.03)
-	if snitch:
-		d.speech = "„Mam dość! Dzwonię na policję!” — odchodzi, wściekły."
-		add_heat(12.0)
-		add_invest(3.0)
-		if player != null and npcs != null:
-			var pp: Vector3 = player.global_position
-			npcs.dispatch_to(pp.x, pp.z, 2)
-		notify("Klient wezwał policję!", "bad")
-	else:
-		d.speech = ["„Tracę czas. Cześć.” — odchodzi.", "„Nie dogadamy się.” — odwraca się plecami."].pick_random()
-	if d.ctx.get("order") != null:
-		drop_order(d.ctx.order)
-	deal_finish(d, {"sold": 0, "walked": true})
+	var gap := int(who.minpur) - int(d.sel.pur)
+	if gap <= 0:
+		return ""
+	var experience := clampf(0.35 + float(d.st.get("grams", 0)) / 40.0, 0.0, 1.0)
+	if who.has("grams") and int(who.grams[1]) >= 5:
+		experience = maxf(experience, 0.7)
+	var p := experience * clampf(float(gap) / 18.0, 0.25, 1.0) * (0.7 if has_skill("czysta") else 1.0)
+	if randf() >= p:
+		return ""
+	return "no" if gap >= 14 else "meh"
+
+
+## PODANIE TOWARU: najpierw klient ocenia towar, potem cenę. Sprzedaż, odmowa ceny (wraca cena wyjściowa) albo koniec.
+func deal_hand(d: Dictionary) -> void:
+	if d.over:
+		return
+	d.hold = 0.0
+	var who: Dictionary = d.who
+	if d.sel.p != d.ctx.product and not d.ctx.get("sting", false):
+		d.speech = "„To nie to. Chciałem %s.”" % String(D.PRODUCT_GEN[d.ctx.product])
+		return
+	var q := deal_quality(d)
+	if q == "no":
+		d.over = true
+		var what: String = D.FILLER_NAMES.get(D.FILLER.get(d.sel.p, ""), "wypełniacz").to_lower()
+		d.speech = "„Co to ma być? Czuję tu %s. Tego nie biorę.” — odchodzi." % what
+		d.notes.append("Klient rozpoznał mieszankę (%d%%, a oczekuje co najmniej %d%%)." % [int(d.sel.pur), int(who.minpur)])
+		if d.st.has("sat"):
+			d.st.sat = maxf(0.0, float(d.st.sat) - 10.0)
+			d.st.loy = maxf(0.0, float(d.st.get("loy", 0.0)) - 4.0)
+			if d.st.has("known"):
+				d.st.known["minpur"] = true
+		S.stats.walked = int(S.stats.walked) + 1
+		if d.ctx.get("order") != null:
+			drop_order(d.ctx.order)
+		deal_finish(d, {"sold": 0, "rejected": true})
+		return
+	if float(d.pct) > float(d.tol):
+		# za drogo: nie obraża się, ale drugi raz podbić się nie da
+		var was := int(d.pct)
+		d.pushed = true
+		var back := mini(0, int(floor(float(d.tol) / 5.0)) * 5)
+		back = maxi(-10, back)
+		d.pct = back
+		d.price = deal_price_at(d, back)
+		if d.st.has("sat"):
+			d.st.sat = maxf(0.0, float(d.st.sat) - (3.0 if was >= 15 else 1.5))
+		if back < 0:
+			d.speech = ["„Spóźniony i jeszcze drożej? %s i ani grosza więcej.”" % money(d.price), "„Nie dziś. %s albo idę.”" % money(d.price)].pick_random()
+		else:
+			d.speech = ["„Nie przesadzaj. %s, jak było.”" % money(d.price), "„Za drogo. %s albo nic.”" % money(d.price), "„Umawialiśmy się na %s.”" % money(d.price)].pick_random()
+		Sfx.play("error")
+		return
+	var line := "„Stoi.”"
+	if q == "meh":
+		line = ["„Słabe jakieś… Ostatni raz biorę coś takiego.”", "„Hm. Ostatnio było lepsze.”"].pick_random()
+		d.notes.append("Klient wyczuł, że towar jest rozrobiony — jest niezadowolony.")
+		if d.st.has("sat"):
+			d.st.sat = maxf(0.0, float(d.st.sat) - 7.0)
+			d.st.loy = maxf(0.0, float(d.st.get("loy", 0.0)) - 2.0)
+			if d.st.has("known"):
+				d.st.known["minpur"] = true
+	elif int(d.pct) < 0:
+		line = ["„O, dzięki. Zapamiętam.”", "„Uczciwie. Wrócę.”"].pick_random()
+		if d.st.has("sat"):
+			d.st.sat = minf(100.0, float(d.st.sat) + 3.0)
+			d.st.loy = minf(100.0, float(d.st.get("loy", 0.0)) + 1.5)
+	elif int(d.pct) > 0:
+		line = ["„…Niech ci będzie.”", "„Drogo, ale biorę.”"].pick_random()
+	deal_sell(d, float(d.price), line)
 
 
 func deal_sell(d: Dictionary, price: float, line: String) -> void:
-	var mx := deal_max(d)
-	var res := complete_sale(d.ctx, d.sel.p, int(d.sel.pur), int(d.qty), price, mx, d.credit)
+	var ref: float = float(d.base) * (1.0 + maxf(0.0, float(d.tol)) / 100.0)
+	var res := complete_sale(d.ctx, d.sel.p, int(d.sel.pur), int(d.qty), price, ref, d.credit)
 	d.over = true
 	d.sold = true
-	d.counter = null
-	var fb := ""
-	if not d.ctx.get("sting", false):
-		if mx - price > mx * 0.22:
-			fb = "\n[color=#fbbf24]Mogłeś wziąć więcej — był gotów dać ok. %s za gram.[/color]" % money(mx)
-		elif mx - price < mx * 0.07:
-			fb = "\n[color=#4ade80]Świetny interes — prawie jego maksimum![/color]"
-	var pay := "[color=#4ade80]+%s[/color]" % money(res.paid)
-	if d.credit:
-		pay += " teraz, reszta (%s) na zeszyt" % money(res.owed)
-	d.speech = "%s\n[b]%s[/b] za %d g %s.%s" % [line, pay, int(d.qty), D.PRODUCT_GEN[d.sel.p], fb]
+	d.speech = "%s\n[b][color=#4ade80]+%s[/color][/b] za %d g %s." % [line, money(res.paid), int(d.qty), D.PRODUCT_GEN[d.sel.p]]
 	deal_finish(d, res)
 
 
-func deal_accept(d: Dictionary) -> void:
-	if d.counter != null and not d.over and not deal_quality_reject(d):
-		deal_sell(d, float(d.counter), "„Dobra, tak wygląda uczciwa cena.”")
-
-
+## stare nazwy — zostają dla testów i narzędzi
 func deal_sell_agreed(d: Dictionary) -> void:
-	var ap := deal_agreed_price(d)
-	if ap > 0 and not d.over and not deal_quality_reject(d):
-		deal_sell(d, float(ap), ["„Tak jak się umawialiśmy. Dzięki.”", "„Słowo to słowo. Trzymaj.”"].pick_random())
+	deal_set(d, 0)
+	deal_hand(d)
 
 
-func deal_haggle(d: Dictionary) -> void:
-	d.haggle = true
-	d.patience = maxi(1, int(d.patience) - 1)
-	d.price = int(round(float(d.ctx.agreed) * 1.1))
-	d.mood = maxf(5.0, float(d.mood) - 8.0)
-	d.speech = "„Ej, umawialiśmy się inaczej… No dobra, mów.”"
-
-
-## dostępne taktyki: [{id, label, tip, on}]
-func deal_tactics(d: Dictionary) -> Array:
-	var u: Dictionary = d.used
-	var have := int(S.inv.pack[d.sel.p].get(str(int(d.sel.pur)), 0))
-	return [
-		{"id": "pogadaj", "label": "Zagadaj", "tip": "Luźna gadka poprawia nastrój (gaduły to kochają, konkretni nie).", "on": not u.has("pogadaj")},
-		{"id": "zachwal", "label": "Zachwal towar", "tip": "Działa, jeśli czystość wyraźnie przewyższa oczekiwania klienta.", "on": not u.has("zachwal")},
-		{"id": "probka", "label": "Daj spróbować (−1 g)", "tip": "Klient zapłaci więcej i zyska cierpliwość.", "on": not u.has("probka") and have > int(d.qty)},
-		{"id": "ostatnie", "label": "„Ostatnie sztuki”", "tip": "Blef. Na impulsywnych działa, cwaniak Cię przejrzy.", "on": not u.has("ostatnie")},
-		{"id": "ilosc", "label": "Rabat za ilość", "tip": "+1–2 g w pakiecie, 7% taniej za gram.", "on": not u.has("ilosc") and have >= int(d.qty) + 1 and not d.ctx.get("sting", false)},
-		{"id": "zeszyt", "label": "Na zeszyt", "tip": "Połowa teraz, reszta +10% przy następnym spotkaniu. Nie każdy oddaje.", "on": not u.has("zeszyt") and d.st.has("owes") and float(d.st.get("loy", 0.0)) >= 15.0},
-		{"id": "odejdz", "label": "Udaj, że odchodzisz", "tip": "Głodny klient zmięknie. Syty po prostu pozwoli Ci odejść.", "on": not u.has("odejdz") and d.counter != null},
-	]
-
-
-func deal_tactic(d: Dictionary, id: String) -> void:
-	if d.over or d.used.has(id):
-		return
-	d.used[id] = true
-	var who: Dictionary = d.who
-	var typ: String = who.get("type", "luzak")
-	match id:
-		"pogadaj":
-			var dm := {"gadula": 15.0, "luzak": 9.0, "impulsywny": -6.0, "konkret": -7.0, "twardziel": 2.0, "cwaniak": 5.0}
-			var v: float = dm.get(typ, 4.0)
-			d.mood = clampf(float(d.mood) + v, 5.0, 95.0)
-			add_minutes(12.0)
-			if v > 0.0:
-				d.speech = "„A wiesz, co ostatnio…” — gadacie chwilę. Nastrój wyraźnie lepszy."
-			else:
-				d.speech = "„Możemy bez pogaduszek? Śpieszę się.”"
-				d.patience = int(d.patience) - 1
-		"zachwal":
-			if int(d.sel.pur) >= int(who.minpur) + 12:
-				d.boost = float(d.boost) * 1.06
-				d.mood = minf(95.0, float(d.mood) + 4.0)
-				d.speech = ["„Hmm, faktycznie pachnie jak trzeba.”", "„No, nie powiem, wygląda czysto.”"].pick_random()
-			else:
-				d.mood = maxf(5.0, float(d.mood) - 8.0)
-				d.patience = int(d.patience) - 1
-				d.speech = ["„Sam widzę, co to jest. Nie wciskaj mi kitu.”", "„Mniej gadania, więcej konkretów.”"].pick_random()
-		"probka":
-			take_pack(S.inv, d.sel.p, d.sel.pur, 1)
-			d.boost = float(d.boost) * 1.05
-			d.patience = int(d.patience) + 1
-			d.max_patience = maxi(int(d.max_patience), int(d.patience))
-			if d.st.has("loy"):
-				d.st.loy = minf(100.0, float(d.st.loy) + 2.0)
-			d.speech = ["„O… nieźle. Dobra, gadajmy.”", "„Hmm! Dobre. To ile za to chcesz?”"].pick_random()
-		"ostatnie":
-			if randf() < float(D.SCARCITY.get(typ, 0.5)):
-				d.boost = float(d.boost) * 1.08
-				d.speech = ["„Ostatnie? Dobra, dobra, biorę — tylko nie przesadzaj z ceną.”", "„Kurde… No to dawaj, zanim ktoś inny weźmie.”"].pick_random()
-			else:
-				d.mood = maxf(5.0, float(d.mood) - 10.0)
-				d.patience = int(d.patience) - 1
-				d.speech = ["„Ostatnie, jasne. Co tydzień masz ostatnie.”", "„Nie rób ze mnie frajera.”"].pick_random()
-		"ilosc":
-			var have := int(S.inv.pack[d.sel.p].get(str(int(d.sel.pur)), 0))
-			var extra: int = clampi(have - int(d.qty), 1, 2)
-			if float(d.st.get("hunger", 0.4)) > 0.35 or float(who.wealth) >= 1.1 or randf() < 0.4:
-				d.qty = int(d.qty) + extra
-				d.upsold = extra
-				d.price = int(round(float(d.price) * 0.93))
-				d.speech = "„Dobra, dorzuć %d g. Ale po %s.”" % [extra, money(d.price)]
-			else:
-				d.speech = "„Nie, tyle mi wystarczy.”"
-		"zeszyt":
-			d.credit = true
-			d.boost = float(d.boost) * 1.1
-			d.speech = "„Na zeszyt? No to mogę dać więcej. Oddam przy następnej okazji, słowo.”"
-		"odejdz":
-			if float(d.st.get("hunger", 0.4)) > 0.5 or typ == "impulsywny":
-				d.counter = int(round(deal_max(d) * 0.97))
-				d.speech = "„Ej, czekaj, czekaj! Dobra — %s. Ale to moje ostatnie słowo.”" % money(d.counter)
-			else:
-				d.over = true
-				d.speech = "„No to idź.” — wzrusza ramionami."
-				if d.st.has("sat"):
-					d.st.sat = maxf(0.0, float(d.st.sat) - 3.0)
-				deal_finish(d, {"sold": 0, "left": true})
-				return
-	_deal_check_walk(d)
+func deal_max(d: Dictionary) -> float:
+	return float(d.base) * (1.0 + float(d.tol) / 100.0)
 
 
 ## „Zaraz wracam”: klient zostaje na miejscu i czeka, zamówienie nie przepada.
@@ -2294,7 +2168,7 @@ func deal_pause(d: Dictionary) -> void:
 	if o == null or d.over:
 		deal_leave(d)
 		return
-	o["hold"] = {"mood": float(d.mood) - 4.0, "patience": int(d.patience), "used": d.used.duplicate()}
+	o["hold"] = {"pushed": bool(d.pushed)}
 	o.deadline = maxf(float(o.deadline), S.t + 45.0)
 	d.over = true
 	notify("%s: „Dobra, czekam. Tylko się streszczaj.”" % String(d.who.name))
@@ -2420,7 +2294,7 @@ func credit_limit() -> float:
 
 ## termin spłaty zeszytu w dniach — na początku Wiktor jest wyrozumiały
 func credit_days() -> int:
-	return D.CREDIT_DAYS_EARLY if int(S.lvl) <= D.CREDIT_EARLY_LVL else D.CREDIT_DAYS
+	return (D.CREDIT_DAYS_EARLY if int(S.lvl) <= D.CREDIT_EARLY_LVL else D.CREDIT_DAYS) + (2 if has_skill("kredyt") else 0)
 
 
 func credit_overdue() -> bool:
@@ -2533,16 +2407,32 @@ func starter_pickup() -> bool:
 	return true
 
 
-## Skrzynka Wiktora: gotówka, która w niej leży, idzie najpierw na zeszyt (towar), potem na dług.
+## Skrzynka Wiktora: z gotówki, która w niej leży, schodzi najpierw to, co ma bliższy termin — zeszyt za towar
+## albo najbliższa rata długu — potem drugie z nich, a nadwyżka idzie na resztę długu.
 ## Woła się to przy zamykaniu skrzynki. Zwraca, ile Wiktor zabrał.
 func box_settle() -> float:
 	var st: Dictionary = S.stash.wiktor
 	var have := float(st.cash)
 	if have < 1.0:
 		return 0.0
-	var a: float = minf(have, float(S.credit))
+	var ni := next_installment()
+	var rate: float = maxf(0.0, float(ni.get("due", 0.0)) - S.paid) if (not ni.is_empty() and S.debt > 0.0) else 0.0
+	rate = minf(rate, float(S.debt))
+	var rate_first: bool = rate > 0.0 and (float(S.credit) <= 0.0 or float(ni.day) * 1440.0 < float(S.credit_due))
+	var a := 0.0       # na zeszyt
+	var b := 0.0       # na dług
+	var left := have
+	for step in (["rate", "credit"] if rate_first else ["credit", "rate"]):
+		if step == "credit":
+			a = minf(left, float(S.credit))
+			left -= a
+		else:
+			b = minf(left, rate)
+			left -= b
+	# nadwyżka: reszta długu
+	var extra: float = minf(left, float(S.debt) - b)
+	b += maxf(0.0, extra)
 	S.credit = float(S.credit) - a
-	var b: float = minf(have - a, float(S.debt))
 	S.debt -= b
 	S.paid += b
 	st.cash = have - a - b
@@ -3231,6 +3121,11 @@ func load_game() -> bool:
 		if int(base.step) >= TOUR_STEPS:
 			base.flags[k] = true
 	base.wanted = false
+	# stare umiejętności „gadane” zamieniają się na nowe z tej samej gałęzi
+	for pair in [["gadka", "reka2"], ["oko2", "kieszenie"], ["rekin", "klientela"]]:
+		if base.skills.has(pair[0]):
+			base.skills.erase(pair[0])
+			base.skills[pair[1]] = true
 	S = base
 	Prod.migrate()
 	return true

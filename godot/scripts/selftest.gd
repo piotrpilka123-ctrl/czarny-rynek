@@ -227,12 +227,21 @@ func run() -> void:
 	if not U.deal.is_empty():
 		U.deal.cop = null
 		U.deal.cop_t = 0.0
-		G.deal_greet(U.deal, "luz")
-		U._render_deal()
-		await frames(3)
-		ok(S.cust.dominik.known.get("like", "") == "luz", "trafiony styl zapisany w notatkach")
-		G.deal_sell_agreed(U.deal)
-		U._render_deal()
+		ok(int(U.deal.base) == int(o.agreed) and int(U.deal.pct) == 0 and G.deal_read(U.deal, 0) == "sure", "wymiana zaczyna się od umówionej ceny — bez przywitań i gadek")
+		ok(not G.deal_set(U.deal, 15) == false and int(U.deal.price) > int(o.agreed) and G.deal_set(U.deal, 0), "cenę można lekko podbić albo wrócić do umówionej")
+		# podanie towaru: przytrzymanie napełnia pasek, puszczenie go cofa
+		U.deal_holding = true
+		await frames(6)
+		var held: float = U.deal.hold
+		U.deal_holding = false
+		await frames(40)
+		ok(held > 0.0 and float(U.deal.hold) == 0.0 and not U.deal.over, "puszczony przycisk cofa podanie (%.2f → 0)" % held)
+		U.deal_holding = true
+		var hg := 0
+		while not U.deal.over and hg < 400:
+			hg += 1
+			await frames(1)
+		ok(U.deal.sold, "przytrzymanie do końca = towar podany, pieniądze w kieszeni")
 		await frames(3)
 	ok(S.cash > cash0 and int(S.stats.deals) == 1, "sprzedaż po umówionej cenie (+%d zł)" % int(S.cash - cash0))
 	ok(int(S.stats.sold) == 2, "pierwsze zamówienie Dominika to zawsze 2 g")
@@ -248,10 +257,13 @@ func run() -> void:
 	M.open_box()
 	await frames(3)
 	ok(U.mode == "inv" and U.inv.room == "wiktor" and G.move_limit("wiktor", {"kind": "bulk", "p": "dym", "pur": 100, "n": 2.0, "usize": 1.0}, true) == 0.0, "skrzynka Wiktora otwiera się jak skrytka, ale przyjmuje tylko gotówkę")
-	G.move_cash("wiktor", true, owed0 + 20.0)
+	S.cash += 200.0
+	cash1 = S.cash
+	var rate0: float = float(D.DEBT_SCHEDULE[0].due)
+	G.move_cash("wiktor", true, owed0 + rate0 + 20.0)
 	U.close_all()
 	await frames(2)
-	ok(float(S.credit) <= 0.0 and absf(S.debt - (debt0 - 20.0)) < 0.01 and absf(S.cash - (cash1 - owed0 - 20.0)) < 0.01 and float(S.stash.wiktor.cash) < 0.01, "pieniądze ze skrzynki schodzą najpierw z zeszytu, reszta z długu")
+	ok(float(S.credit) <= 0.0 and absf(S.debt - (debt0 - rate0 - 20.0)) < 0.01 and absf(S.cash - (cash1 - owed0 - rate0 - 20.0)) < 0.01 and float(S.stash.wiktor.cash) < 0.01, "pieniądze ze skrzynki: rata i zeszyt według terminów, nadwyżka na dług")
 	G.story_tick()
 	G.story_tick()
 	ok(float(S.credit) <= 0.0 and G.flag("hurt_on"), "zeszyt spłacony, zamówienia odblokowane")
@@ -464,12 +476,14 @@ func run() -> void:
 	var whop: Dictionary = G.cust_def("dominik").duplicate()
 	whop["st"] = S.cust.dominik
 	var dp: Dictionary = G.deal_start({"who": whop, "product": "dym", "grams": int(op.grams), "order": op, "street": false, "agreed": op.agreed})
-	G.deal_greet(dp, "twardo")
-	var mood_left: float = dp.mood
+	dp.tol = 3.0
+	G.deal_set(dp, 15)
+	G.deal_hand(dp)
+	ok(not dp.over and dp.pushed and int(dp.pct) == 0 and not G.deal_set(dp, 5), "za wysoka cena: klient odmawia, wraca cena umówiona i drugi raz podbić się nie da")
 	G.deal_pause(dp)
 	ok(G.find_order(op.id) != null and op.has("hold"), "„Zaraz wracam”: zamówienie nie przepada")
 	var dp2: Dictionary = G.deal_start({"who": whop, "product": "dym", "grams": int(op.grams), "order": op, "street": false, "agreed": op.agreed})
-	ok(float(dp2.mood) < mood_left + 0.01, "po powrocie klient pamięta nastrój rozmowy")
+	ok(dp2.pushed, "po powrocie klient pamięta, że już próbowałeś podbić cenę")
 	G.deal_cancel(dp2)
 	ok(G.find_order(op.id) == null, "„Rezygnuję” odwołuje transakcję")
 	G.take_pack(S.inv, "dym", 80, 99)
@@ -497,16 +511,37 @@ func run() -> void:
 		for st in G.stacks(S.inv, "pack"):
 			if int(st.pur) == 40:
 				dd.sel = st
-		if G.deal_quality_reject(dd):
+		if i == 0:
+			ok(int(dd.price) == 40 and G.market_price("dym", 40) == G.market_price("dym", 100), "mieszanka kosztuje tyle samo, co czysty towar")
+		G.deal_hand(dd)
+		if dd.over and not dd.sold:
 			rejected += 1
 		G.take_pack(S.inv, "dym", 40, 99)
-	ok(rejected >= 8, "doświadczony klient odrzuca mieszankę (%d/40 prób)" % rejected)
+	ok(rejected >= 30, "mocno rozrobionego towaru doświadczony klient nie bierze (%d/40 prób)" % rejected)
+	# lekko rozrobiony towar: klient bierze, ale bywa niezadowolony
+	var meh := 0
+	var sat_sum := 0.0
+	for i in range(40):
+		var who2: Dictionary = G.cust_def("kasia").duplicate()
+		who2["st"] = {"sat": 60.0, "loy": 50.0, "hunger": 0.5, "grams": 60, "deals": 20, "known": {}, "owes": 0.0}
+		G.add_pack(S.inv, "dym", 62, 3)
+		var d6: Dictionary = G.deal_start({"who": who2, "product": "dym", "grams": 2, "order": null, "street": false, "agreed": 40})
+		G.deal_hand(d6)
+		if d6.sold and float(who2.st.sat) < 60.0:
+			meh += 1
+		sat_sum += float(who2.st.sat)
+		G.take_pack(S.inv, "dym", 62, 99)
+	ok(meh >= 4 and meh < 40, "towar tuż poniżej oczekiwań: sprzedaje się, ale część klientów jest niezadowolona (%d/40)" % meh)
 
 	# --- umiejętności, wyposażenie
 	S.lvl = 5
 	S.sp = 3
 	S.cash = 30000.0
-	ok(G.learn_skill("gadka"), "nauka umiejętności")
+	ok(G.learn_skill("reka2") and G.deal_hand_time() < 1.0, "nauka umiejętności: szybka wymiana skraca podanie towaru")
+	var sk_names := []
+	for sk0 in D.SKILLS:
+		sk_names.append(String(sk0.id))
+	ok(not sk_names.has("gadka") and not sk_names.has("rekin") and sk_names.has("kieszenie") and sk_names.has("klientela"), "drzewko nie ma już umiejętności „gadanych”")
 	ok(G.upgrade_buy("plecak1") and G.capacity() == 40, "plecak szkolny: 40 miejsc")
 	U.open_shop()
 	await frames(3)
@@ -679,7 +714,8 @@ func _stock(p: String) -> float:
 
 func _stash_all() -> void:
 	for e in G.entries(G.S.inv):
-		if e.kind != "item":
+		# gotówkę bot nosi przy sobie (wpłaca ją do skrzynki Wiktora), do szafy idzie tylko towar
+		if e.kind != "item" and e.kind != "cash":
 			G.move_entry("safe", e, true, 1e9)
 
 
@@ -702,6 +738,8 @@ func _sim_one(days: int, run_i: int) -> String:
 	while G.day() <= days and guard < 300000:
 		guard += 1
 		G.story_tick()
+		if not G.flag("got_first"):
+			G.starter_pickup()
 		# paczki: po odbiorze prosto do domu
 		var d = G.ready_drop()
 		if d != null:
@@ -755,23 +793,18 @@ func _sim_one(days: int, run_i: int) -> String:
 				who["st"] = S.cust[m.cust]
 				var dd: Dictionary = G.deal_start({"who": who, "product": m.product, "grams": int(m.grams), "order": m, "street": false, "agreed": m.agreed})
 				if not dd.is_empty():
-					var known: Dictionary = S.cust[m.cust].get("known", {})
-					var styles := ["luz", "konkret", "twardo"]
-					if known.has("hate"):
-						styles.erase(known.hate)
-					G.deal_greet(dd, known.get("like", styles.pick_random()))
-					if randf() < skill * 0.35:
-						G.deal_haggle(dd)
-						G.deal_offer(dd)
-						if not dd.over and dd.counter != null:
-							G.deal_accept(dd)
-						if not dd.over:
-							dd.price = int(m.agreed)
-							G.deal_offer(dd)
-							if not dd.over and dd.counter != null:
-								G.deal_accept(dd)
-					elif not dd.over:
-						G.deal_sell_agreed(dd)
+					# wprawny gracz podbija cenę tam, gdzie zna klienta; reszta bierze umówioną
+					var pct := 0
+					if randf() < skill * 0.6:
+						for lv in G.DEAL_LEVELS:
+							if int(lv) > 0 and G.deal_read(dd, int(lv)) in ["sure", "ok"]:
+								pct = int(lv)
+						if pct == 0 and randf() < 0.3:
+							pct = 5
+					G.deal_set(dd, pct)
+					G.deal_hand(dd)
+					if not dd.over:
+						G.deal_hand(dd)
 				G.add_minutes(14.0)
 			else:
 				missed += 1
@@ -783,51 +816,61 @@ func _sim_one(days: int, run_i: int) -> String:
 			if c.via == "talk" and not S.cust[c.id].unlocked and int(S.lvl) >= int(c.lvl) and G.client_count() < G.client_cap():
 				G.add_minutes(25.0)
 				G.meet(c.id)
-		# zamówienia u Wiktora: towar pod aktualnych klientów
+		# zamówienia u Wiktora: towar pod aktualnych klientów, wszystko jednym koszykiem
 		if G.flag("hurt_on") and S.drops.size() < 2:
 			var need := {}
 			for c in D.CLIENTS:
-				if S.cust[c.id].unlocked and int(S.lvl) >= int(D.PRODUCTS[c.prod].lvl):
-					var per_day: float = (float(c.grams[0]) + float(c.grams[1])) * 0.5 * 16.0 / ((float(c.every[0]) + float(c.every[1])) * 0.5)
-					need[c.prod] = float(need.get(c.prod, 0.0)) + per_day
+				if not S.cust[c.id].unlocked:
+					continue
+				var per_day: float = (float(c.grams[0]) + float(c.grams[1])) * 0.5 * 16.0 / ((float(c.every[0]) + float(c.every[1])) * 0.5)
+				var ps: Array = []
+				for p0 in c.get("prods", [c.prod]):
+					if int(S.lvl) >= int(D.PRODUCTS[p0].lvl):
+						ps.append(p0)
+				for i in range(ps.size()):
+					var share: float = 1.0 if ps.size() == 1 else (0.62 if i == 0 else 0.38 / float(ps.size() - 1))
+					need[ps[i]] = float(need.get(ps[i], 0.0)) + per_day * share
+			var MK = G.Market
+			var cart := []
+			var room := float(G.capacity()) - 2.0
 			for p in need:
 				var pending := false
 				for dr in S.drops:
-					if dr.p == p:
-						pending = true
+					for it in dr.get("items", []):
+						if String(it.p) == String(p):
+							pending = true
 				if pending or _stock(p) > float(need[p]) * 0.45:
 					continue
 				var want := 5
 				for sz in D.WHOLESALE_SIZES:
-					if sz <= G.wholesale_max() and sz <= maxf(5.0, float(need[p]) * 1.6) and sz + 2 <= G.capacity():
+					if sz <= G.wholesale_max() and sz <= maxf(5.0, float(need[p]) * 1.6) and float(sz) <= room:
 						want = sz
-				# Giełda: czysty towar od Chemika (przedpłata, od 10 g) tylko dla najbardziej wymagających
-				# i tylko gdy jest gotówka; poza tym standard od Wiktora — w razie czego na zeszyt
-				var MK = G.Market
-				var picky := false
-				for c2 in D.CLIENTS:
-					if S.cust[c2.id].unlocked and String(c2.prod) == p and int(c2.minpur) > 78:
-						picky = true
-				var vid := "wiktor"
-				if picky and want >= 10 and S.cash > MK.price("chemik", p, want) + 200.0 and MK.block("chemik", p, want, "drop", false) == "":
-					vid = "chemik"
-				var cost: float = MK.price(vid, p, want)
-				var credit: bool = vid == "wiktor" and S.cash < cost + 50.0
-				if MK.block(vid, p, want, "drop", credit) == "":
-					MK.order(vid, p, want, "drop", credit)
-				elif MK.block("wiktor", p, 5, "drop", S.cash < MK.price("wiktor", p, 5) + 30.0) == "":
-					MK.order("wiktor", p, 5, "drop", S.cash < MK.price("wiktor", p, 5) + 30.0)
-				elif G.order_block(p, 5, true, false) == "":
-					G.order_goods(p, 5, false, true)
-		# pieniądze: zeszyt przed terminem, rata w dniu spłaty (albo wcześniej, gdy jest zapas)
-		if float(S.credit) > 0.0 and not G.flag("hurt_on") and S.cash >= float(S.credit):
-			G.pay_credit(1e9)
+				if float(want) > room:
+					continue
+				cart.append({"p": p, "g": want})
+				room -= float(want)
+			while not cart.is_empty() and MK.cart_block(cart) != "":
+				# za dużo na zeszyt: najpierw mniejsze paczki, potem mniej pozycji
+				var shrunk := false
+				for it in cart:
+					if int(it.g) > 5:
+						it.g = int(D.WHOLESALE_SIZES[maxi(0, D.WHOLESALE_SIZES.find(int(it.g)) - 1)])
+						shrunk = true
+						break
+				if not shrunk:
+					cart.pop_back()
+			if not cart.is_empty():
+				MK.order_cart(cart)
+		# pieniądze: wszystko przez skrzynkę Wiktora (schodzi to, co ma bliższy termin: zeszyt albo rata)
+		var put := 0.0
 		if float(S.credit) > 0.0:
 			var due_in = (float(S.credit_due) - S.t) / 1440.0
-			if S.cash >= float(S.credit) + 20.0 and (due_in < 1.2 or S.cash > float(S.credit) + 250.0):
-				G.pay_credit(1e9)
+			if not G.flag("hurt_on") and S.cash >= float(D.BOX_FIRST):
+				put = minf(S.cash, float(S.credit))
+			elif S.cash >= float(S.credit) + 20.0 and (due_in < 1.2 or S.cash > float(S.credit) + 250.0):
+				put = float(S.credit)
 			elif due_in < 0.3 and S.cash > 40.0:
-				G.pay_credit(S.cash - 20.0)
+				put = minf(float(S.credit), S.cash - 20.0)
 		var ni: Dictionary = G.next_installment()
 		if not ni.is_empty() and S.debt > 0.0:
 			var need_r: float = float(ni.due) - S.paid
@@ -837,11 +880,17 @@ func _sim_one(days: int, run_i: int) -> String:
 				# odkłada na garaż i sprzęt, o ile do terminu raty zostało jeszcze trochę czasu
 				reserve = (float(G.prop_def("garaz").price) + 900.0 if not G.owns("garaz") else 2600.0) if days_left > 1 else reserve
 			if need_r > 0.0 and days_left <= 0 and G.hour() > 20.0:
-				G.pay_debt(minf(need_r, maxf(0.0, S.cash - 25.0)))
+				put += minf(need_r, maxf(0.0, S.cash - put - 25.0))
 			elif need_r > 0.0 and S.cash > need_r + reserve + float(S.credit):
-				G.pay_debt(need_r)
-		elif ni.is_empty() and S.debt > 0.0 and S.cash > S.debt + 300.0:
-			G.pay_debt(S.debt)
+				put += need_r
+		elif ni.is_empty() and S.debt > 0.0 and S.cash > S.debt + float(S.credit) + 300.0:
+			put = S.debt + float(S.credit)
+		if M.args.has("simdbg") and guard % 40 == 0:
+			print("DBG d%d h%.1f cash %d credit %d hurt %s put %d step %s drops %d stock %.0f/%.0f orders %d" % [G.day(), G.hour(), int(S.cash), int(S.credit), str(G.flag("hurt_on")), int(put), String(G.cur_step().get("id", "")), S.drops.size(), _stock("dym"), _stock("szron"), S.orders.size()])
+		if put >= 1.0:
+			G.add_minutes(12.0)
+			G.move_cash("wiktor", true, put)
+			G.box_settle()
 		# rozwój
 		if int(S.sp) > 0:
 			for sk in D.SKILLS:

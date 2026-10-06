@@ -55,10 +55,15 @@ static func run(T) -> void:
 	T.ok(M.trust("wiktor") > 0.0, "po odbiorze rośnie zaufanie (%d)" % int(M.trust("wiktor")))
 	# skrzynka Wiktora: najpierw zeszyt, potem dług
 	var debt0: float = S.debt
+	var rate1: float = float(D.DEBT_SCHEDULE[0].due)
+	T.ok(float(D.DEBT_SCHEDULE[0].day) * 1440.0 < float(S.credit_due), "pierwsza rata długu wypada wcześniej niż termin zeszytu")
 	G.move_cash("wiktor", true, 300.0)
-	T.ok(G.box_settle() == 300.0 and float(S.credit) == 280.0 and S.debt == debt0 and float(S.stash.wiktor.cash) == 0.0, "300 zł w skrzynce: całość schodzi z zeszytu")
+	T.ok(G.box_settle() == 300.0 and S.paid == rate1 and float(S.credit) == 580.0 - (300.0 - rate1) and S.debt == debt0 - rate1 and float(S.stash.wiktor.cash) == 0.0,
+		"300 zł w skrzynce: najpierw rata z bliższym terminem (%d zł), reszta na zeszyt" % int(rate1))
+	S.credit_due = S.t + 60.0
+	var owed1: float = S.credit
 	G.move_cash("wiktor", true, 500.0)
-	T.ok(G.box_settle() == 500.0 and float(S.credit) == 0.0 and S.debt == debt0 - 220.0 and S.paid == 220.0, "kolejne 500 zł: reszta zeszytu i 220 zł na dług brata")
+	T.ok(G.box_settle() == 500.0 and float(S.credit) == 0.0 and absf(S.debt - (debt0 - rate1 - (500.0 - owed1))) < 0.01, "kolejne 500 zł: reszta zeszytu, nadwyżka na dług brata")
 	T.ok(G.box_settle() == 0.0 and float(S.stats.box_paid) == 800.0, "pusta skrzynka nic nie zmienia")
 	# po terminie: blokada zamówień, a bez towaru — deska ratunku
 	S.inv = G.new_store()

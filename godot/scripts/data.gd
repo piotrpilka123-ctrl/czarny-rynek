@@ -506,16 +506,16 @@ const LEVEL_UNLOCKS := {
 }
 ## drzewko umiejętności: 4 gałęzie, wymagania w „req”
 const SKILLS := [
-	{"id": "gadka", "name": "Gadka", "branch": "Handel", "row": 0, "desc": "Klienci mają +1 cierpliwości w negocjacjach."},
-	{"id": "oko1", "name": "Czytanie ludzi I", "branch": "Handel", "row": 1, "req": "gadka", "desc": "Widzisz orientacyjną maksymalną cenę klienta (±15%)."},
-	{"id": "twarda", "name": "Twarda ręka", "branch": "Handel", "row": 2, "req": "oko1", "desc": "Klienci płacą do 6% więcej."},
-	{"id": "oko2", "name": "Czytanie ludzi II", "branch": "Handel", "row": 3, "req": "twarda", "desc": "Dokładniejsza wycena (±6%) i widoczny „głód” klienta."},
-	{"id": "rekin", "name": "Rekin", "branch": "Handel", "row": 4, "req": "oko2", "desc": "Kontroferty klientów są bliżej ich maksimum."},
+	{"id": "reka2", "name": "Szybka wymiana", "branch": "Handel", "row": 0, "desc": "Podanie towaru trwa 0,8 s zamiast 1,3 s — krócej stoisz z ręką na widoku."},
+	{"id": "oko1", "name": "Znam swoich", "branch": "Handel", "row": 1, "req": "reka2", "desc": "Od pierwszej transakcji widzisz, czy klient przełknie wyższą cenę (normalnie dopiero po trzech)."},
+	{"id": "twarda", "name": "Marka", "branch": "Handel", "row": 2, "req": "oko1", "desc": "Twój towar ma renomę: klienci dają się podbić o 4 punkty procentowe więcej."},
+	{"id": "kieszenie", "name": "Głębokie kieszenie", "branch": "Handel", "row": 3, "req": "twarda", "desc": "+8 miejsc przy sobie, a przy kontroli osobistej towar znajduje się o 30% rzadziej."},
+	{"id": "klientela", "name": "Stała klientela", "branch": "Handel", "row": 4, "req": "kieszenie", "desc": "Stali klienci biorą o 1 g więcej i odzywają się o 15% częściej."},
 
 	{"id": "kondycja1", "name": "Kondycja I", "branch": "Ulica", "row": 0, "desc": "+30% wytrzymałości podczas sprintu."},
 	{"id": "cichy", "name": "Szary człowiek", "branch": "Ulica", "row": 1, "req": "kondycja1", "desc": "Policja o 20% wolniej nabiera podejrzeń."},
 	{"id": "teren", "name": "Znajomość terenu", "branch": "Ulica", "row": 2, "req": "cichy", "desc": "Minimapa pokazuje wszystkie patrole w promieniu 60 m."},
-	{"id": "kondycja2", "name": "Kondycja II", "branch": "Ulica", "row": 3, "req": "teren", "desc": "Sprint szybszy o 8%."},
+	{"id": "kondycja2", "name": "Kondycja II", "branch": "Ulica", "row": 3, "req": "teren", "desc": "Sprint szybszy o 8%, a oddech wraca o jedną czwartą szybciej."},
 	{"id": "duch", "name": "Duch", "branch": "Ulica", "row": 4, "req": "kondycja2", "desc": "Nocą policja nabiera podejrzeń o 35% wolniej."},
 
 	{"id": "reka", "name": "Pewna ręka", "branch": "Towar", "row": 0, "desc": "Przy porcjowaniu rozsypujesz o 40% mniej towaru."},
@@ -525,7 +525,7 @@ const SKILLS := [
 	{"id": "ogrodnik", "name": "Ogrodnik", "branch": "Towar", "row": 4, "req": "paczki", "lvl": 5, "desc": "Namiot uprawowy daje o 35% większy plon."},
 
 	{"id": "slowo", "name": "Dobre słowo", "branch": "Kontakty", "row": 0, "desc": "Zadowoleni klienci szybciej polecają Cię dalej."},
-	{"id": "kredyt", "name": "Kredyt zaufania", "branch": "Kontakty", "row": 1, "req": "slowo", "desc": "Limit „zeszytu” u Wiktora wyższy o 600 zł."},
+	{"id": "kredyt", "name": "Kredyt zaufania", "branch": "Kontakty", "row": 1, "req": "slowo", "desc": "Limit zeszytu u Wiktora wyższy o połowę i dwa dni więcej na spłatę."},
 	{"id": "rabat", "name": "Rabat hurtowy", "branch": "Kontakty", "row": 2, "req": "kredyt", "desc": "Towar u Wiktora tańszy o 8%."},
 	{"id": "siec", "name": "Siatka", "branch": "Kontakty", "row": 3, "req": "rabat", "desc": "+2 do limitu stałych klientów, zamówienia częściej."},
 	{"id": "uklad", "name": "Układ", "branch": "Kontakty", "row": 4, "req": "siec", "desc": "Łapówki dla policji skuteczniejsze o 15 pkt proc."},
@@ -536,8 +536,9 @@ const BRANCHES := ["Handel", "Ulica", "Towar", "Kontakty"]
 const START_CASH := 200
 const START_DEBT := 25000
 const DEBT_SCHEDULE := [
-	{"day": 5, "due": 100}, {"day": 9, "due": 250}, {"day": 13, "due": 600}, {"day": 17, "due": 1300}, {"day": 21, "due": 2500}, {"day": 25, "due": 4300},
-	{"day": 29, "due": 6800}, {"day": 33, "due": 10000}, {"day": 37, "due": 14000}, {"day": 41, "due": 19000}, {"day": 46, "due": 25000},
+	# początek jest łagodny (Wiktor wie, że startujesz od zera), raty rosną razem z interesem
+	{"day": 5, "due": 100}, {"day": 9, "due": 200}, {"day": 13, "due": 450}, {"day": 17, "due": 900}, {"day": 21, "due": 1800}, {"day": 25, "due": 3400},
+	{"day": 29, "due": 5800}, {"day": 33, "due": 9000}, {"day": 37, "due": 13000}, {"day": 41, "due": 18500}, {"day": 46, "due": 25000},
 ]
 const DEBT_INTEREST := 0.01
 const LIVING_COST := 28
