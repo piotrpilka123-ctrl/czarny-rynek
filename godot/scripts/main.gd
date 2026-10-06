@@ -454,6 +454,12 @@ func _show_loc(loc: String) -> void:
 			c.visible = world.rooms.get(loc) == c
 		else:
 			c.visible = loc == "out"
+	# radio gra tylko wtedy, gdy jesteś w mieszkaniu
+	if world.radio_player != null:
+		if loc == "safe":
+			radio_apply()
+		else:
+			world.radio_player.stop()
 
 
 func teleport(loc: String, pos: Vector3, yaw: float) -> void:
@@ -1289,6 +1295,35 @@ func _tick(dt: float) -> void:
 			ui.set_prompt(cur_inter.label.call(), (hold_t / float(hold_inter.hold)) if hold_inter != null else -1.0)
 		else:
 			ui.set_prompt("")
+
+
+# ================================================================ radio w kawalerce
+const RADIO := ["wyłączone", "Blok FM (bit z osiedla)", "Radio Biesiada (disco)"]
+
+func radio_name() -> String:
+	return RADIO[clampi(int(G.S.get("radio", 0)), 0, 2)]
+
+
+## klik 1: pierwsza stacja, klik 2: druga, klik 3: cisza, klik 4: znów pierwsza
+func radio_click() -> void:
+	G.S["radio"] = (int(G.S.get("radio", 0)) + 1) % 3
+	Sfx.play("toggle")
+	radio_apply()
+	G.notify("Radio: " + radio_name())
+
+
+func radio_apply() -> void:
+	var rp: AudioStreamPlayer3D = world.radio_player
+	if rp == null:
+		return
+	var st := int(G.S.get("radio", 0))
+	if world.radio_led != null:
+		world.radio_led.visible = st > 0
+	if st == 0 or Sfx.muted or Sfx.radio_streams.size() < st:
+		rp.stop()
+		return
+	rp.stream = Sfx.radio_streams[st - 1]
+	rp.play()
 
 
 # ================================================================ krzaki w doniczkach

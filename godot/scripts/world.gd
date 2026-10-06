@@ -62,6 +62,8 @@ var fac := {}
 var fac_cell := {}             # rozmiar pola okna dla danego materiału elewacji
 var balc: Array = []           # loggie: {b, code, cx, fl} — do rozstawiania anten, prania itp.
 var grow_nodes := {}
+var radio_player: AudioStreamPlayer3D = null
+var radio_led: Node3D = null
 var pot_nodes := {}          # pokój -> [węzeł doniczki, ...] (kolejność jak w zapisie)
 var lamp_nodes := {}         # pokój -> {nr mebla: węzeł lampy}
 var _bal_slab: Array = []
@@ -2769,7 +2771,23 @@ func _interiors() -> void:
 	_rp(g, "desk_lamp_arm_01", tx + 0.75, tz - 0.15, 0.6, 0.55, 0.8)
 	_rp(g, "cigarette_pack", tx + 0.08, tz + 0.26, 0.4, 0.09, 0.8)
 	Interior.ashtray(g, Vector3(tx + 0.22, 0.8, tz + 0.3))
-	Interior.mug(g, Vector3(tx - 0.78, 0.8, tz + 0.2), "8a3a2a")
+	Interior.mug(g, Vector3(tx - 0.3, 0.8, tz + 0.3), "8a3a2a")
+	# radio na stole: każde kliknięcie zmienia stację, trzecie wyłącza
+	var radio: Node3D = Stations.model("radio")
+	if radio != null:
+		radio.position = Vector3(tx - 0.62, 0.8, tz - 0.08)
+		radio.rotation.y = 0.2
+		g.add_child(radio)
+		radio_led = Stations._find(radio, "Lampka") as Node3D
+		radio_player = AudioStreamPlayer3D.new()
+		radio_player.bus = "Muzyka" if AudioServer.get_bus_index("Muzyka") >= 0 else "Master"
+		radio_player.position = Vector3(tx - 0.62, 0.95, tz - 0.08)
+		radio_player.unit_size = 3.2
+		radio_player.max_distance = 14.0
+		radio_player.volume_db = -7.0
+		g.add_child(radio_player)
+		inter.append({"loc": "safe", "x": tx - 0.62, "z": tz - 0.08, "y0": 0.8, "y1": 1.1, "r": 0.3, "reach": 2.6, "id": "radio",
+			"label": func(): return "Radio — %s" % G.main.radio_name(), "act": func(): G.main.radio_click()})
 	# laptop: jedyne miejsce zapisu gry w mieszkaniu
 	_rp(g, "classic_laptop", tx + 0.55, tz + 0.05, 0.0, 0.24, 0.8)
 	inter.append({"loc": "safe", "x": tx + 0.55, "z": tz + 0.05, "y0": 0.78, "y1": 1.08, "r": 0.3, "reach": 2.5, "id": "save_safe",

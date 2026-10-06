@@ -632,6 +632,11 @@ func _generate() -> void:
 		var tb2 := _gen_trap(int(e[0]), float(e[1]), float(e[2]))
 		if not _abort:
 			_trap_ready.call_deferred(_wav(tb2, true))
+	# radio w kawalerce: własny bit i biesiadne disco
+	if not _abort:
+		_radio_ready.call_deferred(_wav(_gen_trap(1312, 144.0, 1.0), true))
+	if not _abort:
+		_radio_ready.call_deferred(_wav(_gen_disco(), true))
 
 
 func _set_loops(s1: AudioStreamWAV, s2: AudioStreamWAV, s3: AudioStreamWAV) -> void:
@@ -650,6 +655,88 @@ func _club_ready(s: AudioStreamWAV) -> void:
 
 
 var trap_streams: Array = []
+var radio_streams: Array = []     # radio w kawalerce: [bit z bloków, biesiadne disco]
+
+func _radio_ready(s: AudioStreamWAV) -> void:
+	radio_streams.append(s)
+
+
+## wesołe, przaśne disco na radio: stopa na raz, bas „um-pa”, klaśnięcia i piskliwa melodyjka w dur
+func _gen_disco() -> PackedFloat32Array:
+	var bpm := 128.0
+	var beat := 60.0 / bpm
+	var bars := 8
+	var n := int(bars * 4.0 * beat * RATE)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1995
+	var roots := [48.0, 45.0, 41.0, 43.0, 48.0, 45.0, 41.0, 43.0]      # C, a, F, G
+	var tunes := [[72, 76, 79, 76, 72, 76, 79, 84], [72, 76, 81, 76, 72, 76, 81, 84], [72, 77, 81, 77, 72, 77, 81, 84], [74, 79, 83, 79, 74, 79, 83, 86]]
+	var s8 := beat / 2.0
+	for bar in range(bars):
+		if _abort:
+			return b
+		var t0 := bar * 4.0 * beat
+		for q in range(4):
+			# stopa
+			var i0 := int((t0 + q * beat) * RATE)
+			for i in range(int(0.22 * RATE)):
+				if i0 + i >= n:
+					break
+				var tt := float(i) / RATE
+				b[i0 + i] += sin(TAU * (50.0 + 110.0 * exp(-tt * 34.0)) * tt) * exp(-tt * 13.0) * 0.6
+			# bas na „i”: oktawa wyżej
+			var i1 := int((t0 + q * beat + s8) * RATE)
+			var fb := _mtof(float(roots[bar]) - 12.0 + (12.0 if q % 2 == 1 else 0.0))
+			for i in range(int(s8 * 0.9 * RATE)):
+				if i1 + i >= n:
+					break
+				var tt2 := float(i) / RATE
+				var sq := 1.0 if fmod(tt2 * fb, 1.0) < 0.5 else -1.0
+				b[i1 + i] += (sin(TAU * fb * tt2) * 0.7 + sq * 0.12) * exp(-tt2 * 6.0) * minf(1.0, tt2 * 300.0) * 0.4
+			# klaśnięcie na 2 i 4, hi-hat na każde „i”
+			if q % 2 == 1:
+				var lp := 0.0
+				for i in range(int(0.14 * RATE)):
+					if i0 + i >= n:
+						break
+					var nz := rng.randf_range(-1.0, 1.0)
+					lp += (nz - lp) * 0.4
+					b[i0 + i] += (nz - lp) * exp(-float(i) / RATE * 26.0) * 0.3
+			var hp := 0.0
+			for i in range(int(0.05 * RATE)):
+				if i1 + i >= n:
+					break
+				var nz2 := rng.randf_range(-1.0, 1.0)
+				hp += (nz2 - hp) * 0.2
+				b[i1 + i] += (nz2 - hp) * exp(-float(i) / RATE * 70.0) * 0.1
+		# melodyjka: ósemki, brzmienie taniego keyboardu (prostokąt z wibrato)
+		var tune: Array = tunes[bar % 4]
+		for k in range(8):
+			var i3 := int((t0 + k * s8) * RATE)
+			var fm := _mtof(float(tune[k]))
+			for i in range(int(s8 * 0.85 * RATE)):
+				if i3 + i >= n:
+					break
+				var tt3 := float(i) / RATE
+				var ph := tt3 * fm * (1.0 + 0.006 * sin(tt3 * 38.0))
+				var sq2 := (1.0 if fmod(ph, 1.0) < 0.35 else -1.0) * 0.5 + sin(TAU * ph) * 0.5
+				b[i3 + i] += sq2 * exp(-tt3 * 5.0) * minf(1.0, tt3 * 250.0) * 0.11
+		# akord „pad” w tle
+		for iv in [0.0, 4.0 if roots[bar] != 45.0 else 3.0, 7.0]:
+			var fc := _mtof(float(roots[bar]) + 12.0 + float(iv))
+			var i4 := int(t0 * RATE)
+			for i in range(int(4.0 * beat * RATE)):
+				if i4 + i >= n:
+					break
+				b[i4 + i] += sin(TAU * fc * float(i) / RATE) * 0.03
+	var peak := 0.001
+	for i in range(n):
+		peak = maxf(peak, absf(b[i]))
+	for i in range(n):
+		b[i] = b[i] / peak * 0.9
+	return b
 
 func _trap_ready(s: AudioStreamWAV) -> void:
 	trap_streams.append(s)
