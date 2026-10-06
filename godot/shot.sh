@@ -7,7 +7,7 @@ mkdir -p "$SP"
 NAME=$1; shift
 for try in 1 2 3; do
   : > "$SP/$NAME.log"
-  (open -g -n -W -a /Applications/Godot.app --args --path "$DIR" --audio-driver Dummy --resolution ${RES:-1600x900} --log-file "$SP/$NAME.log" -- --shot="$SP/$NAME.png" --hidden --mute "$@" &)
+  (open ${HIDDEN:+-g} -n -W -a /Applications/Godot.app --args --path "$DIR" --audio-driver Dummy --resolution ${RES:-1600x900} --log-file "$SP/$NAME.log" -- --shot="$SP/$NAME.png" ${HIDDEN:+--hidden} --mute "$@" &)
   ok=0
   for i in $(seq 1 ${WAIT:-70}); do sleep 1; grep -q "SHOT" "$SP/$NAME.log" 2>/dev/null && { ok=1; break; }; done
   sleep 1

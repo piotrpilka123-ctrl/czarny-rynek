@@ -394,6 +394,7 @@ func _build_hud() -> void:
 	prompt_bar = K.bar(0.0, 1.0, K.C_ACC, 5.0)
 	prompt_bar.visible = false
 	pv.add_child(prompt_bar)
+	_build_aim_menu()
 
 	var tc := CenterContainer.new()
 	tc.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -1143,9 +1144,19 @@ func open_build(room: String) -> void:
 	_open_modal("Meble — " + String(D.ROOMS[room].name), "Wybierz mebel, a potem ustaw go w pomieszczeniu.")
 	var S: Dictionary = G.S
 	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
+	# doniczki to przedmioty ze sklepu: stawiasz te, które masz przy sobie albo w skrytce
+	var cp := K.card(modal_body)
+	cp.add_child(K.lbl("UPRAWA", 10, K.C_DIM))
+	var have: int = G.item_at(room, "doniczka")
+	var placed: int = G.Prod.pots(room).size()
+	var pmax := int(D.POT_MAX.get(room, 8))
+	var pb := K.btn("Postaw doniczkę" if have > 0 and placed < pmax else ("brak doniczek" if have <= 0 else "brak miejsca"), func(): close_all(); G.main.build_begin_pot(), "go", true)
+	pb.disabled = have <= 0 or placed >= pmax
+	_row(cp, "[b]Doniczka z ziemią[/b]  %s\n%s" % [K.col("[masz %d • stoi %d/%d]" % [have, placed, pmax], K.C_BLUE),
+		K.col("Kupujesz u Stasia razem z nasionami i nawozem. Każdy krzak doglądasz osobno: celujesz w niego i wybierasz czynność. Najlepiej rośnie pod lampą LED.", K.C_DIM)], [pb], 13)
 	var c := K.card(modal_body)
 	c.add_child(K.lbl("KATALOG", 10, K.C_DIM))
-	var names := {"pack": "stanowisko", "stash": "skrytka", "grow": "uprawa", "dry": "suszenie", "lab": "synteza", "tank": "podlewanie", "filter": "zapach", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
+	var names := {"pack": "stanowisko", "stash": "skrytka", "growlight": "światło do uprawy", "dry": "suszenie", "lab": "synteza", "tank": "podlewanie", "filter": "zapach", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
 	for f in D.FURNITURE:
 		var fid: String = f.id
 		var why := ""
@@ -1683,6 +1694,12 @@ func _process_ui(dt: float) -> void:
 	if hud_t <= 0.0:
 		hud_t = 0.1
 		update_hud()
+		if not plant_ref.is_empty():
+			plant_t -= 0.1
+			if plant_t <= 0.0:
+				hide_plant_card()
+			else:
+				_plant_card_fill()
 	waymark.queue_redraw()
 	aim_t += dt
 	if aim_on and aim_t < 0.25:
@@ -1766,7 +1783,150 @@ func _draw_cross() -> void:
 		K.circle(cross, Vector2.ZERO, 1.6, Color(1, 1, 1, 0.85))
 
 
-var test_prompt_lock := false   # pomiary wydajności: podpowiedź zostaje na ekranie
+var test_prompt_lock := false
+# menu czynności przy celowniku (krzak w doniczce) i karta „Sprawdź”
+var aim_menu: VBoxContainer
+var aim_title: Label
+var aim_rows: Array = []
+var aim_key := ""
+var plant_card: PanelContainer
+var plant_body: VBoxContainer
+var plant_ref := {}
+var plant_t := 0.0
+var plant_sig := ""
+
+
+func _build_aim_menu() -> void:
+	aim_menu = K.vbox(3)
+	aim_menu.set_anchors_preset(Control.PRESET_CENTER)
+	aim_menu.position = Vector2(30, -52)
+	aim_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	aim_menu.visible = false
+	hud.add_child(aim_menu)
+	aim_title = K.lbl("", 12, Color(1, 1, 1, 0.75))
+	aim_title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	aim_title.add_theme_constant_override("shadow_offset_y", 1)
+	aim_menu.add_child(aim_title)
+	for i in range(4):
+		var row := PanelContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var hb := K.hbox(8)
+		row.add_child(hb)
+		var key := K.lbl(str(i + 1), 11, K.C_DIM)
+		key.custom_minimum_size = Vector2(12, 0)
+		hb.add_child(key)
+		var ic := K.icon("leaf", 15, K.C_TXT)
+		hb.add_child(ic)
+		var tx := K.lbl("", 14, K.C_TXT)
+		tx.custom_minimum_size = Vector2(118, 0)
+		hb.add_child(tx)
+		var note := K.lbl("", 11, K.C_DIM)
+		hb.add_child(note)
+		aim_menu.add_child(row)
+		aim_rows.append({"row": row, "key": key, "icon": ic, "text": tx, "note": note})
+	var hint := K.lbl("kółko myszy / 1–4 • [%s] wykonaj" % G.kn("use"), 10, Color(1, 1, 1, 0.5))
+	aim_menu.add_child(hint)
+	plant_card = K.panel(K.sb(Color(0.03, 0.04, 0.06, 0.9), 10, Color(1, 1, 1, 0.12), 1, 12))
+	plant_card.set_anchors_preset(Control.PRESET_CENTER)
+	plant_card.position = Vector2(-300, -110)
+	plant_card.custom_minimum_size = Vector2(250, 0)
+	plant_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plant_card.visible = false
+	hud.add_child(plant_card)
+	plant_body = K.vbox(5)
+	plant_card.add_child(plant_body)
+
+
+## lista czynności obok celownika; przebudowuje się tylko wtedy, gdy coś się zmieniło
+func set_aim_menu(title: String, opts: Array, sel: int) -> void:
+	if aim_menu == null:
+		return
+	if opts.is_empty():
+		if aim_menu.visible:
+			aim_menu.visible = false
+			aim_key = ""
+		return
+	var key := "%s|%d" % [title, sel]
+	for o in opts:
+		key += "|%s:%s:%s:%s" % [o.id, o.label, o.ok, o.get("note", "")]
+	if key == aim_key:
+		return
+	aim_key = key
+	aim_menu.visible = true
+	aim_title.text = title.to_upper()
+	for i in range(aim_rows.size()):
+		var r: Dictionary = aim_rows[i]
+		var on := i < opts.size()
+		(r.row as Control).visible = on
+		if not on:
+			continue
+		var o: Dictionary = opts[i]
+		var cur := i == sel
+		var col: Color = (Color.WHITE if cur else K.C_TXT) if o.ok else Color(0.55, 0.57, 0.62)
+		(r.row as PanelContainer).add_theme_stylebox_override("panel", K.sb(Color(0.1, 0.42, 0.24, 0.92) if (cur and o.ok) else (Color(0.2, 0.2, 0.24, 0.9) if cur else Color(0, 0, 0, 0.55)), 7, Color(0.3, 0.9, 0.55, 0.9) if cur else Color(1, 1, 1, 0.07), 1, 6))
+		(r.icon as TextureRect).texture = K.tex(String(o.icon))
+		(r.icon as TextureRect).modulate = col
+		(r.text as Label).text = String(o.label)
+		(r.text as Label).add_theme_color_override("font_color", col)
+		(r.note as Label).text = String(o.get("note", ""))
+		(r.note as Label).add_theme_color_override("font_color", K.C_WARN if String(o.get("note", "")).contains("!") else (Color(0.8, 0.95, 0.85) if cur else K.C_DIM))
+
+
+func show_plant_card(room: String, i: int) -> void:
+	plant_ref = {"room": room, "i": i}
+	plant_t = 8.0
+	plant_sig = ""
+	_plant_card_fill()
+
+
+func hide_plant_card() -> void:
+	if plant_card != null and plant_card.visible:
+		plant_card.visible = false
+	plant_ref = {}
+
+
+func _plant_card_fill() -> void:
+	if plant_ref.is_empty():
+		return
+	var info: Dictionary = G.Prod.plant_info(String(plant_ref.room), int(plant_ref.i))
+	if info.is_empty():
+		hide_plant_card()
+		return
+	var sig := "%s|%d|%d|%d|%d|%d|%d" % [info.stage, int(float(info.prog) * 100.0), int(info.water), int(info.health), int(info.g), int(info.pur), (info.notes as Array).size()]
+	if sig == plant_sig:
+		return
+	plant_sig = sig
+	for c in plant_body.get_children():
+		plant_body.remove_child(c)
+		c.queue_free()
+	var head := K.hbox(8)
+	head.add_child(K.icon("sprout", 18, K.C_ACC))
+	head.add_child(K.head("Konopie — " + String(info.stage).to_lower(), 16))
+	plant_body.add_child(head)
+	for e in [["Wzrost", float(info.prog), K.C_ACC, "%d%%" % int(float(info.prog) * 100.0)], ["Woda", float(info.water) / 100.0, K.C_BLUE if float(info.water) >= 25.0 else K.C_BAD, "%d%%" % int(info.water)],
+			["Kondycja", float(info.health) / 100.0, K.C_ACC if float(info.health) >= 60.0 else K.C_WARN, "%d%%" % int(info.health)]]:
+		var row := K.hbox(8)
+		var l := K.lbl(String(e[0]), 12, K.C_DIM)
+		l.custom_minimum_size = Vector2(62, 0)
+		row.add_child(l)
+		var b := K.bar(float(e[1]), 1.0, e[2], 6.0)
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(b)
+		var v := K.lbl(String(e[3]), 12, K.C_TXT)
+		v.custom_minimum_size = Vector2(36, 0)
+		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(v)
+		plant_body.add_child(row)
+	var left := float(info.left)
+	var fc := "Plon: [b]ok. %d g[/b] • jakość [b]%d%%[/b]" % [int(info.g), int(info.pur)]
+	if float(info.prog) < 1.0:
+		fc += "\nDojrzeje za [b]%dh %02dm[/b]%s" % [int(left / 60.0), int(left) % 60, "" if float(info.water) > 0.0 else " (stoi — sucho)"]
+	plant_body.add_child(K.rich(fc, 13))
+	for nt in info.notes:
+		var colr: Color = {"bad": K.C_BAD, "warn": K.C_WARN, "good": K.C_ACC}.get(String(nt[1]), K.C_DIM)
+		plant_body.add_child(K.wrap("• " + String(nt[0]), 11, colr, 226.0))
+	plant_card.visible = true
+   # pomiary wydajności: podpowiedź zostaje na ekranie
 
 func set_prompt(text: String, progress := -1.0) -> void:
 	if test_prompt_lock and text == "":
@@ -1973,6 +2133,12 @@ func _input(event: InputEvent) -> void:
 			G.main.build_cancel()
 			get_viewport().set_input_as_handled()
 		return
+	# kółko myszy przewija menu czynności przy celowniku
+	if event is InputEventMouseButton and event.pressed and mode == "" and G.running and G.main.menu_active():
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN or event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			G.main.menu_scroll(1 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1)
+			get_viewport().set_input_as_handled()
+			return
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	var kc: int = event.physical_keycode
@@ -2067,6 +2233,8 @@ func _input(event: InputEvent) -> void:
 					used = false
 			elif kc == KEY_ESCAPE:
 				show_pause()
+			elif G.main.menu_active() and kc >= KEY_1 and kc <= KEY_4:
+				G.main.menu_pick(kc - KEY_1)
 			else:
 				match act:
 					"phone": open_phone("sms" if G.unread_total() > 0 else "")

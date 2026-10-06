@@ -325,6 +325,49 @@ func boom(vol_db := 0.0) -> void:
 	p.play()
 
 
+## odgłosy doglądania roślin (generowane przy pierwszym użyciu): lanie wody, grzechot granulek, sekator
+var _care := {}
+
+func care(what: String) -> void:
+	if muted:
+		return
+	if not _care.has(what):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 91 + what.length()
+		var secs: float = {"water": 1.7, "shake": 1.3, "snip": 0.16}.get(what, 0.3)
+		var n := int(secs * RATE)
+		var buf := PackedFloat32Array()
+		buf.resize(n)
+		var lp := 0.0
+		var hp := 0.0
+		for i in range(n):
+			var t := float(i) / RATE
+			var nz := rng.randf_range(-1.0, 1.0)
+			var env := minf(1.0, t * 12.0) * minf(1.0, (secs - t) * 6.0)
+			match what:
+				"water":
+					# szum przez filtr z falującym odcięciem + pojedyncze „plumknięcia”
+					lp += (nz - lp) * (0.22 + 0.1 * sin(t * 31.0) + 0.06 * sin(t * 7.3))
+					hp = lp - hp * 0.6
+					buf[i] = (lp * 0.5 + hp * 0.25 + sin(t * TAU * (420.0 + 260.0 * sin(t * 53.0))) * 0.05 * maxf(0.0, sin(t * 37.0))) * env * 0.8
+				"shake":
+					# ziarenka o plastik: krótkie trzaski w rytmie potrząsania
+					var gate := pow(maxf(0.0, sin(t * TAU * 6.5)), 6.0)
+					lp += (nz - lp) * 0.7
+					buf[i] = (nz - lp) * gate * env * 0.7
+				_:
+					# sekator: metaliczny klik i krótki trzask łodygi
+					lp += (nz - lp) * 0.5
+					buf[i] = ((nz - lp) * exp(-t * 60.0) * 0.9 + sin(t * TAU * 2300.0) * exp(-t * 90.0) * 0.35)
+		_care[what] = _wav(buf)
+	var p: AudioStreamPlayer = pool[pool_i]
+	pool_i = (pool_i + 1) % pool.size()
+	p.stream = _care[what]
+	p.volume_db = {"water": -11.0, "shake": -12.0, "snip": -8.0}.get(what, -10.0)
+	p.pitch_scale = randf_range(0.95, 1.06)
+	p.play()
+
+
 ## megafon: kilka ostrych, niskich „sylab” (tekst pokazuje napis na ekranie)
 func megaphone() -> void:
 	if muted or _syll.is_empty():

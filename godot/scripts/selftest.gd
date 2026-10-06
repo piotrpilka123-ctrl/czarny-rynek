@@ -470,7 +470,7 @@ func run() -> void:
 	ok(G.player.loc == "garage", "wejście do garażu")
 	ok(G.stash_cap("garage") == 0, "pusty garaż nie ma skrytki")
 	var placed := 0
-	for fd in [["stol", -1.6, -3.6], ["regal", 2.3, -3.9], ["namiot", 2.2, -1.2], ["kanapa", -2.4, 0.6, 1]]:
+	for fd in [["stol", -1.6, -3.6], ["regal", 2.3, -3.9], ["lampa_led", 2.0, -1.2], ["kanapa", -2.4, 0.6, 1]]:
 		var rot: int = fd[3] if fd.size() > 3 else 0
 		if G.furn_place("garage", fd[0], fd[1], fd[2], rot):
 			placed += 1
@@ -554,12 +554,11 @@ func run() -> void:
 
 	# --- zapis i odczyt (bez dotykania prawdziwego pliku zapisu)
 	S.items["nasiona"] = 1
-	var save_tent := -1
-	for i in range(S.hide.garage.items.size()):
-		if String(S.hide.garage.items[i].f) == "namiot":
-			save_tent = i
-	G.Prod.start("garage", save_tent, "konopie")
-	G.Prod.job("garage", save_tent).prog = 0.37
+	S.items["doniczka"] = 1
+	G.Prod.hide("garage").pots.clear()
+	G.Prod.pot_place("garage", 1.7, -1.2)
+	G.Prod.plant_seed("garage", 0)
+	G.Prod.plant_of("garage", 0).prog = 0.37
 	var js := JSON.stringify(G.S)
 	var data = JSON.parse_string(js)
 	var base: Dictionary = G.new_state()
@@ -567,9 +566,10 @@ func run() -> void:
 	ok(int(base.lvl) == int(S.lvl) and absf(float(base.cash) - S.cash) < 1.0 and base.props.has("garaz"), "stan przechodzi przez zapis JSON")
 	ok(int(base.stash.safe.get("items", {}).get("majeranek", 0)) == int(G.store_items(S.stash.safe).get("majeranek", 0)), "przedmioty w skrytkach zapisują się")
 	ok(base.hide.garage.items.size() == S.hide.garage.items.size() and base.hide.garage.items.size() >= 4, "meble zapisują się (%d)" % base.hide.garage.items.size())
-	var sj = base.hide.garage.jobs.get(str(save_tent))
-	ok(sj != null and absf(float(sj.prog) - 0.37) < 0.001 and String(sj.r) == "konopie" and int(sj.hold) == -1, "uprawa w toku zapisuje się razem z postępem")
-	G.Prod.discard("garage", save_tent)
+	var sj = base.hide.garage.pots[0].pl if base.hide.garage.pots.size() == 1 else null
+	ok(sj != null and absf(float(sj.prog) - 0.37) < 0.001 and absf(float(base.hide.garage.pots[0].x) - 1.7) < 0.001, "doniczka z krzakiem zapisuje się razem z postępem")
+	G.Prod.hide("garage").pots.clear()
+	G.world.refresh_furniture("garage")
 
 	# --- stroje: sklep z ubraniami, cechy, kominiarka
 	await load("res://scripts/outfit_test.gd").run(self)
@@ -851,9 +851,9 @@ func _sim_production(skill: float) -> void:
 	for it in S.hide[room].items:
 		have[String(it.f)] = int(have.get(String(it.f), 0)) + 1
 	# zakupy: najpierw regał na towar, potem uprawa, suszarka, filtr, kolejne regały, na końcu chemia
-	var plan := [["regal", 2.3, -3.9, 0, 1, 200.0], ["namiot", 2.2, -1.9, 0, 4, 300.0], ["suszarka", -2.4, -3.8, 0, 4, 200.0],
-		["regal_led", -1.9, -2.3, 0, 6, 900.0], ["filtr", -2.5, 3.6, 0, 4, 900.0], ["regal_led", -1.9, -0.9, 0, 6, 1500.0], ["zbiornik", -2.5, 2.5, 0, 6, 900.0],
-		["lab", 2.5, 1.2, 1, 5, 2000.0], ["regal_led", -1.9, 0.5, 0, 7, 3000.0]]
+	var plan := [["regal", 2.3, -3.9, 0, 1, 200.0], ["lampa_led", 2.0, -1.9, 0, 4, 300.0], ["suszarka", -2.4, -3.8, 0, 4, 200.0],
+		["lampa_led", -1.9, -2.3, 0, 6, 900.0], ["filtr", -2.5, 3.6, 0, 4, 900.0], ["zbiornik", -2.5, 2.5, 0, 6, 900.0],
+		["lab", 2.5, 1.2, 1, 5, 2000.0]]
 	var seen := {}
 	for e in plan:
 		var fid: String = e[0]
@@ -863,27 +863,49 @@ func _sim_production(skill: float) -> void:
 		if S.cash > float(G.furn_def(fid).price) + float(e[5]):
 			if G.furn_place(room, fid, float(e[1]), float(e[2]), int(e[3])):
 				have[fid] = int(have.get(fid, 0)) + 1
+	# doniczki pod lampami: bot dokupuje je po trochu, sadzi, podlewa, a staranny także nawozi i przycina
+	var spots: Array = []
+	for it in P.lamps(room):
+		for k in range(6):
+			spots.append(Vector2(float(it.x) - 0.5 + (k % 3) * 0.5, float(it.z) - 0.25 + int(k / 3.0) * 0.5))
+	var pots: Array = P.pots(room)
+	var want: int = mini(spots.size(), 2 + int(S.lvl) - 3)
+	var bought := 0
+	while pots.size() < want and bought < 2 and S.cash > 400.0:
+		if G.item_at(room, "doniczka") <= 0 and not G.shop_buy("doniczka"):
+			break
+		var placed := false
+		for sp in spots:
+			if P.pot_valid(room, sp.x, sp.y) and P.pot_place(room, sp.x, sp.y):
+				placed = true
+				break
+		if not placed:
+			break
+		bought += 1
+	for i in range(pots.size()):
+		var pl = pots[i].pl
+		if pl == null:
+			if G.item_at(room, "nasiona") <= 0 and S.cash > 150.0:
+				G.shop_buy("nasiona")
+			P.plant_seed(room, i)
+		elif float(pl.prog) >= 1.0:
+			P.plant_cut(room, i)
+		else:
+			if float(pl.water) < 60.0:
+				P.plant_water(room, i)
+			if skill > 0.6:
+				if P.plant_cut_kind(room, i) == "trim":
+					P.plant_cut(room, i)
+				if not pl.fert and float(pl.prog) < 0.6:
+					if G.item_at(room, "nawoz") <= 0 and S.cash > 200.0:
+						G.shop_buy("nawoz")
+					P.plant_fert(room, i)
 	var items: Array = S.hide[room].items
 	for i in range(items.size()):
 		var kind: String = P.kind(room, i)
 		var j = P.job(room, i)
 		if kind == "grow":
-			if j == null:
-				if G.item_at(room, "nasiona") <= 0 and S.cash > 150.0:
-					G.shop_buy("nasiona")
-				P.start(room, i, "konopie")
-			elif float(j.prog) >= 1.0:
-				P.collect(room, i)
-			else:
-				if float(j.water) < 60.0:
-					P.water(room, i)
-				if skill > 0.6:
-					if P.can_trim(room, i):
-						P.trim(room, i)
-					if not j.fert and float(j.prog) < 0.6:
-						if G.item_at(room, "nawoz") <= 0 and S.cash > 200.0:
-							G.shop_buy("nawoz")
-						P.fertilize(room, i)
+			pass
 		elif kind == "dry":
 			if j != null and float(j.prog) >= 1.0:
 				P.collect(room, i)

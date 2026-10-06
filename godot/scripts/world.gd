@@ -62,6 +62,8 @@ var fac := {}
 var fac_cell := {}             # rozmiar pola okna dla danego materiału elewacji
 var balc: Array = []           # loggie: {b, code, cx, fl} — do rozstawiania anten, prania itp.
 var grow_nodes := {}
+var pot_nodes := {}          # pokój -> [węzeł doniczki, ...] (kolejność jak w zapisie)
+var lamp_nodes := {}         # pokój -> {nr mebla: węzeł lampy}
 var _bal_slab: Array = []
 var _bal_rail: Array = []
 var _lines: Array = []
@@ -3275,8 +3277,7 @@ func furn_model(fid: String) -> Node3D:
 			n.add_child(lap)
 		var made: Node3D = null
 		match fid:
-			"namiot": made = Stations.rack(2, true)
-			"regal_led": made = Stations.rack(int(f.get("pots", 4)), false)
+			"lampa_led": made = Stations.grow_lamp()
 			"suszarka": made = Stations.dryer()
 			"zbiornik": made = Stations.tank()
 			"filtr": made = Stations.carbon_filter()
@@ -3312,6 +3313,8 @@ func refresh_furniture(room: String) -> void:
 		c.queue_free()
 	inter_dyn[room] = []
 	grow_nodes[room] = {}
+	pot_nodes[room] = []
+	lamp_nodes[room] = {}
 	var hide: Dictionary = G.S.hide.get(room, {})
 	var items: Array = hide.get("items", [])
 	var cx: float = D.ROOMS[room].cx
@@ -3325,12 +3328,14 @@ func refresh_furniture(room: String) -> void:
 		n.rotation.y = int(it.r) * PI / 2.0
 		g.add_child(n)
 		var r := furn_rect(it)
-		var cs := CollisionShape3D.new()
-		var bs := BoxShape3D.new()
-		bs.size = Vector3(r.size.x, minf(float(f.h), 1.2), r.size.y)
-		cs.shape = bs
-		cs.position = Vector3(cx + float(it.x), bs.size.y * 0.5, float(it.z))
-		fb.add_child(cs)
+		# to, co wisi pod sufitem (lampa LED), nie blokuje przejścia
+		if not f.get("hang", false):
+			var cs := CollisionShape3D.new()
+			var bs := BoxShape3D.new()
+			bs.size = Vector3(r.size.x, minf(float(f.h), 1.2), r.size.y)
+			cs.shape = bs
+			cs.position = Vector3(cx + float(it.x), bs.size.y * 0.5, float(it.z))
+			fb.add_child(cs)
 		var idx := i
 		var ix: float = cx + float(it.x)
 		var iz: float = float(it.z)
@@ -3356,6 +3361,32 @@ func refresh_furniture(room: String) -> void:
 			"tank", "filter":
 				aim.merge({"label": func(): return G.station_label(room, idx), "act": func(): G.ui.open_hideout(room)})
 				inter_dyn[room].append(aim)
+			"growlight":
+				aim.merge({"y0": 1.85, "y1": 2.05, "r": 0.6, "reach": 3.2, "up": true,
+					"label": func(): return "Lampa LED — %s (przełącz)" % String(G.Prod.lamp_mode(int(G.S.hide[room].items[idx].get("mode", 0))).name).to_lower(),
+					"act": func(): G.main.lamp_toggle(room, idx)})
+				inter_dyn[room].append(aim)
+				lamp_nodes[room][idx] = n
+	# doniczki: każda to osobny cel z własnym menu czynności
+	var pots: Array = G.Prod.pots(room)
+	for i in range(pots.size()):
+		var pt: Dictionary = pots[i]
+		var pn := Stations.pot_node()
+		pn.position = Vector3(cx + float(pt.x), 0.0, float(pt.z))
+		g.add_child(pn)
+		pot_nodes[room].append(pn)
+		var pcs := CollisionShape3D.new()
+		var pcy := CylinderShape3D.new()
+		pcy.radius = 0.15
+		pcy.height = 0.3
+		pcs.shape = pcy
+		pcs.position = Vector3(cx + float(pt.x), 0.15, float(pt.z))
+		fb.add_child(pcs)
+		var pi := i
+		inter_dyn[room].append({"loc": room, "x": cx + float(pt.x), "z": float(pt.z), "y0": 0.0, "y1": 0.5, "r": 0.3, "reach": 2.6, "id": "pot_%d" % pi, "pot": pi,
+			"label": func(): return G.Prod.pot_label(room, pi),
+			"menu": func(): return G.main.pot_menu(room, pi),
+			"act": func(): pass})
 	update_stations()
 
 
@@ -3372,9 +3403,34 @@ func update_stations() -> void:
 				continue
 			var job = jobs.get(str(idx))
 			match String(furn_def(String(items[int(idx)].f)).get("func", "")):
-				"grow": Stations.refresh_rack(n, job)
 				"lab": Stations.refresh_lab(n, job)
 				"dry":
 					var ld: Node3D = n.get_node_or_null("Load")
 					if ld != null:
 						ld.visible = job != null
+	for room in pot_nodes:
+		if not G.S.hide.has(room):
+			continue
+		var pots: Array = G.Prod.pots(room)
+		var nodes: Array = pot_nodes[room]
+		for k in range(mini(pots.size(), nodes.size())):
+			if is_instance_valid(nodes[k]):
+				Stations.refresh_pot(nodes[k], pots[k].pl, float(k))
+		# cel celownika rośnie razem z krzakiem
+		for it in inter_dyn.get(room, []):
+			if it.has("pot") and int(it.pot) < pots.size():
+				var pl = pots[int(it.pot)].pl
+				it.y1 = 0.5 if pl == null else maxf(0.5, 0.3 + Stations.plant_height(float(pl.prog), float(it.pot)))
+		var items: Array = G.S.hide[room].items
+		for idx in lamp_nodes.get(room, {}):
+			var ln = lamp_nodes[room][idx]
+			if ln == null or not is_instance_valid(ln) or int(idx) >= items.size():
+				continue
+			var it2: Dictionary = items[int(idx)]
+			var rc: Rect2 = G.furn_rect(furn_def(String(it2.f)), float(it2.x), float(it2.z), int(it2.r)).grow(0.12)
+			var any := false
+			for k in range(pots.size()):
+				if pots[k].pl != null and rc.has_point(Vector2(float(pots[k].x), float(pots[k].z))):
+					any = true
+			Stations.refresh_lamp(ln, any, int(it2.get("mode", 0)))
+

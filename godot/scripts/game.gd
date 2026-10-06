@@ -107,12 +107,12 @@ func new_state() -> Dictionary:
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store()},
-		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0}, "upg": {}, "pockets": [null, null, null, null],
+		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
 		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "special": null, "sold_bulk": {}, "outfit": "dres", "outfits": {},
-		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": []}},
+		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0},
 		"pos": null, "mom_day": 0,
 	}
@@ -2175,17 +2175,29 @@ func furn_valid(room: String, fid: String, x: float, z: float, r: int, ignore :=
 	var f := furn_def(fid)
 	var R: Dictionary = D.ROOMS[room]
 	var rc := furn_rect(f, x, z, r)
+	var hang: bool = f.get("hang", false)
 	if rc.position.x < -float(R.w) * 0.5 + 0.02 or rc.end.x > float(R.w) * 0.5 - 0.02 or rc.position.y < -float(R.d) * 0.5 + 0.02 or rc.end.y > float(R.d) * 0.5 - 0.02:
 		return false
-	if rc.intersects(Rect2(-1.0, float(R.d) * 0.5 - 1.5, 2.0, 1.5)):
+	if not hang and rc.intersects(Rect2(-1.0, float(R.d) * 0.5 - 1.5, 2.0, 1.5)):
 		return false
 	var items: Array = S.hide[room].items
 	for i in range(items.size()):
 		if i == ignore:
 			continue
 		var o: Dictionary = items[i]
-		if rc.grow(-0.03).intersects(furn_rect(furn_def(o.f), float(o.x), float(o.z), int(o.r))):
+		var of := furn_def(o.f)
+		if of.is_empty():
+			continue
+		# lampa pod sufitem koliduje tylko z inną lampą i z wysokimi meblami
+		var oh: bool = of.get("hang", false)
+		if hang != oh and float((of if hang else f).h) <= 1.6:
+			continue
+		if rc.grow(-0.03).intersects(furn_rect(of, float(o.x), float(o.z), int(o.r))):
 			return false
+	if not hang:
+		for pt in Prod.pots(room):
+			if rc.grow(Prod.POT_R).has_point(Vector2(float(pt.x), float(pt.z))):
+				return false
 	return true
 
 
@@ -2286,9 +2298,9 @@ func _build_story() -> void:
 			"done": func(): return owns("garaz"), "marker": _garage_marker},
 		{"id": "meble", "text": func(): return "Urządź garaż: w środku naciśnij [B] i wstaw stół roboczy oraz regał.",
 			"done": func(): return _has_furn("garage", "pack") and _has_furn("garage", "stash")},
-		{"id": "uprawa1", "text": func(): return "Czas znów produkować. Wstaw w kryjówce namiot uprawowy i suszarkę [B], kup nasiona u Stasia i zasiej konopie.",
-			"done": func(): return _any_job() or int(S.stats.grown) > 0, "marker": _garage_marker},
-		{"id": "zbior1", "text": func(): return "Doglądaj uprawy: woda, nawóz, przycinanie. Zbierz plon, wysusz go i zważ. Nadwyżki sprzedasz hurtem na Giełdzie. (%d g)" % int(S.stats.grown),
+		{"id": "uprawa1", "text": func(): return "Czas znów produkować. Kup u Stasia doniczki i nasiona, postaw doniczki w kryjówce [B] (najlepiej pod lampą LED) i posadź pierwszy krzak — celujesz w doniczkę i wybierasz czynność.",
+			"done": func(): return _any_job() or Prod.plant_count("garage") + Prod.plant_count("basement") > 0 or int(S.stats.grown) > 0, "marker": _garage_marker},
+		{"id": "zbior1", "text": func(): return "Doglądaj krzaków: podlewaj, nawoź, przytnij liście. Dojrzałe zetnij, wysusz w suszarce [B] i zważ. Nadwyżki sprzedasz hurtem na Giełdzie. (%d g)" % int(S.stats.grown),
 			"done": func(): return int(S.stats.grown) > 0, "marker": _garage_marker},
 		{"ch": "Wolna gra", "id": "free", "text": func(): return "Rozwijaj interes i spłacaj raty. Dług: %s" % money(S.debt), "done": func(): return false},
 	]
@@ -2504,7 +2516,7 @@ func load_game() -> bool:
 		return false
 	var base := new_state()
 	_merge(base, data)
-	for k in ["woreczki", "majeranek", "cukier", "nasiona", "burner", "nawoz", "chemia"]:
+	for k in ["woreczki", "majeranek", "cukier", "nasiona", "burner", "nawoz", "chemia", "doniczka"]:
 		if not base.items.has(k):
 			base.items[k] = 0
 	if not base.flags.has("tut_save") and (int(base.step) > 0 or base.flags.has("read_wiktor")):

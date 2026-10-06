@@ -1,7 +1,7 @@
 extends RefCounted
 ## Testy produkcji: uprawa (woda, nawóz, przycinanie, tryby lamp), suszenie, synteza z etapami
 ## wymagającymi gracza, zapach / prąd / ryzyko, nalot, meble ze stanowiskami, stare zapisy, okna.
-## Wołane z selftest.gd (T = węzeł testu). Zakłada kupiony garaż z namiotem na pozycji 2.
+## Wołane z selftest.gd (T = węzeł testu). Zakłada kupiony garaż z lampą LED.
 
 
 static func _run(P, minutes: float) -> void:
@@ -23,51 +23,82 @@ static func run(T) -> void:
 	S.items["nasiona"] = 6
 	S.items["nawoz"] = 2
 	S.items["chemia"] = 5
-	var tent := -1
+	S.items["doniczka"] = 3
+	var lamp := -1
 	for i in range(S.hide[room].items.size()):
-		if String(S.hide[room].items[i].f) == "namiot":
-			tent = i
-	T.ok(tent >= 0 and P.kind(room, tent) == "grow", "namiot jest stanowiskiem uprawy")
+		if String(S.hide[room].items[i].f) == "lampa_led":
+			lamp = i
+	var tent := lamp
+	T.ok(lamp >= 0 and P.lamps(room).size() == 1, "lampa LED wisi w garażu")
+	P.hide(room).pots.clear()
 
-	# ---------------------------------------------------------------- uprawa: woda i czas
-	T.ok(P.recipes_for(room, tent).size() == 1 and String(P.recipes_for(room, tent)[0].miss) == "", "w namiocie da się nastawić konopie")
-	T.ok(P.start(room, tent, "konopie") and S.items["nasiona"] == 5, "zasianie zużywa paczkę nasion")
-	T.ok(not P.start(room, tent, "konopie"), "zajętego stanowiska nie da się nastawić drugi raz")
-	var j: Dictionary = P.job(room, tent)
-	T.ok(int(j.pots) == 2 and P.stage_name(j) == "Sadzonki" and G.station_label(room, tent).contains("sadzonki"), "start: 2 doniczki, etap „Sadzonki”")
-	T.ok(not P.can_trim(room, tent) and P.can_fert(room, tent), "sadzonek się nie przycina, nawozić można")
+	# ---------------------------------------------------------------- doniczki: przedmiot ze sklepu, stawiany w kryjówce
+	var lx: float = S.hide[room].items[lamp].x
+	var lz: float = S.hide[room].items[lamp].z
+	T.ok(P.pot_valid(room, lx - 0.4, lz) and not P.pot_valid(room, 99.0, 0.0) and not P.pot_valid(room, 0.0, 4.2), "doniczka mieści się pod lampą, ale nie w ścianie ani w drzwiach")
+	T.ok(P.pot_place(room, lx - 0.4, lz) and S.items["doniczka"] == 2 and P.pots(room).size() == 1, "postawienie zużywa doniczkę z plecaka")
+	T.ok(not P.pot_valid(room, lx - 0.3, lz) and P.pot_place(room, lx + 0.3, lz), "doniczki nie wchodzą jedna w drugą; druga staje obok")
+	T.ok(P.pot_place(room, -0.4, 1.9) and S.items["doniczka"] == 0 and not P.pot_place(room, -1.0, 1.9), "trzecia poza lampą; bez doniczek nic nie postawisz")
+	T.ok(P.light_at(room, lx - 0.4, lz) == 0 and P.light_at(room, -0.4, 1.9) == -1, "światło: pod lampą tak, w kącie nie")
+	T.ok(not G.furn_valid(room, "skrzynia", lx - 0.4, lz, 0), "mebla nie postawisz na doniczce")
+	T.ok(G.world.pot_nodes[room].size() == 3, "doniczki stoją w świecie gry")
+	var menu0: Array = G.main.pot_menu(room, 0)
+	T.ok(menu0.size() == 2 and String(menu0[0].id) == "seed" and menu0[0].ok, "pusta doniczka: posadź albo zabierz")
+
+	# ---------------------------------------------------------------- krzak: sadzenie, woda, czas
+	T.ok(P.plant_seed(room, 0) and S.items["nasiona"] == 5 and not P.plant_seed(room, 0), "jedno nasiono = jeden krzak; zajętej doniczki nie obsadzisz drugi raz")
+	T.ok(P.plant_seed(room, 2), "drugi krzak rośnie bez lampy")
+	var j: Dictionary = P.plant_of(room, 0)
+	var dark: Dictionary = P.plant_of(room, 2)
+	T.ok(P.plant_stage(j) == "Sadzonki" and P.pot_label(room, 0).contains("sadzonki") and P.pot_label(room, 1) == "Pusta doniczka", "start: etap „Sadzonki”")
+	var menu1: Array = G.main.pot_menu(room, 0)
+	var ids: Array = []
+	for o in menu1:
+		ids.append(String(o.id))
+	T.ok(ids == ["check", "water", "fert", "cut"], "krzak ma cztery czynności: sprawdź, podlej, nawóz, zetnij")
+	T.ok(P.plant_cut_kind(room, 0) == "early" and P.plant_can_fert(room, 0), "sadzonki się nie przycina, nawozić można")
+	j.water = 100.0
+	dark.water = 100.0
 	_run(P, 600.0)
-	T.ok(absf(float(j.prog) - 10.0 / 30.0) < 0.02 and absf(float(j.water) - 58.0) < 3.0, "po 10 h: 1/3 cyklu, wody ubyło do %d%%" % int(j.water))
-	T.ok(P.stage_name(j) == "Wzrost" and P.can_trim(room, tent), "faza wzrostu: można przyciąć")
-	var f0: Dictionary = P.forecast(j)
-	T.ok(P.trim(room, tent) and not P.can_trim(room, tent) and int(P.forecast(j).pur) > int(f0.pur), "przycięcie raz na cykl podnosi czystość (%d%% → %d%%)" % [int(f0.pur), int(P.forecast(j).pur)])
-	T.ok(P.fertilize(room, tent) and S.items["nawoz"] == 1 and float(P.forecast(j).g) > float(f0.g) * 1.2, "nawóz: plon %d g → %d g" % [int(f0.g), int(P.forecast(j).g)])
-	T.ok(not P.fertilize(room, tent), "drugiej dawki nawozu nie przyjmie")
+	T.ok(absf(float(j.prog) - 10.0 / 30.0) < 0.02 and absf(float(j.water) - 58.0) < 3.0, "po 10 h pod lampą: 1/3 cyklu, wody ubyło do %d%%" % int(j.water))
+	T.ok(absf(float(dark.prog) - float(j.prog) * 0.4) < 0.01, "bez lampy krzak rośnie 2,5 raza wolniej (%d%% wobec %d%%)" % [int(float(dark.prog) * 100.0), int(float(j.prog) * 100.0)])
+	T.ok(P.plant_stage(j) == "Wzrost" and P.plant_cut_kind(room, 0) == "trim", "faza wzrostu: sekator przycina liście")
+	var f0: Dictionary = P.plant_forecast(room, 0)
+	T.ok(P.plant_cut(room, 0).kind == "trim" and P.plant_cut_kind(room, 0) == "early" and int(P.plant_forecast(room, 0).pur) > int(f0.pur), "przycięcie raz na krzak podnosi czystość (%d%% → %d%%)" % [int(f0.pur), int(P.plant_forecast(room, 0).pur)])
+	T.ok(P.plant_fert(room, 0) and S.items["nawoz"] == 1 and float(P.plant_forecast(room, 0).g) > float(f0.g) * 1.2, "nawóz: plon %d g → %d g" % [int(f0.g), int(P.plant_forecast(room, 0).g)])
+	T.ok(not P.plant_fert(room, 0), "drugiej dawki nawozu nie przyjmie")
+	T.ok(int(P.plant_forecast(room, 2).pur) < int(f0.pur), "krzak bez światła wyjdzie słabszy")
 	# bez podlewania ziemia wysycha: wzrost staje, kondycja leci
 	_run(P, 14.0 * 60.0)
 	var stuck := float(j.prog)
 	T.ok(float(j.water) <= 0.0 and stuck < 0.8, "bez podlewania woda się kończy (postęp stanął na %d%%)" % int(stuck * 100.0))
 	_run(P, 4.0 * 60.0)
 	T.ok(absf(float(j.prog) - stuck) < 0.001 and float(j.health) < 85.0, "na sucho rośliny nie rosną i marnieją (kondycja %d%%)" % int(j.health))
-	T.ok(G.station_label(room, tent).contains("SUCHO"), "napis nad namiotem krzyczy, że sucho")
-	var dry_fc: Dictionary = P.forecast(j)
-	T.ok(P.water(room, tent) and float(j.water) == 100.0, "podlanie napełnia do pełna")
+	T.ok(P.pot_label(room, 0).contains("SUCHO"), "napis przy celowniku krzyczy, że sucho")
+	var info: Dictionary = P.plant_info(room, 0)
+	T.ok(not info.is_empty() and String(info.notes[0][1]) == "bad" and bool(info.fert) and bool(info.trim), "karta „Sprawdź” pokazuje stan krzaka i ostrzega o suszy")
+	var dry_fc: Dictionary = P.plant_forecast(room, 0)
+	T.ok(P.plant_water(room, 0) and float(j.water) == 100.0, "podlanie napełnia do pełna")
 	_run(P, 9.0 * 60.0)
 	T.ok(float(j.prog) > stuck + 0.2, "po podlaniu znowu rośnie")
-	T.ok(P.stage_name(j) == "Kwitnienie" and not P.can_fert(room, tent), "kwitnienie: na nawóz już za późno")
-	P.water(room, tent)
+	T.ok(P.plant_stage(j) == "Kwitnienie" and not P.plant_can_fert(room, 0), "kwitnienie: na nawóz już za późno")
+	P.plant_water(room, 0)
 	_run(P, 12.0 * 60.0)
-	T.ok(float(j.prog) >= 1.0 and P.stage_name(j) == "Gotowe" and G.station_label(room, tent).contains("zbierz"), "plon gotowy do zbioru")
-	T.ok(float(dry_fc.g) < float(f0.g) * 1.25 and int(P.forecast(j).pur) % 5 == 0, "zaniedbanie kosztuje plon; czystość własnej uprawy to zawsze „czysty” krok")
+	T.ok(float(j.prog) >= 1.0 and P.plant_stage(j) == "Dojrzała" and P.plant_cut_kind(room, 0) == "harvest", "krzak dojrzały: sekator robi zbiór")
+	T.ok(float(dry_fc.g) < float(f0.g) * 1.25 and int(P.plant_forecast(room, 0).pur) % 5 == 0, "zaniedbanie kosztuje plon; czystość własnej uprawy to zawsze „czysty” krok")
 	# przejrzewanie
 	var h_ready: float = j.health
 	_run(P, 30.0 * 60.0)
-	T.ok(float(j.health) < h_ready, "zostawiony za długo plon traci na jakości")
+	T.ok(float(j.health) < h_ready and P.plant_stage(j) == "Przejrzała", "zostawiony za długo krzak traci na jakości")
+	# ścięcie przed czasem: młody krzak przepada
+	dark.prog = 0.1
+	T.ok(float(P.plant_cut(room, 2).g) == 0.0 and P.plant_of(room, 2) == null and P.wet_total(room) < 0.01, "ścięty przed kwitnieniem krzak nic nie daje")
+	T.ok(P.pot_take(room, 2) and S.items["doniczka"] == 1 and P.pots(room).size() == 2 and not P.pot_take(room, 0), "pustą doniczkę można zabrać, obsadzonej nie")
 
 	# ---------------------------------------------------------------- zbiór i suszenie
-	var fc: Dictionary = P.forecast(j)
-	var res: Dictionary = P.collect(room, tent)
-	T.ok(res.get("wet", false) and absf(P.wet_total(room) - float(fc.g)) < 0.01 and P.job(room, tent) == null, "zbiór: %d g świeżego suszu czeka na suszarkę" % int(fc.g))
+	var fc: Dictionary = P.plant_forecast(room, 0)
+	var res: Dictionary = P.plant_cut(room, 0)
+	T.ok(String(res.kind) == "harvest" and absf(P.wet_total(room) - float(fc.g)) < 0.01 and P.plant_of(room, 0) == null, "zbiór: %d g świeżego suszu czeka na suszarkę" % int(fc.g))
 	T.ok(G.goods_total(S.stash[room]) < 0.01, "niewysuszony zbiór nie jest jeszcze towarem")
 	T.ok(G.furn_place(room, "suszarka", -2.3, -1.6, 0) and G.furn_place(room, "filtr", -2.4, 3.2, 0), "wstawiona suszarka i filtr węglowy")
 	var dryer: int = S.hide[room].items.size() - 2
@@ -85,18 +116,18 @@ static func run(T) -> void:
 	T.ok(not mixed and int(dried.pur) == int(fc.pur), "własny towar nie ma znacznika mieszanki")
 
 	# ---------------------------------------------------------------- tryb lamp, pompa
-	T.ok(P.start(room, tent, "konopie"), "drugi cykl")
-	j = P.job(room, tent)
+	T.ok(P.plant_seed(room, 0), "drugi krzak w tej samej doniczce")
+	j = P.plant_of(room, 0)
 	var st_a: Dictionary = P.stats(room)
-	P.set_mode(room, tent, 1)
+	T.ok(P.lamp_toggle(room, lamp) == 1 and P.light_at(room, lx - 0.4, lz) == 1, "lampa przełącza się na cykl 24/0")
 	var st_b: Dictionary = P.stats(room)
 	T.ok(float(st_b.power) > float(st_a.power) * 1.5 and float(st_b.smell) > float(st_a.smell), "lampy 24/0: więcej prądu (%d → %d zł) i zapachu" % [int(st_a.power), int(st_b.power)])
 	var t_slow: float = 30.0 * 60.0
-	T.ok(P.minutes_left(j) < t_slow * 0.8, "lampy 24/0 skracają cykl do %d h" % int(P.minutes_left(j) / 60.0))
+	T.ok(P.plant_minutes_left(room, 0) < t_slow * 0.8, "lampy 24/0 skracają cykl do %d h" % int(P.plant_minutes_left(room, 0) / 60.0))
 	T.ok(G.furn_place(room, "zbiornik", -2.4, 2.2, 0), "wstawiony zbiornik z pompą")
 	_run(P, 23.0 * 60.0)
-	T.ok(float(j.water) >= 70.0 and float(j.prog) >= 1.0 and float(j.health) > 95.0, "z pompą uprawa sama dochodzi do końca w dobrej kondycji")
-	T.ok(int(P.forecast(j).pur) < int(fc.pur) + 20, "mocne lampy dają trochę słabszy towar")
+	T.ok(float(j.water) >= 70.0 and float(j.prog) >= 1.0 and float(j.health) > 95.0, "z pompą krzak sam dochodzi do końca w dobrej kondycji")
+	T.ok(int(P.plant_forecast(room, 0).pur) < int(fc.pur) + 20, "mocne lampy dają trochę słabszy towar")
 
 	# ---------------------------------------------------------------- zapach, filtr, ryzyko
 	var with_f: Dictionary = P.stats(room)
@@ -108,9 +139,9 @@ static func run(T) -> void:
 	S.hide[room].items[fi] = {"f": "krzeslo", "x": filt_item.x, "z": filt_item.z, "r": 0}
 	var no_f: Dictionary = P.stats(room)
 	S.hide[room].items[fi] = filt_item
-	T.ok(absf(float(with_f.smell) - float(no_f.smell) * 0.4) < 0.01 and float(with_f.risk) < float(no_f.risk), "filtr węglowy: zapach %d → %d, ryzyko %d → %d" % [int(no_f.smell), int(with_f.smell), int(no_f.risk), int(with_f.risk)])
+	T.ok(absf(float(with_f.smell) - float(no_f.smell) * 0.4) < 0.01 and float(with_f.risk) <= float(no_f.risk), "filtr węglowy: zapach %d → %d, ryzyko %d → %d" % [int(no_f.smell), int(with_f.smell), int(no_f.risk), int(with_f.risk)])
 	T.ok(P.raid_chance(5.0) == 0.0 and P.raid_chance(40.0) > 0.05 and P.raid_chance(90.0) > P.raid_chance(40.0) * 2.0 and P.raid_chance(95.0) < 0.36, "szansa nalotu rośnie z ryzykiem (40 → %d%%, 90 → %d%% na dobę)" % [int(P.raid_chance(40.0) * 100.0), int(P.raid_chance(90.0) * 100.0)])
-	P.collect(room, tent)
+	P.plant_cut(room, 0)
 	P.hide(room).wet.clear()
 	var idle: Dictionary = P.stats(room)
 	T.ok(float(idle.risk) == 0.0 and float(idle.smell) == 0.0, "pusta kryjówka nie ściąga uwagi")
@@ -206,7 +237,7 @@ static func run(T) -> void:
 	S.invest = 0.0
 
 	# ---------------------------------------------------------------- rachunek za prąd
-	P.start(room, tent, "konopie")
+	P.plant_seed(room, 0)
 	var bill: float = round(float(P.stats(room).power))
 	S.cash = 1000.0
 	P.hide(room).erase("raid_at")
@@ -216,15 +247,19 @@ static func run(T) -> void:
 	T.ok(bill > 5.0 and absf(S.cash - (1000.0 - bill)) < 0.01, "doba pracy kryjówki kosztuje %d zł prądu" % int(bill))
 
 	# ---------------------------------------------------------------- okna
-	U.open_station(room, tent)
-	await T.frames(3)
-	T.ok(U.mode == "modal" and U.station.view != null, "okno regału z rosnącą uprawą")
-	U.station.view.play("water", func(): pass)
-	var ag := 0
-	while U.station.view.busy() and ag < 400:
-		ag += 1
-		await T.frames(1)
-	T.ok(not U.station.view.busy(), "animacja czynności kończy się sama")
+	# menu przy celowniku i karta krzaka
+	U.set_aim_menu("Konopie — sadzonki", G.main.pot_menu(room, 0), 1)
+	await T.frames(2)
+	T.ok(U.aim_menu.visible and U.aim_rows[3].row.visible, "przy celowniku widać listę czterech czynności")
+	U.show_plant_card(room, 0)
+	await T.frames(2)
+	T.ok(U.plant_card.visible, "„Sprawdź” otwiera kartę krzaka")
+	U.hide_plant_card()
+	U.set_aim_menu("", [], 0)
+	T.ok(not U.aim_menu.visible and not U.plant_card.visible, "menu i karta znikają, gdy odwracasz wzrok")
+	# czynności z animacją: w testach skutek jest natychmiastowy
+	P.plant_of(room, 0).water = 30.0
+	T.ok(G.main.care.play("water", room, 0) and float(P.plant_of(room, 0).water) == 100.0 and not G.main.care.busy(), "konewka podlewa wskazany krzak")
 	U.open_station(room, lab)
 	await T.frames(2)
 	P.start(room, lab, "metamfetamina")
@@ -246,10 +281,19 @@ static func run(T) -> void:
 
 	# ---------------------------------------------------------------- stary zapis
 	P.hide(room).jobs.clear()
-	S.hide[room]["grow"] = {str(tent): {"start": S.t - 600.0, "end": S.t + 600.0, "hits": 2}}
+	P.hide(room).pots.clear()
+	var n_items: int = S.hide[room].items.size()
+	S.hide[room].items.append({"f": "regal_led", "x": 0.0, "z": -1.0, "r": 0})
+	var oj: Dictionary = P.new_job("konopie", 4)
+	oj.prog = 0.5
+	oj.fert = true
+	P.hide(room).jobs[str(n_items)] = oj
 	P.migrate()
-	var mig = P.job(room, tent)
-	T.ok(mig != null and absf(float(mig.prog) - 0.5) < 0.01 and S.hide[room].grow.is_empty(), "uprawa ze starego zapisu przechodzi do nowego systemu")
+	T.ok(String(S.hide[room].items[n_items].f) == "lampa_led" and P.pots(room).size() == 4 and absf(float(P.plant_of(room, 3).prog) - 0.5) < 0.001 and P.plant_of(room, 0).fert and P.job(room, n_items) == null,
+		"regał ze starego zapisu zamienia się w lampę i cztery doniczki z tym samym postępem")
+	S.hide[room].items.remove_at(n_items)
+	P.hide(room).pots.clear()
+	G.world.refresh_furniture(room)
 	P.hide(room).jobs.clear()
 	G.world.update_stations()
 	S.cash = keep_cash

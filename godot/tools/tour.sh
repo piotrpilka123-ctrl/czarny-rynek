@@ -6,7 +6,7 @@ SP="${CR_OUT:-${TMPDIR:-/tmp}/czarny-rynek}"; mkdir -p "$SP" "$OUT"
 LOG="$SP/tour.log"
 for try in 1 2 3; do
   : > "$LOG"
-  (open -g -n -W -a /Applications/Godot.app --args --path "$DIR" --audio-driver Dummy --resolution ${RES:-1600x900} --log-file "$LOG" -- --tour="$LIST" --out="$OUT" --tourw=$W --hidden --mute --autostart --loc=out --quality=high "$@" &)
+  (open ${HIDDEN:+-g} -n -W -a /Applications/Godot.app --args --path "$DIR" --audio-driver Dummy --resolution ${RES:-1600x900} --log-file "$LOG" -- --tour="$LIST" --out="$OUT" --tourw=$W ${HIDDEN:+--hidden} --mute --autostart --loc=out --quality=high "$@" &)
   n=0; last=-1; stall=0
   while [ $stall -lt 45 ]; do
     sleep 2

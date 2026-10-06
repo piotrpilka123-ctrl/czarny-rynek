@@ -12,6 +12,8 @@ const LoadingScript = preload("res://scripts/loading.gd")
 const Models = preload("res://scripts/models.gd")
 const Chars = preload("res://scripts/chars.gd")
 const Props = preload("res://scripts/props.gd")
+const CareScript = preload("res://scripts/care.gd")
+const Stations = preload("res://scripts/stations.gd")
 const K = preload("res://scripts/uikit.gd")
 
 const C_ORDER := Color(0.29, 0.87, 0.5)
@@ -55,6 +57,11 @@ var hide_at := {}               # kryjówka, w której siedzi gracz
 var drop_actors := {}           # kurierzy i zasadzki przy paczkach: id paczki → {static} albo {cop}
 var way := {}                 # znacznik celu na ekranie: {pos, color, dist}
 var build := {}               # tryb ustawiania mebla: {fid, room, r, ghost, mark, valid, x, z}
+var care: Node3D = null       # animacje doglądania krzaków (scripts/care.gd)
+var menu_id := ""             # cel, którego menu czynności jest na ekranie
+var menu_sel := 0
+var menu_opts: Array = []
+var early_cut_t := 0.0        # potwierdzenie ścięcia niedojrzałej rośliny
 
 
 func _ready() -> void:
@@ -117,6 +124,8 @@ func _ready() -> void:
 	npcs.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(npcs)
 	G.npcs = npcs
+	care = CareScript.new()
+	add_child(care)
 	npcs.build()
 	if loader != null:
 		await loader.step(95.0, "Charging your phone")
@@ -646,6 +655,9 @@ func _aim_scan() -> Array:
 		var az: float = it.get("az", it.z)
 		if absf(ax - pp.x) > 5.0 or absf(az - pp.z) > 5.0:
 			continue
+		# rzeczy pod sufitem (lampa) łapią celownik tylko wtedy, gdy patrzysz w górę
+		if it.get("up", false) and dir.y < 0.3:
+			continue
 		var gy: float = world.height(ax, az) if outside else 0.0
 		var y0: float = gy + float(it.get("y0", 0.0))
 		var y1: float = gy + float(it.get("y1", 1.9))
@@ -678,6 +690,9 @@ func interact() -> void:
 		return
 	cur_inter = _find_interact()
 	if cur_inter == null:
+		return
+	if cur_inter.has("menu"):
+		menu_pick()
 		return
 	if cur_inter.has("hold"):
 		hold_inter = cur_inter
@@ -1102,6 +1117,14 @@ func build_confirm() -> void:
 		return
 	var fid: String = build.fid
 	var room: String = build.room
+	if build.get("pot", false):
+		if G.Prod.pot_place(room, float(build.x), float(build.z)):
+			var left: int = G.item_at(room, "doniczka")
+			G.notify("Doniczka stoi. %s" % (("Zostało: %d." % left) if left > 0 else "Posadź w niej nasiono."), "good")
+			if left > 0 and G.Prod.pots(room).size() < int(D.POT_MAX.get(room, 8)):
+				return
+		build_cancel()
+		return
 	if G.furn_place(room, fid, float(build.x), float(build.z), int(build.r)):
 		G.notify("Ustawiono: " + String(G.furn_def(fid).name), "good")
 	build_cancel()
@@ -1112,9 +1135,24 @@ func _build_tick() -> void:
 	if player.loc != room:
 		build_cancel()
 		return
-	var f := G.furn_def(build.fid)
 	var pp: Vector3 = player.global_position
 	var fw: Vector2 = player.forward()
+	if build.get("pot", false):
+		# doniczka: bliżej gracza i z drobniejszą siatką; pod lampą znacznik robi się fioletowy
+		var pr: float = clampf(1.15 + clampf(-player.pitch, -0.5, 0.9) * 1.1, 0.6, 2.4)
+		var pcx: float = D.ROOMS[room].cx
+		var px := snappedf(pp.x + fw.x * pr - pcx, 0.1)
+		var pz := snappedf(pp.z + fw.y * pr, 0.1)
+		build.x = px
+		build.z = pz
+		build.valid = G.Prod.pot_valid(room, px, pz)
+		(build.ghost as Node3D).position = Vector3(pcx + px, 0.0, pz)
+		var lit: bool = G.Prod.light_at(room, px, pz) >= 0
+		build.mat.albedo_color = (Color(0.8, 0.4, 1.0, 0.4) if lit else Color(0.3, 1.0, 0.5, 0.32)) if build.valid else Color(1.0, 0.25, 0.25, 0.4)
+		ui.set_build_hint("[b]Doniczka[/b] (masz %d)      %s      [b][LPM / E][/b] postaw   [b][PPM / Esc][/b] koniec" % [G.item_at(room, "doniczka"),
+			("[color=#d28cff]pod lampą[/color]" if lit else "[color=#facc15]bez lampy — będzie rosła wolno[/color]") if build.valid else "[color=#f05050]tu się nie zmieści[/color]"])
+		return
+	var f := G.furn_def(build.fid)
 	var reach: float = 1.5 + maxf(float(f.size[0]), float(f.size[1])) * 0.5 + clampf(-player.pitch, -0.4, 0.8) * 1.2
 	var cx: float = D.ROOMS[room].cx
 	var x := snappedf(pp.x + fw.x * reach - cx, 0.25)
@@ -1194,10 +1232,12 @@ func _tick(dt: float) -> void:
 		return
 	if G.busy:
 		ui.set_prompt("")
+		ui.set_aim_menu("", [], 0)
 		hold_inter = null
 		aim_hints.clear()
 		ui.set_aim(false)
 		return
+	early_cut_t = maxf(0.0, early_cut_t - dt)
 	if player.hidden:
 		cur_inter = null
 		hold_inter = null
@@ -1217,10 +1257,123 @@ func _tick(dt: float) -> void:
 				hold_inter = null
 				act.call()
 				return
-	if cur_inter != null:
-		ui.set_prompt(cur_inter.label.call(), (hold_t / float(hold_inter.hold)) if hold_inter != null else -1.0)
-	else:
+	if cur_inter != null and cur_inter.has("menu"):
+		# cel z własnym menu czynności (krzak w doniczce): lista obok celownika zamiast podpowiedzi
+		menu_opts = cur_inter.menu.call()
+		if String(cur_inter.id) != menu_id:
+			menu_id = String(cur_inter.id)
+			menu_sel = 0
+			ui.hide_plant_card()
+		menu_sel = clampi(menu_sel, 0, maxi(0, menu_opts.size() - 1))
 		ui.set_prompt("")
+		ui.set_aim_menu(cur_inter.label.call(), menu_opts, menu_sel)
+	else:
+		if menu_id != "":
+			menu_id = ""
+			menu_opts = []
+			ui.set_aim_menu("", [], 0)
+			ui.hide_plant_card()
+		if cur_inter != null:
+			ui.set_prompt(cur_inter.label.call(), (hold_t / float(hold_inter.hold)) if hold_inter != null else -1.0)
+		else:
+			ui.set_prompt("")
+
+
+# ================================================================ krzaki w doniczkach
+func menu_active() -> bool:
+	return menu_id != "" and not menu_opts.is_empty() and not G.busy
+
+
+func menu_scroll(d: int) -> void:
+	if menu_active():
+		menu_sel = wrapi(menu_sel + d, 0, menu_opts.size())
+		Sfx.play("tick")
+
+
+## wykonuje pozycję z menu przy celowniku (numer albo zaznaczoną)
+func menu_pick(i := -1) -> void:
+	if not menu_active() or cur_inter == null or not cur_inter.has("pot"):
+		return
+	if i < 0:
+		i = menu_sel
+	if i >= menu_opts.size():
+		return
+	menu_sel = i
+	var o: Dictionary = menu_opts[i]
+	if not o.ok:
+		Sfx.play("error")
+		if String(o.get("why", "")) != "":
+			G.notify(String(o.why), "warn")
+		return
+	pot_do(player.loc, int(cur_inter.pot), String(o.id))
+
+
+func pot_menu(room: String, i: int) -> Array:
+	var P = G.Prod
+	var pl = P.plant_of(room, i)
+	if pl == null:
+		var seeds: int = G.item_at(room, "nasiona")
+		return [{"id": "seed", "label": "Posadź nasiono", "icon": "sprout", "ok": seeds > 0, "note": ("masz %d" % seeds) if seeds > 0 else "brak nasion", "why": "Nie masz nasion — kup u Stasia."},
+			{"id": "take", "label": "Zabierz doniczkę", "icon": "package_open", "ok": true, "note": ""}]
+	var ck: String = P.plant_cut_kind(room, i)
+	var ripe := float(pl.prog) >= 1.0
+	var fert_n: int = G.item_at(room, "nawoz")
+	var fert_why := "Ten krzak już dostał nawóz." if pl.fert else ("Za późno na nawóz — krzak już kwitnie." if float(pl.prog) >= 0.6 else "Nie masz nawozu — kup u Stasia.")
+	return [{"id": "check", "label": "Sprawdź", "icon": "search", "ok": true, "note": ""},
+		{"id": "water", "label": "Podlej", "icon": "droplets", "ok": not ripe and float(pl.water) < 96.0, "note": "%d%%" % int(pl.water), "why": "Dojrzałej rośliny nie trzeba już podlewać." if ripe else "Ziemia jest mokra."},
+		{"id": "fert", "label": "Nawóz", "icon": "flask_conical", "ok": P.plant_can_fert(room, i), "note": "dano" if pl.fert else ("masz %d" % fert_n), "why": fert_why},
+		{"id": "cut", "label": {"harvest": "Zetnij — zbiór", "trim": "Przytnij liście", "early": "Zetnij"}.get(ck, "Zetnij"), "icon": "leaf", "ok": true,
+			"note": {"harvest": "gotowa", "trim": "jakość +8", "early": "za wcześnie!"}.get(ck, "")}]
+
+
+func pot_do(room: String, i: int, what: String) -> void:
+	var P = G.Prod
+	match what:
+		"check":
+			ui.show_plant_card(room, i)
+			Sfx.play("select")
+		"take":
+			if P.pot_take(room, i):
+				G.notify("Doniczka wraca do plecaka.")
+		"cut":
+			if P.plant_cut_kind(room, i) == "early" and early_cut_t <= 0.0:
+				early_cut_t = 4.0
+				G.notify("Ta roślina nie jest jeszcze dojrzała — stracisz ją. Wybierz „Zetnij” jeszcze raz, żeby potwierdzić.", "warn")
+				return
+			early_cut_t = 0.0
+			ui.hide_plant_card()
+			care.play("cut", room, i)
+		_:
+			ui.hide_plant_card()
+			care.play(what, room, i)
+
+
+func lamp_toggle(room: String, idx: int) -> void:
+	var m: int = G.Prod.lamp_toggle(room, idx)
+	var md: Dictionary = G.Prod.lamp_mode(m)
+	Sfx.play("toggle")
+	G.notify("%s. %s" % [String(md.name), String(md.desc)])
+	world.update_stations()
+
+
+## stawianie doniczek z plecaka (tryb jak przy meblach, ale bez kosztu — płacisz w sklepie)
+func build_begin_pot() -> void:
+	build_cancel()
+	var loc: String = player.loc
+	if not world.furn.has(loc):
+		return
+	if G.item_at(loc, "doniczka") <= 0:
+		G.notify("Nie masz doniczek. Kup je u Stasia.", "warn")
+		return
+	var ghost: Node3D = Stations.pot_node()
+	add_child(ghost)
+	var mm := StandardMaterial3D.new()
+	mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mm.albedo_color = Color(0.3, 1.0, 0.5, 0.3)
+	var mark := Models.cyl(ghost, 0.24, 0.24, 0.02, Vector3(0, 0.015, 0), mm, Vector3.ZERO, 16)
+	mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	build = {"fid": "", "pot": true, "room": loc, "r": 0, "ghost": ghost, "mark": mark, "mat": mm, "valid": false, "x": 0.0, "z": 0.0}
 
 
 func _wanted_tick(dt: float) -> void:
@@ -1374,7 +1527,8 @@ func _apply_test_args() -> void:
 		G.add_bulk(S.inv, "dym", 75, 6.0)
 	if args.has("own"):
 		S.props["garaz"] = true
-		S.hide.garage.items = [{"f": "stol", "x": -1.6, "z": -3.6, "r": 0}, {"f": "regal", "x": 2.3, "z": -3.9, "r": 0}, {"f": "namiot", "x": 2.2, "z": -1.2, "r": 0}, {"f": "kanapa", "x": -2.4, "z": 0.6, "r": 1}, {"f": "lampa", "x": 0.2, "z": -4.1, "r": 0}]
+		S.hide.garage.items = [{"f": "stol", "x": -1.6, "z": -3.6, "r": 0}, {"f": "regal", "x": 2.3, "z": -3.9, "r": 0}, {"f": "lampa_led", "x": 2.0, "z": -1.2, "r": 0}, {"f": "kanapa", "x": -2.4, "z": 0.6, "r": 1}, {"f": "lampa", "x": 0.2, "z": -4.1, "r": 0}]
+		S.hide.garage["pots"] = [{"x": 1.6, "z": -1.2, "pl": null}, {"x": 2.1, "z": -1.2, "pl": null}]
 		world.refresh_furniture("garage")
 	if args.has("prod"):
 		# kryjówka z pełną linią produkcyjną w różnych fazach (zrzuty ekranu)
@@ -1383,19 +1537,39 @@ func _apply_test_args() -> void:
 		S.items["nasiona"] = 3
 		S.items["nawoz"] = 2
 		S.items["chemia"] = 2
-		S.hide.garage.items = [{"f": "regal_led", "x": -1.9, "z": -3.9, "r": 0}, {"f": "regal_led", "x": -1.9, "z": -2.4, "r": 0}, {"f": "regal_led", "x": -1.9, "z": -0.9, "r": 0},
+		S.items["doniczka"] = 2
+		S.hide.garage.items = [{"f": "lampa_led", "x": -1.9, "z": -3.7, "r": 0}, {"f": "lampa_led", "x": -1.9, "z": -2.3, "r": 0}, {"f": "lampa_led", "x": -1.9, "z": -0.9, "r": 0, "mode": 1},
 			{"f": "lab", "x": 1.8, "z": -3.8, "r": 0}, {"f": "suszarka", "x": 2.4, "z": -1.9, "r": 0}, {"f": "zbiornik", "x": 2.5, "z": -0.6, "r": 0}, {"f": "filtr", "x": 2.5, "z": 0.6, "r": 0},
-			{"f": "stol", "x": -1.9, "z": 1.2, "r": 0}, {"f": "regal", "x": 2.4, "z": 2.2, "r": 1}, {"f": "namiot", "x": -2.2, "z": 3.3, "r": 0}]
+			{"f": "stol", "x": -1.9, "z": 1.2, "r": 0}, {"f": "regal", "x": 2.4, "z": 2.2, "r": 1}]
 		var PR = G.Prod
 		var hd0: Dictionary = PR.hide("garage")
-		for e in [[0, 0.93, false], [1, 0.42, true], [2, 0.1, false], [9, 1.0, false]]:
-			hd0.jobs[str(e[0])] = PR.new_job("konopie", 2 if int(e[0]) == 9 else 4)
-			hd0.jobs[str(e[0])].prog = float(e[1])
-			hd0.jobs[str(e[0])].fert = bool(e[2])
-			hd0.jobs[str(e[0])].water = 64.0 - int(e[0]) * 9.0
+		hd0.pots.clear()
+		# trzy rzędy pod lampami w różnych fazach + dwie doniczki bez światła
+		var rows := [[-3.7, 0.97, false, 64.0], [-2.3, 0.42, true, 40.0], [-0.9, 0.1, false, 85.0]]
+		for ri in range(rows.size()):
+			for k in range(4):
+				var pl0: Dictionary = PR.plant_new()
+				pl0.prog = minf(1.0, float(rows[ri][1]) + k * 0.015)
+				pl0.fert = bool(rows[ri][2])
+				pl0.water = float(rows[ri][3]) - k * 12.0
+				pl0.lit_t = 1.0
+				pl0.grow_t = 1.0
+				hd0.pots.append({"x": -2.5 + k * 0.42, "z": float(rows[ri][0]) + (0.2 if k % 2 == 0 else -0.2), "pl": pl0})
+		hd0.pots.append({"x": 0.4, "z": 3.0, "pl": null})
+		var plx: Dictionary = PR.plant_new()
+		plx.prog = 0.5
+		plx.water = 0.0
+		plx.health = 38.0
+		hd0.pots.append({"x": 1.0, "z": 3.0, "pl": plx})
 		hd0.jobs["3"] = PR.new_job("amfetamina", 1)
 		hd0.jobs["3"].prog = 0.3
 		hd0.jobs["4"] = {"r": "_dry", "p": "dym", "g": 34.0, "pur": 75, "prog": 0.6}
+		if args.has("care"):
+			# podgląd animacji doglądania: --care=water|fert|cut|seed  --carepot=nr
+			get_tree().create_timer(float(args.get("carewait", "0.6"))).timeout.connect(func():
+				G.test_mode = false
+				care.play(String(args.care), "garage", int(args.get("carepot", "5")))
+				G.test_mode = true)
 		world.refresh_furniture("garage")
 	if args.has("rain"):
 		S.weather = {"start": 0.0, "end": 1e12, "power": float(args.rain)}

@@ -346,6 +346,30 @@ def seeds(name):
     save(im, name)
 
 
+def pot(name):
+    """doniczka z ziemią: czarny plastik, rant, ciemna ziemia z grudkami"""
+    im = canvas()
+    d = ImageDraw.Draw(im)
+    body = (38, 40, 44)
+    d.polygon([(P(48), P(84)), (P(144), P(84)), (P(130), P(170)), (P(62), P(170))], fill=body + (255,), outline=shade(body, 0.55) + (255,))
+    # połysk plastiku i żłobienia
+    d.polygon([(P(58), P(90)), (P(70), P(90)), (P(76), P(166)), (P(68), P(166))], fill=shade(body, 1.7) + (255,))
+    for x in (92, 108, 122):
+        d.line([(P(x), P(92)), (P(x - (x - 96) * 0.12), P(164))], fill=shade(body, 0.7) + (255,), width=P(2))
+    d.rounded_rectangle([P(40), P(66), P(152), P(90)], P(6), fill=shade(body, 1.25) + (255,), outline=shade(body, 0.55) + (255,), width=P(2))
+    d.ellipse([P(46), P(56), P(146), P(84)], fill=(58, 40, 28, 255), outline=shade(body, 0.55) + (255,), width=P(2))
+    rnd = random.Random(5)
+    for _ in range(46):
+        x = rnd.uniform(56, 136)
+        y = rnd.uniform(62, 79)
+        if ((x - 96) / 46.0) ** 2 + ((y - 70) / 11.0) ** 2 > 1.0:
+            continue
+        r = rnd.uniform(1.2, 3.2)
+        k = rnd.uniform(0.6, 1.5)
+        d.ellipse([P(x - r), P(y - r * 0.7), P(x + r), P(y + r * 0.7)], fill=shade((58, 40, 28), k) + (255,))
+    save(im, name)
+
+
 def canister(name, col, label):
     im = canvas()
     d = ImageDraw.Draw(im)
@@ -385,6 +409,7 @@ empty_bags('woreczki')
 paper_bag('majeranek', (120, 150, 96), 'MAJERANEK', (64, 96, 52))
 paper_bag('cukier', (236, 236, 228), 'CUKIER PUDER', (60, 100, 170))
 seeds('nasiona')
+pot('doniczka')
 phone('burner')
 bottle('nawoz', (70, 130, 80), 'NAWÓZ')
 canister('chemia', (60, 90, 150), 'ODCZYNNIK')

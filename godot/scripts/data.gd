@@ -51,8 +51,9 @@ const SHOP := [
 	{"id": "woreczki", "name": "Woreczki strunowe (20 szt.)", "price": 12, "n": 20, "lvl": 1, "desc": "Bez nich nie zaporcjujesz towaru. 1 woreczek = 1 g."},
 	{"id": "majeranek", "name": "Majeranek (20 g)", "price": 6, "n": 20, "lvl": 1, "desc": "Przyprawa z półki. Domieszany do marihuany podbija wagę, ale obniża czystość — powstaje mieszanka."},
 	{"id": "cukier", "name": "Cukier puder (20 g)", "price": 5, "n": 20, "lvl": 4, "desc": "Do rozrabiania proszków. Więcej gramów, gorszy towar."},
-	{"id": "nasiona", "name": "Nasiona konopi (1 paczka)", "price": 45, "n": 1, "lvl": 4, "desc": "Paczka na jeden cykl uprawy (namiot albo regał)."},
-	{"id": "nawoz", "name": "Nawóz (1 dawka)", "price": 45, "n": 1, "lvl": 4, "desc": "Plon większy o 25%. Jedna dawka na cykl, dopóki rośliny rosną."},
+	{"id": "doniczka", "name": "Doniczka z ziemią", "price": 40, "n": 1, "lvl": 4, "desc": "Stawiasz ją w kryjówce [B] i sadzisz w niej jeden krzak. Każdy krzak doglądasz osobno."},
+	{"id": "nasiona", "name": "Nasiona konopi (3 szt.)", "price": 45, "n": 3, "lvl": 4, "desc": "Jedno nasiono = jeden krzak w doniczce."},
+	{"id": "nawoz", "name": "Nawóz (3 dawki)", "price": 45, "n": 3, "lvl": 4, "desc": "Dawka na krzak: plon większy o 25%, ale roślina pije więcej wody. Tylko dopóki rośnie."},
 	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 800, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Jeden zestaw = jedna synteza przy stole laboratoryjnym."},
 	{"id": "burner", "name": "Telefon na kartę", "price": 420, "n": 1, "lvl": 2, "use": true, "desc": "Nowy numer: śledztwo policji spada o 25."},
 ]
@@ -91,7 +92,7 @@ const BULK_SELL_DAY := 40
 ## hours = czas całego cyklu w zwykłym trybie, yield = gramy (dla upraw: na doniczkę), pur = czystość bazowa,
 ## smell = zapach w szczycie, power = zł za dobę, hold = etap kończy się czynnością gracza.
 const RECIPES := {
-	"konopie": {"name": "Konopie", "station": "grow", "product": "dym", "lvl": 4, "input": {"nasiona": 1}, "hours": 30.0, "yield": 12.0, "pur": 56,
+	"konopie": {"name": "Konopie", "station": "pot", "product": "dym", "lvl": 4, "input": {"nasiona": 1}, "hours": 30.0, "yield": 12.0, "pur": 56,
 		"smell": 4.0, "power": 4.0, "wet": true, "water": 4.2,
 		"stages": [{"name": "Sadzonki", "to": 0.2}, {"name": "Wzrost", "to": 0.6}, {"name": "Kwitnienie", "to": 1.0}],
 		"modes": [{"name": "Lampy 18/6", "speed": 1.0, "smell": 1.0, "power": 1.0, "water": 1.0, "pur": 0, "desc": "Zwykły cykl światła."},
@@ -110,6 +111,10 @@ const RECIPES := {
 			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.22, "desc": "Szybko, śmierdząco i z ryzykiem przypalenia."}]},
 }
 const DRY_HOURS := 8.0
+## uprawa w doniczkach: ile doniczek mieści kryjówka, tempo bez lampy, kara do jakości za brak światła
+const POT_MAX := {"garage": 10, "basement": 18}
+const POT_UNLIT_SPEED := 0.4
+const POT_UNLIT_PUR := -12.0
 ## STROJE (sklep „Tania Odzież”). Każdy strój to inna sylwetka i inne zalety:
 ## speed = prędkość chodu i biegu, stamina = zapas kondycji, vis = jak bardzo rzucasz się w oczy patrolom (dzień i noc),
 ## vis_night = dodatkowy mnożnik po zmroku, noise = słyszalność kroków, attention = jak szybko patrol nabiera podejrzeń,
@@ -140,8 +145,9 @@ const ITEMS := {
 	"woreczki": {"name": "Woreczki strunowe", "icon": "woreczki", "size": 0.05, "w": 0.6, "unit": "szt.", "desc": "Puste woreczki do porcjowania. 1 woreczek = 1 porcja."},
 	"majeranek": {"name": "Majeranek", "icon": "majeranek", "size": 0.25, "w": 1.0, "unit": "g", "desc": "Przyprawa. Domieszana do marihuany podbija wagę i psuje jakość."},
 	"cukier": {"name": "Cukier puder", "icon": "cukier", "size": 0.2, "w": 1.0, "unit": "g", "desc": "Wypełniacz do proszków. Więcej gramów, gorszy towar."},
-	"nasiona": {"name": "Nasiona konopi", "icon": "nasiona", "size": 0.5, "w": 4.0, "unit": "pacz.", "desc": "Paczka nasion na jeden cykl uprawy (namiot albo regał)."},
-	"nawoz": {"name": "Nawóz", "icon": "nawoz", "size": 1.0, "w": 250.0, "unit": "szt.", "desc": "Jedna dawka na cykl uprawy: plon większy o 25%, ale rośliny piją więcej wody."},
+	"doniczka": {"name": "Doniczka z ziemią", "icon": "doniczka", "size": 3.0, "w": 2200.0, "unit": "szt.", "desc": "Postaw w kryjówce [B], a potem posadź w niej nasiono."},
+	"nasiona": {"name": "Nasiona konopi", "icon": "nasiona", "size": 0.1, "w": 1.0, "unit": "szt.", "desc": "Jedno nasiono = jeden krzak. Sadzisz je, celując w pustą doniczkę."},
+	"nawoz": {"name": "Nawóz", "icon": "nawoz", "size": 0.4, "w": 90.0, "unit": "dawek", "desc": "Dawka na jeden krzak: plon większy o 25%, ale roślina pije więcej wody."},
 	"chemia": {"name": "Zestaw chemikaliów", "icon": "chemia", "size": 4.0, "w": 1800.0, "unit": "szt.", "desc": "Prekursory i rozpuszczalniki na jedną syntezę przy stole laboratoryjnym."},
 	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
 }
@@ -306,8 +312,7 @@ const FURNITURE := [
 	{"id": "stol", "name": "Stół roboczy z wagą", "price": 480, "model": "painted_wooden_table", "h": 0.86, "size": [1.9, 0.9], "func": "pack", "lvl": 1, "desc": "Porcjowanie i mieszanie towaru na miejscu."},
 	{"id": "regal", "name": "Regał magazynowy", "price": 340, "model": "steel_frame_shelves_01", "h": 1.95, "size": [1.05, 0.5], "func": "stash", "cap": 150, "lvl": 1, "desc": "+150 miejsc w skrytce w tej kryjówce."},
 	{"id": "skrzynia", "name": "Skrzynia", "price": 120, "model": "wooden_crate_02", "h": 0.5, "size": [0.6, 1.2], "func": "stash", "cap": 50, "lvl": 1, "desc": "+50 miejsc w skrytce."},
-	{"id": "namiot", "name": "Namiot uprawowy", "price": 700, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "pots": 2, "lvl": 4, "desc": "Dwie doniczki pod lampą. Na początek: ok. 24 g marihuany z jednego cyklu."},
-	{"id": "regal_led", "name": "Regał uprawowy LED", "price": 2200, "model": "", "h": 2.1, "size": [1.8, 0.8], "func": "grow", "pots": 4, "lvl": 6, "desc": "Stalowa rama, cztery doniczki i fioletowe LED-y. Ok. 48 g z cyklu. Ustawiaj rzędami."},
+	{"id": "lampa_led", "name": "Lampa LED do uprawy", "price": 650, "model": "", "h": 2.0, "size": [1.7, 1.0], "func": "growlight", "hang": true, "lvl": 4, "desc": "Fioletowy panel na łańcuchach pod sufitem. Krzaki pod nim rosną 2,5 raza szybciej i wychodzą mocniejsze. Mieści się pod nim 6 doniczek."},
 	{"id": "suszarka", "name": "Suszarka siatkowa", "price": 260, "model": "", "h": 1.9, "size": [0.9, 0.9], "func": "dry", "cap": 90, "lvl": 4, "desc": "Świeży zbiór trzeba wysuszyć (8 godzin), zanim trafi na wagę. Mieści 90 g."},
 	{"id": "zbiornik", "name": "Zbiornik z pompą", "price": 700, "model": "", "h": 1.15, "size": [0.75, 0.75], "func": "tank", "lvl": 6, "desc": "Sam podlewa wszystkie uprawy w tej kryjówce. Nie musisz pamiętać o wodzie."},
 	{"id": "filtr", "name": "Filtr węglowy", "price": 700, "model": "", "h": 1.7, "size": [0.6, 0.6], "func": "filter", "lvl": 4, "desc": "Zapach z tej kryjówki spada o 60%. Mniej zapachu = mniejsze ryzyko nalotu."},
@@ -331,7 +336,7 @@ const LEVEL_UNLOCKS := {
 	2: "Nowi klienci z polecenia, większe zamówienia u Wiktora (10 g), plecak u Stasia.",
 	3: "Zaczepianie przechodniów, do 4 stałych klientów.",
 	4: "Nowy towar: amfetamina. Możesz kupić Garaż nr 14.",
-	5: "Stojaki uprawowe i nasiona — własna marihuana w kryjówce.",
+	5: "Doniczki, nasiona i lampy LED — własna marihuana w kryjówce.",
 	6: "Klienci z klubu Neon. Piwnica w kamienicy na sprzedaż.",
 	7: "Nowy towar: metamfetamina. Zamówienia hurtowe po 100 g.",
 	8: "Zamówienia hurtowe po 250 g.",

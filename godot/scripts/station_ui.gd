@@ -93,7 +93,7 @@ static func _empty_ui(_U, body: VBoxContainer, view, room: String, idx: int, kin
 		var wet: float = P.wet_total(room)
 		var c := K.card(body)
 		if wet <= 0.0:
-			c.add_child(K.wrap("Nie masz świeżego zbioru. Najpierw zbierz plon z namiotu albo regału.", 13, K.C_DIM))
+			c.add_child(K.wrap("Nie masz świeżego zbioru. Najpierw zetnij dojrzały krzak.", 13, K.C_DIM))
 			return
 		var parts: Array = []
 		for w in P.hide(room).wet:
@@ -321,7 +321,7 @@ static func build_hideout(U, room: String) -> void:
 		if fn in ["grow", "dry", "lab"]:
 			row.add_child(K.btn("Otwórz", func(): U.open_station(room, ii), "", true))
 	if not any:
-		c2.add_child(K.wrap("Brak stanowisk. W kryjówce naciśnij [%s], żeby wstawić namiot, regał LED, suszarkę albo stół laboratoryjny." % G.kn("build"), 13, K.C_DIM))
+		c2.add_child(K.wrap("Brak stanowisk. W kryjówce naciśnij [%s], żeby postawić doniczki, lampę LED, suszarkę albo stół laboratoryjny." % G.kn("build"), 13, K.C_DIM))
 	var wet: float = P.wet_total(room)
 	if wet > 0.0:
 		c2.add_child(K.rich("Świeży zbiór czekający na suszarkę: [b]%s[/b]" % G.grams(wet), 13))

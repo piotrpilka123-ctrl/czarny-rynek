@@ -5,6 +5,10 @@ extends RefCounted
 ## Zadanie na stanowisku (S.hide[pokój].jobs[nr mebla]):
 ##   {r, prog 0..1, water 0..100, health 0..100, fert, trim, mode, hold (-1 albo nr etapu), hold_t, ripe_t, pots, burnt}
 ## Suszarka: {r: "_dry", p, g, pur, prog}. Mokry zbiór czeka w S.hide[pokój].wet = [{p, g, pur}].
+##
+## UPRAWA W DONICZKACH (S.hide[pokój].pots): każda doniczka to osobny krzak, doglądany osobno:
+##   {x, z, pl: null albo {prog 0..1, water 0..100, health 0..100, fert, trim, ripe_t, lit_t, grow_t, t0}}
+## Doniczki, nasiona i nawóz to przedmioty ze sklepu. Lampa LED (mebel „lampa_led”) oświetla doniczki pod sobą.
 
 const ROOMS := ["garage", "basement"]
 
@@ -15,6 +19,8 @@ static func hide(room: String) -> Dictionary:
 		h["jobs"] = {}
 	if not h.has("wet"):
 		h["wet"] = []
+	if not h.has("pots"):
+		h["pots"] = []
 	return h
 
 
@@ -31,6 +37,47 @@ static func migrate() -> void:
 			h.jobs[k] = new_job("konopie", 2)
 			h.jobs[k].prog = clampf((G.S.t - float(j.start)) / total, 0.0, 1.0)
 		h["grow"] = {}
+		_migrate_racks(room)
+
+
+## stare namioty i regały uprawowe zamieniają się w lampę LED i doniczki pod nią (rośliny zachowują postęp)
+static func _migrate_racks(room: String) -> void:
+	var h := hide(room)
+	var items: Array = G.S.hide[room].items
+	var changed := false
+	for it in items:
+		if String(it.f) == "namiot" or String(it.f) == "regal_led":
+			changed = true
+	if not changed:
+		return
+	var out: Array = []
+	var jobs := {}
+	for i in range(items.size()):
+		var it: Dictionary = items[i]
+		var fid := String(it.f)
+		var j = h.jobs.get(str(i))
+		if fid != "namiot" and fid != "regal_led":
+			if j != null:
+				jobs[str(out.size())] = j
+			out.append(it)
+			continue
+		var n := 2 if fid == "namiot" else 4
+		out.append({"f": "lampa_led", "x": float(it.x), "z": float(it.z), "r": int(it.r), "mode": int(j.mode) if j != null and j.has("mode") else 0})
+		for k in range(n):
+			var off := (k - (n - 1) * 0.5) * 0.4
+			var px := float(it.x) + (off if int(it.r) % 2 == 0 else 0.0)
+			var pz := float(it.z) + (off if int(it.r) % 2 == 1 else 0.0)
+			var pt := {"x": px, "z": pz, "pl": null}
+			if j != null and String(j.get("r", "")) == "konopie":
+				var pl := plant_new()
+				for key in ["prog", "water", "health", "fert", "trim", "ripe_t"]:
+					pl[key] = j.get(key, pl[key])
+				pl.lit_t = 1.0
+				pl.grow_t = 1.0
+				pt.pl = pl
+			h.pots.append(pt)
+	G.S.hide[room].items = out
+	h.jobs = jobs
 
 
 static func furn(room: String, idx: int) -> Dictionary:
@@ -146,6 +193,7 @@ static func tick(minutes: float) -> void:
 			continue
 		var h := hide(room)
 		var tank := has_station(room, "tank")
+		plants_tick(room, minutes, tank)
 		for k in h.jobs.keys():
 			var j: Dictionary = h.jobs[k]
 			if String(j.r) == "_dry":
@@ -196,6 +244,321 @@ static func tick(minutes: float) -> void:
 					j.burnt = true
 				G.notify("%s (%s): gotowe do zebrania." % [String(r.name), String(D.ROOMS[room].name)], "good")
 			j.prog = after
+
+
+# ---------------------------------------------------------------- uprawa w doniczkach
+const POT_R := 0.17          # promień doniczki
+const POT_GAP := 0.4         # najmniejszy odstęp między środkami doniczek
+
+
+static func pots(room: String) -> Array:
+	return hide(room).pots if G.S.hide.has(room) else []
+
+
+static func pot(room: String, i: int) -> Dictionary:
+	var ps := pots(room)
+	return ps[i] if i >= 0 and i < ps.size() else {}
+
+
+static func plant_of(room: String, i: int) -> Variant:
+	var pt := pot(room, i)
+	return pt.get("pl") if not pt.is_empty() else null
+
+
+static func plant_new() -> Dictionary:
+	return {"prog": 0.0, "water": 70.0, "health": 100.0, "fert": false, "trim": false, "ripe_t": 0.0, "lit_t": 0.0, "grow_t": 0.0, "t0": G.S.t}
+
+
+static func plant_count(room: String) -> int:
+	var n := 0
+	for pt in pots(room):
+		if pt.pl != null:
+			n += 1
+	return n
+
+
+static func lamps(room: String) -> Array:
+	var out := []
+	if not G.S.hide.has(room):
+		return out
+	for it in G.S.hide[room].items:
+		if String(G.furn_def(String(it.f)).get("func", "")) == "growlight":
+			out.append(it)
+	return out
+
+
+## tryb lampy nad punktem: -1 = poza światłem, 0 = cykl 18/6, 1 = cykl 24/0
+static func light_at(room: String, x: float, z: float) -> int:
+	var best := -1
+	for it in lamps(room):
+		var rc: Rect2 = G.furn_rect(G.furn_def(String(it.f)), float(it.x), float(it.z), int(it.r)).grow(0.12)
+		if rc.has_point(Vector2(x, z)):
+			best = maxi(best, int(it.get("mode", 0)))
+	return best
+
+
+static func lamp_mode(m: int) -> Dictionary:
+	var md: Array = D.RECIPES.konopie.modes
+	return md[clampi(m, 0, md.size() - 1)]
+
+
+## czy doniczka zmieści się w tym miejscu (ściany, drzwi, meble stojące na podłodze, inne doniczki)
+static func pot_valid(room: String, x: float, z: float, ignore := -1) -> bool:
+	if not G.S.hide.has(room):
+		return false
+	var R: Dictionary = D.ROOMS[room]
+	var m := POT_R + 0.06
+	if absf(x) > float(R.w) * 0.5 - m or absf(z) > float(R.d) * 0.5 - m:
+		return false
+	if Rect2(-1.0, float(R.d) * 0.5 - 1.5, 2.0, 1.5).grow(POT_R).has_point(Vector2(x, z)):
+		return false
+	for it in G.S.hide[room].items:
+		var f: Dictionary = G.furn_def(String(it.f))
+		if f.is_empty() or f.get("hang", false):
+			continue
+		if G.furn_rect(f, float(it.x), float(it.z), int(it.r)).grow(POT_R).has_point(Vector2(x, z)):
+			return false
+	var ps := pots(room)
+	for i in range(ps.size()):
+		if i != ignore and Vector2(float(ps[i].x) - x, float(ps[i].z) - z).length() < POT_GAP:
+			return false
+	return true
+
+
+static func pot_place(room: String, x: float, z: float) -> bool:
+	if not G.room_owned(room) or G.item_at(room, "doniczka") <= 0:
+		return false
+	if pots(room).size() >= int(D.POT_MAX.get(room, 8)):
+		G.notify("Więcej doniczek się tu nie zmieści (%d)." % int(D.POT_MAX.get(room, 8)), "warn")
+		return false
+	if not pot_valid(room, x, z):
+		return false
+	G.take_item(room, "doniczka", 1)
+	hide(room).pots.append({"x": snappedf(x, 0.05), "z": snappedf(z, 0.05), "pl": null})
+	Sfx.play("place")
+	if G.world != null:
+		G.world.refresh_furniture(room)
+	return true
+
+
+## pustą doniczkę można zabrać z powrotem do plecaka
+static func pot_take(room: String, i: int) -> bool:
+	var pt := pot(room, i)
+	if pt.is_empty() or pt.pl != null:
+		return false
+	hide(room).pots.remove_at(i)
+	G.S.items["doniczka"] = G.item("doniczka") + 1
+	Sfx.play("pickup")
+	if G.world != null:
+		G.world.refresh_furniture(room)
+	return true
+
+
+static func plant_seed(room: String, i: int) -> bool:
+	var pt := pot(room, i)
+	if pt.is_empty() or pt.pl != null or G.item_at(room, "nasiona") <= 0 or int(G.S.lvl) < int(D.RECIPES.konopie.lvl):
+		return false
+	G.take_item(room, "nasiona", 1)
+	pt.pl = plant_new()
+	G.add_minutes(2.0)
+	return true
+
+
+static func plant_stage(pl: Dictionary) -> String:
+	var prog := float(pl.prog)
+	if prog >= 1.0:
+		return "Dojrzała" if float(pl.ripe_t) <= 18.0 * 60.0 else "Przejrzała"
+	for st in D.RECIPES.konopie.stages:
+		if prog < float(st.to) - 0.00001:
+			return String(st.name)
+	return "Kwitnienie"
+
+
+static func plant_water(room: String, i: int) -> bool:
+	var pl = plant_of(room, i)
+	if pl == null:
+		return false
+	pl.water = 100.0
+	G.add_minutes(2.0)
+	return true
+
+
+static func plant_can_fert(room: String, i: int) -> bool:
+	var pl = plant_of(room, i)
+	return pl != null and not pl.fert and float(pl.prog) < 0.6 and G.item_at(room, "nawoz") > 0
+
+
+static func plant_fert(room: String, i: int) -> bool:
+	if not plant_can_fert(room, i):
+		return false
+	G.take_item(room, "nawoz", 1)
+	plant_of(room, i).fert = true
+	G.add_minutes(2.0)
+	return true
+
+
+## co zrobi sekator: "harvest" (zbiór), "trim" (przycięcie liści), "early" (ścięcie przed czasem), "" (nic)
+static func plant_cut_kind(room: String, i: int) -> String:
+	var pl = plant_of(room, i)
+	if pl == null:
+		return ""
+	var prog := float(pl.prog)
+	if prog >= 1.0:
+		return "harvest"
+	if prog >= 0.2 and prog < 0.6 and not pl.trim:
+		return "trim"
+	return "early"
+
+
+static func plant_forecast(room: String, i: int) -> Dictionary:
+	var pt := pot(room, i)
+	if pt.is_empty() or pt.pl == null:
+		return {}
+	var pl: Dictionary = pt.pl
+	var r: Dictionary = D.RECIPES.konopie
+	var hl := float(pl.health) / 100.0
+	var g: float = float(r["yield"]) * (0.55 + 0.45 * hl) * (1.25 if pl.fert else 1.0) * (1.35 if G.has_skill("ogrodnik") else 1.0)
+	var lit: float = clampf(float(pl.lit_t) / maxf(1.0, float(pl.grow_t)), 0.0, 1.0) if float(pl.grow_t) > 0.0 else (1.0 if light_at(room, float(pt.x), float(pt.z)) >= 0 else 0.0)
+	var lm := light_at(room, float(pt.x), float(pt.z))
+	var pur: float = float(r.pur) + hl * 16.0 + (8.0 if pl.trim else 0.0) + float(D.POT_UNLIT_PUR) * (1.0 - lit) + (float(lamp_mode(lm).pur) if lm >= 0 else 0.0)
+	return {"g": maxf(1.0, round(g)), "pur": G.qpure(clampf(pur, 20.0, 95.0)), "lit": lit}
+
+
+## ile minut gry do dojrzałości przy obecnym świetle (bez wody = nie rośnie)
+static func plant_minutes_left(room: String, i: int) -> float:
+	var pt := pot(room, i)
+	if pt.is_empty() or pt.pl == null or float(pt.pl.prog) >= 1.0:
+		return 0.0
+	var lm := light_at(room, float(pt.x), float(pt.z))
+	var sp: float = float(lamp_mode(lm).speed) if lm >= 0 else float(D.POT_UNLIT_SPEED)
+	return (1.0 - float(pt.pl.prog)) * float(D.RECIPES.konopie.hours) * 60.0 / sp
+
+
+## sekator: zbiór dojrzałej rośliny, przycięcie liści w fazie wzrostu albo ścięcie przed czasem
+static func plant_cut(room: String, i: int) -> Dictionary:
+	var kind := plant_cut_kind(room, i)
+	var pt := pot(room, i)
+	if kind == "":
+		return {}
+	var pl: Dictionary = pt.pl
+	if kind == "trim":
+		pl.trim = true
+		G.add_minutes(4.0)
+		return {"kind": kind}
+	var f := plant_forecast(room, i)
+	var g := float(f.g)
+	if kind == "early":
+		# niedojrzała roślina: po kwitnieniu trochę słabego suszu, wcześniej nic
+		var prog := float(pl.prog)
+		g = floorf(g * prog * prog * 0.5) if prog >= 0.6 else 0.0
+	pt.pl = null
+	G.add_minutes(4.0)
+	if g > 0.0:
+		var pur := int(f.pur) if kind == "harvest" else G.qpure(maxf(20.0, float(f.pur) - 15.0))
+		_wet_add(room, "dym", g, pur)
+		return {"kind": kind, "g": g, "pur": pur}
+	return {"kind": kind, "g": 0.0, "pur": 0}
+
+
+## świeży zbiór o tej samej czystości trafia na jedną kupkę
+static func _wet_add(room: String, p: String, g: float, pur: int) -> void:
+	var h := hide(room)
+	for w in h.wet:
+		if String(w.p) == p and int(w.pur) == pur:
+			w.g = float(w.g) + g
+			return
+	h.wet.append({"p": p, "g": g, "pur": pur})
+
+
+## opis krzaka do karty „Sprawdź”
+static func plant_info(room: String, i: int) -> Dictionary:
+	var pt := pot(room, i)
+	if pt.is_empty() or pt.pl == null:
+		return {}
+	var pl: Dictionary = pt.pl
+	var f := plant_forecast(room, i)
+	var lm := light_at(room, float(pt.x), float(pt.z))
+	var notes: Array = []
+	if float(pl.water) <= 0.0:
+		notes.append(["Sucha ziemia — nie rośnie i marnieje!", "bad"])
+	elif float(pl.water) < 25.0:
+		notes.append(["Ziemia przesycha — podlej.", "warn"])
+	if lm < 0:
+		notes.append(["Bez lampy rośnie 2,5 raza wolniej i wyjdzie słabsza.", "warn"])
+	elif lm == 1:
+		notes.append(["Lampa 24/0: szybciej, ale słabszy towar i więcej wody.", "dim"])
+	if pl.fert:
+		notes.append(["Nawieziona: plon +25%.", "good"])
+	elif float(pl.prog) < 0.6:
+		notes.append(["Można jeszcze nawieźć (plon +25%).", "dim"])
+	if pl.trim:
+		notes.append(["Przycięta: lepsza jakość.", "good"])
+	elif float(pl.prog) >= 0.2 and float(pl.prog) < 0.6:
+		notes.append(["Teraz najlepszy moment na przycięcie liści (jakość +8).", "good"])
+	if float(pl.prog) >= 1.0:
+		notes.append(["Gotowa do ścięcia." if float(pl.ripe_t) <= 18.0 * 60.0 else "Przejrzewa — tnij, bo traci jakość!", "good" if float(pl.ripe_t) <= 18.0 * 60.0 else "bad"])
+	return {"stage": plant_stage(pl), "prog": float(pl.prog), "water": float(pl.water), "health": float(pl.health), "g": float(f.g), "pur": int(f.pur),
+		"left": plant_minutes_left(room, i), "lit": lm, "notes": notes, "fert": bool(pl.fert), "trim": bool(pl.trim)}
+
+
+## krótki napis przy celowniku
+static func pot_label(room: String, i: int) -> String:
+	var pl = plant_of(room, i)
+	if pl == null:
+		return "Pusta doniczka"
+	var thirsty := float(pl.water) < 25.0
+	return "Konopie — %s%s" % [plant_stage(pl).to_lower(), " • SUCHO!" if thirsty else ""]
+
+
+static func plants_tick(room: String, minutes: float, tank: bool) -> void:
+	var h := hide(room)
+	var r: Dictionary = D.RECIPES.konopie
+	var ripe_now := 0
+	var dry_now := 0
+	for pt in h.pots:
+		if pt.pl == null:
+			continue
+		var pl: Dictionary = pt.pl
+		if float(pl.prog) >= 1.0:
+			pl.ripe_t = float(pl.ripe_t) + minutes
+			if float(pl.ripe_t) > 18.0 * 60.0:
+				pl.health = maxf(20.0, float(pl.health) - minutes * 2.0 / 60.0)
+			continue
+		var lm := light_at(room, float(pt.x), float(pt.z))
+		var md := lamp_mode(lm) if lm >= 0 else {"speed": float(D.POT_UNLIT_SPEED), "water": 0.7}
+		var had_water := float(pl.water) > 0.0
+		if tank:
+			pl.water = maxf(float(pl.water), 70.0)
+		else:
+			pl.water = maxf(0.0, float(pl.water) - float(r.water) * float(md.get("water", 1.0)) * (1.25 if pl.fert else 1.0) * minutes / 60.0)
+		if float(pl.water) <= 0.0:
+			if had_water:
+				dry_now += 1
+			pl.health = maxf(0.0, float(pl.health) - minutes * 7.0 / 60.0)
+			continue
+		if float(pl.water) > 25.0:
+			pl.health = minf(100.0, float(pl.health) + minutes * 1.2 / 60.0)
+		pl.grow_t = float(pl.grow_t) + minutes
+		if lm >= 0:
+			pl.lit_t = float(pl.lit_t) + minutes
+		pl.prog = minf(1.0, float(pl.prog) + minutes / (float(r.hours) * 60.0) * float(md.speed))
+		if float(pl.prog) >= 1.0:
+			ripe_now += 1
+	var nm := String(D.ROOMS[room].name)
+	if ripe_now > 0:
+		G.notify("%s: %s do ścięcia." % [nm, "krzak dojrzał" if ripe_now == 1 else "%d krzaki dojrzały" % ripe_now], "good")
+	if dry_now > 0:
+		G.notify("%s: %s — podlej!" % [nm, "krzak ma sucho" if dry_now == 1 else "%d krzaki mają sucho" % dry_now], "warn")
+
+
+## przełącznik cyklu światła na lampie (18/6 ↔ 24/0)
+static func lamp_toggle(room: String, idx: int) -> int:
+	var items: Array = G.S.hide[room].items
+	if idx < 0 or idx >= items.size():
+		return 0
+	var it: Dictionary = items[idx]
+	it["mode"] = (int(it.get("mode", 0)) + 1) % int(D.RECIPES.konopie.modes.size())
+	return int(it.mode)
 
 
 # ---------------------------------------------------------------- czynności gracza
@@ -358,6 +721,23 @@ static func stats(room: String) -> Dictionary:
 			power += float(r.power) * float(md.power)
 		else:
 			smell += float(r.smell) * 0.25
+	# krzaki w doniczkach: pachną tym mocniej, im bliżej kwitnienia; prąd żrą lampy, pod którymi coś rośnie
+	var rk: Dictionary = D.RECIPES.konopie
+	var lit_by := {}
+	for pt in h.pots:
+		if pt.pl == null:
+			continue
+		active += 1
+		var prog := float(pt.pl.prog)
+		var bloom := 1.0 if prog >= 0.6 else (0.45 if prog >= 0.2 else 0.15)
+		var lm := light_at(room, float(pt.x), float(pt.z))
+		smell += float(rk.smell) * bloom * (float(lamp_mode(lm).smell) if lm >= 0 else 1.0)
+		if lm >= 0:
+			power += float(rk.power) * 0.5 * float(lamp_mode(lm).power)
+			lit_by[lm] = true
+	for it in lamps(room):
+		if lit_by.has(int(it.get("mode", 0))):
+			power += 4.0 * float(lamp_mode(int(it.get("mode", 0))).power)
 	smell += wet_total(room) * 0.12
 	var filt := has_station(room, "filter")
 	if filt:
@@ -434,6 +814,8 @@ static func raid(room: String) -> Dictionary:
 	G.S.stash[room] = fresh
 	h.jobs.clear()
 	h.wet.clear()
+	for pt in h.pots:
+		pt.pl = null
 	G.add_heat(25.0, false)
 	G.add_invest(20.0)
 	G.S.stats["raids"] = int(G.S.stats.get("raids", 0)) + 1
