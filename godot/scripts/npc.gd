@@ -249,7 +249,7 @@ func _build_static() -> void:
 	_static({"loc": "ciuchy", "x": float(D.ROOMS.ciuchy.cx) + float(D.ROOMS.ciuchy.w) * 0.5 - 1.3, "z": -float(D.ROOMS.ciuchy.d) * 0.5 + 0.55, "rot": 0.0, "pose": "arms", "name": "Pani Grażyna",
 		"label": "Pani Grażyna", "look": {"model": "f12", "female": true, "seed": 77}, "range": 3.2, "act": func(): G.main.talk_clothes()})
 	# wspólnik w laboratorium (prolog)
-	_static({"loc": "lab", "x": float(D.ROOMS.lab.cx) + 4.9, "z": -2.2, "rot": PI / 2.0, "pose": "arms", "name": "Siwy", "look": D.SIWY_LOOK,
+	_static({"loc": "lab", "x": float(D.ROOMS.lab.cx) + 4.6, "z": -3.1, "rot": PI * 0.9, "pose": "arms", "name": "Siwy", "look": D.SIWY_LOOK, "track": true,
 		"lines": ["Pakuj torbę i spadamy. Wiktor czeka do szóstej."]})
 	# ekipa spod klatki bloku 5
 	_static({"x": -55.5, "z": -76.05, "rot": 0.0, "pose": "sit", "name": "Młody", "y": 0.0,

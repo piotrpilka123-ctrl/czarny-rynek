@@ -2272,7 +2272,12 @@ func _shot() -> void:
 			G.prologue.jump(String(args.prostage))
 			if args.has("pos"):
 				var pq := String(args.pos).split(",")
-				player.place(Vector3(float(pq[0]) * D.SC, 0.0, float(pq[1]) * D.SC), deg_to_rad(float(args.get("yaw", "0"))))
+				if player.loc != "out":
+					player.place(Vector3(float(D.ROOMS[player.loc].cx) + float(pq[0]), 0.0, float(pq[1])), deg_to_rad(float(args.get("yaw", "0"))))
+				else:
+					player.place(Vector3(float(pq[0]) * D.SC, 0.0, float(pq[1]) * D.SC), deg_to_rad(float(args.get("yaw", "0"))))
+				if args.has("pitch"):
+					player.pitch = deg_to_rad(float(args.pitch))
 			if args.has("crouch"):
 				player.set_crouch(true)
 	await RenderingServer.frame_post_draw

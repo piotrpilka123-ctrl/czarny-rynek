@@ -3110,120 +3110,148 @@ func _clothes_room() -> void:
 
 ## LABORATORIUM W STAREJ HUCIE (prolog): hala z rzędami regałów pod fioletowymi LED-ami,
 ## stołami do syntezy i paletą gotowych cegieł. Po prologu nie da się tu już wejść.
+## model z Blendera ustawiony w pokoju (z opcjonalnym pudełkiem kolizji: połowa szerokości i głębokości)
+func _lm(g: Node3D, name: String, x: float, z: float, ry := 0.0, y := 0.0, col := Vector2.ZERO) -> Node3D:
+	var n: Node3D = Stations.model(name)
+	if n == null:
+		n = Node3D.new()
+	n.position = Vector3(x, y, z)
+	n.rotation.y = ry
+	g.add_child(n)
+	if col.x > 0.0:
+		add_col(x - col.x, x + col.x, z - col.y, z + col.y, 1.2, true, -1.0)
+		rects.pop_back()
+	return n
+
+
+## Laboratorium w Starej Hucie (prolog): linia syntezy pod wschodnią ścianą, reaktor, suszarnia i prasa,
+## magazyn chemii, stół do pakowania pośrodku. Ciemna hala oświetlona lampami roboczymi; na ścianach ładunki.
 func _lab_room() -> void:
 	var R: Dictionary = D.ROOMS.lab
 	var cx: float = R.cx
 	var w: float = R.w
 	var d: float = R.d
 	var h: float = R.h
-	var g := _room("lab", "concrete_floor_worn_001", "factory_brick", "33312f", Color(0.72, 0.68, 0.66), 0.5)
+	var g := _room("lab", "concrete_floor_worn_001", "factory_brick", "262423", Color(0.6, 0.56, 0.54), 0.5)
 	var steel := Models.mat("2b2e33", 0.45, 0.7)
-	# świetlówki pod stropem: zimne, słabe — resztę robią LED-y upraw
+	# dwie słabe, zimne świetlówki — resztę światła dają halogeny na statywach
 	for e in [[-1.0, 2.6], [3.6, -1.4]]:
 		Props._no_shadow(_rp(g, "mounted_fluorescent_lights", cx + e[0], e[1], PI / 2.0, 0.0, h - 0.1))
-		var fl := _room_light(g, cx + e[0], e[1], h, 1.05, Color(0.82, 0.92, 1.0), 10.5)
-		fl.shadow_enabled = e[0] < 0.0
-	# stalowe belki i kanały wentylacyjne
+		var fl := _room_light(g, cx + e[0], e[1], h, 0.85, Color(0.72, 0.86, 1.0), 10.5)
+		fl.shadow_enabled = false
+	# stalowe belki, kanały wentylacyjne, wentylator w zachodniej ścianie
 	for z in [-3.6, 0.0, 3.6]:
 		Models.box(g, Vector3(w, 0.22, 0.16), Vector3(cx, h - 0.16, z), Props.pbr("rusty_painted_metal", 0.5, Color(0.5, 0.48, 0.46)))
 	Models.cyl(g, 0.2, 0.2, w - 1.0, Vector3(cx, h - 0.55, -4.9), Models.mat("9da2a8", 0.4, 0.6), Vector3(0, 0, PI / 2.0), 12)
 	Models.cyl(g, 0.16, 0.16, 6.0, Vector3(cx - 6.2, h - 0.55, -1.9), Models.mat("9da2a8", 0.4, 0.6), Vector3(PI / 2.0, 0, 0), 12)
-	# --- uprawa: trzy rzędy po trzy regały
-	var stage_of := [0.95, 0.8, 0.55, 0.9, 0.62, 0.35, 0.72, 0.45, 0.16]
-	var k := 0
-	for row in range(3):
-		var rz := -4.3 + row * 1.75
-		for col in range(3):
-			var rx := cx - 5.7 + col * 1.9
-			var rack := Stations.rack(4, false)
-			rack.position = Vector3(rx, 0.0, rz)
-			g.add_child(rack)
-			Stations.refresh_rack(rack, {"prog": stage_of[k], "water": 70.0})
-			var led: OmniLight3D = rack.get_node("Led")
-			led.light_energy = 0.42
-			k += 1
-		add_col(cx - 6.65, cx - 0.95, rz - 0.38, rz + 0.38, 1.2, true, -1.0)
-		rects.pop_back()
-	# zbiornik, pompa, filtr, suszarki
-	var tk := Stations.tank()
-	tk.position = Vector3(cx - 6.3, 0, 1.3)
-	g.add_child(tk)
-	var ft := Stations.carbon_filter()
-	ft.position = Vector3(cx - 6.3, 0, 2.6)
-	ft.rotation.y = PI / 2.0
-	g.add_child(ft)
-	add_col(cx - 6.8, cx - 5.8, 0.9, 3.0, 1.2, true, -1.0)
+	_lm(g, "lab_wentylator", cx - w * 0.5 + 0.2, 1.0, PI / 2.0, h - 1.35)
+	# --- linia syntezy: trzy stoły pod wschodnią ścianą, na nich aparatura
+	var bz := [-3.5, -1.3, 0.9]
+	for k in range(3):
+		_lm(g, "lab_stol", cx + 6.45, bz[k], -PI / 2.0, 0.0, Vector2(0.45, 1.02))
+		if k < 2:
+			_lm(g, "lab_aparatura", cx + 6.5, float(bz[k]) + (0.25 if k == 0 else -0.2), -PI / 2.0, 0.9)
+			var gl := _room_light(g, cx + 6.1, float(bz[k]), 1.35, 0.35, Color(1.0, 0.72, 0.35) if k == 0 else Color(0.6, 1.0, 0.6), 2.4)
+			gl.shadow_enabled = false
+	# trzeci stół: waga, tace z proszkiem, zgrzewarka
+	_scale_set(g, Vector3(cx + 6.45, 0.9, 0.5))
+	for e in [[0.9, 0.0], [1.35, 0.4]]:
+		Models.box(g, Vector3(0.34, 0.02, 0.26), Vector3(cx + 6.45, 0.91, e[0]), Models.mat("9aa0a6", 0.35, 0.8), Vector3(0, e[1], 0), false)
+		Models.box(g, Vector3(0.3, 0.025, 0.22), Vector3(cx + 6.45, 0.925, e[0]), Models.mat("f4f4f0", 0.95), Vector3(0, e[1], 0), false)
+	# reaktor z parą nad pokrywą i tablica z rachunkiem partii
+	var rk := _lm(g, "lab_reaktor", cx + 3.9, -4.3, 2.6, 0.0, Vector2(0.62, 0.62))
+	var steam := Props._particles(9, 3.2, 0.7, false, [Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.16), Color(1, 1, 1, 0.09), Color(1, 1, 1, 0.0)], Vector2(0.25, 0.55), 0.12, true)
+	steam.position = Vector3(-0.18, 2.02, 0.24)
+	rk.add_child(steam)
+	var rkl := _room_light(g, cx + 3.9, -3.5, 1.4, 0.5, Color(1.0, 0.82, 0.55), 3.0)
+	rkl.shadow_enabled = false
+	_lm(g, "lab_tablica", cx + 1.5, -5.05, 0.0, 0.0, Vector2(0.75, 0.25))
+	# --- magazyn chemii w północno-zachodnim rogu
+	_lm(g, "lab_ibc", cx - 6.1, -4.5, 0.0, 0.0, Vector2(0.55, 0.65))
+	_lm(g, "lab_ibc", cx - 4.9, -4.55, 0.06, 0.0, Vector2(0.55, 0.65))
+	for e in [[-3.5, -4.9, 0.3], [-2.9, -4.75, 1.4], [-3.2, -4.2, 2.2], [-6.4, -3.3, 0.9], [-5.8, -3.25, 2.9]]:
+		_lm(g, "lab_beczka", cx + e[0], e[1], e[2], 0.0, Vector2(0.3, 0.3))
+	_lm(g, "lab_kanistry", cx - 4.5, -3.5, 0.8)
+	_lm(g, "lab_butle", cx - w * 0.5 + 0.22, -1.6, PI / 2.0, 0.0, Vector2(0.2, 0.35))
+	_lm(g, "lab_butle", cx - w * 0.5 + 0.22, -0.7, PI / 2.0, 0.0, Vector2(0.2, 0.35))
+	# --- suszarnia i prasa pod zachodnią ścianą
+	for z in [2.3, 3.3]:
+		_lm(g, "lab_suszarnia", cx - 6.4, z, PI / 2.0, 0.0, Vector2(0.36, 0.48))
+	var heat := _room_light(g, cx - 6.0, 2.8, 1.6, 0.4, Color(1.0, 0.5, 0.2), 2.6)
+	heat.shadow_enabled = false
+	_lm(g, "lab_prasa", cx - 4.4, 4.5, PI, 0.0, Vector2(0.4, 0.3))
+	var pal := Props.make("pallet", 0.16)
+	pal.position = Vector3(cx - 2.9, 0.0, 4.6)
+	g.add_child(pal)
+	for i in range(3):
+		var ps := Stations.brick_stack("snieg", 12)
+		ps.position = Vector3(cx - 3.25 + i * 0.36, 0.16, 4.55 + (i % 2) * 0.1)
+		ps.rotation.y = i * 0.3
+		g.add_child(ps)
+	add_col(cx - 3.5, cx - 2.3, 4.0, 5.2, 1.0, true, -1.0)
 	rects.pop_back()
-	for dx in [-4.4, -3.2]:
-		var dr := Stations.dryer()
-		dr.position = Vector3(cx + dx, 0, 4.6)
-		dr.get_node("Load").visible = true
-		g.add_child(dr)
-	add_col(cx - 4.9, cx - 2.7, 4.1, 5.1, 1.2, true, -1.0)
-	rects.pop_back()
-	# --- chemia: dwa stoły pod wschodnią ścianą
-	for z in [-3.6, -0.9]:
-		var lt := Stations.lab_table()
-		lt.position = Vector3(cx + 6.3, 0.0, z)
-		lt.rotation.y = -PI / 2.0
-		lt.get_node("Glow").visible = true
-		g.add_child(lt)
-		add_col(cx + 5.8, cx + 6.85, z - 1.05, z + 1.05, 1.1, true, -1.0)
-		rects.pop_back()
-	for e in [[4.6, -4.9, 0.0], [5.3, -5.0, 0.6], [3.9, -5.0, 1.3], [6.3, 1.0, 0.2], [6.4, 1.7, 1.0]]:
-		_rp(g, "barrel_01", cx + e[0], e[1], e[2], 0.9, 0.0, 0.3, 0.3)
-	_rp(g, "propane_tank", cx + 5.5, 1.3, 0.3, 0.62)
-	_rp(g, "plastic_container", cx + 3.0, -5.0, 0.0, 0.42, 0.0, 0.5, 0.35)
-	_rp(g, "steel_frame_shelves_01", cx + 1.4, -5.15, 0.0, 1.95, 0.0, 0.55, 0.3)
-	for sy in [0.5, 0.98, 1.46]:
-		for sx in [-0.3, 0.0, 0.3]:
-			Models.cyl(g, 0.06, 0.06, 0.2, Vector3(cx + 1.4 + sx, sy + 0.1, -5.15), Models.mat("5a3414", 0.25, 0.0, 0.0, 0.85), Vector3.ZERO, 8)
-	# --- pakowanie: stół z wagą, cegłami i torbą; obok paleta gotowego towaru
+	# --- lampy robocze: trzy plamy ciepłego światła w ciemnej hali
+	for e in [[-1.3, 0.6, -2.2, 1.6, 2.4], [2.4, -1.6, 0.9, 4.6, -3.4], [-3.6, 1.4, 2.4, -5.8, 3.0]]:
+		_lm(g, "lab_lampa", cx + e[0], e[1], atan2(float(e[3]) - float(e[0]), float(e[4]) - float(e[1])) + PI)
+		# światło startuje tuż przed szybą halogenu (inaczej głowica lampy rzuca cień na wszystko)
+		var aim := Vector3(cx + float(e[3]), 0.6, float(e[4]))
+		var head := Vector3(cx + e[0], 1.78, e[1])
+		var sp := SpotLight3D.new()
+		sp.position = head + (aim - head).normalized() * 0.32
+		sp.light_color = Color(1.0, 0.86, 0.62)
+		sp.light_energy = 9.0
+		sp.spot_range = 11.0
+		sp.spot_angle = 52.0
+		sp.spot_angle_attenuation = 0.6
+		sp.spot_attenuation = 0.7
+		sp.shadow_enabled = true
+		sp.light_volumetric_fog_energy = 1.5
+		g.add_child(sp)
+		sp.look_at_from_position(sp.position, aim, Vector3.UP)
+		# odbite światło: miękka poświata wokół oświetlonego miejsca
+		var bounce := _room_light(g, aim.x, aim.z, 1.3, 0.55, Color(1.0, 0.84, 0.62), 5.5)
+		bounce.shadow_enabled = false
+	# --- „zabezpieczenie”: ładunki na ścianach, czerwone diody widać z daleka
+	for e in [[-w * 0.5 + 0.06, -2.6, PI / 2.0], [w * 0.5 - 0.06, 2.4, -PI / 2.0], [-2.4, -d * 0.5 + 0.06, 0.0], [4.6, d * 0.5 - 0.06, PI]]:
+		_lm(g, "lab_ladunek", cx + e[0], e[1], e[2], 1.5)
+		var rl := _room_light(g, cx + float(e[0]) * 0.97, float(e[1]) * 0.97, 1.5, 0.22, Color(1.0, 0.1, 0.05), 1.6)
+		rl.shadow_enabled = false
+	# --- pakowanie: stół z ostatnią partią i torbą
 	var tx := cx + 1.6
 	var tz := 2.4
-	_rp(g, "painted_wooden_table", tx, tz, 0.0, 0.86, 0.0, 1.0, 0.5)
-	_scale_set(g, Vector3(tx - 0.5, 0.86, tz))
-	var st1 := Stations.brick_stack("dym", 7)
-	st1.position = Vector3(tx + 0.1, 0.86, tz - 0.12)
+	_lm(g, "lab_stol", tx, tz, PI, 0.0, Vector2(1.02, 0.45))
+	_scale_set(g, Vector3(tx - 0.62, 0.9, tz))
+	var st1 := Stations.brick_stack("snieg", 6)
+	st1.position = Vector3(tx + 0.0, 0.9, tz - 0.1)
 	g.add_child(st1)
-	var st2 := Stations.brick_stack("szron", 5)
-	st2.position = Vector3(tx + 0.62, 0.86, tz + 0.05)
+	var st2 := Stations.brick_stack("snieg", 4)
+	st2.position = Vector3(tx + 0.5, 0.9, tz + 0.05)
 	st2.rotation.y = 0.5
 	g.add_child(st2)
 	var bag := Stations.duffel()
 	bag.position = Vector3(tx - 0.1, 0.0, tz + 0.95)
 	bag.rotation.y = 0.4
 	g.add_child(bag)
-	_rp(g, "desk_lamp_arm_01", tx + 0.85, tz - 0.3, -0.7, 0.55, 0.86)
-	var dl := _room_light(g, tx + 0.4, tz, 1.9, 0.9, Color(1.0, 0.88, 0.66), 3.2)
-	dl.shadow_enabled = false
-	var pal := Props.make("pallet", 0.16)
-	pal.position = Vector3(cx + 3.6, 0.0, 3.9)
-	g.add_child(pal)
-	for i in range(3):
-		var ps := Stations.brick_stack(["dym", "szron", "dym"][i], 12)
-		ps.position = Vector3(cx + 3.25 + i * 0.36, 0.16, 3.85 + (i % 2) * 0.1)
-		ps.rotation.y = i * 0.3
-		g.add_child(ps)
-	add_col(cx + 3.0, cx + 4.2, 3.3, 4.5, 1.0, true, -1.0)
-	rects.pop_back()
 	_rp(g, "hand_truck", cx + 4.9, 4.4, 2.2, 1.3)
 	_rp(g, "cardboard_box_01", cx - 1.2, 4.8, 0.3, 0.4, 0.0, 0.3, 0.3)
 	_rp(g, "cardboard_box_01", cx - 0.5, 4.9, 1.1, 0.34)
-	_rp(g, "wooden_crate_02", cx - 1.9, 4.7, 0.2, 0.5, 0.0, 0.35, 0.6)
+	_rp(g, "wooden_crate_02", cx + 2.9, 4.8, 0.2, 0.5, 0.0, 0.35, 0.6)
+	# plamy rozlanych odczynników na posadzce
+	for e in [[2.6, -3.2, 1.3, 0.9], [-3.9, -3.0, 1.0, 0.7], [5.2, 0.2, 0.8, 1.2], [-5.2, 3.0, 0.9, 0.6]]:
+		Interior.stain(g, Vector3(cx + e[0], 0.004, e[1]), Vector3(0, float(e[2]) * 2.0, 0), Vector2(float(e[2]), float(e[3])), Color(0.04, 0.05, 0.05, 0.55))
 	inter.append({"loc": "lab", "x": tx, "z": tz, "y0": 0.6, "y1": 1.3, "r": 0.9, "reach": 2.8, "id": "pack_lab",
 		"label": func(): return "Spakuj ostatnią partię do torby", "act": func(): G.main.prologue_act("pack")})
 	# --- biurko z podglądem kamer
-	_rp(g, "metal_office_desk", cx + 5.9, 3.5, -PI / 2.0, 0.76, 0.0, 0.45, 0.8)
-	_rp(g, "television_01", cx + 6.0, 3.5, -PI / 2.0, 0.42, 0.76)
-	_rp(g, "metal_stool_01", cx + 5.0, 3.5, 0.3, 0.6)
-	var mon := _room_light(g, cx + 5.5, 3.5, 1.5, 0.3, Color(0.5, 0.8, 1.0), 2.6)
+	_rp(g, "metal_office_desk", cx + 5.9, 4.2, -PI / 2.0, 0.76, 0.0, 0.45, 0.8)
+	_rp(g, "television_01", cx + 6.0, 4.2, -PI / 2.0, 0.42, 0.76)
+	_rp(g, "metal_stool_01", cx + 5.0, 4.2, 0.3, 0.6)
+	var mon := _room_light(g, cx + 5.5, 4.2, 1.5, 0.3, Color(0.5, 0.8, 1.0), 2.6)
 	mon.shadow_enabled = false
 	# --- brama frontowa (północ): to w nią walą, przez świetliki wpada światło kogutów
-	Models.box(g, Vector3(3.2, 2.9, 0.12), Vector3(cx, 1.45, -d * 0.5 + 0.06), Props.pbr("rusted_shutter", 0.5, Color(0.7, 0.7, 0.72)))
-	Models.box(g, Vector3(3.5, 0.18, 0.2), Vector3(cx, 2.98, -d * 0.5 + 0.1), steel)
+	Models.box(g, Vector3(3.2, 2.9, 0.12), Vector3(cx + 4.4, 1.45, -d * 0.5 + 0.06), Props.pbr("rusted_shutter", 0.5, Color(0.7, 0.7, 0.72)))
+	Models.box(g, Vector3(3.5, 0.18, 0.2), Vector3(cx + 4.4, 2.98, -d * 0.5 + 0.1), steel)
 	var panes := []
-	for sx in [-5.2, -3.4, 3.4, 5.2]:
+	for sx in [-5.2, -3.4, 0.6, 2.2]:
 		panes.append(Models.box(g, Vector3(1.3, 0.7, 0.05), Vector3(cx + sx, h - 0.75, -d * 0.5 + 0.03), Models.mat("131a26", 0.2, 0.0, 0.25), Vector3.ZERO, false))
 		Models.box(g, Vector3(1.4, 0.06, 0.08), Vector3(cx + sx, h - 1.12, -d * 0.5 + 0.05), steel, Vector3.ZERO, false)
 	var cops: Array = []

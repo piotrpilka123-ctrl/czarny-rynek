@@ -169,6 +169,42 @@ def profile(name, pts, depth, material, bevel=0.003, parent=None, holes=()):
     return out
 
 
+def text(name, body, size, material, loc=(0, 0, 0), rot=(math.radians(90), 0, 0), depth=0.0008, parent=None, align='CENTER'):
+    """napis jako płaska siatka (etykiety, tabliczki); domyślnie stoi pionowo, czytany od strony −Y"""
+    cu = bpy.data.curves.new(name, 'FONT')
+    cu.body = body
+    cu.size = size
+    cu.extrude = depth
+    cu.align_x = align
+    cu.align_y = 'CENTER'
+    ob = bpy.data.objects.new(name, cu)
+    bpy.context.scene.collection.objects.link(ob)
+    cu.materials.append(material)
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+    bpy.data.objects.remove(ob)
+    out = _finish(me, name, material, False, parent)
+    out.location = loc
+    out.rotation_euler = rot
+    return out
+
+
+def bolts(prefix, pts, material, r=0.008, h=0.006, axis='Z'):
+    """rząd łbów śrub w podanych punktach (drobny detal, który łamie gładkie powierzchnie)"""
+    out = []
+    for i, p in enumerate(pts):
+        b = lathe('%s%d' % (prefix, i), [(0.0, 0.0), (r, 0.0), (r, h * 0.7), (r * 0.6, h), (0.0, h)], material, 6)
+        b.location = p
+        if axis == 'Y':
+            b.rotation_euler = (math.radians(90), 0, 0)
+        elif axis == '-Y':
+            b.rotation_euler = (math.radians(-90), 0, 0)
+        elif axis == 'X':
+            b.rotation_euler = (0, math.radians(90), 0)
+        out.append(b)
+    return out
+
+
 def weather(objs, size=1024, dirt=0.55, wear=0.5, grime=(0.09, 0.075, 0.06), samples=24):
     """Zużycie zamiast „plasteliny”: każdy obiekt dostaje jedną teksturę koloru wypaloną z materiałów —
     brud w zakamarkach (AO), wytarte krawędzie, plamy i zacieki z szumu. Metaliczność i chropowatość zostają liczbami."""
