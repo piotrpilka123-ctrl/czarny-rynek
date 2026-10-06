@@ -15,6 +15,7 @@ var S := {}                 # cały stan gry (zapisywany do JSON)
 var running := false
 var busy := false           # przejścia (drzwi, sen, areszt)
 var arresting := false
+var prologue = null         # reżyser prologu (scripts/prologue.gd), gdy trwa
 var now := 0.0              # sekundy rozgrywki
 var night := 0.0            # 0..1, ustawia env.gd
 var rain := 0.0
@@ -2015,6 +2016,8 @@ func buy_property(id: String) -> bool:
 
 func door_label(id: String) -> String:
 	var dd: Dictionary = D.DOORS[id]
+	if dd.get("sealed", false):
+		return "Zaplombowane przez policję"
 	if not dd.has("prop"):
 		return "Wejdź: " + String(D.ROOMS[id].name)
 	var p := prop_def(dd.prop)
@@ -2123,11 +2126,11 @@ func next_installment() -> Dictionary:
 func _build_story() -> void:
 	story = [
 		# najpierw oprowadzenie po kawalerce: zapis gry, skrytka, waga — dopiero potem pierwsza paczka
-		{"ch": "Rozdział 1: Dług brata", "id": "room_save", "text": func(): return "Rozejrzyj się po kawalerce brata. Podejdź do laptopa na stole, naceluj na niego i naciśnij [E] — tylko tak zapisujesz grę.",
+		{"ch": "Rozdział 1: Po nalocie", "id": "room_save", "text": func(): return "Rozejrzyj się po wynajętej kawalerce. Podejdź do laptopa na stole, naceluj na niego i naciśnij [E] — tylko tak zapisujesz grę.",
 			"done": func(): return flag("tut_save"), "marker": _laptop_marker},
 		{"id": "room_stash", "text": func(): return "Szafa pod ścianą to Twoja skrytka — towar i gotówka są w niej bezpieczne. Otwórz ją [E].",
 			"done": func(): return flag("tut_stash"), "marker": _stash_marker},
-		{"id": "room_bench", "text": func(): return "Na stole stoi waga po bracie. To tu porcjuje się towar — obejrzyj ją [E].",
+		{"id": "room_bench", "text": func(): return "Na stole stoi waga i woreczki. Kiedyś robili to za Ciebie inni — teraz porcjujesz sam. Obejrzyj ją [E].",
 			"done": func(): return flag("tut_bench"), "marker": _bench_marker, "on_done": _on_tour_done},
 		{"id": "phone", "text": func(): return "Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
 			"done": func(): return flag("read_wiktor"), "on_done": _on_phone_done},
@@ -2179,7 +2182,7 @@ func _on_tour_done() -> void:
 	if flag("wiktor_sms"):
 		return
 	S.flags["wiktor_sms"] = true
-	chat("wiktor", "Pierwsza paczka czeka w skrytce za altanką śmietnikową przy parkingu. 5 g na zeszyt — 105 zł oddasz po sprzedaży. Wagę i woreczki po bracie już widziałeś: zaporcjuj towar i czekaj na wiadomość od klienta.")
+	chat("wiktor", "Pierwsza paczka czeka w skrytce za altanką śmietnikową przy parkingu. 5 g na zeszyt — 105 zł oddasz po sprzedaży. Wagę i woreczki już widziałeś: zaporcjuj towar i czekaj na wiadomość od klienta.")
 
 
 func last_save_text() -> String:
@@ -2199,7 +2202,7 @@ func _on_phone_done() -> void:
 func _on_pack_done() -> void:
 	S.cust.dominik.unlocked = true
 	S.cust.dominik.hunger = 0.6
-	chat("wiktor", "Dominik z bloku 5 brał od twojego brata. Dałem mu twój numer.", false, true)
+	chat("wiktor", "Dominik z bloku 5 brał od twoich chłopaków. Dałem mu twój numer.", false, true)
 	make_order(D.CLIENTS[0], 2)
 
 
@@ -2236,11 +2239,15 @@ func _buyer_marker() -> Variant:
 
 
 func cur_step() -> Dictionary:
+	if prologue != null:
+		return prologue.step()
 	var i := int(S.step)
 	return story[i] if i < story.size() else {}
 
 
 func chapter() -> String:
+	if prologue != null:
+		return "Prolog: Ostatnia noc"
 	var i: int = mini(int(S.step), story.size() - 1)
 	while i >= 0:
 		if story[i].has("ch"):
@@ -2250,6 +2257,8 @@ func chapter() -> String:
 
 
 func story_tick() -> void:
+	if prologue != null:
+		return
 	var st := cur_step()
 	if st.is_empty():
 		return

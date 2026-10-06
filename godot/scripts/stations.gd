@@ -46,8 +46,9 @@ static func plant_material(stage: int) -> StandardMaterial3D:
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		m.roughness = 0.85
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		m.albedo_color = Color(0.78, 0.8, 0.78)
 		m.backlight_enabled = true
-		m.backlight = Color(0.25, 0.35, 0.15)
+		m.backlight = Color(0.12, 0.2, 0.08)
 		_plant_mats[stage] = m
 	return _plant_mats[stage]
 
@@ -93,11 +94,11 @@ static func rack(pots := 4, tent := false) -> Node3D:
 		Models.cyl(g, 0.004, 0.004, 0.1, Vector3(sx * (w * 0.5 - 0.25), h - 0.05, 0), steel, Vector3.ZERO, 4)
 	var led := OmniLight3D.new()
 	led.name = "Led"
-	led.position = Vector3(0, h - 0.5, 0)
+	led.position = Vector3(0, h - 0.22, 0)
 	led.light_color = Color(0.86, 0.36, 1.0)
-	led.light_energy = 1.25
-	led.omni_range = 3.4
-	led.omni_attenuation = 1.3
+	led.light_energy = 0.55
+	led.omni_range = 3.8
+	led.omni_attenuation = 0.85
 	led.shadow_enabled = false
 	g.add_child(led)
 	# doniczki i rośliny

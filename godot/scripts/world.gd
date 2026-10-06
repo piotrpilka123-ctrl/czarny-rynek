@@ -34,6 +34,9 @@ var inter: Array = []          # stałe punkty interakcji: {loc,x,z,range,label,
 var inter_dyn := {}            # meble w kryjówkach: pokój -> Array
 var zones: Array = []
 var lamps: Array = []
+var door_tape: Node3D = null    # taśmy na drzwiach laboratorium (po prologu)
+var mill_burnt: Node3D = null   # okopcenia i gruz pod Starą Hutą (po prologu)
+var lab_fx := {}                # światła i rekwizyty laboratorium sterowane przez prolog
 var covers: Array = []          # krzaki, za którymi da się przyczaić: Vector3(x, z, promień) w metrach świata
 var hides: Array = []           # kryjówki na czas pościgu (altanki śmietnikowe): {x, z, rot, name}
 var _lamp_pts: PackedVector3Array = PackedVector3Array()
@@ -559,6 +562,7 @@ func build(loader = null) -> void:
 	_club_audio()
 	for id in D.DOORS:
 		door(id)
+	set_mill_burnt(true)
 	_markers()
 
 
@@ -823,6 +827,60 @@ func _place(n: Node3D, x: float, z: float, ry := 0.0, solid_x := 0.0, solid_z :=
 		if h < 3.0:
 			rects.pop_back()
 	return n
+
+
+## Stara Huta po prologu: okopcone ściany nad wybitymi oknami, gruz, taśmy. W czasie prologu ukryte.
+func set_mill_burnt(on: bool) -> void:
+	if mill_burnt == null:
+		mill_burnt = Node3D.new()
+		city.add_child(mill_burnt)
+		var soot := StandardMaterial3D.new()
+		soot.albedo_color = Color(0.02, 0.02, 0.02, 0.78)
+		soot.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		soot.albedo_texture = Props._soft_tex()
+		soot.cull_mode = BaseMaterial3D.CULL_DISABLED
+		soot.roughness = 1.0
+		var by := hd(176.0, -90.0)
+		var r2 := RandomNumberGenerator.new()
+		r2.seed = 4477
+		# zachodnia i północna ściana: jęzory sadzy od okien w górę
+		for i in range(11):
+			var z := -108.0 + i * 5.2 + r2.randf_range(-0.8, 0.8)
+			var hh := r2.randf_range(3.5, 7.5)
+			var q := MeshInstance3D.new()
+			var qm := QuadMesh.new()
+			qm.size = Vector2(r2.randf_range(3.0, 5.5) * INV, hh)
+			q.mesh = qm
+			q.material_override = soot
+			q.position = Vector3(175.9, by + r2.randf_range(3.5, 9.0) + hh * 0.5, z)
+			q.rotation.y = -PI / 2.0
+			q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mill_burnt.add_child(q)
+		for i in range(5):
+			var x := 178.0 + i * 5.5 + r2.randf_range(-0.8, 0.8)
+			var hh2 := r2.randf_range(3.0, 6.5)
+			var q2 := MeshInstance3D.new()
+			var qm2 := QuadMesh.new()
+			qm2.size = Vector2(r2.randf_range(3.0, 5.0) * INV, hh2)
+			q2.mesh = qm2
+			q2.material_override = soot
+			q2.position = Vector3(x, by + r2.randf_range(3.0, 8.0) + hh2 * 0.5, -112.1)
+			q2.rotation.y = PI
+			q2.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mill_burnt.add_child(q2)
+		# gruz pod ścianą i taśma na słupkach
+		var rub := Props.pbr("rubble", 0.5, Color(0.5, 0.48, 0.46))
+		for i in range(9):
+			var rz := -106.0 + i * 5.0 + r2.randf_range(-1.5, 1.5)
+			var rx := 174.0 + r2.randf_range(-2.0, 0.6)
+			Models.box(mill_burnt, Vector3(r2.randf_range(0.5, 1.6) * INV, r2.randf_range(0.2, 0.55), r2.randf_range(0.5, 1.4) * INV), Vector3(rx, hd(rx, rz) + 0.15, rz), rub, Vector3(r2.randf_range(-0.3, 0.3), r2.randf() * TAU, r2.randf_range(-0.3, 0.3)))
+		var tape := Models.mat("f2d21a", 0.6, 0.0, 0.3)
+		for i in range(6):
+			var z0 := -110.0 + i * 9.0
+			Models.cyl(mill_burnt, 0.03 * INV, 0.03 * INV, 1.1, Vector3(171.0, hd(171.0, z0) + 0.55, z0), Models.mat("c8c8c8", 0.6, 0.3), Vector3.ZERO, 6)
+			if i < 5:
+				Models.box(mill_burnt, Vector3(0.012 * INV, 0.07, 9.0), Vector3(171.0, hd(171.0, z0 + 4.5) + 0.95, z0 + 4.5), tape, Vector3.ZERO, false)
+	mill_burnt.visible = on
 
 
 ## czy prostokąt (współrzędne projektu) jest wolny: żadnych brył, budynków ani ścieżek
@@ -1105,16 +1163,25 @@ func door(id: String) -> void:
 		Models.box(g, Vector3(2.6, 0.14, 1.3), Vector3(0, 2.75, dz * 0.6), Props.pbr("concrete_wall_008", 0.4))
 		Models.box(g, Vector3(2.4, 0.16, 1.0), Vector3(0, 0.08, dz * 0.5), Props.pbr("concrete_wall_008", 0.4))
 		Models.box(g, Vector3(0.16, 0.3, 0.05), Vector3(0.85, 1.4, dz * 0.2), Models.mat("9aa3ab", 0.4, 0.6))
-	var lb := Signs.plate(String(dd.title), c)
-	lb.position = Vector3(0, 3.2 if id != "garage" else 2.75, dz * 0.22)
-	lb.rotation.y = 0.0 if dz > 0.0 else PI
-	g.add_child(lb)
-	var li := OmniLight3D.new()
-	li.light_color = Color(1.0, 0.85, 0.6)
-	li.light_energy = 0.7
-	li.omni_range = 5.0
-	li.position = Vector3(0, 2.5, dz * 1.0)
-	g.add_child(li)
+	if String(dd.title) != "":
+		var lb := Signs.plate(String(dd.title), c)
+		lb.position = Vector3(0, 3.2 if id != "garage" else 2.75, dz * 0.22)
+		lb.rotation.y = 0.0 if dz > 0.0 else PI
+		g.add_child(lb)
+		var li := OmniLight3D.new()
+		li.light_color = Color(1.0, 0.85, 0.6)
+		li.light_energy = 0.7
+		li.omni_range = 5.0
+		li.position = Vector3(0, 2.5, dz * 1.0)
+		g.add_child(li)
+	if dd.get("sealed", false):
+		# policyjne taśmy na krzyż — widoczne dopiero po prologu
+		var tape := Node3D.new()
+		tape.name = "Tape"
+		g.add_child(tape)
+		for a in [0.5, -0.5]:
+			Models.box(tape, Vector3(1.9, 0.09, 0.012), Vector3(0, 1.15, dz * 0.27), Models.mat("f2d21a", 0.6, 0.0, 0.25), Vector3(0, 0, a), false)
+		door_tape = tape
 	inter.append({"loc": "out", "x": x, "z": dd.z, "y0": 0.0, "y1": 2.3, "r": 1.3 if id == "garage" else 0.7, "reach": 2.7, "id": "door_" + id,
 		"label": func(): return G.door_label(id), "act": func(): G.main.enter(id)})
 
@@ -2626,10 +2693,10 @@ func _interiors() -> void:
 	_scale_set(g, Vector3(tx - 0.35, 0.8, tz))
 	_rp(g, "desk_lamp_arm_01", tx + 0.75, tz - 0.15, 0.6, 0.55, 0.8)
 	_rp(g, "cigarette_pack", tx + 0.08, tz + 0.26, 0.4, 0.09, 0.8)
-	# laptop brata: jedyne miejsce zapisu gry w mieszkaniu
+	# laptop: jedyne miejsce zapisu gry w mieszkaniu
 	_rp(g, "classic_laptop", tx + 0.55, tz + 0.05, 0.0, 0.24, 0.8)
 	inter.append({"loc": "safe", "x": tx + 0.55, "z": tz + 0.05, "y0": 0.78, "y1": 1.08, "r": 0.3, "reach": 2.5, "id": "save_safe",
-		"label": func(): return "Laptop brata — zapisz grę", "act": func(): G.main.save_here()})
+		"label": func(): return "Laptop — zapisz grę", "act": func(): G.main.save_here()})
 	var dl := _room_light(g, tx + 0.4, tz + 0.1, 1.75, 0.8, Color(1.0, 0.9, 0.7), 2.6)
 	dl.shadow_enabled = false
 	_rp(g, "painted_wooden_chair_01", tx - 0.1, tz + 0.85, PI, 0.92)
@@ -2663,7 +2730,7 @@ func _interiors() -> void:
 	Models.box(g, Vector3(1.66, 0.06, 0.16), Vector3(cx - 1.4, 0.92, -d * 0.5 + 0.08), Models.mat("e8e6e0", 0.7))
 	Models.box(g, Vector3(1.4, 0.55, 0.1), Vector3(cx - 1.4, 0.45, -d * 0.5 + 0.08), Models.mat("c9c4b6", 0.6, 0.3))
 	var po := Label3D.new()
-	po.text = "SIWY + KUBA\nBRACIA"
+	po.text = "WYBUCH W STAREJ HUCIE\npolicja szuka świadków"
 	po.font_size = 40
 	po.pixel_size = 0.004
 	po.modulate = Color(0.2, 0.2, 0.25)
@@ -2724,6 +2791,7 @@ func _interiors() -> void:
 	_room_light(g4, R4.cx + 2.0, 2.0, R4.h, 0.9, Color(1.0, 0.8, 0.55), 8.0)
 	Models.cyl(g4, 0.06, 0.06, R4.w, Vector3(R4.cx, R4.h - 0.2, -R4.d * 0.5 + 0.5), Props.pbr("rusty_painted_metal", 0.5), Vector3(0, 0, PI / 2.0), 8)
 	Models.cyl(g4, 0.04, 0.04, R4.d, Vector3(R4.cx + R4.w * 0.5 - 0.3, R4.h - 0.3, 0), Props.pbr("rusty_painted_metal", 0.5), Vector3(PI / 2.0, 0, 0), 8)
+	_lab_room()
 	for id in ["garage", "basement"]:
 		var fg := Node3D.new()
 		rooms[id].add_child(fg)
@@ -2732,6 +2800,137 @@ func _interiors() -> void:
 		rooms[id].add_child(fb)
 		furn_body[id] = fb
 		inter_dyn[id] = []
+
+
+## LABORATORIUM W STAREJ HUCIE (prolog): hala z rzędami regałów pod fioletowymi LED-ami,
+## stołami do syntezy i paletą gotowych cegieł. Po prologu nie da się tu już wejść.
+func _lab_room() -> void:
+	var R: Dictionary = D.ROOMS.lab
+	var cx: float = R.cx
+	var w: float = R.w
+	var d: float = R.d
+	var h: float = R.h
+	var g := _room("lab", "concrete_floor_worn_001", "factory_brick", "33312f", Color(0.72, 0.68, 0.66), 0.5)
+	var steel := Models.mat("2b2e33", 0.45, 0.7)
+	# świetlówki pod stropem: zimne, słabe — resztę robią LED-y upraw
+	for e in [[-1.0, 2.6], [3.6, -1.4]]:
+		Props._no_shadow(_rp(g, "mounted_fluorescent_lights", cx + e[0], e[1], PI / 2.0, 0.0, h - 0.1))
+		var fl := _room_light(g, cx + e[0], e[1], h, 1.05, Color(0.82, 0.92, 1.0), 10.5)
+		fl.shadow_enabled = e[0] < 0.0
+	# stalowe belki i kanały wentylacyjne
+	for z in [-3.6, 0.0, 3.6]:
+		Models.box(g, Vector3(w, 0.22, 0.16), Vector3(cx, h - 0.16, z), Props.pbr("rusty_painted_metal", 0.5, Color(0.5, 0.48, 0.46)))
+	Models.cyl(g, 0.2, 0.2, w - 1.0, Vector3(cx, h - 0.55, -4.9), Models.mat("9da2a8", 0.4, 0.6), Vector3(0, 0, PI / 2.0), 12)
+	Models.cyl(g, 0.16, 0.16, 6.0, Vector3(cx - 6.2, h - 0.55, -1.9), Models.mat("9da2a8", 0.4, 0.6), Vector3(PI / 2.0, 0, 0), 12)
+	# --- uprawa: trzy rzędy po trzy regały
+	var stage_of := [0.95, 0.8, 0.55, 0.9, 0.62, 0.35, 0.72, 0.45, 0.16]
+	var k := 0
+	for row in range(3):
+		var rz := -4.3 + row * 1.75
+		for col in range(3):
+			var rx := cx - 5.7 + col * 1.9
+			var rack := Stations.rack(4, false)
+			rack.position = Vector3(rx, 0.0, rz)
+			g.add_child(rack)
+			Stations.refresh_rack(rack, {"prog": stage_of[k], "water": 70.0})
+			var led: OmniLight3D = rack.get_node("Led")
+			led.light_energy = 0.42
+			k += 1
+		add_col(cx - 6.65, cx - 0.95, rz - 0.38, rz + 0.38, 1.2, true, -1.0)
+		rects.pop_back()
+	# zbiornik, pompa, filtr, suszarki
+	var tk := Stations.tank()
+	tk.position = Vector3(cx - 6.3, 0, 1.3)
+	g.add_child(tk)
+	var ft := Stations.carbon_filter()
+	ft.position = Vector3(cx - 6.3, 0, 2.6)
+	ft.rotation.y = PI / 2.0
+	g.add_child(ft)
+	add_col(cx - 6.8, cx - 5.8, 0.9, 3.0, 1.2, true, -1.0)
+	rects.pop_back()
+	for dx in [-4.4, -3.2]:
+		var dr := Stations.dryer()
+		dr.position = Vector3(cx + dx, 0, 4.6)
+		dr.get_node("Load").visible = true
+		g.add_child(dr)
+	add_col(cx - 4.9, cx - 2.7, 4.1, 5.1, 1.2, true, -1.0)
+	rects.pop_back()
+	# --- chemia: dwa stoły pod wschodnią ścianą
+	for z in [-3.6, -0.9]:
+		var lt := Stations.lab_table()
+		lt.position = Vector3(cx + 6.3, 0.0, z)
+		lt.rotation.y = -PI / 2.0
+		lt.get_node("Glow").visible = true
+		g.add_child(lt)
+		add_col(cx + 5.8, cx + 6.85, z - 1.05, z + 1.05, 1.1, true, -1.0)
+		rects.pop_back()
+	for e in [[4.6, -4.9, 0.0], [5.3, -5.0, 0.6], [3.9, -5.0, 1.3], [6.3, 1.0, 0.2], [6.4, 1.7, 1.0]]:
+		_rp(g, "barrel_01", cx + e[0], e[1], e[2], 0.9, 0.0, 0.3, 0.3)
+	_rp(g, "propane_tank", cx + 5.5, 1.3, 0.3, 0.62)
+	_rp(g, "plastic_container", cx + 3.0, -5.0, 0.0, 0.42, 0.0, 0.5, 0.35)
+	_rp(g, "steel_frame_shelves_01", cx + 1.4, -5.15, 0.0, 1.95, 0.0, 0.55, 0.3)
+	for sy in [0.5, 0.98, 1.46]:
+		for sx in [-0.3, 0.0, 0.3]:
+			Models.cyl(g, 0.06, 0.06, 0.2, Vector3(cx + 1.4 + sx, sy + 0.1, -5.15), Models.mat("5a3414", 0.25, 0.0, 0.0, 0.85), Vector3.ZERO, 8)
+	# --- pakowanie: stół z wagą, cegłami i torbą; obok paleta gotowego towaru
+	var tx := cx + 1.6
+	var tz := 2.4
+	_rp(g, "painted_wooden_table", tx, tz, 0.0, 0.86, 0.0, 1.0, 0.5)
+	_scale_set(g, Vector3(tx - 0.5, 0.86, tz))
+	var st1 := Stations.brick_stack("dym", 7)
+	st1.position = Vector3(tx + 0.1, 0.86, tz - 0.12)
+	g.add_child(st1)
+	var st2 := Stations.brick_stack("szron", 5)
+	st2.position = Vector3(tx + 0.62, 0.86, tz + 0.05)
+	st2.rotation.y = 0.5
+	g.add_child(st2)
+	var bag := Stations.duffel()
+	bag.position = Vector3(tx - 0.1, 0.0, tz + 0.95)
+	bag.rotation.y = 0.4
+	g.add_child(bag)
+	_rp(g, "desk_lamp_arm_01", tx + 0.85, tz - 0.3, -0.7, 0.55, 0.86)
+	var dl := _room_light(g, tx + 0.4, tz, 1.9, 0.9, Color(1.0, 0.88, 0.66), 3.2)
+	dl.shadow_enabled = false
+	var pal := Props.make("pallet", 0.16)
+	pal.position = Vector3(cx + 3.6, 0.0, 3.9)
+	g.add_child(pal)
+	for i in range(3):
+		var ps := Stations.brick_stack(["dym", "szron", "dym"][i], 12)
+		ps.position = Vector3(cx + 3.25 + i * 0.36, 0.16, 3.85 + (i % 2) * 0.1)
+		ps.rotation.y = i * 0.3
+		g.add_child(ps)
+	add_col(cx + 3.0, cx + 4.2, 3.3, 4.5, 1.0, true, -1.0)
+	rects.pop_back()
+	_rp(g, "hand_truck", cx + 4.9, 4.4, 2.2, 1.3)
+	_rp(g, "cardboard_box_01", cx - 1.2, 4.8, 0.3, 0.4, 0.0, 0.3, 0.3)
+	_rp(g, "cardboard_box_01", cx - 0.5, 4.9, 1.1, 0.34)
+	_rp(g, "wooden_crate_02", cx - 1.9, 4.7, 0.2, 0.5, 0.0, 0.35, 0.6)
+	inter.append({"loc": "lab", "x": tx, "z": tz, "y0": 0.6, "y1": 1.3, "r": 0.9, "reach": 2.8, "id": "pack_lab",
+		"label": func(): return "Spakuj ostatnią partię do torby", "act": func(): G.main.prologue_act("pack")})
+	# --- biurko z podglądem kamer
+	_rp(g, "metal_office_desk", cx + 5.9, 3.5, -PI / 2.0, 0.76, 0.0, 0.45, 0.8)
+	_rp(g, "television_01", cx + 6.0, 3.5, -PI / 2.0, 0.42, 0.76)
+	_rp(g, "metal_stool_01", cx + 5.0, 3.5, 0.3, 0.6)
+	var mon := _room_light(g, cx + 5.5, 3.5, 1.5, 0.3, Color(0.5, 0.8, 1.0), 2.6)
+	mon.shadow_enabled = false
+	# --- brama frontowa (północ): to w nią walą, przez świetliki wpada światło kogutów
+	Models.box(g, Vector3(3.2, 2.9, 0.12), Vector3(cx, 1.45, -d * 0.5 + 0.06), Props.pbr("rusted_shutter", 0.5, Color(0.7, 0.7, 0.72)))
+	Models.box(g, Vector3(3.5, 0.18, 0.2), Vector3(cx, 2.98, -d * 0.5 + 0.1), steel)
+	var panes := []
+	for sx in [-5.2, -3.4, 3.4, 5.2]:
+		panes.append(Models.box(g, Vector3(1.3, 0.7, 0.05), Vector3(cx + sx, h - 0.75, -d * 0.5 + 0.03), Models.mat("131a26", 0.2, 0.0, 0.25), Vector3.ZERO, false))
+		Models.box(g, Vector3(1.4, 0.06, 0.08), Vector3(cx + sx, h - 1.12, -d * 0.5 + 0.05), steel, Vector3.ZERO, false)
+	var cops: Array = []
+	for i in range(2):
+		var cl := OmniLight3D.new()
+		cl.position = Vector3(cx + (-3.6 if i == 0 else 3.6), h - 0.8, -d * 0.5 + 0.9)
+		cl.light_color = Color(0.2, 0.4, 1.0) if i == 0 else Color(1.0, 0.15, 0.1)
+		cl.light_energy = 0.0
+		cl.omni_range = 11.0
+		cl.shadow_enabled = false
+		g.add_child(cl)
+		cops.append(cl)
+	lab_fx = {"flash": cops, "panes": panes, "bag": bag, "bricks": [st1, st2]}
 
 
 ## waga kuchenna, woreczki i towar na stole

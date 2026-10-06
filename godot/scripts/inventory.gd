@@ -916,9 +916,9 @@ func _tab_org() -> void:
 		if not ni.is_empty():
 			var dl := int(ni.day) - G.day()
 			txt = "Rata: łącznie %s do końca dnia %d (%s)." % [G.money(ni.due), int(ni.day), "za %d dni" % dl if dl > 0 else ("DZIŚ" if dl == 0 else "PO TERMINIE")]
-		_note(bv, "skull", K.C_BAD, "Dług brata", txt, G.money(S.debt))
+		_note(bv, "skull", K.C_BAD, "Dług u Wiktora", txt, G.money(S.debt))
 	else:
-		_note(bv, "circle_check", K.C_ACC, "Dług brata", "Spłacony co do złotówki.", "0 zł")
+		_note(bv, "circle_check", K.C_ACC, "Dług u Wiktora", "Spłacony co do złotówki.", "0 zł")
 	if float(S.credit) > 0.0:
 		_note(bv, "truck", K.C_WARN, "Towar na zeszyt u Wiktora", "Oddaj do końca dnia %d. Limit: %s." % [int(float(S.credit_due) / 1440.0) + 1, G.money(G.credit_limit())], G.money(S.credit))
 	else:

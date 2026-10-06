@@ -29,6 +29,7 @@ var ui: CanvasLayer
 var beacon: Node3D
 var beacon_mat: StandardMaterial3D
 var cut_skip := false          # gracz pominął przerywnik
+var skip_hold := 0.0           # jak długo trzymany jest Enter (pominięcie prologu)
 var cut_hour := -1.0           # godzina wymuszona na czas przerywnika (-1 = czas gry)
 var cut_nodes: Array = []
 var cur_inter = null
@@ -182,6 +183,18 @@ func _ready() -> void:
 
 # ================================================================ start / menu / koniec
 func to_title() -> void:
+	if G.prologue != null:
+		G.prologue.stage = "done"
+		G.prologue.queue_free()
+		G.prologue = null
+		cut_hour = -1.0
+		cine_off()
+		ui.cut_end()
+		ui.fade_rect.color.a = 0.0
+		world.set_mill_burnt(true)
+		for c in npcs.cops:
+			c.idle = 0.0
+			c.beat = null
 	build_cancel()
 	G.running = false
 	G.busy = false
@@ -331,181 +344,42 @@ func start_game(from_save: bool) -> void:
 	else:
 		teleport("safe", Vector3(float(R.cx) - 0.6, 0.0, 1.2), 0.0)
 		if not args.has("autostart") or args.has("intro"):
-			intro_cutscene()
+			start_prologue()
 		else:
+			G.S.flags["prologue_done"] = true
 			_intro_sms()
 	nav_force = true
 
 
 # ================================================================ wstęp fabularny
-const CUT_LINES := [
-	[1.3, "Po Siwego przyjechali o świcie. Syreny obudziły całe osiedle."],
-	[6.6, "Sąsiedzi patrzyli zza firanek. Nikt nie był zdziwiony."],
-	[13.4, "Mama zadzwoniła jeszcze tego samego dnia. „Jedź, Kubuś. Przypilnuj mieszkania brata.”"],
-	[17.6, "Nie powiedziała tylko, co jeszcze po nim zostało."],
-]
-const CUT_ARREST_END := 12.3
-const CUT_TITLE := 21.5
-const CUT_END := 25.4
+## Nowa gra zaczyna się grywalnym prologiem (scripts/prologue.gd): nalot na laboratorium w Starej Hucie.
+func start_prologue() -> void:
+	var pr: Node = load("res://scripts/prologue.gd").new()
+	add_child(pr)
+	pr.start()
 
 
-func _cut_actor(look: Dictionary) -> Dictionary:
-	var rig: Dictionary = Chars.make(look)
-	add_child(rig.root)
-	cut_nodes.append(rig.root)
-	return rig
-
-
-## czeka zadany czas (albo krócej, jeśli gracz pominie przerywnik)
-func _cut_clear() -> void:
-	for n in cut_nodes:
-		if is_instance_valid(n):
-			n.queue_free()
-	cut_nodes.clear()
-
-
-## Wstęp: świt pod blokiem, policja wyprowadza brata; potem plansza „trzy tygodnie później”
-## i gracz budzi się w kawalerce. Spacja / Enter / Esc pomija całość.
-func intro_cutscene() -> void:
-	G.busy = true
-	cut_skip = false
-	ui.fade_rect.color.a = 1.0
-	ui.cut_begin()
-	cut_hour = 5.75
-	var SC: float = D.SC
-	var door := Vector2(float(D.DOORS.safe.x), float(D.DOORS.safe.z))          # już w metrach świata
-	var p_start := door + Vector2(0.0, 0.5)
-	var p_end := door + Vector2(3.6, 5.2)
-	var car_pos := door + Vector2(4.9, 6.4)
-	# radiowóz z migającymi światłami
-	var car: Node3D = Models.car("sedan", "ffffff", true)
-	add_child(car)
-	cut_nodes.append(car)
-	car.position = Vector3(car_pos.x, world.height(car_pos.x, car_pos.y), car_pos.y)
-	car.rotation.y = 2.5
-	var flashes: Array = []
-	for c in [Color(0.15, 0.35, 1.0), Color(1.0, 0.12, 0.1)]:
-		var li := OmniLight3D.new()
-		li.light_color = c
-		li.omni_range = 17.0
-		li.light_energy = 0.0
-		li.shadow_enabled = false
-		li.position = car.position + Vector3(0, 1.75, 0)
-		add_child(li)
-		cut_nodes.append(li)
-		flashes.append(li)
-	# brat, dwóch policjantów i sąsiad, który wyszedł popatrzeć
-	var bro := _cut_actor(D.BROTHER_LOOK)
-	# przechodnie z okolicy klatki idą gdzie indziej, żeby nikt nie wszedł w kadr tuż przed kamerą
-	for cz in npcs.citizens:
-		if Vector2(cz.x - door.x, cz.z - door.y).length() < 32.0:
-			for _try in range(12):
-				var wi = randi() % world.wp.size()
-				var wn: Dictionary = world.wp[wi]
-				if Vector2(wn.x - door.x, wn.z - door.y).length() > 55.0:
-					cz.x = wn.x
-					cz.z = wn.z
-					cz.tx = wn.x
-					cz.tz = wn.z
-					cz.wi = wi
-					cz.pi = -1
-					break
-	var cop_look := {"kind": "police", "top": "c8e020", "top2": "141c30", "bottom": "141c30", "shoes": "0c0c0e", "hat": "police", "seed": 4}
-	cop_look["model"] = "pm3"
-	var cop1 := _cut_actor(cop_look)
-	var cop_look2 := cop_look.duplicate()
-	cop_look2["model"] = "pm6"
-	cop_look2["seed"] = 5
-	var cop2 := _cut_actor(cop_look2)
-	var watcher := _cut_actor(D.CLIENTS[2].look)
-	var wpos := door + Vector2(-5.6, 2.6)
-	watcher.root.position = Vector3(wpos.x, world.height(wpos.x, wpos.y), wpos.y)
-	watcher.root.rotation.y = atan2(p_end.x - wpos.x, p_end.y - wpos.y)
-	Chars.animate(watcher, 0.0, 0.0, "arms")
-	var walk_dir := (p_end - p_start).normalized()
-	var side := Vector2(-walk_dir.y, walk_dir.x)
-	var walk_len := p_start.distance_to(p_end)
-	var cam_a := Vector3(door.x - 3.4, 0.0, door.y + 10.6)
-	var cam_b := Vector3(door.x - 1.6, 0.0, door.y + 9.6)
-	teleport("out", Vector3(cam_a.x, 0.0, cam_a.z), 0.0)
-
-	var t := 0.0
-	var music := false
-	var faded_in := false
-	var faded_out := false
-	var title := false
-	var line := 0
-	while t < CUT_END and not cut_skip:
-		if not music and Sfx.intro_ready():
-			music = true
-			Sfx.intro_play(t)
-		if t < CUT_ARREST_END + 1.2:
-			# marsz od klatki do radiowozu (1–9,5 s), potem stoją przy aucie
-			var k := clampf((t - 1.0) / 8.5, 0.0, 1.0)
-			var speed := (walk_len / 8.5) if (k > 0.0 and k < 1.0) else 0.0
-			var bp := p_start.lerp(p_end, k)
-			var who := [[bro, bp, ""], [cop1, bp - walk_dir * 0.55 + side * 0.62, "arms"], [cop2, bp - walk_dir * 0.6 - side * 0.62, ""]]
-			for w in who:
-				var rig: Dictionary = w[0]
-				var pp: Vector2 = w[1]
-				rig.root.position = Vector3(pp.x, world.height(pp.x, pp.y), pp.y)
-				rig.root.rotation.y = atan2(walk_dir.x, walk_dir.y) if k < 1.0 else atan2(car_pos.x - pp.x, car_pos.y - pp.y)
-				Chars.animate(rig, 0.016, speed, w[2])
-			var e := clampf(t / CUT_ARREST_END, 0.0, 1.0)
-			var cp := cam_a.lerp(cam_b, e * e * (3.0 - 2.0 * e))
-			cp.y = world.height(cp.x, cp.z) + 1.55
-			var look_at_pt := Vector3(bp.x, world.height(bp.x, bp.y) + 1.2, bp.y).lerp(car.position + Vector3(0, 1.0, 0), 0.3)
-			cine_cam(cp, look_at_pt, 50.0)
-			for i in range(flashes.size()):
-				var fl: OmniLight3D = flashes[i]
-				fl.light_energy = 7.5 if (int(t / 0.3) % 2 == i) else 0.25
-		if not faded_in and t >= 0.5:
-			faded_in = true
-			ui.fade_to(0.0, 1.6)
-		if not faded_out and t >= CUT_ARREST_END:
-			faded_out = true
-			ui.fade_to(1.0, 0.9)
-		if line < CUT_LINES.size() and t >= float(CUT_LINES[line][0]):
-			ui.cut_line(String(CUT_LINES[line][1]))
-			line += 1
-		if not title and t >= CUT_TITLE:
-			title = true
-			ui.cut_line("")
-			ui.cut_title("TRZY TYGODNIE PÓŹNIEJ", "KAWALERKA BRATA  •  BLOK 7, KLATKA B")
-		await get_tree().process_frame
-		t += get_process_delta_time()
-
-	# koniec albo pominięcie: czarny ekran, sprzątanie, kawalerka
-	if cut_skip:
-		Sfx.intro_stop(0.6)
-		await ui.fade_to(1.0, 0.25)
-	ui.cut_line("")
-	ui.cut_title("")
-	_cut_clear()
-	cut_hour = -1.0
-	cine_off()
-	var R: Dictionary = D.ROOMS.safe
-	teleport("safe", Vector3(float(R.cx) - 0.6, 0.0, 1.2), 0.0)
-	await get_tree().create_timer(0.45).timeout
-	ui.cut_end()
-	await ui.fade_to(0.0, 1.1)
-	G.busy = false
-	if G.running:
-		_intro()
+## zdarzenia z interakcji w laboratorium (np. spakowanie torby)
+func prologue_act(what: String) -> void:
+	if G.prologue != null:
+		G.prologue.act(what)
 
 
 func _intro() -> void:
 	ui.dialog({"name": "Nieznany numer", "lines": [
-		"Kuba? Tu Wiktor. Znałem twojego brata.",
-		"Siwy siedzi i prędko nie wyjdzie. A wisi mi dwadzieścia pięć tysięcy. U nas długi się dziedziczy.",
-		{"n": "Ty", "t": "Nie mam takich pieniędzy. Nie mam żadnych pieniędzy."},
-		"Wiem. Dlatego dam ci zarobić. Towar dostaniesz ode mnie, pierwszego klienta masz po bracie. Resztę zbudujesz sam — albo nie.",
-		"Pierwsza rata za pięć dni. Rozgość się, a ja zaraz wyślę ci SMS-em, co dalej. Nie zawiedź mnie.",
+		"Kuba. Żyjesz. To dobrze — bo mamy do pogadania. Tu Wiktor.",
+		"Partia, za którą zapłaciłem z góry, poszła z dymem razem z twoją hutą. Dwadzieścia pięć tysięcy. Wisisz mi je.",
+		{"n": "Ty", "t": "Nie mam laboratorium, nie mam ludzi, nie mam nic. Siwy siedzi."},
+		"Masz głowę i parę numerów do detalistów z osiedla, którzy brali od twoich chłopaków. Zaczniesz od nich — sam, na ulicy, jak wszyscy.",
+		"Towar na start dam ci na zeszyt. Pierwsza rata za pięć dni. Zaraz wyślę ci SMS-em, co dalej. I Kuba — tym razem się wychylisz.",
 	], "on_end": _intro_sms})
 
 
 func _intro_sms() -> void:
-	G.chat("mama", "Kubuś, rozgość się u brata. I błagam, nie pakuj się w nic głupiego.", false, true)
+	G.chat("mama", "Kubuś, gdzie ty się podziewasz? W telewizji mówili o wybuchu w starej hucie. Zadzwoń do matki.", false, true)
+	# sterowanie pokazuje się raz, gdy gracz pierwszy raz dostaje otwarty świat
+	if not G.flag("seen_keys") and not G.test_mode:
+		ui.show_controls()
 
 
 ## zapis gry przy laptopie w kryjówce — jedyny sposób zapisu
@@ -531,7 +405,7 @@ func ending(kind: String) -> void:
 	ui.set_prompt("")
 	match kind:
 		"wolnosc":
-			ui.show_ending("KWITA", "Ostatnia rata wpłacona. Wiktor przysłał jedno słowo: „Kwita”. Dług brata zniknął — ale interes, który zbudowałeś, został. Co z nim zrobisz?", stats, true)
+			ui.show_ending("KWITA", "Ostatnia rata wpłacona. Wiktor przysłał jedno słowo: „Kwita”. Dług zniknął — ale interes, który odbudowałeś od zera, został. Co z nim zrobisz?", stats, true)
 		"wyrok":
 			ui.show_ending("WYROK", "Piąte zatrzymanie. Tym razem prokurator nie miał litości — a dług nie zniknął, tylko czeka pod bramą.", stats)
 		_:
@@ -569,6 +443,9 @@ func enter(id: String) -> void:
 	if G.busy:
 		return
 	var dd: Dictionary = D.DOORS[id]
+	if dd.get("sealed", false):
+		G.notify("Drzwi zaspawane i oklejone policyjną taśmą. Tam nie ma już czego szukać.", "warn")
+		return
 	if dd.has("prop") and not G.owns(dd.prop):
 		ui.open_property(dd.prop)
 		return
@@ -593,10 +470,16 @@ func exit_room() -> void:
 		return
 	var id: String = player.loc
 	var dd: Dictionary = D.DOORS[id]
+	if G.prologue != null and not G.prologue.can_exit():
+		G.notify("Najpierw spakuj partię — torba leży przy stole.", "warn")
+		return
 	G.busy = true
 	Sfx.play("door_close")
 	await ui.fade(true)
 	teleport("out", Vector3(dd.x, 0.0, float(dd.z) + float(dd.dz) * 1.2), PI if float(dd.dz) > 0.0 else 0.0)
+	if G.prologue != null:
+		player.yaw = PI / 2.0
+		G.prologue.on_outside()
 	await ui.fade(false)
 	G.busy = false
 
@@ -642,8 +525,8 @@ func _do_sleep(minutes: float) -> void:
 func talk_stasiu() -> void:
 	if not G.flag("met_stasiu"):
 		ui.dialog({"name": "Wujek Staś", "lines": [
-			"Kuba! Chłopcze… Słyszałem o Siwym. Przykro mi. Twój brat był dla mnie jak syn.",
-			"Wiem, w co się wpakowałeś, i nie będę cię pouczał. U mnie kupisz woreczki, plecak, porządną wagę — a o nic nie pytam.",
+			"Kuba! Chłopcze… Słyszałem, co się stało w hucie. Dobrze, że żyjesz. U mnie nikt nic nie widział i nic nie słyszał.",
+			"Wiem, w czym siedzisz, i nie będę cię pouczał. U mnie kupisz woreczki, plecak, porządną wagę — a o nic nie pytam.",
 			"Jedna rada od starego: nie noś przy sobie więcej, niż sprzedasz. I nie handluj pod nosem policji — radiowóz kręci się po Hutniczej i po osiedlu.",
 		], "on_end": _stasiu_met})
 		return
@@ -1204,7 +1087,7 @@ func _tick(dt: float) -> void:
 	dt = minf(dt, 0.25)
 	var S: Dictionary = G.S
 	G.now += dt
-	if not G.busy:
+	if not G.busy and G.prologue == null:
 		G.add_minutes(dt * D.TIME_SCALE)
 		if not G.running:
 			return
@@ -1333,7 +1216,7 @@ func _slow() -> void:
 	Sfx.set_club_open(clampf(1.0 - (club_d - 3.0) / 16.0, 0.0, 1.0))
 	Sfx.ambient(player.loc == "out", G.night, G.rain)
 	cop_t -= 0.25
-	if cop_t <= 0.0:
+	if cop_t <= 0.0 and G.prologue == null:
 		cop_t = 4.0
 		_cop_population()
 
@@ -1781,6 +1664,13 @@ func _shot() -> void:
 		await get_tree().process_frame
 		if i == 30 and args.has("ui"):
 			_test_ui(String(args.ui))
+		if i == 30 and args.has("prostage") and G.prologue != null:
+			G.prologue.jump(String(args.prostage))
+			if args.has("pos"):
+				var pq := String(args.pos).split(",")
+				player.place(Vector3(float(pq[0]) * D.SC, 0.0, float(pq[1]) * D.SC), deg_to_rad(float(args.get("yaw", "0"))))
+			if args.has("crouch"):
+				player.set_crouch(true)
 	await RenderingServer.frame_post_draw
 	if args.has("dbg"):
 		var ph = ui.phone

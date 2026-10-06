@@ -281,6 +281,63 @@ func _gen_intro() -> PackedFloat32Array:
 	return b
 
 
+## wybuch: głuchy łomot z opadającym tonem, trzask i długi pogłos (generowany przy pierwszym użyciu)
+var _boom: AudioStreamWAV = null
+
+func boom_prepare() -> void:
+	if _boom != null:
+		return
+	var n := int(2.6 * RATE)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	var ph := 0.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4477
+	for i in range(n):
+		var t := float(i) / RATE
+		var noise := rng.randf_range(-1.0, 1.0)
+		# trzask na początku: szeroki szum, potem coraz bardziej stłumiony
+		var cut := lerpf(0.55, 0.02, clampf(t / 0.5, 0.0, 1.0))
+		lp += (noise - lp) * cut
+		lp2 += (lp - lp2) * 0.25
+		var body := lp2 * exp(-t * 2.4) * 1.6
+		var crack := noise * exp(-t * 38.0) * 0.8
+		# łomot: sinus spadający z 90 do 32 Hz
+		var f := lerpf(90.0, 32.0, clampf(t / 0.6, 0.0, 1.0))
+		ph += TAU * f / RATE
+		var thump := sin(ph) * exp(-t * 3.2) * 0.95
+		var rumble := lp2 * exp(-t * 1.1) * 0.5 * (0.6 + 0.4 * sin(t * 23.0))
+		buf[i] = clampf((body + crack + thump + rumble) * minf(1.0, t * 400.0), -1.0, 1.0)
+	_boom = _wav(buf)
+
+
+func boom(vol_db := 0.0) -> void:
+	if muted:
+		return
+	boom_prepare()
+	var p: AudioStreamPlayer = pool[pool_i]
+	pool_i = (pool_i + 1) % pool.size()
+	p.stream = _boom
+	p.volume_db = -3.0 + vol_db
+	p.pitch_scale = randf_range(0.88, 1.06)
+	p.play()
+
+
+## megafon: kilka ostrych, niskich „sylab” (tekst pokazuje napis na ekranie)
+func megaphone() -> void:
+	if muted or _syll.is_empty():
+		return
+	for i in range(3):
+		var p: AudioStreamPlayer = pool[pool_i]
+		pool_i = (pool_i + 1) % pool.size()
+		p.stream = _syll.pick_random()
+		p.volume_db = -4.0
+		p.pitch_scale = 0.62 + i * 0.05
+		p.play()
+
+
 ## mamrotanie rozmówcy (jak w Simsach): jedna „sylaba” o wysokości głosu postaci
 func mumble(voice := 1.0) -> void:
 	if muted or _syll.is_empty():

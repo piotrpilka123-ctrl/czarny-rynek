@@ -113,7 +113,8 @@ const PRODUCT_ICONS := {"dym": "pack_dym", "szron": "pack_szron", "krysztal": "p
 const PEOPLE_M := ["m01", "m02", "m06", "m07", "m08", "m09", "m11", "m12", "m16", "mc2", "ms4"]
 const PEOPLE_F := ["f01", "f02", "f05", "f07", "f08", "f12", "f13", "f14", "f17", "fb2", "fs2"]
 const PEOPLE_COP := ["pm3", "pm6", "pm4", "pm3"]
-const BROTHER_LOOK := {"model": "m18", "kind": "hoodie", "seed": 51, "tall": 1.02, "walk": "Walk_Stiff"}
+## wspólnik z laboratorium (prolog)
+const SIWY_LOOK := {"model": "m18", "kind": "hoodie", "seed": 51, "tall": 1.02, "walk": "Walk_Stiff"}
 
 const PLAYER_LOOK := {"model": "m10", "kind": "dres", "top": "14161a", "top2": "e8e6e0", "bottom": "14161a", "stripes": true, "shoes": "e4e4e0", "hair": "hair_buzzed", "seed": 77, "skin": 0.25}
 const CAP_BASE := 15
@@ -124,7 +125,7 @@ const STASH_BASE := 60
 const CLIENTS := [
 	{"id": "dominik", "name": "Dominik", "nick": "Student", "lvl": 1, "via": "start", "type": "luzak", "like": "luz", "hate": "twardo",
 		"wealth": 0.9, "patience": 5, "minpur": 50, "grams": [4, 6], "every": [14.0, 22.0], "home": "blok5", "prod": "dym", "nerv": 0.1, "honesty": 0.95, "reliable": 0.9,
-		"spots": ["klatka5", "trzepak", "pawilon"], "bio": "Student zaoczny z bloku obok. Brał od Twojego brata. Spłukany, ale lojalny.",
+		"spots": ["klatka5", "trzepak", "pawilon"], "bio": "Student zaoczny z bloku obok. Brał od Twoich ludzi, zanim wszystko poszło z dymem. Spłukany, ale lojalny.",
 		"look": {"model": "m20", "kind": "hoodie", "top": "2f4a6d", "bottom": "232a36", "hair": "hair_simpleparted", "hair_color": "3d2a1c", "seed": 11, "walk": "Walk_Stiff"}},
 	{"id": "seba", "name": "Seba", "nick": "Dres", "lvl": 2, "via": "ref:dominik:1", "type": "twardziel", "like": "twardo", "hate": "luz",
 		"wealth": 0.95, "patience": 4, "minpur": 55, "grams": [5, 8], "every": [16.0, 26.0], "home": "blok9", "prod": "dym", "nerv": 0.05, "honesty": 0.8, "reliable": 0.6,
@@ -228,6 +229,7 @@ const ROOMS := {
 	"shop": {"cx": 1100.0, "w": 9.0, "d": 7.0, "h": 3.0, "name": "Sklep u Stasia"},
 	"garage": {"cx": 1200.0, "w": 6.0, "d": 9.0, "h": 2.7, "name": "Garaż nr 14"},
 	"basement": {"cx": 1300.0, "w": 9.0, "d": 10.0, "h": 2.4, "name": "Piwnica"},
+	"lab": {"cx": 1400.0, "w": 14.0, "d": 11.0, "h": 3.6, "name": "Laboratorium w Starej Hucie"},
 }
 ## drzwi zewnętrzne: punkt przed drzwiami i kierunek „na zewnątrz” (dz)
 var DOORS := {
@@ -235,6 +237,8 @@ var DOORS := {
 	"shop": {"x": -6.0, "z": 11.4, "dz": 1.0, "title": "SKLEP U STASIA", "color": "3ddc6e"},
 	"garage": {"x": 65.0, "z": 94.6, "dz": -1.0, "title": "GARAŻ 14", "color": "9aa3ab", "prop": "garaz"},
 	"basement": {"x": -75.0, "z": -11.4, "dz": -1.0, "title": "PIWNICA", "color": "8a7a66", "prop": "piwnica"},
+	# tylne drzwi laboratorium w Starej Hucie: otwarte tylko w prologu, potem zaplombowane
+	"lab": {"x": 182.0, "z": -113.4, "dz": -1.0, "title": "", "color": "8a7a66", "sealed": true},
 }
 
 # ---------------------------------------------------------------- nieruchomości i meble

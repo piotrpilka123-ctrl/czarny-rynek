@@ -9,5 +9,5 @@ func _ready() -> void:
 		for b in W.blocks:
 			if p.x > float(b.x0) - 0.3 and p.x < float(b.x1) + 0.3 and p.y > float(b.z0) - 0.3 and p.y < float(b.z1) + 0.3:
 				hits.append("[%.1f..%.1f, %.1f..%.1f h=%.1f]" % [float(b.x0) / D.SC, float(b.x1) / D.SC, float(b.z0) / D.SC, float(b.z1) / D.SC, float(b.h)])
-		print("PKT (%s): %s" % [s, ", ".join(hits)])
+		print("PKT (%s) h=%.2f wolne=%s: %s" % [s, W.height(p.x, p.y), str(not W.grid.is_point_solid(W._cell(p.x, p.y))), ", ".join(hits)])
 	get_tree().quit()

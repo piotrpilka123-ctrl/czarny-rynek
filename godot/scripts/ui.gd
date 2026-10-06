@@ -97,6 +97,9 @@ var cop_bar: ProgressBar = null
 var waymark: Control
 var mini_card: PanelContainer
 var ic_stance: TextureRect
+var shout_l: Label = null
+var shout_tw: Tween = null
+var flash_rect: ColorRect = null
 var aware_cv: Control
 var susp_box: VBoxContainer
 var obj_card: PanelContainer
@@ -598,6 +601,43 @@ func fade(on: bool) -> void:
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tw.tween_property(fade_rect, "color:a", 1.0 if on else 0.0, 0.45)
 	await tw.finished
+
+
+## krótki okrzyk na środku ekranu (megafon policji)
+func shout(text: String, secs := 3.2) -> void:
+	if shout_l == null:
+		shout_l = K.head("", 34, Color(1.0, 0.9, 0.85))
+		shout_l.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		shout_l.offset_left = -600.0
+		shout_l.offset_right = 600.0
+		shout_l.offset_top = 150.0
+		shout_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		shout_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_shadow(shout_l)
+		root.add_child(shout_l)
+	shout_l.text = text
+	shout_l.modulate.a = 0.0
+	if shout_tw != null and shout_tw.is_valid():
+		shout_tw.kill()
+	shout_tw = create_tween()
+	shout_tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	shout_tw.tween_property(shout_l, "modulate:a", 1.0, 0.12)
+	shout_tw.tween_interval(secs)
+	shout_tw.tween_property(shout_l, "modulate:a", 0.0, 0.6)
+
+
+## biały błysk (eksplozja)
+func flash(a := 0.5) -> void:
+	if flash_rect == null:
+		flash_rect = ColorRect.new()
+		flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		flash_rect.color = Color(1.0, 0.92, 0.8, 0.0)
+		root.add_child(flash_rect)
+	flash_rect.color.a = a
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(flash_rect, "color:a", 0.0, 0.9)
 
 
 func hurt() -> void:
@@ -1469,12 +1509,15 @@ func show_pause() -> void:
 	phone.visible = false
 	opts.visible = false
 	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.5)
-	_menu_column(96, "PAUZA", "Ostatni zapis: %s.  Grę zapisujesz przy laptopie w kryjówce." % G.last_save_text(), [
+	var btns := [
 		_menu_btn("Wróć do gry", close_all),
 		_menu_btn("Opcje", func(): open_options("pause")),
 		_menu_btn("Sterowanie", func(): show_controls("pause")),
 		_menu_btn("Menu główne", func(): G.main.to_menu(), "Niezapisany postęp przepadnie."),
-	], "")
+	]
+	if G.prologue != null:
+		btns.insert(1, _menu_btn("Pomiń prolog", func(): close_all(); G.prologue.skip(), "Od razu „trzy tygodnie później”."))
+	_menu_column(96, "PAUZA", "Ostatni zapis: %s.  Grę zapisujesz przy laptopie w kryjówce." % G.last_save_text(), btns, "")
 	screen.visible = true
 	set_mode("pause")
 
@@ -1668,6 +1711,8 @@ func update_hud() -> void:
 		last_obj = txt
 		if txt != "":
 			obj_t = 9.0
+	if G.prologue != null and txt != "":
+		obj_t = maxf(obj_t, 1.0)
 	l_obj_t.text = G.chapter().to_upper()
 	l_obj.text = txt
 	var lines := ""

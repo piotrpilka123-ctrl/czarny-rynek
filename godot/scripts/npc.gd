@@ -237,10 +237,13 @@ func _build_static() -> void:
 		_static({"x": -6.5, "z": z, "rot": PI / 2.0, "pose": "arms", "name": "Ochroniarz",
 			"look": {"model": "sm1", "tall": 1.07, "kind": "jacket", "top": "0b0b0d", "bottom": "0b0b0d", "shoes": "0c0c0e", "bald": true, "build": 1.2, "height": 1.93, "seed": int(z)},
 			"lines": ["Lista zamknięta.", "Nie dzisiaj, kolego.", "Bez awantur pod klubem."]})
+	# wspólnik w laboratorium (prolog)
+	_static({"loc": "lab", "x": float(D.ROOMS.lab.cx) + 4.9, "z": -2.2, "rot": PI / 2.0, "pose": "arms", "name": "Siwy", "look": D.SIWY_LOOK,
+		"lines": ["Pakuj torbę i spadamy. Wiktor czeka do szóstej."]})
 	# ekipa spod klatki bloku 5
 	_static({"x": -55.5, "z": -76.05, "rot": 0.0, "pose": "sit", "name": "Młody", "y": 0.0,
 		"look": {"model": "m16", "kind": "dres", "top": "1c2330", "top2": "e8e6e0", "bottom": "1c2330", "stripes": true, "hat": "cap", "hat_color": "101114", "seed": 31},
-		"lines": ["Siwy to był gość. Szkoda chłopa.", "Ty jesteś brat Siwego? Uważaj na psy, kręcą się tu co wieczór.", "Masz szluga?"]})
+		"lines": ["Słyszałeś, jak huta poszła w powietrze? Szyby leciały na pół osiedla.", "Podobno Siwego zgarnęli pod hutą. Uważaj na psy, kręcą się tu co wieczór.", "Masz szluga?"]})
 	_static({"x": -57.6, "z": -75.0, "rot": 0.9, "pose": "arms", "name": "Łysy",
 		"look": {"model": "mb7", "kind": "dres", "top": "101114", "top2": "b0382c", "bottom": "101114", "stripes": true, "bald": true, "build": 1.12, "seed": 32},
 		"lines": ["Czego?", "Tu się nie stoi bez powodu.", "Jak będziesz coś miał, to wiesz, gdzie nas szukać."]})
@@ -939,14 +942,14 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 				c.sees = lvl > 0.0 and float(c.notice) >= 1.0
 				var calm: bool = c.state == "patrol" or c.state == "post"
 				# coś mignęło na skraju pola widzenia: odwraca się w tę stronę
-				if calm and lvl > 0.0 and float(c.notice) > 0.3 and (mult > 0.0 or G.S.wanted):
+				if calm and lvl > 0.0 and float(c.notice) > 0.3 and (mult > 0.0 or G.S.wanted or G.prologue != null):
 					c.hear_t = maxf(float(c.hear_t), 0.7)
 					c.hear_rot = atan2(dx, dz)
 				# słuch: kroki za plecami (bieg słychać z daleka, skradania wcale)
 				if calm and lvl <= 0.0 and noise_r > 0.0 and dist < noise_r:
 					c.hear_t = 1.8
 					c.hear_rot = atan2(dx, dz)
-		if (mult > 0.0 or G.S.wanted) and (float(c.notice) > 0.02 or c.susp > 0.02 or c.state == "chase"):
+		if (mult > 0.0 or G.S.wanted or G.prologue != null) and (float(c.notice) > 0.02 or c.susp > 0.02 or c.state == "chase"):
 			aware.append({"x": c.x, "z": c.z, "n": float(c.notice), "s": clampf(c.susp, 0.0, 1.0), "chase": c.state == "chase"})
 		var move_speed := 0.0
 		var has_tgt := false
@@ -974,6 +977,17 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 				elif c.idle > 0.0:
 					c.idle -= dt
 					pose = "arms"
+				elif c.get("beat") != null:
+					# stały odcinek do obchodzenia tam i z powrotem (posterunki z prologu)
+					var bt: Array = c.beat
+					var bp: Vector2 = bt[int(c.get("beat_i", 0)) % bt.size()]
+					if Vector2(bp.x - c.x, bp.y - c.z).length() < 0.5:
+						c.beat_i = int(c.get("beat_i", 0)) + 1
+						c.idle = randf_range(1.5, 2.6)
+					else:
+						move_speed = 1.15
+						tgt = bp
+						has_tgt = true
 				else:
 					var d2 := Vector2(c.tx - c.x, c.tz - c.z).length()
 					if d2 < 0.4:
@@ -1116,7 +1130,7 @@ func approach_citizen(n: Dictionary) -> void:
 	if n.sting:
 		line = ["Hej, stary! Masz coś mocnego? Biorę wszystko, cena nie gra roli, płacę od ręki!", "Słuchaj, potrzebuję towaru. Dużo. Kasa nie jest problemem. Masz przy sobie?"].pick_random()
 	else:
-		line = ["Hej… Szukam czegoś na wieczór. Masz coś?", "Podobno masz towar. Pokaż, co masz.", "Cześć. Cicho, ale… masz coś dla mnie?", "Ej, ty jesteś ten od Siwego? Potrzebuję czegoś."].pick_random()
+		line = ["Hej… Szukam czegoś na wieczór. Masz coś?", "Podobno masz towar. Pokaż, co masz.", "Cześć. Cicho, ale… masz coś dla mnie?", "Ej, ty jesteś ten z huty? Potrzebuję czegoś."].pick_random()
 	G.ui.dialog({"name": n.name, "lines": [line], "voice": _voice(n), "on_end": _open_citizen_deal.bind(n, ctx)})
 
 

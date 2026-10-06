@@ -533,6 +533,13 @@ func run() -> void:
 	ok(sj != null and absf(float(sj.prog) - 0.37) < 0.001 and String(sj.r) == "konopie" and int(sj.hold) == -1, "uprawa w toku zapisuje się razem z postępem")
 	G.Prod.discard("garage", save_tent)
 
+	# --- prolog: nalot na laboratorium, ucieczka, eksplozje
+	if not M.args.has("noprologue"):
+		var keep_state: Dictionary = G.S
+		await load("res://scripts/prologue_test.gd").run(self)
+		G.S = keep_state
+		U.close_all()
+
 	# --- raty i zakończenia
 	S = G.S
 	S.cash = 30000.0
