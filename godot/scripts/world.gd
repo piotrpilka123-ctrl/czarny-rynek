@@ -1606,11 +1606,33 @@ func _stairs(sx: float) -> void:
 func _estate() -> void:
 	for sx in STAIRS:
 		_stairs(sx)
-	# mur oporowy przy rampie
+	# Mury oporowe przy rampach: schodkowe segmenty betonu, każdy osadzony w terenie i tak wysoki, jak różnica
+	# między jezdnią a skarpą obok. (Dawniej jedna długa, źle pochylona belka sterczała u podnóża rampy.)
+	var wall_m := Props.pbr("concrete_wall_008", 0.4, Color(0.75, 0.75, 0.72))
+	var cap_m := Models.mat("5c5c5a", 0.9)
+	var rail_m := Models.mat("3a4a42", 0.5, 0.6)
 	for r in RAMPS:
 		for side in [-1.0, 1.0]:
 			var x: float = r[0] + side * (6.9 if (float(r[0]) < 0.0 and side > 0.0) else 5.2)
-			Models.box(city, Vector3(0.4, 1.2, 30.0), Vector3(x, hd(x + side * 2.5, -35.0) - 0.2, -36.0), Props.pbr("concrete_wall_008", 0.4, Color(0.75, 0.75, 0.72)), Vector3(-0.1, 0, 0))
+			var seg := 3.0
+			var zz := -21.0
+			while zz > -51.0 + 0.01:
+				var zc := zz - seg * 0.5
+				var y_road := hd(float(r[0]) + side * 3.0, zc)
+				var y_side := hd(x + side * 2.2, zc)
+				var lo := minf(y_road, y_side) - 0.5
+				var hi := maxf(y_road, y_side) + 0.3
+				if absf(y_road - y_side) < 0.35:
+					# teren prawie równy: zostaje niski krawężnik
+					hi = maxf(y_road, y_side) + 0.18
+				Models.box(city, Vector3(0.4, hi - lo, seg + 0.02), Vector3(x, (hi + lo) * 0.5, zc), wall_m)
+				Models.box(city, Vector3(0.52, 0.07, seg + 0.02), Vector3(x, hi + 0.035, zc), cap_m, Vector3.ZERO, false)
+				if y_side < y_road - 0.9:
+					# za murem jest spadek: barierka na koronie
+					Models.cyl(city, 0.025, 0.025, 0.95, Vector3(x, hi + 0.5, zc + seg * 0.5 - 0.1), rail_m, Vector3.ZERO, 5)
+					Models.cyl(city, 0.022, 0.022, seg, Vector3(x, hi + 0.95, zc), rail_m, Vector3(PI / 2.0, 0, 0), 5)
+					Models.cyl(city, 0.018, 0.018, seg, Vector3(x, hi + 0.5, zc), rail_m, Vector3(PI / 2.0, 0, 0), 5)
+				zz -= seg
 			add_col(x - 0.3, x + 0.3, -51.0, -21.0, 6.5)
 			rects.pop_back()
 	# parking — mało aut, stare

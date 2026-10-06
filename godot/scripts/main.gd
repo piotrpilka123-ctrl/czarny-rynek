@@ -1151,7 +1151,7 @@ func _stones_tick(dt: float) -> void:
 
 
 func toggle_flash() -> void:
-	player.flash.light_energy = 0.0 if player.flash.light_energy > 0.0 else 5.0
+	player.flash.light_energy = 0.0 if player.flash.light_energy > 0.0 else 7.0
 	Sfx.play("toggle")
 
 

@@ -19,6 +19,7 @@ var fall := 0.0
 var yaw := 0.0
 var pitch := 0.0
 var loc := "safe"
+var flash_fill: OmniLight3D       # słaba poświata latarki wokół gracza
 var stamina := BASE_STAMINA
 var sprinting := false
 var tired := false
@@ -57,19 +58,22 @@ func _ready() -> void:
 	cam.position = Vector3(0, 1.66, 0)
 	add_child(cam)
 	cam.current = true
+	# Latarka: szeroki, miękki stożek z jaśniejszym środkiem (bez pierścieni), światło słabnie z odległością
+	# jak prawdziwe i sięga pod nogi. Druga, słaba lampa daje poświatę dookoła, żeby pierwszy plan nie był czarny.
 	flash = SpotLight3D.new()
 	flash.light_energy = 0.0
-	flash.spot_range = 36.0
-	flash.spot_angle = 28.0
-	flash.light_color = Color(1.0, 0.96, 0.86)
+	flash.spot_range = 26.0
+	flash.spot_angle = 34.0
+	flash.light_color = Color(1.0, 0.95, 0.86)
 	flash.shadow_enabled = true
-	flash.spot_angle_attenuation = 0.7
-	flash.spot_attenuation = 0.7
-	flash.light_volumetric_fog_energy = 3.5
-	# plama latarki: jasny środek, ciemniejsza obwódka i lekki pierścień
+	flash.shadow_blur = 1.6
+	flash.spot_angle_attenuation = 1.0
+	flash.spot_attenuation = 1.15
+	flash.light_specular = 0.5
+	flash.light_volumetric_fog_energy = 2.2
 	var gr := Gradient.new()
-	gr.offsets = PackedFloat32Array([0.0, 0.42, 0.72, 0.86, 1.0])
-	gr.colors = PackedColorArray([Color(1, 1, 1), Color(0.9, 0.9, 0.9), Color(0.42, 0.42, 0.42), Color(0.6, 0.6, 0.6), Color(0, 0, 0)])
+	gr.offsets = PackedFloat32Array([0.0, 0.25, 0.55, 0.85, 1.0])
+	gr.colors = PackedColorArray([Color(1, 1, 1), Color(0.9, 0.9, 0.9), Color(0.46, 0.46, 0.46), Color(0.14, 0.14, 0.14), Color(0, 0, 0)])
 	var gt := GradientTexture2D.new()
 	gt.gradient = gr
 	gt.fill = GradientTexture2D.FILL_RADIAL
@@ -78,7 +82,18 @@ func _ready() -> void:
 	gt.width = 256
 	gt.height = 256
 	flash.light_projector = gt
-	flash.position = Vector3(0.25, -0.15, 0)
+	# trzymana nisko przy biodrze i lekko w dół: plama zaczyna się półtora metra przed stopami
+	flash.position = Vector3(0.22, -0.32, -0.1)
+	flash.rotation.x = -0.07
+	flash_fill = OmniLight3D.new()
+	flash_fill.light_energy = 0.0
+	flash_fill.omni_range = 5.0
+	flash_fill.omni_attenuation = 1.6
+	flash_fill.light_color = Color(1.0, 0.95, 0.86)
+	flash_fill.shadow_enabled = false
+	flash_fill.light_specular = 0.0
+	flash_fill.position = Vector3(0.2, -0.5, -0.5)
+	cam.add_child(flash_fill)
 	cam.add_child(flash)
 
 
@@ -247,6 +262,7 @@ func _physics_process(dt: float) -> void:
 				Sfx.step(surf, sprinting)
 			step_t = 0.3 if sprinting else 0.48
 		bob += dt * (12.0 if sprinting else (5.2 if crouching else 7.6))
+	flash_fill.light_energy = flash.light_energy * 0.06
 	shake = maxf(0.0, shake - dt * 1.6)
 	eye_y = lerpf(eye_y, EYE_LOW if crouching else EYE, minf(1.0, dt * 9.0))
 	var by := sin(bob) * (0.06 if sprinting else (0.018 if crouching else 0.03)) if moving else 0.0

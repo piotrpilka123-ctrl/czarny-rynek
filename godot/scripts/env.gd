@@ -358,15 +358,20 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		sun.light_volumetric_fog_energy = lerpf(1.25, 0.6, night)
 		# nocą do światła nieba dochodzi słabe, niebieskawe wypełnienie — cienie nie są smoliście czarne
 		env.ambient_light_sky_contribution = lerpf(1.0, 0.5, night)
-		env.ambient_light_color = Color(0.17, 0.21, 0.36)
-		env.ambient_light_energy = lerpf(0.9, 1.3, night)
+		# (dawniej mocno niebieskie i jasne: dalekie budynki świeciły granatem na tle brunatnego nieba)
+		env.ambient_light_color = Color(0.15, 0.17, 0.23)
+		env.ambient_light_energy = lerpf(0.9, 1.05, night)
 		env.tonemap_exposure = lerpf(0.92, 1.2, night) * bright
 		env.glow_hdr_threshold = lerpf(1.2, 0.85, night)
 		env.fog_light_color = (sun_c * 0.5 + Color(0.4, 0.45, 0.5) * 0.5) * lerpf(1.0, 0.08, night)
 		env.fog_light_energy = lerpf(0.8, 0.3, night)
-		env.fog_density = 0.002 + ov * 0.006
+		# Nocą mgła bierze kolor z samego nieba i gęstnieje: dalekie bloki wtapiają się w łunę miasta,
+		# zamiast odcinać się jaśniejszą, niebieską plamą. Mgła objętościowa nie dostaje już nocnego światła otoczenia.
+		env.fog_aerial_perspective = lerpf(0.7, 1.0, night)
+		env.fog_density = lerpf(0.002, 0.0042, night) + ov * 0.006
+		env.volumetric_fog_ambient_inject = lerpf(0.35, 0.03, night)
 		env.volumetric_fog_density = lerpf(A[6], B[6], k) + ov * 0.02
-		env.volumetric_fog_albedo = Color(0.86, 0.88, 0.92).lerp(Color(0.6, 0.65, 0.75), night)
+		env.volumetric_fog_albedo = Color(0.86, 0.88, 0.92).lerp(Color(0.52, 0.54, 0.58), night)
 	RenderingServer.global_shader_parameter_set("night", 0.0 if inside else night)
 	RenderingServer.global_shader_parameter_set("wet", wet)
 
