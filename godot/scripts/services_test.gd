@@ -366,10 +366,15 @@ static func run(T) -> void:
 		Chars.emote(frig, "usmiech", 1.0, 4.0)
 		Chars.say(frig, 2.0)
 		var jaw_moved := false
-		for i in range(40):
+		for i in range(400):
+			# mowa ma pauzy między słowami — czekamy, aż padnie sylaba
 			await T.frames(1)
+			Chars.say(frig, 2.0)
 			if float(frig.face._w.mowa) > 0.2:
 				jaw_moved = true
+				break
+		for i in range(20):
+			await T.frames(1)
 		var p_smile: Vector3 = fsk.get_bone_global_pose(corner).origin - fsk.get_bone_global_pose(fsk.find_bone("Bip01 Head")).origin
 		# (samo przesunięcie kości widać tylko w trakcie rysowania klatki — sprawdza je tools/blender/twarz_test.py)
 		T.ok(float(frig.face._w.usmiech) > 0.7 and p_smile.is_finite() and p_neutral.is_finite() and float(frig.face._ied) > 0.01, "chwilowa mina narasta płynnie (uśmiech %.2f)" % float(frig.face._w.usmiech))
