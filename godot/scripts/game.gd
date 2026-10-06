@@ -106,14 +106,14 @@ func new_state() -> Dictionary:
 		"v": 3, "t": 9.0 * 60.0, "cash": float(D.START_CASH), "debt": float(D.START_DEBT), "paid": 0.0,
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
-		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store()},
+		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store()},
 		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
-		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "special": null, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
+		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
-		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0, "hospital": 0},
+		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0, "hospital": 0, "box_paid": 0.0},
 		"pos": null, "mom_day": 0,
 	}
 
@@ -508,9 +508,9 @@ static func tier_name(pur) -> String:
 	return D.TIER_NAMES[tier(pur)]
 
 
-## wpływ czystości na cenę
-static func price_factor(pur) -> float:
-	return 0.7 + (clampf(float(pur), 30.0, 100.0) - 40.0) * 0.008
+## dawniej czystość zmieniała cenę; teraz cena jest jedna, a słabszy towar klient może po prostu odrzucić
+static func price_factor(_pur) -> float:
+	return 1.0
 
 
 ## sam towar (gramy): luzem + porcje
@@ -658,6 +658,9 @@ func move_entry(room: String, e: Dictionary, to_stash: bool, amount: float) -> f
 func move_limit(room: String, e: Dictionary, to_stash: bool) -> float:
 	if e.kind == "cash":
 		return float(e.n)
+	if room == "wiktor" and to_stash:
+		# skrzynka Wiktora jest tylko na pieniądze
+		return 0.0
 	var space: float = (float(stash_cap(room)) - store_total(S.stash[room])) if to_stash else (float(capacity()) - carry_total())
 	var step: float = e.get("step", 1.0)
 	var fit := floorf(maxf(0.0, space) / maxf(0.001, float(e.usize)) / step + 0.001) * step
@@ -916,10 +919,10 @@ func carry_value() -> float:
 	var v := 0.0
 	for p in S.inv.pack:
 		for k in S.inv.pack[p]:
-			v += float(S.inv.pack[p][k]) * float(D.PRODUCTS[p].base) * price_factor(int(k))
+			v += float(S.inv.pack[p][k]) * float(D.PRODUCTS[p].base)
 	for p in S.inv.bulk:
 		for k in S.inv.bulk[p]:
-			v += float(S.inv.bulk[p][k]) * float(D.PRODUCTS[p].base) * price_factor(int(k)) * 0.8
+			v += float(S.inv.bulk[p][k]) * float(D.PRODUCTS[p].base) * 0.8
 	return v
 
 
@@ -942,6 +945,8 @@ func upg(id: String) -> bool:
 func stash_cap(room: String) -> int:
 	if room == "lab":
 		return 1000
+	if room == "wiktor":
+		return 100000
 	if room == "safe":
 		return 150 if upg("szafka") else D.STASH_BASE
 	var cap := 0
@@ -1501,17 +1506,11 @@ func on_tick() -> void:
 				st.sat = maxf(0.0, float(st.sat) - 14.0)
 				st.loy = maxf(0.0, float(st.loy) - 6.0)
 				chat(o.cust, "Czekałem godzinę, a ciebie nie było. Słabo.")
-	# paczki: skrytki, skrytkomaty, kurierzy
+	# paczki w skrytkach
 	for d in S.drops.duplicate():
-		var vid := String(d.get("vendor", "wiktor"))
-		var method := String(d.get("method", "drop"))
 		if d.state == "wait" and S.t >= float(d.ready):
 			d.state = "ready"
-			var where: String = Market.spot_name(d)
-			match method:
-				"locker": chat(vid, "Paczka w skrytkomacie: %s. Kod: %s. Leży półtorej doby." % [where, String(d.get("code", "0000"))])
-				"courier": chat(vid, "%s — mój człowiek już stoi. Czeka 35 minut i ani chwili dłużej." % where)
-				_: chat(vid, "Paczka czeka: %s. Szukaj znaku sprejem: %s. Masz 16 godzin, potem znika." % [where, drop_mark(Market.spot(d))])
+			chat("wiktor", "Paczka czeka: %s. Szukaj znaku sprejem: %s. Masz 16 godzin, potem znika." % [Market.spot_name(d), drop_mark(Market.spot(d))])
 			if S.track == null:
 				S.track = "drop"
 			if main != null:
@@ -1519,14 +1518,9 @@ func on_tick() -> void:
 			nav_dirty.emit()
 		elif d.state == "ready" and S.t > float(d.expire):
 			S.drops.erase(d)
-			Market.add_trust(vid, -15.0)
-			if d.get("prepaid", false):
-				chat(vid, "Nie odebrałeś. Twój problem — zapłacone, przepadło." if method != "courier" else "Mój człowiek stał jak kołek, a ciebie nie było. Kasa przepadła.")
-			else:
-				chat(vid, "Paczka przepadła. Następnym razem rusz się szybciej — za straty i tak płacisz.")
-				S.credit = float(S.credit) + float(d.cost) * 0.5
-				if float(S.credit_due) < S.t:
-					S.credit_due = S.t + D.CREDIT_DAYS * 1440.0
+			Market.add_trust("wiktor", -15.0)
+			chat("wiktor", "Paczka przepadła. Następnym razem rusz się szybciej — za straty i tak płacisz połowę.")
+			_credit_add(float(d.cost) * 0.5)
 			add_invest(3.0)
 			if main != null:
 				main.drop_gone(d)
@@ -1563,7 +1557,7 @@ func on_hour() -> void:
 	# żeby dało się odrobić — zeszyt dalej trzeba spłacić
 	if flag("got_first") and not flag("hurt_on") and all_goods() < 1.0 and S.drops.is_empty():
 		S.flags["hurt_on"] = true
-		chat("wiktor", "Słyszę, że zostałeś z niczym. Dobra — zamawiaj w aplikacji Giełda. Ale to, co wisisz na zeszycie, dalej wisisz.")
+		chat("wiktor", "Słyszę, że zostałeś z niczym. Dobra — pisz do mnie, co ci potrzeba („Zamów towar” pod tą rozmową). Ale to, co wisisz na zeszycie, dalej wisisz.")
 	if not mods.get("sleeping", false) and h >= 10 and h <= 20 and int(S.mom_day) != day() and randf() < 0.1 and day() > 1:
 		S.mom_day = day()
 		chat("mama", D.MOM.pick_random())
@@ -1580,10 +1574,9 @@ func on_day() -> void:
 	var d := day()
 	loot_spawn()
 	Prod.daily()
-	Market.roll_special()
 	for p in S.demand:
-		S.demand[p] = snappedf(randf_range(0.88, 1.2), 0.01)
-	S.cost_mult = snappedf(randf_range(0.92, 1.12), 0.01)
+		S.demand[p] = snappedf(randf_range(0.94, 1.1), 0.01)
+	S.cost_mult = snappedf(randf_range(0.96, 1.06), 0.01)
 	if flag("hurt_on"):
 		var prices := []
 		for p in D.PRODUCTS:
@@ -1676,11 +1669,9 @@ func daily_costs() -> void:
 # ================================================================ zamówienia (SMS)
 ## maksymalna cena za gram, jaką klient zapłaci
 func max_price(def: Dictionary, st: Dictionary, p: String, pur, g: int, o := {}) -> float:
-	var m: float = float(D.PRODUCTS[p].base) * price_factor(pur) * float(S.demand[p]) * float(def.wealth)
+	var m: float = float(D.PRODUCTS[p].base) * float(S.demand[p]) * float(def.wealth)
 	m *= 1.0 + minf(100.0, float(st.get("loy", 0.0))) / 100.0 * 0.12
 	m *= 0.88 + float(st.get("hunger", 0.4)) * 0.28
-	if float(pur) < float(o.get("minpur", def.get("minpur", 0))):
-		m *= 0.72
 	m *= 1.0 - minf(0.12, (g - 1) * 0.008)
 	if has_skill("twarda"):
 		m *= 1.06
@@ -1690,9 +1681,18 @@ func max_price(def: Dictionary, st: Dictionary, p: String, pur, g: int, o := {})
 	return m * float(o.get("noise", 1.0)) * float(o.get("boost", 1.0))
 
 
-func make_order(c: Dictionary, force_g := 0) -> Dictionary:
+func make_order(c: Dictionary, force_g := 0, force_p := "") -> Dictionary:
 	var st: Dictionary = S.cust[c.id]
 	var product: String = c.prod
+	var wants := []
+	for p0 in c.get("prods", [c.prod]):
+		if int(S.lvl) >= int(D.PRODUCTS[p0].lvl):
+			wants.append(p0)
+	if not wants.is_empty():
+		# ulubiony towar zamawia dwa razy częściej niż drugi
+		product = String(wants[0]) if (wants.size() == 1 or randf() < 0.62) else String(wants[randi_range(1, wants.size() - 1)])
+	if force_p != "":
+		product = force_p
 	var g := randi_range(int(c.grams[0]), int(c.grams[1])) + (1 if float(st.loy) >= 40.0 else 0) + (1 if float(st.loy) >= 80.0 else 0)
 	if force_g > 0:
 		g = force_g
@@ -1935,8 +1935,9 @@ func meet(id: String) -> String:
 
 
 # ================================================================ negocjacje
-func market_price(p: String, pur) -> float:
-	return float(D.PRODUCTS[p].base) * price_factor(pur) * float(S.demand[p])
+## cena uliczna za gram — taka sama dla czystego towaru i dla mieszanki
+func market_price(p: String, _pur = 100) -> float:
+	return float(D.PRODUCTS[p].base) * float(S.demand[p])
 
 
 ## zaczyna rozmowę handlową; zwraca {} gdy nie można
@@ -2395,35 +2396,56 @@ func sting_chance() -> float:
 
 
 # ================================================================ hurt u Wiktora i skrytki
-func wholesale_unit(p: String, high: bool) -> float:
-	return float(D.PRODUCTS[p].cost) * float(S.cost_mult) * (1.35 if high else 1.0) * (0.92 if has_skill("rabat") else 1.0)
+func wholesale_unit(p: String, _high := false) -> float:
+	return float(D.PRODUCTS[p].cost) * float(S.cost_mult) * (0.92 if has_skill("rabat") else 1.0)
 
 
-func wholesale_price(p: String, g: int, high: bool) -> float:
-	return round(wholesale_unit(p, high) * g * (1.0 - float(D.WHOLESALE_DISC.get(g, 0.0))))
+func wholesale_price(p: String, g: int, _high := false) -> float:
+	return round(wholesale_unit(p) * g * (1.0 - float(D.WHOLESALE_DISC.get(g, 0.0))))
 
 
 func wholesale_max() -> int:
 	return int(D.WHOLESALE_MAX[mini(int(S.lvl), D.WHOLESALE_MAX.size() - 1)])
 
 
+## Ile Wiktor da „na zeszyt”: tyle, żeby starczyło na największą paczkę najdroższego towaru z Twojego poziomu
+## (z zapasem). Rośnie z poziomem, bo rosną paczki i towar.
 func credit_limit() -> float:
-	return float(D.CREDIT_BASE) + (int(S.lvl) - 1) * 150.0 + (600.0 if has_skill("kredyt") else 0.0)
+	var top := 0.0
+	for p in D.PRODUCTS:
+		if int(S.lvl) >= int(D.PRODUCTS[p].lvl):
+			top = maxf(top, float(D.PRODUCTS[p].cost) * wholesale_max() * (1.0 - float(D.WHOLESALE_DISC.get(wholesale_max(), 0.0))))
+	return maxf(float(D.CREDIT_BASE), round(top * 1.35 / 50.0) * 50.0) * (1.5 if has_skill("kredyt") else 1.0)
+
+
+## termin spłaty zeszytu w dniach — na początku Wiktor jest wyrozumiały
+func credit_days() -> int:
+	return D.CREDIT_DAYS_EARLY if int(S.lvl) <= D.CREDIT_EARLY_LVL else D.CREDIT_DAYS
 
 
 func credit_overdue() -> bool:
 	return float(S.credit) > 0.0 and S.t > float(S.credit_due)
 
 
-## dlaczego nie można zamówić ("" = można). Stare, proste wejście: Wiktor albo — dla czystego towaru — Chemik.
-func order_block(p: String, g: int, on_credit: bool, high: bool) -> String:
-	if not flag("hurt_on"):
-		return "Wiktor jeszcze Ci nie ufa."
-	if not high and credit_overdue():
-		if rescue_order(p, g, on_credit, high):
-			return ""
-		return "Spłać zaległy zeszyt." if all_goods() >= 1.0 or not S.drops.is_empty() else "Zeszyt po terminie: Wiktor da najwyżej 5 g marihuany na zeszyt, 25% drożej."
-	return Market.block("chemik" if high else "wiktor", p, g, "drop", on_credit and not high)
+## za paczki, które jeszcze leżą w skrytkach, też trzeba będzie zapłacić
+func drops_owed() -> float:
+	var n := 0.0
+	for d in S.drops:
+		n += float(d.get("cost", 0.0))
+	return n
+
+
+func _credit_add(n: float) -> void:
+	if n <= 0.0:
+		return
+	if float(S.credit) <= 0.0 or float(S.credit_due) < S.t:
+		S.credit_due = S.t + credit_days() * 1440.0
+	S.credit = float(S.credit) + n
+
+
+## dlaczego nie można zamówić ("" = można) — stare, proste wejście na jedną pozycję
+func order_block(p: String, g: int, _on_credit := true, _high := false) -> String:
+	return Market.cart_block([{"p": p, "g": g}])
 
 
 ## cały towar gracza: plecak i wszystkie skrytki
@@ -2434,30 +2456,17 @@ func all_goods() -> float:
 	return n
 
 
-## deska ratunku: bez towaru, z zaległym zeszytem, Wiktor da 5 g marihuany drożej — żeby gra się nie zakleszczyła
-func rescue_order(p: String, g: int, on_credit: bool, high: bool) -> bool:
-	return credit_overdue() and p == "dym" and g == 5 and on_credit and not high and all_goods() < 1.0 and S.drops.is_empty()
+## deska ratunku: bez towaru, z zaległym zeszytem, Wiktor da 5 g marihuany ćwierć drożej — żeby gra się nie zakleszczyła
+func rescue_cart(cart: Array) -> bool:
+	return credit_overdue() and cart.size() == 1 and String(cart[0].p) == "dym" and int(cart[0].g) == 5 and all_goods() < 1.0 and S.drops.is_empty()
 
 
-func order_goods(p: String, g: int, high: bool, on_credit: bool) -> bool:
-	if order_block(p, g, on_credit, high) != "":
-		return false
-	if rescue_order(p, g, on_credit, high):
-		# deska ratunku: mimo zaległego zeszytu Wiktor daje 5 g marihuany, ale ćwierć drożej
-		var used := []
-		for d0 in S.drops:
-			used.append(d0.spot)
-		var sid := drop_pick(used)
-		if sid == "":
-			return false
-		var ready: float = S.t + randf_range(40.0, 90.0)
-		var d := {"id": int(S.next_drop), "spot": sid, "p": p, "g": g, "pur": D.PURITY_STD, "cost": round(wholesale_price(p, g, false) * 1.25),
-			"credit": true, "ready": ready, "expire": ready + 16.0 * 60.0, "state": "wait", "vendor": "wiktor", "method": "drop", "blind": false, "prepaid": false, "burned": false, "code": ""}
-		S.next_drop = int(S.next_drop) + 1
-		S.drops.append(d)
-		chat("wiktor", "Wisisz mi, a chcesz jeszcze? Ostatni raz. Pięć gramów, ćwierć drożej. Sprzedaj i oddaj.", false, true)
-		return true
-	return not Market.order("chemik" if high else "wiktor", p, g, "drop", on_credit and not high).is_empty()
+func rescue_order(p: String, g: int, _on_credit := true, _high := false) -> bool:
+	return rescue_cart([{"p": p, "g": g}])
+
+
+func order_goods(p: String, g: int, _high := false, _on_credit := true) -> bool:
+	return not Market.order_cart([{"p": p, "g": g}]).is_empty()
 
 
 func ready_drop() -> Variant:
@@ -2471,43 +2480,25 @@ func ready_drop() -> Variant:
 func pickup_block(d: Dictionary) -> String:
 	if carry_total() + float(d.g) > float(capacity()) + 0.01:
 		return "Za mało miejsca: paczka %d g, wolne %s." % [int(d.g), grams(maxf(0.0, capacity() - carry_total()))]
-	if d.get("prepaid", false):
-		return ""
-	if not d.credit and S.cash < float(d.cost):
-		if float(S.credit) + float(d.cost) <= credit_limit() and not credit_overdue():
-			return ""
-		return "Brakuje %s — Wiktor nie daje za darmo." % money(float(d.cost) - S.cash)
 	return ""
 
 
+## Zabiera paczkę ze skrytki. Nic nie płacisz na miejscu: należność idzie na zeszyt,
+## a gotówkę zanosisz potem do skrzynki Wiktora.
 func pickup_drop(d: Dictionary) -> bool:
 	var why := pickup_block(d)
 	if why != "":
 		notify(why, "warn")
 		return false
-	var on_credit: bool = (d.credit or S.cash < float(d.cost)) and not d.get("prepaid", false)
-	if d.get("prepaid", false):
-		pass
-	elif on_credit:
-		if float(S.credit) <= 0.0:
-			S.credit_due = S.t + D.CREDIT_DAYS * 1440.0
-		S.credit = float(S.credit) + float(d.cost)
-		notify("Paczka na zeszyt: %s do oddania do dnia %d." % [money(d.cost), int(float(S.credit_due) / 1440.0) + 1], "warn")
-	else:
-		S.cash -= float(d.cost)
-		S.stats.spent = float(S.stats.spent) + float(d.cost)
-		notify("Zostawiasz %s w skrytce." % money(d.cost))
-	add_bulk(S.inv, d.p, d.pur, float(d.g))
+	_credit_add(float(d.cost))
+	for it in d.get("items", [{"p": d.p, "g": d.g}]):
+		add_bulk(S.inv, String(it.p), int(d.get("pur", D.PURITY_STD)), float(it.g))
 	S.drops.erase(d)
 	S.stats.pickups = int(S.stats.pickups) + 1
 	S.flags["got_first"] = true
 	Sfx.play("pickup")
-	if d.get("blind", false):
-		var verdict := "rozrobiony" if is_mix(d.pur) else ("trafiło się nieźle" if int(d.pur) >= 68 else ("średniak" if int(d.pur) >= 55 else "słabizna"))
-		notify("Kot w worku: %d g %s, czystość %d%% — %s." % [int(d.g), D.PRODUCT_GEN[d.p], int(d.pur), verdict], "good" if int(d.pur) >= 68 and not is_mix(d.pur) else "warn")
-	else:
-		notify("Zabrano: %d g %s (%d%%, %s)" % [int(d.g), D.PRODUCT_GEN[d.p], int(d.pur), tier_name(d.pur)], "good")
-	Market.add_trust(String(d.get("vendor", "wiktor")), 3.0 + float(d.g) / 12.0)
+	notify("Zabrano: %s (czysty towar). Na zeszycie: %s, termin: dzień %d." % [Market.contents(d), money(S.credit), int(float(S.credit_due) / 1440.0) + 1], "good")
+	Market.add_trust("wiktor", 3.0 + float(d.g) / 12.0)
 	if main != null:
 		main.drop_gone(d)
 	add_xp(6.0)
@@ -2515,6 +2506,66 @@ func pickup_drop(d: Dictionary) -> bool:
 		S.track = null
 	nav_dirty.emit()
 	return true
+
+
+## Paczka na start, wsunięta pod drzwi kawalerki: czysta marihuana i amfetamina, wszystko na zeszyt.
+func starter_cost() -> float:
+	var n := 0.0
+	for e in D.STARTER_PACK:
+		n += float(D.PRODUCTS[e[0]].cost) * int(e[1])
+	return n
+
+
+func starter_pickup() -> bool:
+	if flag("got_first"):
+		return false
+	var parts := []
+	for e in D.STARTER_PACK:
+		add_bulk(S.inv, String(e[0]), D.PURITY_STD, float(e[1]))
+		parts.append("%d g %s" % [int(e[1]), String(D.PRODUCT_GEN[e[0]])])
+	_credit_add(starter_cost())
+	S.flags["got_first"] = true
+	S.stats.pickups = int(S.stats.pickups) + 1
+	Sfx.play("pickup")
+	notify("Paczka od Wiktora: %s — czysty towar. Na zeszycie: %s." % [" i ".join(parts), money(S.credit)], "good")
+	add_xp(6.0)
+	nav_dirty.emit()
+	return true
+
+
+## Skrzynka Wiktora: gotówka, która w niej leży, idzie najpierw na zeszyt (towar), potem na dług.
+## Woła się to przy zamykaniu skrzynki. Zwraca, ile Wiktor zabrał.
+func box_settle() -> float:
+	var st: Dictionary = S.stash.wiktor
+	var have := float(st.cash)
+	if have < 1.0:
+		return 0.0
+	var a: float = minf(have, float(S.credit))
+	S.credit = float(S.credit) - a
+	var b: float = minf(have - a, float(S.debt))
+	S.debt -= b
+	S.paid += b
+	st.cash = have - a - b
+	var took := a + b
+	if took <= 0.0:
+		return 0.0
+	S.stats.spent = float(S.stats.spent) + a
+	S.stats["box_paid"] = float(S.stats.get("box_paid", 0.0)) + took
+	Sfx.play("cash")
+	var parts := []
+	if a > 0.0:
+		parts.append("%s za towar" % money(a))
+	if b > 0.0:
+		parts.append("%s na dług" % money(b))
+	notify("Skrzynka Wiktora: %s. Zeszyt: %s, dług: %s." % [", ".join(parts), money(S.credit), money(S.debt)], "good")
+	chat("wiktor", "Odebrałem %s. Zeszyt: %s. Dług: %s." % [money(took), money(S.credit), money(S.debt)], false, true)
+	Market.add_trust("wiktor", took / 400.0)
+	if S.debt <= 0.0 and not flag("free"):
+		S.flags["free"] = true
+		if ui != null:
+			ui.close_all()
+		get_tree().create_timer(0.4).timeout.connect(func(): main.ending("wolnosc"))
+	return took
 
 
 func pay_credit(amount: float) -> void:
@@ -2763,6 +2814,9 @@ func owns(id: String) -> bool:
 func room_owned(room: String) -> bool:
 	if room == "safe" or room == "shop":
 		return true
+	if not D.DOORS.has(room):
+		# skrzynka Wiktora i inne schowki, które nie są pokojami
+		return false
 	return owns(String(D.DOORS[room].get("prop", "")))
 
 
@@ -2910,17 +2964,17 @@ func _build_story() -> void:
 			"done": func(): return flag("tut_stash"), "marker": _stash_marker},
 		{"id": "room_bench", "text": func(): return "Na stole stoi waga i woreczki. Kiedyś robili to za Ciebie inni — teraz porcjujesz sam. Obejrzyj ją [E].",
 			"done": func(): return flag("tut_bench"), "marker": _bench_marker, "on_done": _on_tour_done},
-		{"id": "phone", "text": func(): return "Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
-			"done": func(): return flag("read_wiktor"), "on_done": _on_phone_done},
-		{"id": "drop1", "text": func(): return "Idź do skrytki za altanką śmietnikową i zabierz paczkę (przytrzymaj [E]).",
-			"done": func(): return flag("got_first"), "marker": _drop_marker},
+		{"id": "phone", "text": func(): return "Ktoś wsunął paczkę pod drzwi. Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
+			"done": func(): return flag("read_wiktor") or flag("got_first"), "on_done": _on_phone_done},
+		{"id": "drop1", "text": func(): return "Podnieś paczkę, która leży przy drzwiach kawalerki (przytrzymaj [E]).",
+			"done": func(): return flag("got_first"), "marker": _starter_marker},
 		{"id": "pack1", "text": func(): return "Wróć do kawalerki i zaporcjuj towar na wadze. (%d/3 g)" % mini(3, int(S.stats.packed)),
 			"done": func(): return int(S.stats.packed) >= 3 or _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
 		{"id": "sell1", "text": func(): return "Odpisz Dominikowi (Wiadomości) i dostarcz mu towar. (%d/2 g)" % mini(2, int(S.stats.sold)),
 			"done": func(): return int(S.stats.sold) >= 2 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
-		{"id": "repay1", "text": func(): return "Oddaj Wiktorowi za pierwszą paczkę: telefon → Giełda → Spłać zeszyt. (%s)" % money(S.credit),
-			"done": func(): return float(S.credit) <= 0.0, "on_done": _on_repay_done},
-		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów własny towar w aplikacji Giełda i odbierz go ze skrytki.",
+		{"id": "repay1", "text": func(): return "Zanieś pierwsze pieniądze do skrzynki Wiktora — to stara skrzynka gazowa na tyłach pawilonu. Otwórz ją [E] i przeciągnij do niej gotówkę. (%s / %s)" % [money(minf(float(D.BOX_FIRST), float(S.stats.get("box_paid", 0.0)))), money(D.BOX_FIRST)],
+			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST) or (flag("got_first") and float(S.credit) <= 0.0), "marker": _box_marker, "on_done": _on_repay_done},
+		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów towar u Wiktora: telefon → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem.",
 			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
 		{"id": "lvl2", "text": func(): return "Zdobądź poziom 2. Zadowolony Dominik poleci Cię dalej. (%d/%d PD)" % [int(S.xp), int(D.XP_LEVELS[1])],
 			"done": func(): return int(S.lvl) >= 2},
@@ -2928,8 +2982,8 @@ func _build_story() -> void:
 			"done": func(): return S.paid >= float(D.DEBT_SCHEDULE[0].due)},
 		{"id": "lvl3", "text": func(): return "Zdobądź poziom 3 i wybierz pierwszą umiejętność (telefon → Rozwój).",
 			"done": func(): return int(S.lvl) >= 3 and not S.skills.is_empty()},
-		{"id": "gielda1", "text": func(): return "Giełda w telefonie to nie tylko Wiktor. Zamów coś u innego dostawcy albo skorzystaj z okazji dnia — i wybierz, jak ma dotrzeć: skrytka, skrytkomat czy kurier.",
-			"done": func(): return _other_vendor_orders() > 0},
+		{"id": "teren1", "text": func(): return "Każdy nowy klient to nowy teren, a z terenem przybywa skrytek. Zdobądź kolejnego klienta — Wiktor zacznie zostawiać paczki dalej. (skrytki: %d)" % drops_open().size(),
+			"done": func(): return drops_open().size() > 4},
 		{"id": "ciuchy1", "text": func(): return "Zajrzyj do „Taniej Odzieży” przy Hutniczej i kup strój pasujący do roboty: szybszy, mniej rzucający się w oczy albo… kominiarkę.",
 			"done": func(): return not S.get("outfits", {}).is_empty(), "marker": func(): return {"loc": "out", "x": D.DOORS.ciuchy.x, "z": D.DOORS.ciuchy.z}},
 		{"ch": "Rozdział 3: Kryjówka", "id": "garaz", "text": func(): return "Kup Garaż nr 14 (%s, poziom %d) — pierwszą własną kryjówkę." % [money(prop_def("garaz").price), int(prop_def("garaz").lvl)],
@@ -2942,14 +2996,6 @@ func _build_story() -> void:
 			"done": func(): return int(S.stats.grown) > 0, "marker": _garage_marker},
 		{"ch": "Wolna gra", "id": "free", "text": func(): return "Rozwijaj interes i spłacaj raty. Dług: %s" % money(S.debt), "done": func(): return false},
 	]
-
-
-func _other_vendor_orders() -> int:
-	var n := 0
-	for vid in S.get("vendors", {}):
-		if String(vid) != "wiktor":
-			n += int(S.vendors[vid].get("orders", 0))
-	return n
 
 
 func _any_job() -> bool:
@@ -2995,7 +3041,12 @@ func _on_tour_done() -> void:
 	if flag("wiktor_sms"):
 		return
 	S.flags["wiktor_sms"] = true
-	chat("wiktor", "Pierwsza paczka czeka w skrytce za altanką śmietnikową przy parkingu. 5 g na zeszyt — 105 zł oddasz po sprzedaży. Wagę i woreczki już widziałeś: zaporcjuj towar i czekaj na wiadomość od klienta.")
+	var parts := []
+	for e in D.STARTER_PACK:
+		parts.append("%d g %s" % [int(e[1]), String(D.PRODUCT_GEN[e[0]])])
+	chat("wiktor", "Wsunąłem ci pod drzwi paczkę na start: %s. Czyste, nierozrabiane. To na zeszyt — %s. Nie śpiesz się, wiem, że zaczynasz od zera. Zaporcjuj na wadze i czekaj na klienta. Kasę wrzucasz do mojej skrzynki gazowej na tyłach pawilonu, nigdzie indziej." % [" i ".join(parts), money(starter_cost())])
+	if main != null:
+		main.door_package()
 
 
 func last_save_text() -> String:
@@ -3006,22 +3057,38 @@ func last_save_text() -> String:
 
 
 func _on_phone_done() -> void:
-	S.drops.append({"id": int(S.next_drop), "spot": "smietnik", "p": "dym", "g": 5, "pur": 80, "cost": 105.0, "credit": true, "ready": S.t, "expire": S.t + 99999.0, "state": "ready"})
-	S.next_drop = int(S.next_drop) + 1
-	S.track = "drop"
 	nav_dirty.emit()
+
+
+func _starter_marker() -> Variant:
+	return {"loc": "safe", "x": float(D.ROOMS.safe.cx), "z": float(D.ROOMS.safe.d) * 0.5 - 0.62}
+
+
+func _box_marker() -> Variant:
+	return {"loc": "out", "x": float(D.WIKTOR_BOX.x), "z": float(D.WIKTOR_BOX.z)}
 
 
 func _on_pack_done() -> void:
 	S.cust.dominik.unlocked = true
 	S.cust.dominik.hunger = 0.6
 	chat("wiktor", "Dominik z bloku 5 brał od twoich chłopaków. Dałem mu twój numer.", false, true)
-	make_order(D.CLIENTS[0], 2)
+	# pierwsze zamówienie w życiu: Dominik chce tego, co właśnie zaporcjowałeś
+	var have := "dym"
+	var best := 0
+	for src in [S.inv, S.stash.safe]:
+		for p in src.pack:
+			var n := 0
+			for k in src.pack[p]:
+				n += int(src.pack[p][k])
+			if n > best:
+				best = n
+				have = String(p)
+	make_order(D.CLIENTS[0], 2, have)
 
 
 func _on_repay_done() -> void:
 	S.flags["hurt_on"] = true
-	chat("wiktor", "Uczciwy. Od teraz zamawiasz sam: aplikacja Giełda w telefonie. Płacisz przy odbiorze albo bierzesz na zeszyt — ale zeszyt ma termin.")
+	chat("wiktor", "Uczciwy. Od teraz piszesz do mnie, co ci potrzeba — „Zamów towar” pod tą rozmową. Paczkę zostawię w skrytce z moim znakiem, wszystko idzie na zeszyt. Kasę wrzucasz do skrzynki; na początek masz na to %d dni." % credit_days())
 	add_xp(20.0)
 	# to, co zostało po dawnej sieci: paru detalistów z osiedla, którzy brali od Twoich ludzi
 	chat("wiktor", "I jeszcze jedno. Puściłem twój numer dwóm detalistom, którzy brali od twoich chłopaków: Sebie spod bloku 9 i staremu Zenonowi. Drobnica, ale od czegoś trzeba zacząć.", false, true)

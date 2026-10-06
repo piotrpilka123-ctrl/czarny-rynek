@@ -26,6 +26,8 @@ func _ready() -> void:
 	for k in DOORS:
 		DOORS[k].x = float(DOORS[k].x) * SC
 		DOORS[k].z = float(DOORS[k].z) * SC
+	WIKTOR_BOX.x = float(WIKTOR_BOX.x) * SC
+	WIKTOR_BOX.z = float(WIKTOR_BOX.z) * SC
 
 
 # ---------------------------------------------------------------- towar
@@ -34,10 +36,11 @@ const TIER_COLOR := ["9ca3af", "e5e7eb", "60a5fa", "fbbf24"]
 const TIER_MIN := [0, 50, 68, 84]
 
 const PRODUCTS := {
-	"dym": {"name": "Marihuana", "base": 46, "cost": 18, "color": "6fbf4a", "lvl": 1, "form": "susz", "desc": "Suszone kwiaty konopi. Najpopularniejszy towar na osiedlu — bierze student i emeryt."},
-	"szron": {"name": "Amfetamina", "base": 112, "cost": 58, "color": "e8dfb8", "lvl": 4, "form": "proszek", "desc": "Biało-żółty proszek dla tych, co nie śpią. Klub Neon bierze go najwięcej."},
-	"krysztal": {"name": "Metamfetamina", "base": 195, "cost": 108, "color": "9ad0ff", "lvl": 7, "form": "kryształ", "desc": "Niebieskawe kryształki dla nocnej zmiany. Mocny towar, mocne ryzyko."},
-	"snieg": {"name": "Kokaina", "base": 330, "cost": 190, "color": "f3f6fb", "lvl": 9, "form": "proszek", "desc": "Najdroższy towar w mieście. Tylko dla klientów z grubym portfelem."},
+	# base = cena uliczna za gram (klient może ją lekko zbić albo dać trochę więcej), cost = hurt u Wiktora (czysty towar)
+	"dym": {"name": "Marihuana", "base": 50, "cost": 26, "color": "6fbf4a", "lvl": 1, "form": "susz", "desc": "Suszone kwiaty konopi. Najpopularniejszy towar na osiedlu — bierze student i emeryt."},
+	"szron": {"name": "Amfetamina", "base": 60, "cost": 32, "color": "e8dfb8", "lvl": 1, "form": "proszek", "desc": "Biało-żółty proszek dla tych, co nie śpią. Tani, szybki, schodzi pod blokiem i pod klubem."},
+	"krysztal": {"name": "Metamfetamina", "base": 190, "cost": 105, "color": "9ad0ff", "lvl": 5, "form": "kryształ", "desc": "Niebieskawe kryształki dla nocnej zmiany. Mocny towar, mocne ryzyko."},
+	"snieg": {"name": "Kokaina", "base": 330, "cost": 195, "color": "f3f6fb", "lvl": 8, "form": "proszek", "desc": "Najdroższy towar w mieście. Tylko dla klientów z grubym portfelem."},
 }
 ## dopełniacz do zdań typu „5 g marihuany”
 const PRODUCT_GEN := {"dym": "marihuany", "szron": "amfetaminy", "krysztal": "metamfetaminy", "snieg": "kokainy"}
@@ -47,7 +50,10 @@ const WHOLESALE_SIZES := [5, 10, 20, 50, 100, 250]
 const WHOLESALE_DISC := {5: 0.0, 10: 0.0, 20: 0.04, 50: 0.08, 100: 0.12, 250: 0.16}
 ## maks. jednorazowe zamówienie (g) na danym poziomie
 const WHOLESALE_MAX := [10, 10, 20, 20, 50, 50, 100, 100, 250, 250, 250, 250, 250, 250, 250, 250]
-const PURITY_STD := 75
+## Wiktor daje wyłącznie czysty towar; rozrabiasz go sam (albo nie)
+const PURITY_STD := 100
+## ile paczek może naraz czekać w skrytkach
+const DROPS_MAX := 3
 const PURITY_HIGH := 90
 
 ## sklep Wujka Stasia
@@ -68,25 +74,15 @@ const UPGRADES := [
 	{"id": "waga", "name": "Waga jubilerska", "price": 650, "lvl": 2, "desc": "Dużo mniej strat przy porcjowaniu, a spokojna robota jest całkiem bezstratna."},
 	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 150 miejsc zamiast 60."},
 ]
-## GIEŁDA: dostawcy. Każdy ma swój charakter — cenę, czystość, czas dostawy, zasady płatności i ryzyko.
-## price = mnożnik ceny hurtowej, pur = widełki czystości, eta = minuty do dostawy skrytką,
-## blind = czystość poznajesz dopiero po otwarciu paczki, mix = szansa, że towar jest już rozrobiony,
-## risk = szansa, że dostawa jest „spalona” (przy skrytce czeka tajniak), prepay = płatne z góry.
+## Dostawca jest jeden: Wiktor. Czysty towar, zamówienie SMS-em, paczka w skrytce oznaczonej sprejem, zapłata „na zeszyt”
+## (gotówkę wrzuca się do jego skrzynki). eta = minuty do dostawy.
 const VENDORS := [
-	{"id": "wiktor", "name": "Wiktor", "tag": "Pewniak", "lvl": 1, "price": 1.0, "pur": [70, 80], "eta": [40.0, 90.0], "credit": true, "min": 5, "max": 250, "risk": 0.0,
-		"desc": "Solidny towar i zeszyt. Drożej niż u innych, ale nigdy nie zawodzi.", "color": "c9a86a"},
-	{"id": "zbyszek", "name": "Tani Zbyszek", "tag": "Kot w worku", "lvl": 2, "price": 0.74, "pur": [45, 78], "eta": [20.0, 45.0], "min": 5, "max": 50, "risk": 0.1, "blind": true, "mix": 0.3,
-		"desc": "Ćwierć taniej i szybko. Czystość poznasz dopiero po otwarciu paczki — bywa, że towar jest już rozrobiony. Co dziesiąta dostawa jest spalona.", "color": "8a9a3a"},
-	{"id": "chemik", "name": "Chemik z Zagłębia", "tag": "Czysty towar", "lvl": 4, "price": 1.3, "pur": [86, 95], "eta": [150.0, 260.0], "min": 10, "max": 100, "risk": 0.0, "prepay": true,
-		"desc": "Najczystszy towar w okolicy. Płatne z góry, dostawa trwa kilka godzin, minimum 10 g.", "color": "6aa8e8"},
-	{"id": "port", "name": "Port", "tag": "Cegły z kontenera", "lvl": 6, "price": 0.8, "pur": [72, 82], "eta": [240.0, 420.0], "min": 50, "max": 250, "risk": 0.04, "prepay": true, "buys": true,
-		"desc": "Całe cegły prosto z kontenera: od 50 g, jedna piąta taniej. Płatne z góry, długa dostawa. Skupuje też nadwyżki.", "color": "c86a4a"},
+	{"id": "wiktor", "name": "Wiktor", "tag": "Dostawca", "lvl": 1, "price": 1.0, "pur": [100, 100], "eta": [30.0, 60.0], "credit": true, "min": 5, "max": 250, "risk": 0.0,
+		"desc": "Czysty towar na zeszyt. Paczkę zostawia w skrytce, pieniądze odbiera ze swojej skrzynki.", "color": "c9a86a"},
 ]
-## sposoby dostawy: fee = dopłata do ceny, eta = mnożnik czasu, hold = ile godzin paczka czeka
+## dostawa: hold = ile godzin paczka czeka w skrytce
 const DELIVERY := {
-	"drop": {"name": "Skrytka", "icon": "map_pin", "fee": 0.0, "eta": 1.0, "hold": 16.0, "desc": "Paczka czeka 16 godzin w umówionym miejscu na mieście."},
-	"locker": {"name": "Skrytkomat", "icon": "lock", "fee": 0.08, "eta": 1.5, "hold": 36.0, "desc": "+8% i wolniej, ale paczka leży półtorej doby pod kodem i nikt przy niej nie węszy."},
-	"courier": {"name": "Kurier", "icon": "footprints", "fee": 0.15, "eta": 0.5, "hold": 0.6, "desc": "+15%, za to dwa razy szybciej. Kurier czeka w umówionym miejscu tylko 35 minut."},
+	"drop": {"name": "Skrytka", "icon": "map_pin", "fee": 0.0, "eta": 1.0, "hold": 16.0, "desc": "Paczka czeka 16 godzin w skrytce oznaczonej sprejem."},
 }
 ## skup nadwyżek: ułamek ceny ulicznej za towar luzem i dzienny limit gramów na poziom
 const BULK_SELL := 0.44
@@ -229,11 +225,11 @@ const STASH_BASE := 60
 ## type: charakter (wpływa na taktyki), like/hate: styl powitania
 const CLIENTS := [
 	{"id": "dominik", "name": "Dominik", "nick": "Student", "lvl": 1, "via": "start", "type": "luzak", "like": "luz", "hate": "twardo",
-		"wealth": 1.0, "patience": 5, "minpur": 50, "grams": [4, 6], "every": [14.0, 22.0], "home": "blok5", "prod": "dym", "nerv": 0.1, "honesty": 0.95, "reliable": 0.9,
+		"wealth": 1.0, "patience": 5, "minpur": 50, "grams": [4, 6], "every": [14.0, 22.0], "home": "blok5", "prod": "dym", "prods": ["dym", "szron"], "nerv": 0.1, "honesty": 0.95, "reliable": 0.9,
 		"spots": ["klatka5", "trzepak", "pawilon"], "bio": "Student zaoczny z bloku obok. Brał od Twoich ludzi, zanim wszystko poszło z dymem. Spłukany, ale lojalny.",
 		"look": {"model": "m20", "kind": "hoodie", "top": "2f4a6d", "bottom": "232a36", "hair": "hair_simpleparted", "hair_color": "3d2a1c", "seed": 11, "walk": "Walk_Stiff"}},
 	{"id": "seba", "name": "Seba", "nick": "Dres", "lvl": 2, "via": "ref:dominik:1", "type": "twardziel", "like": "twardo", "hate": "luz",
-		"wealth": 1.0, "patience": 4, "minpur": 55, "grams": [5, 8], "every": [16.0, 26.0], "home": "blok9", "prod": "dym", "nerv": 0.05, "honesty": 0.8, "reliable": 0.6,
+		"wealth": 1.0, "patience": 4, "minpur": 55, "grams": [5, 8], "every": [16.0, 26.0], "home": "blok9", "prod": "dym", "prods": ["dym", "szron"], "nerv": 0.05, "honesty": 0.8, "reliable": 0.6,
 		"spots": ["trzepak", "klatka5", "garaze"], "bio": "Stoi pod klatką od zawsze. Szanuje tylko tych, którzy się nie cackają.",
 		"look": {"model": "m17", "kind": "dres", "top": "101114", "top2": "e8e6e0", "bottom": "101114", "stripes": true, "hair": "hair_buzzed", "seed": 12, "build": 1.08, "walk": "Walk_Swagger"}},
 	{"id": "zenon", "name": "Pan Zenon", "nick": "Emeryt", "lvl": 3, "via": "ref:dominik:3", "type": "gadula", "like": "luz", "hate": "twardo",
@@ -241,11 +237,11 @@ const CLIENTS := [
 		"spots": ["park", "przystanek", "plac"], "bio": "„Na kolana, panie, na kolana”. Targuje się z przyzwyczajenia i lubi pogadać.",
 		"look": {"model": "m13", "kind": "jacket", "top": "6b5a45", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "45423c", "seed": 13, "build": 1.1, "height": 1.7, "walk": "Walk_Hunched"}},
 	{"id": "kasia", "name": "Kasia", "nick": "Korpo", "lvl": 3, "via": "ref:dominik:5", "type": "konkret", "like": "konkret", "hate": "luz",
-		"wealth": 1.25, "patience": 3, "minpur": 68, "grams": [6, 9], "every": [18.0, 28.0], "home": "blok11", "prod": "dym", "nerv": 0.4, "honesty": 0.9, "reliable": 0.95,
+		"wealth": 1.25, "patience": 3, "minpur": 68, "grams": [6, 9], "every": [18.0, 28.0], "home": "blok11", "prod": "dym", "prods": ["dym", "szron"], "nerv": 0.4, "honesty": 0.9, "reliable": 0.95,
 		"spots": ["przystanek", "brama", "pawilon"], "bio": "Open space, deadline'y, bezsenność. Płaci dobrze, ale panikuje na widok munduru.",
 		"look": {"model": "f15", "female": true, "kind": "jacket", "top": "3a3f4a", "bottom": "101114", "hair": "hair_long", "hair_color": "6b4a2e", "seed": 14, "walk": "Walk_Phone"}},
 	{"id": "marek", "name": "Marek", "nick": "Mechanik", "lvl": 4, "via": "talk", "type": "cwaniak", "like": "twardo", "hate": "luz",
-		"wealth": 1.0, "patience": 4, "minpur": 60, "grams": [6, 9], "every": [16.0, 26.0], "home": "garaze", "prod": "dym", "nerv": 0.1, "honesty": 0.6, "reliable": 0.5,
+		"wealth": 1.0, "patience": 4, "minpur": 60, "grams": [6, 9], "every": [16.0, 26.0], "home": "garaze", "prod": "dym", "prods": ["dym", "szron"], "nerv": 0.1, "honesty": 0.6, "reliable": 0.5,
 		"spots": ["garaze", "tunel"], "bio": "Dłubie przy autach w garażach. Blefiarz — w SMS-ach zawsze zaniża, ile da.",
 		"look": {"model": "mw1", "kind": "tshirt", "top": "3d3326", "bottom": "2e3440", "hair": "hair_buzzed", "beard": true, "hat": "cap", "seed": 15, "walk": "Walk"}},
 	{"id": "kowal", "name": "Kowal", "nick": "Stróż z huty", "lvl": 5, "via": "talk", "type": "twardziel", "like": "konkret", "hate": "luz",
@@ -253,7 +249,7 @@ const CLIENTS := [
 		"spots": ["huta", "tunel"], "bio": "Pilnuje ruin Starej Huty. Długie nocne zmiany, niska pensja.",
 		"look": {"model": "md1", "kind": "jacket", "top": "23402e", "bottom": "45423c", "hat": "beanie", "beard": true, "seed": 16, "build": 1.15, "walk": "Walk_Swagger"}},
 	{"id": "heniek", "name": "Gruby Heniek", "nick": "Hurtownik warzyw", "lvl": 5, "via": "ref:seba:4", "type": "impulsywny", "like": "konkret", "hate": "luz",
-		"wealth": 1.3, "patience": 2, "minpur": 50, "grams": [8, 12], "every": [18.0, 28.0], "home": "kam4", "prod": "dym", "nerv": 0.15, "honesty": 1.0, "reliable": 0.85,
+		"wealth": 1.3, "patience": 2, "minpur": 50, "grams": [8, 12], "every": [18.0, 28.0], "home": "kam4", "prod": "dym", "prods": ["dym", "szron"], "nerv": 0.15, "honesty": 1.0, "reliable": 0.85,
 		"spots": ["boisko", "garaze", "brama"], "bio": "Kupuje szybko i dużo, ale nie znosi gadania.",
 		"look": {"model": "m14", "kind": "tshirt", "top": "8a2a22", "bottom": "283b2e", "bald": true, "seed": 17, "build": 1.3, "walk": "Walk_Swagger"}},
 	{"id": "ola", "name": "Ola", "nick": "Barmanka", "lvl": 6, "via": "talk", "type": "konkret", "like": "konkret", "hate": "twardo",
@@ -329,9 +325,6 @@ var DROPS := [
 	{"id": "zbiornik", "name": "Zbiornik w Starej Hucie", "x": 192.0, "z": 58.0, "turf": "huta"},
 	{"id": "portiernia", "name": "Za portiernią huty", "x": 187.0, "z": -18.2, "turf": "huta"},
 	{"id": "kontenery", "name": "Między kontenerami w hucie", "x": 180.6, "z": 65.2, "turf": "huta"},
-	# skrytkomaty (dostawa „pod kod”); pozycje ustala świat przy budowie
-	{"id": "locker_a", "name": "Skrytkomat przy pawilonie", "x": 98.0, "z": -40.0, "lvl": 99, "locker": true},
-	{"id": "locker_b", "name": "Skrytkomat na osiedlu", "x": -24.0, "z": -98.0, "lvl": 99, "locker": true},
 ]
 
 ## strefy (nazwy na HUD-zie i lokalna uwaga policji)
@@ -550,8 +543,17 @@ const DEBT_INTEREST := 0.01
 const LIVING_COST := 28
 const MAX_ARRESTS := 5
 const MAX_STRIKES := 3
-const CREDIT_BASE := 400
+## zeszyt u Wiktora: najmniejszy limit, termin spłaty (dni) i dłuższy termin na początku gry, gdy Wiktor jest wyrozumiały
+const CREDIT_BASE := 700
 const CREDIT_DAYS := 4
+const CREDIT_DAYS_EARLY := 7
+const CREDIT_EARLY_LVL := 2
+## paczka na start, wsunięta pod drzwi kawalerki: [towar, gramy]
+const STARTER_PACK := [["dym", 8], ["szron", 5]]
+## ile trzeba wrzucić do skrzynki Wiktora, żeby zaczął przyjmować zamówienia (samouczek)
+const BOX_FIRST := 100
+## skrzynka Wiktora na pieniądze (plan miasta): stara skrzynka gazowa na tyłach pawilonu — zawsze w tym samym miejscu
+var WIKTOR_BOX := {"x": 70.0, "z": -57.9, "ry": 3.14159}
 
 const HINTS := [
 	"Im bliżej ukrytego maksimum klienta zaproponujesz cenę, tym większy zysk. Kontroferta zdradza, ile jest gotów dać.",

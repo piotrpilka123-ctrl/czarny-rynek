@@ -3,13 +3,12 @@ extends Control
 ## Portfel, Rozwój, Zadania, Lokale, Plecak, Ustawienia).
 
 const K = preload("res://scripts/uikit.gd")
-const MarketUI = preload("res://scripts/market_ui.gd")
+const OrderUI = preload("res://scripts/order_ui.gd")
 
 const APPS := [
 	["sms", "Wiadomości", "message_circle", Color(0.2, 0.72, 0.38)],
 	["kontakty", "Kontakty", "users", Color(0.25, 0.5, 0.9)],
 	["mapa", "Mapa", "map", Color(0.15, 0.6, 0.62)],
-	["hurt", "Giełda", "package", Color(0.62, 0.2, 0.2)],
 	["portfel", "Portfel", "wallet", Color(0.8, 0.62, 0.15)],
 	["rozwoj", "Rozwój", "brain", Color(0.55, 0.35, 0.85)],
 	["zadania", "Zadania", "list_checks", Color(0.85, 0.45, 0.15)],
@@ -24,7 +23,13 @@ var app := ""
 var chat_id := ""
 var contact_id := ""
 var skill_sel := ""
-var hurt := {"v": "wiktor", "p": "dym", "g": 5, "m": "drop", "credit": false}
+## zamawianie u Wiktora: wybrany towar i paczka, koszyk, zakładka (buy | sell)
+var shop := {"p": "dym", "g": 5, "cart": [], "tab": "buy"}
+var bezel: PanelContainer        # telefon trzymany pionowo
+var land: Control                # ten sam telefon położony na boku (sklep Wiktora)
+var cc2: CenterContainer
+var shop_root: VBoxContainer
+var _landscape := false
 var l_clock: Label
 var screen: Control
 var head: HBoxContainer
@@ -55,8 +60,14 @@ func build(ui_ref) -> void:
 	cc = CenterContainer.new()
 	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(cc)
-	var bezel := K.panel(K.sb(Color(0.02, 0.02, 0.025), 34, Color(0.22, 0.23, 0.26), 2, 12))
+	bezel = K.panel(K.sb(Color(0.02, 0.02, 0.025), 34, Color(0.22, 0.23, 0.26), 2, 12))
 	cc.add_child(bezel)
+	cc2 = CenterContainer.new()
+	cc2.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cc2.visible = false
+	add_child(cc2)
+	land = OrderUI.build(self)
+	cc2.add_child(land)
 	var v := K.vbox(0)
 	bezel.add_child(v)
 	# pasek stanu
@@ -185,9 +196,88 @@ func _pop(c: Control, delay: float, from := 0.6) -> void:
 	t.tween_property(c, "modulate:a", 1.0, 0.14).set_delay(delay)
 
 
+## Telefon obraca się na bok i odsuwa (sklep Wiktora) albo wraca do pionu.
+func _orient(sideways: bool, animate := true) -> void:
+	if sideways == _landscape and animate:
+		return
+	_landscape = sideways
+	bezel.pivot_offset = bezel.size * 0.5
+	land.pivot_offset = land.size * 0.5
+	if not animate:
+		cc.visible = not sideways
+		cc2.visible = sideways
+		bezel.rotation = 0.0
+		bezel.scale = Vector2.ONE
+		bezel.modulate.a = 1.0
+		land.rotation = 0.0
+		land.scale = Vector2.ONE
+		land.modulate.a = 1.0
+		cc.offset_left = 0.0
+		cc.offset_right = 0.0
+		return
+	var t := _tw()
+	if sideways:
+		# pionowy telefon kładzie się w lewo i zjeżdża w bok, w jego miejscu pojawia się poziomy
+		cc2.visible = true
+		land.modulate.a = 0.0
+		land.rotation = PI * 0.5
+		land.scale = Vector2(0.62, 0.62)
+		t.set_parallel(true)
+		t.tween_property(bezel, "rotation", -PI * 0.5, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		t.tween_property(bezel, "scale", Vector2(1.12, 1.12), 0.3)
+		t.tween_property(cc, "offset_left", -120.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		t.tween_property(cc, "offset_right", -120.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		t.tween_property(bezel, "modulate:a", 0.0, 0.12).set_delay(0.2)
+		t.tween_property(land, "modulate:a", 1.0, 0.14).set_delay(0.2)
+		t.tween_property(land, "rotation", 0.0, 0.26).set_delay(0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.tween_property(land, "scale", Vector2.ONE, 0.26).set_delay(0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.chain().tween_callback(func(): cc.visible = not _landscape)
+	else:
+		cc.visible = true
+		bezel.modulate.a = 0.0
+		t.set_parallel(true)
+		t.tween_property(land, "modulate:a", 0.0, 0.12)
+		t.tween_property(land, "scale", Vector2(0.7, 0.7), 0.16)
+		t.tween_property(bezel, "modulate:a", 1.0, 0.12).set_delay(0.06)
+		t.tween_property(bezel, "rotation", 0.0, 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.tween_property(bezel, "scale", Vector2.ONE, 0.26)
+		t.tween_property(cc, "offset_left", 0.0, 0.26).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		t.tween_property(cc, "offset_right", 0.0, 0.26).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		t.chain().tween_callback(func(): cc2.visible = _landscape)
+
+
+## „Zamów towar” w rozmowie z Wiktorem: telefon kładzie się na bok i pokazuje sklep
+func shop_open() -> void:
+	if not G.flag("hurt_on"):
+		return
+	_dir = 1.0
+	app = "sklep"
+	render()
+
+
+func shop_close() -> void:
+	_dir = -1.0
+	app = "sms"
+	chat_id = "wiktor"
+	render()
+
+
+## wysyła koszyk jednym SMS-em i wraca do rozmowy, żeby było widać odpowiedź
+func shop_send() -> void:
+	var d: Dictionary = G.Market.order_cart(shop.cart)
+	if d.is_empty():
+		Sfx.play("error")
+		render()
+		return
+	shop.cart = []
+	shop_close()
+
+
 func open(a := "") -> void:
 	var was := visible
 	visible = true
+	if a != "sklep":
+		_orient(false, false)
 	if not was:
 		_anim_open()
 	_dir = 1.0
@@ -216,9 +306,8 @@ func back() -> void:
 	elif app == "kontakty" and contact_id != "":
 		contact_id = ""
 		render()
-	elif app == "hurt" and String(hurt.get("chat", "")) != "":
-		hurt["chat"] = ""
-		render()
+	elif app == "sklep":
+		shop_close()
 	elif app != "":
 		go("")
 	else:
@@ -241,6 +330,11 @@ func _header(title: String, sub := "") -> void:
 
 
 func render() -> void:
+	if app == "sklep":
+		_orient(true)
+		OrderUI.render(self)
+		return
+	_orient(false)
 	K.clear(body)
 	K.clear(footer)
 	l_clock.text = G.clock()
@@ -259,7 +353,6 @@ func render() -> void:
 			else:
 				_contacts()
 		"mapa": _map()
-		"hurt": _hurt()
 		"portfel": _wallet()
 		"rozwoj": _skills()
 		"zadania": _tasks()
@@ -447,8 +540,8 @@ func _chat() -> void:
 			order = o
 	if order != null:
 		_order_footer(order)
-	elif chat_id == "wiktor" and G.flag("hurt_on"):
-		footer.add_child(K.btn("Otwórz Giełdę", func(): go("hurt"), "", true))
+	elif chat_id == "wiktor":
+		_wiktor_footer()
 	_scroll_end()
 
 
@@ -776,12 +869,21 @@ func _map() -> void:
 	body.add_child(K.btn("Trasa na mapie: " + ("włączona" if G.S.nav_on else "wyłączona"), func(): G.main.toggle_nav(); render(), "", true))
 
 
-# ---------------------------------------------------------------- hurt (Wiktor)
-func _hurt() -> void:
-	MarketUI.build(self)
+# ---------------------------------------------------------------- Wiktor: zamówienie i skrzynka
+## kafle pod rozmową z Wiktorem: zamówienie (telefon kładzie się na bok) i droga do skrzynki na pieniądze
+func _wiktor_footer() -> void:
+	var S: Dictionary = G.S
+	var owed := float(S.credit)
+	var sub := "zeszyt czysty" if owed <= 0.0 else ("zeszyt: %s — PO TERMINIE" % G.money(owed) if G.credit_overdue() else "zeszyt: %s, do dnia %d" % [G.money(owed), int(float(S.credit_due) / 1440.0) + 1])
+	var t1 := _tile("package", "Zamów towar", "czysty, na zeszyt" if G.flag("hurt_on") else "Wiktor jeszcze Ci nie ufa", Color(0.85, 0.62, 0.2), shop_open, 1)
+	t1.disabled = not G.flag("hurt_on")
+	var t2 := _tile("banknote", "Skrzynka Wiktora", sub, Color(0.3, 0.75, 0.45), func():
+		G.main.set_track("box")
+		ui.close_all()
+		G.notify("Prowadzę do skrzynki Wiktora. Włóż do niej gotówkę — najpierw schodzi zeszyt, potem dług."), 2)
+	footer.add_child(_pair(t1, t2))
 
 
-# ---------------------------------------------------------------- portfel
 func _wallet() -> void:
 	var S: Dictionary = G.S
 	_header("Portfel")
@@ -800,16 +902,11 @@ func _wallet() -> void:
 		var left := int(ni.day) - G.day()
 		cd.add_child(K.rich("Najbliższa rata: łącznie [b]%s[/b] do końca dnia %d  (%s)" % [G.money(ni.due), int(ni.day), K.col("za %d dni" % left if left > 0 else ("DZIŚ" if left == 0 else "PO TERMINIE"), K.C_WARN if left <= 1 else K.C_DIM)], 12))
 		cd.add_child(K.bar(S.paid, float(ni.due), K.C_ACC))
-	var f := K.flow(5)
-	cd.add_child(f)
-	for a in [100, 500, 2000]:
-		var amt: float = a
-		var b := K.btn("Spłać %s" % G.money(minf(amt, S.cash)), func(): G.pay_debt(amt); refresh(), "", true)
-		b.disabled = S.cash < 1.0 or S.debt <= 0.0
-		f.add_child(b)
-	var ball := K.btn("Spłać ile się da", func(): G.pay_debt(1e12); refresh(), "go", true)
-	ball.disabled = S.cash < 1.0 or S.debt <= 0.0
-	f.add_child(ball)
+	cd.add_child(K.wrap("Pieniądze zanosisz do skrzynki Wiktora na tyłach pawilonu. To, co do niej włożysz, schodzi najpierw z zeszytu za towar, a reszta z długu.", 12, K.C_TXT))
+	var bbx := K.btn("Prowadź do skrzynki", func(): G.main.set_track("box"); ui.close_all(), "go", true)
+	bbx.icon = K.tex("map_pin")
+	bbx.add_theme_constant_override("icon_max_width", 14)
+	cd.add_child(bbx)
 	cd.add_child(K.wrap("Odsetki 1%% co tydzień. Spóźniona rata = kara i wizyta ludzi Wiktora. Trzy wpadki i koniec (%d/%d)." % [int(S.strikes), D.MAX_STRIKES], 11, K.C_DIM))
 	var cs := K.card(body)
 	cs.add_child(K.lbl("HARMONOGRAM", 10, K.C_DIM))

@@ -146,7 +146,7 @@ static func run(T) -> void:
 			if not G.world.is_free(float(dd0.x), float(dd0.z), 0.3):
 				T.ok(false, "skrytka %s stoi w ścianie" % String(dd0.id))
 	T.ok(plain >= 18 and marks == plain and shown == open0.size(), "każda skrytka ma znak sprejem, widać tylko te z terenu (%d z %d)" % [shown, marks])
-	T.ok(G.drop_mark(G.drop_def("smietnik")) == "liść" and G.drop_mark(G.drop_def("zaulek")) != G.drop_mark(G.drop_def("smietnik")) and G.drop_mark(G.drop_def("locker_a")) == "", "skrytki mają różne znaki (liść, czaszka…), skrytkomat żadnego")
+	T.ok(G.drop_mark(G.drop_def("smietnik")) == "liść" and G.drop_mark(G.drop_def("zaulek")) != G.drop_mark(G.drop_def("smietnik")), "skrytki mają różne znaki (liść, czaszka…)")
 	S.flags["got_first"] = true
 	var chats0: int = (S.chats.get("wiktor", []) as Array).size()
 	S.cust["kowal"].unlocked = false
@@ -170,7 +170,7 @@ static func run(T) -> void:
 		else:
 			near_c += 1
 	T.ok(far_c > 0 and near_c > 0 and float(far_n) / float(far_c) > 1.5 * float(near_n) / float(near_c), "im większy teren, tym częściej towar czeka daleko (%d daleko / %d blisko)" % [far_n, near_n])
-	T.ok(G.drop_pick(open1) == "" and not G.drop_open(G.drop_def("locker_a")), "zajęte skrytki nie wypadają drugi raz, skrytkomat to osobna sprawa")
+	T.ok(G.drop_pick(open1) == "", "zajęte skrytki nie wypadają drugi raz")
 	S.cust["kowal"].unlocked = false
 	G.world.refresh_drops()
 	# --- znaleziska: rzeczy na ziemi, śmietniki, lombard

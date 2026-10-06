@@ -41,6 +41,8 @@ var lab_fx := {}                # światła i rekwizyty laboratorium sterowane p
 var lab_exit := Vector2.ZERO    # gdzie w hali są tylne drzwi (znacznik ucieczki w prologu)
 var mill_door_light: SpotLight3D = null   # reflektor nad tylnymi drzwiami huty od zewnątrz
 var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
+var box_door: Node3D = null       # drzwiczki skrzynki Wiktora (uchylają się, gdy wkładasz pieniądze)
+var starter: Node3D = null        # paczka na start przy drzwiach kawalerki
 var drop_marks := {}            # znaki sprejem przy skrytkach: id → Decal
 var covers: Array = []          # krzaki, za którymi da się przyczaić: Vector3(x, z, promień) w metrach świata
 var hides: Array = []           # kryjówki na czas pościgu (altanki śmietnikowe): {x, z, rot, name}
@@ -563,7 +565,6 @@ func build(loader = null) -> void:
 	_backdrop()
 	_curb_lines()
 	_hide_spots()
-	_lockers()
 	_build_grid()
 	if loader != null:
 		await loader.step(66.0, "Furnishing the hideouts")
@@ -1082,6 +1083,63 @@ func _bin(x: float, z: float, ry := 0.0) -> void:
 ## rzeczy leżące na ziemi (upuszczone z plecaka i znaleziska): model, podpis i podnoszenie
 var ground_nodes: Array = []
 
+## Skrzynka Wiktora na pieniądze: stara skrzynka gazowa na tylnej ścianie pawilonu. Zawsze w tym samym miejscu.
+func _wiktor_box() -> void:
+	var bx: float = float(D.WIKTOR_BOX.x) * INV
+	var m := Stations.model("wiktor_skrzynka")
+	if m == null:
+		m = Node3D.new()
+		Models.box(m, Vector3(0.46, 0.62, 0.2), Vector3(0, 1.26, 0.1), Models.mat("7d8a86", 0.6, 0.5))
+	_place(m, bx, -57.0, PI)
+	Props.set_range(m, 90.0)
+	box_door = Stations._find(m, "Drzwi") as Node3D
+	inter.append({"loc": "out", "x": float(D.WIKTOR_BOX.x), "z": -57.0 * SC - 0.25, "y0": 0.85, "y1": 1.7, "r": 0.55, "reach": 2.6, "id": "wiktor_box",
+		"label": func(): return "Skrzynka Wiktora — włóż pieniądze" + ((" (zeszyt: %s)" % G.money(G.S.credit)) if float(G.S.credit) > 0.0 else ""),
+		"act": func(): G.main.open_box()})
+
+
+## Paczka na start leży przy drzwiach kawalerki, dopóki gracz jej nie podniesie.
+func refresh_starter() -> void:
+	if starter != null and is_instance_valid(starter):
+		starter.queue_free()
+	starter = null
+	for i in range(inter.size() - 1, -1, -1):
+		if String(inter[i].get("id", "")) == "starter":
+			inter.remove_at(i)
+	if not G.flag("wiktor_sms") or G.flag("got_first") or not rooms.has("safe"):
+		return
+	var R: Dictionary = D.ROOMS.safe
+	# 2 cm nad podłogą: przy drzwiach leży wycieraczka
+	var at := Vector3(float(R.cx) - 0.04, 0.022, float(R.d) * 0.5 - 0.62)
+	starter = Stations.model("paczka_start")
+	if starter == null:
+		starter = Node3D.new()
+		Models.box(starter, Vector3(0.2, 0.016, 0.13), Vector3(0, 0.008, 0), Models.mat("4f6b2a", 0.9))
+	rooms.safe.add_child(starter)
+	starter.position = at
+	starter_rest(1.0)
+	inter.append({"loc": "safe", "x": at.x, "z": at.z, "y0": -0.1, "y1": 0.35, "r": 0.4, "reach": 2.4, "hold": 0.6, "id": "starter",
+		"label": func(): return "Podnieś paczkę od Wiktora (przytrzymaj)", "act": func():
+			if G.starter_pickup():
+				refresh_starter()})
+
+
+## ustawia dwa woreczki paczki: k = 0 jeszcze za drzwiami, k = 1 leżą w pokoju (drugi lekko na pierwszym)
+func starter_rest(k: float, k2 := -1.0) -> void:
+	if starter == null:
+		return
+	if k2 < 0.0:
+		k2 = k
+	var a := Stations._find(starter, "Ziolo") as Node3D
+	var b := Stations._find(starter, "Feta") as Node3D
+	if a != null:
+		a.position = Vector3(0.0, 0.0, lerpf(0.78, 0.0, k))
+		a.rotation.y = lerpf(0.0, 0.22, k)
+	if b != null:
+		b.position = Vector3(0.11, lerpf(0.0, 0.004, k2), lerpf(0.74, 0.07, k2))
+		b.rotation.y = lerpf(0.0, -0.5, k2)
+
+
 func refresh_ground() -> void:
 	for n in ground_nodes:
 		if is_instance_valid(n):
@@ -1401,6 +1459,7 @@ func _buildings() -> void:
 	# pawilon i garaże (niskie)
 	_pavilion()
 	_garages()
+	_wiktor_box()
 	# napisy, szyldy
 	var gy := hd(8.0, -77.0)
 	# komenda: podświetlany kaseton nad wejściem

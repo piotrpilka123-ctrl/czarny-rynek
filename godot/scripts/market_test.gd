@@ -1,6 +1,6 @@
 extends RefCounted
-## Testy Giełdy: dostawcy i poziomy, ceny i rabat za zaufanie, przedpłata, zeszyt tylko u Wiktora,
-## kot w worku, skrytkomat z kodem, kurier, spalona skrytka, okazja dnia, skup nadwyżek.
+## Testy hurtu: jeden dostawca (Wiktor), czysty towar, koszyk, zeszyt z limitem i terminem, skrzynka na pieniądze,
+## spalona skrytka przy zaawansowanym śledztwie, skup nadwyżek, sklep w obróconym telefonie.
 
 
 static func run(T) -> void:
@@ -8,78 +8,95 @@ static func run(T) -> void:
 	var keep: Dictionary = G.S
 	G.S = G.new_state()
 	var S: Dictionary = G.S
-	S.flags["hurt_on"] = true
 	S.flags["got_first"] = true
 	S.lvl = 1
 	S.cash = 5000.0
-	T.ok(M.block("wiktor", "dym", 5, "drop", true) == "" and M.block("zbyszek", "dym", 5, "drop", false).contains("poziomu"), "na 1. poziomie handluje tylko Wiktor")
-	S.lvl = 6
 	S.cost_mult = 1.0
+	T.ok(D.VENDORS.size() == 1 and String(D.VENDORS[0].id) == "wiktor" and D.DELIVERY.size() == 1, "dostawca jest jeden — Wiktor, a paczki trafiają tylko do skrytek")
+	T.ok(M.cart_block([{"p": "dym", "g": 5}]).contains("ufa"), "dopóki nie wrzucisz pierwszych pieniędzy do skrzynki, Wiktor nie przyjmuje zamówień")
+	S.flags["hurt_on"] = true
+	T.ok(M.block("wiktor", "dym", 5) == "" and M.block("wiktor", "szron", 5) == "" and M.block("wiktor", "krysztal", 5).contains("poziomu") and M.block("wiktor", "snieg", 5).contains("poziomu"),
+		"od początku marihuana i amfetamina, mocniejszy towar z poziomem")
+	T.ok(M.sizes() == [5, 10] and M.block("wiktor", "dym", 20).contains("najwyżej"), "na 1. poziomie paczki do 10 g")
+	# ceny: uliczna marihuana ok. 50 zł/g, hurt ok. połowę; rabat za ilość i za zaufanie
 	var pw: float = M.price("wiktor", "dym", 10)
-	var pz: float = M.price("zbyszek", "dym", 10)
-	var pc: float = M.price("chemik", "dym", 10)
-	T.ok(pz < pw * 0.8 and pc > pw * 1.25, "ceny za 10 g marihuany: Zbyszek %d zł, Wiktor %d zł, Chemik %d zł" % [int(pz), int(pw), int(pc)])
-	T.ok(M.price("wiktor", "dym", 10, "locker") > pw * 1.07 and M.price("wiktor", "dym", 10, "courier") > pw * 1.14, "skrytkomat i kurier kosztują dopłatę")
-	T.ok(M.block("zbyszek", "dym", 10, "drop", true).contains("zeszyt") and M.block("chemik", "dym", 5, "drop", false).contains("Minimum"), "zeszyt tylko u Wiktora, Chemik od 10 g")
-	T.ok(M.block("port", "dym", 20, "drop", false).contains("Minimum") and M.block("port", "dym", 50, "drop", false) == "", "Port sprzedaje od 50 g")
-	# zaufanie daje rabat
+	T.ok(int(D.PRODUCTS.dym.base) == 50 and pw == 260.0 and G.market_price("dym") == 50.0 and G.market_price("dym", 100) == G.market_price("dym", 42), "marihuana: 26 zł/g w hurcie, 50 zł/g na ulicy — czysta i rozrobiona kosztują tyle samo")
+	S.lvl = 6
+	T.ok(M.price("wiktor", "dym", 100) < 26.0 * 100.0 * 0.9, "większa paczka = rabat (100 g za %d zł)" % int(M.price("wiktor", "dym", 100)))
 	M.add_trust("wiktor", 100.0)
 	T.ok(M.price("wiktor", "dym", 10) < pw * 0.93 and M.trust_discount("wiktor") <= 0.0801, "pełne zaufanie = 8%% rabatu (%d → %d zł)" % [int(pw), int(M.price("wiktor", "dym", 10))])
 	M.vstate("wiktor").trust = 0.0
-	# zamówienie u Wiktora na zeszyt, do skrytki
-	var d1: Dictionary = M.order("wiktor", "dym", 10, "drop", true)
-	T.ok(not d1.is_empty() and d1.credit and not d1.prepaid and d1.state == "wait" and S.cash == 5000.0 and not M.spot(d1).is_empty(), "Wiktor: zamówienie na zeszyt, płatne przy odbiorze")
-	# Chemik: płatne z góry, wysoka czystość, długo
-	var d2: Dictionary = M.order("chemik", "szron", 10, "locker", false)
-	T.ok(not d2.is_empty() and d2.prepaid and S.cash < 5000.0 and int(d2.pur) >= 85 and String(d2.code).length() == 4 and M.spot(d2).get("locker", false), "Chemik: przedpłata, czystość %d%%, skrytkomat z kodem %s" % [int(d2.pur), String(d2.code)])
-	T.ok(float(d2.ready) - S.t > float(d1.ready) - S.t, "Chemik dowozi dłużej niż Wiktor")
-	# kot w worku u Zbyszka: czystość ukryta, czasem rozrobiony, czasem spalony
-	var mixes := 0
-	var burned := 0
-	var low := 100
-	var high := 0
-	for i in range(200):
-		S.drops.clear()
-		S.cash = 5000.0
-		var dz: Dictionary = M.order("zbyszek", "dym", 5, "drop", false)
-		if G.is_mix(dz.pur):
-			mixes += 1
-		if dz.burned:
-			burned += 1
-		low = mini(low, int(dz.pur))
-		high = maxi(high, int(dz.pur))
-		if i == 0:
-			T.ok(dz.blind and M.pur_text(dz) == "??%", "Zbyszek: czystość nieznana do odbioru")
-	T.ok(mixes > 30 and mixes < 95 and burned > 6 and burned < 40 and low < 55 and high > 70, "kot w worku: %d/200 rozrobionych, %d/200 spalonych, czystość %d–%d%%" % [mixes, burned, low, high])
-	var never := true
-	for i in range(60):
-		S.drops.clear()
-		var dl: Dictionary = M.order("zbyszek", "dym", 5, "locker", false)
-		if dl.burned:
-			never = false
-	T.ok(never, "skrytkomat nigdy nie jest spalony")
-	S.drops.clear()
-	# odbiór: przedpłacona paczka nie kosztuje drugi raz, zaufanie rośnie, kot w worku się ujawnia
-	S.cash = 1000.0
-	var d3: Dictionary = M.order("chemik", "dym", 10, "drop", false)
-	var after_order: float = S.cash
-	d3.state = "ready"
-	T.ok(G.pickup_block(d3) == "" and G.pickup_drop(d3) and S.cash == after_order and float(S.credit) == 0.0, "odbiór przedpłaconej paczki nic nie kosztuje")
-	T.ok(M.trust("chemik") > 3.0 and S.drops.is_empty(), "po odbiorze rośnie zaufanie dostawcy (%d)" % int(M.trust("chemik")))
-	# kurier: stoi w miejscu spotkań, czeka krótko; spóźnienie = strata przedpłaty i zaufania
+	S.lvl = 1
+	# limit zeszytu rośnie z poziomem: starcza na największą paczkę najdroższego towaru
+	var lim1: float = G.credit_limit()
+	S.lvl = 9
+	var lim9: float = G.credit_limit()
+	S.lvl = 1
+	T.ok(lim1 >= 700.0 and lim1 < 1200.0 and lim9 > G.wholesale_price("snieg", 250), "limit zeszytu: %d zł na 1. poziomie, %d zł na 9." % [int(lim1), int(lim9)])
+	# koszyk: kilka towarów w jednej paczce, wszystko na zeszyt, towar czysty
+	var cart := []
+	M.cart_add(cart, "dym", 5)
+	M.cart_add(cart, "dym", 5)
+	M.cart_add(cart, "szron", 10)
+	T.ok(cart.size() == 2 and int(cart[0].g) == 10 and M.cart_cost(cart) == 260.0 + 320.0 and M.cart_grams(cart) == 20, "koszyk łączy paczki tego samego towaru (%d zł)" % int(M.cart_cost(cart)))
+	var d1: Dictionary = M.order_cart(cart)
+	T.ok(not d1.is_empty() and d1.credit and int(d1.pur) == 100 and d1.state == "wait" and S.cash == 5000.0 and float(S.credit) == 0.0 and not M.spot(d1).is_empty() and M.spot(d1).has("mark"),
+		"zamówienie przyjęte: nic nie płacisz z góry, paczka pójdzie do skrytki ze znakiem (%s)" % G.drop_mark(M.spot(d1)))
+	T.ok(M.contents(d1) == "10 g marihuany + 10 g amfetaminy" and G.drops_owed() == 580.0, "paczka: " + M.contents(d1))
+	T.ok(M.cart_block([{"p": "dym", "g": 10}]).contains("limit"), "kolejne zamówienie nie mieści się w limicie zeszytu")
+	S.t = float(d1.ready) + 1.0
+	G.on_tick()
+	T.ok(d1.state == "ready" and (S.chats.wiktor as Array).back().text.contains("znaku"), "gdy paczka jest na miejscu, Wiktor pisze, jakiego znaku szukać")
+	S.upg["plecak1"] = true
+	var t_pick: float = S.t
+	T.ok(G.pickup_block(d1) == "" and G.pickup_drop(d1) and float(S.credit) == 580.0 and S.cash == 5000.0, "odbiór nic nie kosztuje na miejscu — 580 zł idzie na zeszyt")
+	T.ok(float(S.inv.bulk.dym.get("100", 0.0)) == 10.0 and float(S.inv.bulk.szron.get("100", 0.0)) == 10.0, "w plecaku czysty towar: 10 g + 10 g")
+	T.ok(absf(float(S.credit_due) - (t_pick + D.CREDIT_DAYS_EARLY * 1440.0)) < 1.0 and G.credit_days() == D.CREDIT_DAYS_EARLY, "na początku Wiktor jest wyrozumiały: %d dni na spłatę" % G.credit_days())
+	T.ok(M.trust("wiktor") > 0.0, "po odbiorze rośnie zaufanie (%d)" % int(M.trust("wiktor")))
+	# skrzynka Wiktora: najpierw zeszyt, potem dług
+	var debt0: float = S.debt
+	G.move_cash("wiktor", true, 300.0)
+	T.ok(G.box_settle() == 300.0 and float(S.credit) == 280.0 and S.debt == debt0 and float(S.stash.wiktor.cash) == 0.0, "300 zł w skrzynce: całość schodzi z zeszytu")
+	G.move_cash("wiktor", true, 500.0)
+	T.ok(G.box_settle() == 500.0 and float(S.credit) == 0.0 and S.debt == debt0 - 220.0 and S.paid == 220.0, "kolejne 500 zł: reszta zeszytu i 220 zł na dług brata")
+	T.ok(G.box_settle() == 0.0 and float(S.stats.box_paid) == 800.0, "pusta skrzynka nic nie zmienia")
+	# po terminie: blokada zamówień, a bez towaru — deska ratunku
 	S.inv = G.new_store()
-	var d4: Dictionary = M.order("chemik", "dym", 10, "courier", false)
-	T.ok(String(d4.spot).begins_with("spot:") and M.spot_name(d4).begins_with("Kurier") and float(d4.expire) - float(d4.ready) < 40.0, "kurier czeka w miejscu spotkań tylko %d min" % int(float(d4.expire) - float(d4.ready)))
-	var statics0: int = G.npcs.statics.size()
-	S.t = float(d4.ready) + 1.0
+	S.credit = 400.0
+	S.credit_due = S.t - 10.0
+	T.ok(G.credit_overdue() and M.cart_block([{"p": "szron", "g": 5}]).contains("terminie"), "zeszyt po terminie blokuje zamówienia")
+	var dr: Dictionary = M.order_cart([{"p": "dym", "g": 5}])
+	T.ok(not dr.is_empty() and float(dr.cost) > G.wholesale_price("dym", 5) * 1.2, "bez towaru i z zaległym zeszytem Wiktor da jeszcze 5 g marihuany, ćwierć drożej")
+	S.drops.clear()
+	S.credit = 0.0
+	S.lvl = 4
+	# nieodebrana paczka przepada, a połowa jej ceny i tak ląduje na zeszycie
+	var d3: Dictionary = M.order_cart([{"p": "dym", "g": 10}])
+	S.t = float(d3.ready) + 1.0
 	G.on_tick()
-	T.ok(d4.state == "ready" and G.npcs.statics.size() == statics0 + 1 and G.main.drop_actors.has(int(d4.id)), "o umówionej porze kurier staje na miejscu")
-	var tr0: float = M.trust("chemik")
-	S.t = float(d4.expire) + 1.0
+	var tr0: float = M.trust("wiktor")
+	S.t = float(d3.expire) + 1.0
 	G.on_tick()
-	T.ok(S.drops.is_empty() and G.npcs.statics.size() == statics0 and M.trust("chemik") < tr0 and float(S.credit) == 0.0, "spóźnienie: kurier odchodzi, przedpłata i zaufanie przepadają")
-	# spalona skrytka: przy paczce czai się patrol
-	var d5: Dictionary = M.order("wiktor", "dym", 5, "drop", false)
+	T.ok(S.drops.is_empty() and float(S.credit) == float(d3.cost) * 0.5 and M.trust("wiktor") < tr0, "nieodebrana paczka: przepada, połowa ceny na zeszycie, zaufanie spada")
+	S.credit = 0.0
+	# spalona skrytka: przy paczce czai się patrol (zdarza się dopiero, gdy policja prowadzi śledztwo)
+	S.invest = 0.0
+	var burned0 := 0
+	for i in range(60):
+		var dx: Dictionary = M.order_cart([{"p": "dym", "g": 5}])
+		if dx.burned:
+			burned0 += 1
+		S.drops.clear()
+	S.invest = 90.0
+	var burned1 := 0
+	for i in range(200):
+		var dy: Dictionary = M.order_cart([{"p": "dym", "g": 5}])
+		if dy.burned:
+			burned1 += 1
+		S.drops.clear()
+	S.invest = 0.0
+	T.ok(burned0 == 0 and burned1 > 8 and burned1 < 90, "skrytka bywa obserwowana dopiero przy zaawansowanym śledztwie (%d/200)" % burned1)
+	var d5: Dictionary = M.order_cart([{"p": "dym", "g": 5}])
 	d5.burned = true
 	var cops0: int = G.npcs.cops.size()
 	S.t = float(d5.ready) + 1.0
@@ -95,50 +112,59 @@ static func run(T) -> void:
 	G.on_tick()
 	T.ok(G.npcs.cops.size() == cops0 and not G.main.drop_actors.has(int(d5.id)), "nieodebrana spalona paczka: zasadzka się zwija")
 	S.credit = 0.0
-	# okazja dnia
-	var found := false
-	for i in range(20):
-		M.roll_special()
-		if M.special() != null:
-			found = true
-			break
-	var sp = M.special()
-	T.ok(found and sp != null and float(sp.off) >= 0.15 and float(sp.until) > S.t - 1440.0, "okazja dnia: %s" % (("%d g %s −%d%%" % [int(sp.g), String(sp.p), int(float(sp.off) * 100.0)]) if sp != null else "brak"))
-	if sp != null:
-		sp.until = S.t + 300.0
-		S.cash = 90000.0
-		var full: float = M.price(String(sp.vendor), String(sp.p), int(sp.g))
-		var ds: Dictionary = M.buy_special()
-		T.ok(not ds.is_empty() and ds.prepaid and absf(90000.0 - S.cash - float(sp.price)) < 0.5 and float(sp.price) < full * 0.86 and M.special() == null, "okazja kupiona za %d zł zamiast %d zł" % [int(sp.price), int(full)])
 	S.drops.clear()
 	# skup nadwyżek
 	S.lvl = 4
 	S.cash = 0.0
 	var store: Dictionary = G.new_store()
-	G.add_bulk(store, "dym", 70, 120.0)
+	G.add_bulk(store, "dym", 100, 120.0)
 	G.add_bulk(store, "dym", 67, 60.0)
-	T.ok(M.bulk_buyer().id == "wiktor" and M.bulk_block(store, "dym", 70, 10.0).contains("od") and M.bulk_block(store, "dym", 67, 60.0).contains("Rozrobionego"), "skup: minimum 20 g, rozrobionego nie biorą")
-	var pay: float = M.bulk_sell(store, "dym", 70, 100.0)
-	var street: float = G.market_price("dym", 70) * 100.0
-	T.ok(pay > street * 0.3 and pay < street * 0.5 and S.cash == pay and absf(float(store.bulk.dym["70"]) - 20.0) < 0.01, "skup u Wiktora: 100 g za %d zł (ulica dałaby %d zł)" % [int(pay), int(street)])
-	T.ok(M.bulk_left_today() == D.BULK_SELL_DAY * 4 - 100 and M.bulk_block(store, "dym", 70, 20.0) == "", "dzienny limit skupu maleje (zostało %d g)" % M.bulk_left_today())
-	G.add_bulk(store, "dym", 70, 200.0)
-	T.ok(M.bulk_block(store, "dym", 70, 100.0).contains("limit"), "ponad dzienny limit skup nie weźmie")
+	T.ok(M.bulk_buyer().id == "wiktor" and M.bulk_block(store, "dym", 100, 10.0).contains("od") and M.bulk_block(store, "dym", 67, 60.0).contains("Rozrobionego"), "skup: minimum 20 g, rozrobionego nie biorą")
+	var pay: float = M.bulk_sell(store, "dym", 100, 100.0)
+	var street: float = G.market_price("dym") * 100.0
+	T.ok(pay > street * 0.3 and pay < street * 0.5 and S.cash == pay and absf(float(store.bulk.dym["100"]) - 20.0) < 0.01, "skup u Wiktora: 100 g za %d zł (ulica dałaby %d zł)" % [int(pay), int(street)])
+	T.ok(M.bulk_left_today() == D.BULK_SELL_DAY * 4 - 100 and M.bulk_block(store, "dym", 100, 20.0) == "", "dzienny limit skupu maleje (zostało %d g)" % M.bulk_left_today())
+	G.add_bulk(store, "dym", 100, 200.0)
+	T.ok(M.bulk_block(store, "dym", 100, 100.0).contains("limit"), "ponad dzienny limit skup nie weźmie")
+	var rate4: float = M.bulk_buyer().rate
 	S.lvl = 6
-	var rate_w: float = D.BULK_SELL - 0.08
-	T.ok(M.bulk_buyer().id == "port" and float(M.bulk_buyer().rate) > rate_w + 0.05, "od 6. poziomu skupuje Port — lepiej płaci (%d%% zamiast %d%% ceny ulicznej)" % [int(float(M.bulk_buyer().rate) * 100.0), int(rate_w * 100.0)])
-	# stare wejście (Hurt) dalej działa: zwykłe = Wiktor, czyste = Chemik
+	T.ok(float(M.bulk_buyer().rate) > rate4 + 0.05, "od 6. poziomu Wiktor płaci za nadwyżki lepiej (%d%% zamiast %d%% ceny ulicznej)" % [int(float(M.bulk_buyer().rate) * 100.0), int(rate4 * 100.0)])
+	# sklep w telefonie: rozmowa z Wiktorem → telefon na bok → koszyk → powrót do rozmowy
 	S.cash = 3000.0
-	T.ok(G.order_goods("dym", 5, false, true) and String(S.drops[0].vendor) == "wiktor", "stare zamówienie „standard” idzie do Wiktora")
-	T.ok(G.order_goods("dym", 10, true, false) and String(S.drops[1].vendor) == "chemik" and int(S.drops[1].pur) >= 85, "stare zamówienie „czyste” idzie do Chemika")
-	# okno w telefonie
-	G.ui.open_phone("hurt")
-	await T.frames(3)
-	T.ok(G.ui.mode == "phone", "Giełda otwiera się w telefonie")
-	G.ui.phone.hurt.v = "zbyszek"
-	G.ui.phone.hurt.m = "courier"
+	T.ok(G.order_goods("dym", 5) and String(S.drops[0].vendor) == "wiktor", "proste zamówienie jednej paczki dalej działa")
+	G.chat("wiktor", "Pisz, co ci potrzeba.", false, true)
+	G.ui.open_phone("sms")
+	G.ui.phone.chat_id = "wiktor"
 	G.ui.phone.render()
 	await T.frames(2)
+	var apps := []
+	for a in G.ui.phone.APPS:
+		apps.append(String(a[0]))
+	T.ok(not apps.has("hurt") and G.ui.phone.hot.size() >= 2, "Giełdy już nie ma — pod rozmową z Wiktorem są kafle „Zamów towar” i „Skrzynka”")
+	G.ui.phone.hotkey(1)
+	await T.frames(3)
+	T.ok(G.ui.mode == "phone" and G.ui.phone.app == "sklep" and G.ui.phone._landscape, "„Zamów towar” kładzie telefon na bok i pokazuje sklep")
+	G.ui.phone.shop.tab = "sell"
+	G.add_bulk(S.inv, "dym", 100, 40.0)
+	G.ui.phone.render()
+	await T.frames(2)
+	G.ui.phone.shop.tab = "buy"
+	G.ui.phone.shop.cart = [{"p": "krysztal", "g": 20}]
+	G.ui.phone.render()
+	await T.frames(2)
+	var n0: int = S.drops.size()
+	G.ui.phone.shop_send()
+	await T.frames(2)
+	T.ok(S.drops.size() == n0 + 1 and G.ui.phone.app == "sms" and G.ui.phone.chat_id == "wiktor" and not G.ui.phone._landscape, "wysłane zamówienie wraca do rozmowy, telefon staje pionowo")
+	G.ui.phone.shop_open()
+	await T.frames(2)
+	G.ui.phone.back()
+	await T.frames(2)
+	T.ok(G.ui.phone.app == "sms" and not G.ui.phone._landscape, "„wstecz” w sklepie wraca do rozmowy")
+	G.ui.close_all()
+	G.ui.open_phone("")
+	await T.frames(2)
+	T.ok(G.ui.phone.cc.visible and not G.ui.phone.cc2.visible, "ponownie otwarty telefon stoi pionowo")
 	G.ui.close_all()
 	for a in G.main.drop_actors.keys():
 		G.main.drop_gone({"id": a})

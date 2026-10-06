@@ -259,6 +259,10 @@ func open(room_id := "", start_tab := "inv") -> void:
 
 func close() -> void:
 	ask_close()
+	if visible and room == "wiktor":
+		G.box_settle()
+		if G.main != null:
+			G.main.close_box()
 	visible = false
 	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
@@ -336,7 +340,7 @@ func _tab_inv() -> void:
 	var lv := K.vbox(8)
 	left.add_child(lv)
 	_title(lv, "backpack", G.bag_name().to_upper(), "%s / %d" % [G.units(used), int(cap)], K.C_BAD if used > cap - 0.5 else K.C_TXT)
-	_list(lv, S.inv, "bag", "Pusto. Towar zamówisz u Wiktora (telefon → Giełda).")
+	_list(lv, S.inv, "bag", "Pusto. Towar zamówisz u Wiktora: telefon → Wiadomości → Wiktor → Zamów towar.")
 	lv.add_child(_cap_bar(used, cap, K.C_BLUE))
 	lv.add_child(_foot("Waga: %s" % G.weight_text(G.store_weight(S.inv)), "Przy zatrzymaniu tracisz wszystko, co masz przy sobie."))
 	left.set_drag_forwarding(Callable(), _can_drop.bind("bag"), _drop.bind("bag"))
@@ -357,9 +361,16 @@ func _tab_inv() -> void:
 		row.add_child(right)
 		var rv := K.vbox(8)
 		right.add_child(rv)
-		_title(rv, "warehouse", "SKRYTKA — " + String(D.ROOMS[room].name).to_upper(), "%s / %d" % [G.units(sused), int(scap)])
-		_list(rv, st, "stash", "Skrytka jest pusta. Przeciągnij tu rzeczy z plecaka.")
-		rv.add_child(_cap_bar(sused, scap, K.C_GOLD))
+		if room == "wiktor":
+			# skrzynka Wiktora: tylko gotówka; po zamknięciu schodzi z zeszytu, a nadwyżka z długu
+			_title(rv, "banknote", "SKRZYNKA WIKTORA", "tylko gotówka")
+			var due := ("PO TERMINIE" if G.credit_overdue() else "do dnia %d" % (int(float(S.credit_due) / 1440.0) + 1)) if float(S.credit) > 0.0 else "nic nie wisisz"
+			rv.add_child(K.rich("Zeszyt za towar: [b]%s[/b]  %s\nDług brata: [b]%s[/b]" % [K.col(G.money(S.credit), K.C_WARN if float(S.credit) > 0.0 else K.C_ACC), K.col(due, K.C_DIM), K.col(G.money(S.debt), K.C_BAD)], 13))
+			_list(rv, st, "stash", "Przeciągnij tu gotówkę z plecaka. Gdy zamkniesz skrzynkę, Wiktor zabierze najpierw to, co wisisz za towar, a resztę zaliczy na dług.")
+		else:
+			_title(rv, "warehouse", "SKRYTKA — " + String(D.ROOMS[room].name).to_upper(), "%s / %d" % [G.units(sused), int(scap)])
+			_list(rv, st, "stash", "Skrytka jest pusta. Przeciągnij tu rzeczy z plecaka.")
+			rv.add_child(_cap_bar(sused, scap, K.C_GOLD))
 		right.set_drag_forwarding(Callable(), _can_drop.bind("stash"), _drop.bind("stash"))
 		hint.text = "Przeciągnij rzecz na drugą stronę i wybierz ilość   •   ubranie przeciągnij na pole przy postaci"
 	else:
@@ -1265,14 +1276,14 @@ func _tab_org() -> void:
 	bv.add_child(K.gap(2))
 	_title(bv, "package", "PACZKI")
 	if S.drops.is_empty():
-		bv.add_child(K.wrap("Żadnej paczki w drodze. Zamów towar: telefon → Giełda.", 13, K.C_DIM))
+		bv.add_child(K.wrap("Żadnej paczki w drodze. Zamów towar: telefon → Wiadomości → Wiktor.", 13, K.C_DIM))
 	for d in S.drops:
 		var spot := "?"
 		for ds in D.DROPS:
 			if ds.id == d.spot:
 				spot = ds.name
 		var rdy: bool = d.state == "ready" or float(d.ready) <= S.t
-		_note(bv, "package_open" if rdy else "timer", K.C_ACC if rdy else K.C_BLUE, "%d g %s" % [int(d.g), D.PRODUCT_GEN[d.p]],
+		_note(bv, "package_open" if rdy else "timer", K.C_ACC if rdy else K.C_BLUE, G.Market.contents(d),
 			"%s • %s" % [spot, "czeka na odbiór" if rdy else "będzie o %s" % G.clock(d.ready)], "na zeszyt" if d.credit else G.money(d.cost))
 	# --- notatki o klientach
 	var c := _frame(colw, H_BODY)

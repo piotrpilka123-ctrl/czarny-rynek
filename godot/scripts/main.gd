@@ -370,6 +370,7 @@ func start_game(from_save: bool) -> void:
 		G.loot_spawn()
 	world.refresh_ground()
 	world.refresh_drops()
+	world.refresh_starter()
 	var R: Dictionary = D.ROOMS.safe
 	if loaded and G.S.pos != null:
 		teleport(String(G.S.pos.loc), Vector3(float(G.S.pos.x), 0.0, float(G.S.pos.z)), float(G.S.pos.yaw))
@@ -823,13 +824,8 @@ func _drop_inter() -> Variant:
 		if Vector2(float(dd.x) - pp.x, float(dd.z) - pp.z).length() < 3.6:
 			var drop: Dictionary = d
 			var why := String(G.pickup_block(drop))
-			var method := String(d.get("method", "drop"))
 			var what := "Skrytka: zabierz paczkę"
-			if method == "locker":
-				what = "Skrytkomat: wpisz kod %s i zabierz paczkę" % String(d.get("code", ""))
-			elif method == "courier":
-				what = "Kurier: odbierz paczkę"
-			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "hold": 1.5 if method != "courier" else 0.8, "id": "drop", "y0": 0.0, "y1": 1.6 if method != "drop" else 1.2, "r": 0.85, "reach": 2.8,
+			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "hold": 1.5, "id": "drop", "y0": 0.0, "y1": 1.2, "r": 0.85, "reach": 2.8,
 				"label": func(): return (what + " (przytrzymaj)" if why == "" else what.get_slice(":", 0) + ": " + why), "act": func(): _take_drop(drop)}
 	return null
 
@@ -944,16 +940,72 @@ func interact() -> void:
 	cur_inter.act.call()
 
 
+## Skrzynka Wiktora: drzwiczki się uchylają, otwiera się plecak ze skrzynką po prawej (tylko gotówka).
+func open_box() -> void:
+	if G.busy:
+		return
+	Sfx.play("door")
+	if world.box_door != null:
+		var tw := create_tween()
+		tw.tween_property(world.box_door, "rotation:y", -1.9, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	G.S.flags["tut_box"] = true
+	ui.open_inventory("wiktor")
+
+
+func close_box() -> void:
+	if world.box_door != null:
+		var tw := create_tween()
+		tw.tween_property(world.box_door, "rotation:y", 0.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	Sfx.play("door_close")
+
+
+## Paczka na start: pukanie, kamera schodzi do podłogi przy drzwiach kawalerki, spod drzwi wsuwają się
+## dwa woreczki — zioło i strunowy z amfetaminą. Potem paczka leży i czeka, aż gracz ją podniesie.
+func door_package() -> void:
+	if not world.rooms.has("safe"):
+		world.refresh_starter()
+		return
+	world.refresh_starter()
+	if world.starter == null or player.loc != "safe" or G.test_mode:
+		return
+	G.busy = true
+	ui.close_all()
+	var R: Dictionary = D.ROOMS.safe
+	var cx := float(R.cx)
+	var ez := float(R.d) * 0.5
+	world.starter_rest(0.0, 0.0)
+	Sfx.knock()
+	await get_tree().create_timer(0.9).timeout
+	ui.cut_begin()
+	var from := Vector3(cx + 0.46, 0.13, ez - 1.38)
+	var to := Vector3(cx + 0.27, 0.085, ez - 1.02)
+	var look := Vector3(cx + 0.03, 0.03, ez - 0.52)
+	cine_cam(from, look, 34.0)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_method(func(k: float): cine_cam(from.lerp(to, k), look, lerpf(34.0, 30.0, k)), 0.0, 1.0, 3.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# pierwszy wsuwa się worek z ziołem — dwoma pchnięciami, jak ręką spod drzwi
+	tw.tween_method(func(k: float): world.starter_rest(k * 0.55, 0.0), 0.0, 1.0, 0.4).set_delay(0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(0.5)
+	tw.tween_method(func(k: float): world.starter_rest(0.55 + k * 0.45, 0.0), 0.0, 1.0, 0.35).set_delay(1.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(1.15)
+	# za nim woreczek strunowy z amfetaminą
+	tw.tween_method(func(k: float): world.starter_rest(1.0, k), 0.0, 1.0, 0.45).set_delay(1.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(1.9)
+	ui.cut_line("Ktoś puka. Kiedy podchodzisz, pod drzwiami leży już paczka.")
+	await get_tree().create_timer(4.0).timeout
+	ui.cut_line("")
+	world.starter_rest(1.0)
+	cine_off()
+	ui.cut_end()
+	G.busy = false
+
+
 ## Paczka gotowa do odbioru: kurier staje w umówionym miejscu, a przy „spalonej” skrytce czai się tajniak.
 func drop_ready(d: Dictionary) -> void:
 	var sp: Dictionary = G.Market.spot(d)
 	var at := Vector2(float(sp.x), float(sp.z))
-	if String(d.get("method", "drop")) == "courier":
-		var look := {"model": ["m06", "m12", "m09"].pick_random(), "kind": "hoodie", "seed": int(d.id) * 7 + 3}
-		var q: Vector2 = world.near_free(at.x + 0.6, at.y + 0.4)
-		var n: Dictionary = npcs._static({"x": q.x / D.SC, "z": q.y / D.SC, "rot": randf() * TAU, "pose": "arms", "name": "Kurier", "look": look})
-		drop_actors[int(d.id)] = {"static": n}
-	elif d.get("burned", false):
+	if d.get("burned", false):
 		# tajniak w cywilu… w mundurze, bo to prosta gra: stoi kilkanaście metrów od skrytki i na nią patrzy
 		var a := randf() * TAU
 		var cp: Vector2 = world.near_free(at.x + cos(a) * 9.0, at.y + sin(a) * 9.0)
@@ -1110,6 +1162,8 @@ func _order_target(o: Dictionary) -> Dictionary:
 
 
 func _place_target(id: String) -> Dictionary:
+	if id == "box":
+		return {"id": id, "label": "Skrzynka Wiktora", "loc": "out", "x": float(D.WIKTOR_BOX.x), "z": float(D.WIKTOR_BOX.z), "color": C_PLACE}
 	if id == "home" or id == "shop":
 		var room := "safe" if id == "home" else "shop"
 		return {"id": id, "label": "Kawalerka" if id == "home" else "Sklep u Stasia", "loc": room, "x": float(D.ROOMS[room].cx), "z": 0.0, "color": C_PLACE}
@@ -1129,7 +1183,7 @@ func _drop_target() -> Dictionary:
 		return {}
 	var dd: Dictionary = G.Market.spot(d)
 	var mark: String = G.drop_mark(dd)
-	return {"id": "drop", "label": ("Skrytka: " if String(d.get("method", "drop")) == "drop" else "") + String(dd.name) + (" (znak: %s)" % mark if mark != "" else ""), "loc": "out", "x": float(dd.x), "z": float(dd.z), "color": C_DROP}
+	return {"id": "drop", "label": "Skrytka: " + String(dd.name) + (" (znak: %s)" % mark if mark != "" else ""), "loc": "out", "x": float(dd.x), "z": float(dd.z), "color": C_DROP}
 
 
 func _story_target() -> Dictionary:
@@ -1156,7 +1210,7 @@ func cur_target() -> Dictionary:
 			if not dt.is_empty():
 				return dt
 			S.track = null
-		elif t == "home" or t == "shop" or String(t).begins_with("prop:"):
+		elif t == "home" or t == "shop" or t == "box" or String(t).begins_with("prop:"):
 			var pt := _place_target(t)
 			if not pt.is_empty():
 				return pt
@@ -1183,6 +1237,7 @@ func nav_targets() -> Array:
 	if not dt.is_empty():
 		out.append({"id": "drop", "label": String(dt.label)})
 	out.append({"id": "home", "label": "Kawalerka"})
+	out.append({"id": "box", "label": "Skrzynka Wiktora"})
 	out.append({"id": "shop", "label": "Sklep u Stasia"})
 	for p in D.PROPERTIES:
 		if G.owns(p.id):
@@ -2269,9 +2324,16 @@ func _apply_test_args() -> void:
 		if args.has("mult"):
 			G.add_pack(G.S.inv, "dym", 80, 5)
 			G.S.heat = 90.0
-	if args.has("locker"):
-		var lk: Dictionary = G.drop_def("locker_a" if String(args.locker) != "b" else "locker_b")
-		teleport("out", Vector3(float(lk.x) + 2.2, 0.0, float(lk.z) + 4.2), 0.42)
+	if args.has("doorpack"):
+		# podgląd paczki na start: 0…1 = ile wsunięta pod drzwi kawalerki
+		G.S.flags["wiktor_sms"] = true
+		world.refresh_starter()
+		var kk := float(args.doorpack)
+		world.starter_rest(minf(1.0, kk * 1.4), clampf(kk * 2.0 - 1.0, 0.0, 1.0))
+		var RD: Dictionary = D.ROOMS.safe
+		var dcx := float(RD.cx)
+		var dez := float(RD.d) * 0.5
+		cine_cam(Vector3(dcx + 0.46, 0.13, dez - 1.38).lerp(Vector3(dcx + 0.27, 0.085, dez - 1.02), kk), Vector3(dcx + 0.03, 0.03, dez - 0.52), lerpf(34.0, 30.0, kk))
 	if args.has("hide"):
 		var hh: Dictionary = world.hides[int(args.hide) % world.hides.size()]
 		var hf := Vector2(sin(float(hh.rot) + PI), cos(float(hh.rot) + PI))
@@ -2349,13 +2411,16 @@ func _test_ui(what: String) -> void:
 		return
 	match what:
 		"home": ui.open_phone("")
-		"gielda", "gielda_chat":
+		"gielda", "gielda_chat", "sklep":
 			G.S.flags["hurt_on"] = true
-			G.Market.roll_special()
-			ui.open_phone("hurt")
-			if what == "gielda_chat":
-				ui.phone.hurt["chat"] = String(args.get("vendor", "wiktor"))
-				ui.phone.render()
+			G.S.lvl = int(args.get("lvl", "3"))
+			G.chat("wiktor", "Pisz, co ci potrzeba.", false, true)
+			ui.open_phone("sms")
+			ui.phone.chat_id = "wiktor"
+			ui.phone.render()
+			if what != "gielda_chat":
+				ui.phone.shop.cart = [{"p": "dym", "g": 10}, {"p": "szron", "g": 5}]
+				ui.phone.shop_open()
 		"options": ui.open_options("pause")
 		"options_audio":
 			ui.opts.tab = "audio"
@@ -2397,25 +2462,18 @@ func _test_ui(what: String) -> void:
 			ui.open_phone("kontakty")
 			ui.phone.contact_id = "dominik"
 			ui.phone.render()
-		"mapa", "hurt", "portfel", "rozwoj", "zadania", "lokale", "plecak", "ustawienia": ui.open_phone(what)
+		"mapa", "portfel", "rozwoj", "zadania", "lokale", "plecak", "ustawienia": ui.open_phone(what)
 		"gielda", "gielda2":
 			G.S.flags["hurt_on"] = true
 			G.S.lvl = 6
-			G.S.cash = 4200.0
 			G.Market.add_trust("wiktor", 46.0)
-			G.Market.add_trust("zbyszek", 18.0)
-			G.Market.order("zbyszek", "dym", 10, "drop", false)
-			var gd: Dictionary = G.Market.order("chemik", "szron", 20, "locker", false)
-			gd.state = "ready"
-			G.Market.roll_special()
-			G.add_bulk(G.S.inv, "dym", 70, 64.0)
-			ui.open_phone("hurt")
+			G.add_bulk(G.S.inv, "dym", 100, 64.0)
+			ui.open_phone("sms")
+			ui.phone.chat_id = "wiktor"
+			ui.phone.shop_open()
 			if what == "gielda2":
-				ui.phone.hurt.v = "zbyszek"
+				ui.phone.shop.tab = "sell"
 				ui.phone.render()
-				await get_tree().process_frame
-				await get_tree().process_frame
-				ui.phone.scroll.scroll_vertical = 620
 		"bench": ui.open_pack(player.loc if player.loc != "out" else "safe")
 		"station0", "station1", "station2", "station3", "station4", "station9": ui.open_station("garage", int(what.trim_prefix("station")))
 		"hideout": ui.open_hideout("garage")
@@ -2732,7 +2790,7 @@ func _record() -> void:
 	var dir := String(args.rec)
 	DirAccess.make_dir_recursive_absolute(dir)
 	var o := _test_order("dominik", false)
-	var plan := {20: "open", 70: "sms", 110: "chat", 170: "reply", 240: "back", 265: "home", 290: "hurt", 350: "home", 372: "rozwoj", 430: "home", 452: "mapa", 505: "home", 527: "kontakty", 570: "end"}
+	var plan := {20: "open", 70: "sms", 110: "chat", 170: "reply", 240: "back", 265: "home", 372: "rozwoj", 430: "home", 452: "mapa", 505: "home", 527: "kontakty", 570: "end"}
 	var n := 0
 	for i in range(575):
 		await get_tree().process_frame

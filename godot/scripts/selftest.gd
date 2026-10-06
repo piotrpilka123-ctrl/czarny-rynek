@@ -106,7 +106,7 @@ func run() -> void:
 	await frames(3)
 	G.story_tick()
 	ok(G.flag("read_wiktor"), "przeczytana wiadomość od Wiktora")
-	for app in ["", "kontakty", "mapa", "hurt", "portfel", "rozwoj", "zadania", "lokale", "ustawienia"]:
+	for app in ["", "kontakty", "mapa", "portfel", "rozwoj", "zadania", "lokale", "ustawienia"]:
 		U.phone.go(app)
 		await frames(2)
 	ok(U.mode == "phone", "wszystkie aplikacje telefonu się rysują")
@@ -115,11 +115,21 @@ func run() -> void:
 
 	# --- pierwsza paczka
 	G.story_tick()
-	var d = G.ready_drop()
-	ok(d != null, "pierwsza paczka czeka w skrytce")
-	if d != null:
-		ok(G.pickup_drop(d), "odbiór paczki")
-	ok(G.goods_total(S.inv) == 5.0 and float(S.credit) == 105.0, "5 g luzem na zeszyt (105 zł)")
+	var d = null
+	G.world.refresh_starter()
+	ok(G.world.starter != null and G.cur_step().id == "drop1", "paczka na start leży przy drzwiach kawalerki")
+	ok(G.starter_pickup() and not G.starter_pickup(), "paczkę spod drzwi podnosi się raz")
+	G.world.refresh_starter()
+	ok(G.world.starter == null, "po podniesieniu paczka znika z podłogi")
+	var start_g := 0.0
+	for e in D.STARTER_PACK:
+		start_g += float(e[1])
+	ok(G.goods_total(S.inv) == start_g and float(S.credit) == G.starter_cost() and float(S.inv.bulk["szron"].get("100", 0.0)) > 0.0, "na start czysta marihuana i amfetamina, wszystko na zeszyt (%d zł)" % int(S.credit))
+	ok(absf(G.carry_total() - (start_g + 0.5)) < 0.01 and G.carry_total() <= float(G.capacity()), "paczka mieści się w kieszeniach (%s / %d)" % [str(G.carry_total()), G.capacity()])
+	ok(float(S.credit_due) - S.t > 6.0 * 1440.0, "na początku Wiktor daje tydzień na spłatę")
+	# dalej test idzie jak dawniej z 5 g marihuany przy sobie — reszta paczki ląduje w szafie
+	G.add_bulk(S.stash.safe, "szron", 100, G.take_bulk(S.inv, "szron", 100, 99.0))
+	G.add_bulk(S.stash.safe, "dym", 100, G.take_bulk(S.inv, "dym", 100, start_g - 10.0 if start_g > 15.0 else maxf(0.0, float(S.inv.bulk["dym"].get("100", 0.0)) - 5.0)))
 	ok(absf(G.carry_total() - 5.5) < 0.01, "zajęte miejsce: 5 g + 10 woreczków = 5,5")
 
 	# --- stół: porcjowanie
@@ -153,7 +163,7 @@ func run() -> void:
 	S.stats.packed = packed_keep
 	var bv = U.bench.view
 	var got := [-1, -1]
-	bv.start(3, 0, 0.9, func() -> int: return G.pack_one("safe", "dym", 80, 0), func(a: int, b: int): got[0] = a; got[1] = b)
+	bv.start(3, 0, 0.9, func() -> int: return G.pack_one("safe", "dym", 100, 0), func(a: int, b: int): got[0] = a; got[1] = b)
 	var bg := 0
 	while got[0] < 0 and bg < 400:
 		bg += 1
@@ -230,11 +240,52 @@ func run() -> void:
 	await frames(5)
 
 	# --- zeszyt
-	S.cash = maxf(S.cash, 200.0)
-	G.pay_credit(1e9)
+	ok(not G.flag("hurt_on") and G.Market.cart_block([{"p": "dym", "g": 5}]) != "", "przed pierwszą wpłatą Wiktor nie przyjmuje zamówień")
+	S.cash = maxf(S.cash, float(S.credit) + 50.0)
+	var debt0: float = S.debt
+	var cash1: float = S.cash
+	var owed0: float = S.credit
+	M.open_box()
+	await frames(3)
+	ok(U.mode == "inv" and U.inv.room == "wiktor" and G.move_limit("wiktor", {"kind": "bulk", "p": "dym", "pur": 100, "n": 2.0, "usize": 1.0}, true) == 0.0, "skrzynka Wiktora otwiera się jak skrytka, ale przyjmuje tylko gotówkę")
+	G.move_cash("wiktor", true, owed0 + 20.0)
+	U.close_all()
+	await frames(2)
+	ok(float(S.credit) <= 0.0 and absf(S.debt - (debt0 - 20.0)) < 0.01 and absf(S.cash - (cash1 - owed0 - 20.0)) < 0.01 and float(S.stash.wiktor.cash) < 0.01, "pieniądze ze skrzynki schodzą najpierw z zeszytu, reszta z długu")
 	G.story_tick()
 	G.story_tick()
-	ok(float(S.credit) <= 0.0 and G.flag("hurt_on"), "zeszyt spłacony, hurt odblokowany")
+	ok(float(S.credit) <= 0.0 and G.flag("hurt_on"), "zeszyt spłacony, zamówienia odblokowane")
+	# zamówienie: rozmowa z Wiktorem → telefon kładzie się na bok → koszyk
+	U.open_phone("sms")
+	U.phone.chat_id = "wiktor"
+	U.phone.render()
+	await frames(2)
+	U.phone.shop_open()
+	await frames(2)
+	ok(U.phone.app == "sklep" and U.phone._landscape, "„Zamów towar” obraca telefon na bok i otwiera sklep")
+	var cat: Array = G.Market.catalog()
+	ok(cat.size() == 4 and cat[0].open and cat[1].open and not cat[2].open and not cat[3].open, "w sklepie od początku marihuana i amfetamina, reszta odblokuje się z poziomem")
+	G.Market.cart_add(U.phone.shop.cart, "dym", 5)
+	G.Market.cart_add(U.phone.shop.cart, "szron", 5)
+	U.phone.render()
+	await frames(2)
+	ok(U.phone.shop.cart.size() == 2 and G.Market.cart_cost(U.phone.shop.cart) == G.wholesale_price("dym", 5) + G.wholesale_price("szron", 5), "koszyk liczy cenę obu pozycji")
+	var credit0: float = S.credit
+	U.phone.shop_send()
+	await frames(2)
+	ok(S.drops.size() == 1 and U.phone.app == "sms" and not U.phone._landscape and U.phone.shop.cart.is_empty(), "zamówienie wysłane: telefon wraca do rozmowy z Wiktorem")
+	U.close_all()
+	ok(float(S.credit) == credit0 and G.ready_drop() == null, "nic nie płacisz z góry, paczka nie jest gotowa od razu")
+	G.add_minutes(100.0)
+	d = G.ready_drop()
+	ok(d != null and int(d.pur) == 100 and (d.items as Array).size() == 2, "paczka gotowa po ok. godzinie, towar czysty")
+	if d != null:
+		var cost_d: float = d.cost
+		var inv_keep: Dictionary = S.inv
+		S.inv = G.new_store()
+		ok(G.pickup_drop(d) and float(S.credit) == credit0 + cost_d and float(S.inv.bulk["szron"].get("100", 0.0)) >= 5.0, "odbiór: obie pozycje w plecaku, należność na zeszycie")
+		S.inv = inv_keep
+		S.credit = 0.0
 	ok(G.order_goods("dym", 5, false, true), "zamówienie 5 g u Wiktora na zeszyt")
 	ok(G.ready_drop() == null, "paczka nie jest gotowa od razu")
 	G.add_minutes(100.0)
