@@ -76,6 +76,17 @@ static func _material(model: String, surf_name: String) -> Material:
 	return m
 
 
+static var _hide_mat: StandardMaterial3D = null
+
+static func _hidden() -> StandardMaterial3D:
+	if _hide_mat == null:
+		_hide_mat = StandardMaterial3D.new()
+		_hide_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_hide_mat.albedo_color = Color(0, 0, 0, 0)
+		_hide_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return _hide_mat
+
+
 static func _q(b: Basis) -> Quaternion:
 	return b.orthonormalized().get_rotation_quaternion()
 
@@ -258,9 +269,13 @@ static func library(model: String, src_lib: AnimationLibrary, src_scene: PackedS
 
 
 ## Tworzy postać z gotowego modelu. Zwraca {model, skel, body, hip} albo {} gdy modelu nie ma.
-static func instance(model: String) -> Dictionary:
+## `face`: model, z którego bierzemy twarz (tekstury głowy) — strój zmienia sylwetkę i ubranie, twarz zostaje ta sama.
+## Awatary mają wspólny układ UV głowy, więc wystarczy podmienić materiał; włosy z kart (opacity) cudzego modelu chowamy.
+static func instance(model: String, face := "") -> Dictionary:
 	if not exists(model):
 		return {}
+	if face == model or not exists(face):
+		face = ""
 	var inst: Node3D = _load(model).instantiate()
 	var skel: Skeleton3D = inst.find_child("Skeleton3D", true, false)
 	var old: Node = inst.find_child("AnimationPlayer", true, false)
@@ -276,7 +291,13 @@ static func instance(model: String) -> Dictionary:
 			for s in range(mi.mesh.get_surface_count()):
 				var src: Material = mi.mesh.surface_get_material(s)
 				var nm := src.resource_name if src != null else "x_body"
-				mi.set_surface_override_material(s, _material(model, nm))
+				var part := nm.substr(nm.find("_") + 1).to_lower()
+				if face != "" and part == "head":
+					mi.set_surface_override_material(s, _material(face, "x_head"))
+				elif face != "" and part.ends_with("opacity"):
+					mi.set_surface_override_material(s, _hidden())
+				else:
+					mi.set_surface_override_material(s, _material(model, nm))
 			mi.extra_cull_margin = 0.6
 	var bip := skel.find_bone("Bip01")
 	var hip := skel.get_bone_global_rest(bip).origin.y if bip >= 0 else HIP

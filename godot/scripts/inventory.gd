@@ -8,7 +8,7 @@ const Chars = preload("res://scripts/chars.gd")
 const W_SIDE := 432.0
 const W_MID := 300.0
 const H_BODY := 548.0
-const TABS := [["inv", "EKWIPUNEK", "backpack"], ["char", "POSTAĆ", "user"], ["org", "ORGANIZER", "notebook_pen"]]
+const TABS := [["inv", "EKWIPUNEK", "backpack"], ["char", "POSTAĆ", "user"], ["wear", "UBRANIA", "store"], ["org", "ORGANIZER", "notebook_pen"]]
 
 var ui
 var room := ""
@@ -24,6 +24,8 @@ var vpc: SubViewportContainer
 var rig := {}
 var pivot: Node3D
 var bag_mesh: MeshInstance3D
+var rig_outfit := ""          # strój pokazany na podglądzie postaci
+var wear_sel := ""            # strój oglądany w zakładce „Ubrania”
 var spin := 0.0
 var spin_drag := false
 var ask := {}                # otwarte okno wyboru ilości: {e, from, to, max, step, v}
@@ -117,10 +119,30 @@ func _build_viewport() -> void:
 	vp.add_child(cam)
 	pivot = Node3D.new()
 	vp.add_child(pivot)
+	set_rig("dres")
+
+
+## ubiera postać z podglądu w podany strój (inna sylwetka, ta sama twarz)
+func set_rig(outfit_id: String) -> void:
+	if not D.OUTFITS.has(outfit_id):
+		outfit_id = "dres"
+	if rig_outfit == outfit_id and not rig.is_empty():
+		return
+	if not rig.is_empty() and is_instance_valid(rig.root):
+		pivot.remove_child(rig.root)
+		rig.root.queue_free()
+	rig_outfit = outfit_id
+	var od: Dictionary = D.OUTFITS[outfit_id]
 	var look: Dictionary = D.PLAYER_LOOK.duplicate()
 	look["no_blob"] = true
+	look["model"] = String(od.model)
+	look["face"] = String(D.PLAYER_LOOK.model)
+	look["mask"] = bool(od.get("mask", false))
+	look["tall"] = 1.0
+	look["build"] = 1.0
 	rig = Chars.make(look)
 	pivot.add_child(rig.root)
+	rig.anim.process_mode = Node.PROCESS_MODE_ALWAYS
 	Chars.animate(rig, 0.0, 0.0, "")
 	# plecak na plecach (widoczny po zakupie)
 	bag_mesh = MeshInstance3D.new()
@@ -151,6 +173,17 @@ func _build_viewport() -> void:
 	else:
 		rig.root.add_child(bag_mesh)
 		bag_mesh.position = Vector3(0, 1.2, -0.2)
+	_bag_refresh()
+
+
+func _bag_refresh() -> void:
+	bag_mesh.visible = G.S != null and G.S.has("upg") and G.upg("plecak1")
+	var big: bool = G.S != null and G.S.has("upg") and G.upg("plecak2")
+	var bmesh := bag_mesh.mesh as BoxMesh
+	if bmesh.size.x > 0.39:
+		bmesh.size = Vector3(0.5, 0.2, 0.34) if big else Vector3(0.4, 0.16, 0.3)
+	else:
+		bmesh.size = Vector3(0.34, 0.5, 0.2) if big else Vector3(0.3, 0.4, 0.16)
 
 
 func _char_view(w: float, h: float) -> Control:
@@ -199,8 +232,9 @@ func open(room_id := "", start_tab := "inv") -> void:
 	sel = {}
 	visible = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	bag_mesh.visible = G.upg("plecak1")
-	(bag_mesh.mesh as BoxMesh).size = Vector3(0.34, 0.5, 0.2) if G.upg("plecak2") else Vector3(0.3, 0.4, 0.16)
+	wear_sel = G.outfit()
+	set_rig(G.outfit())
+	_bag_refresh()
 	modulate.a = 0.0
 	var tw := create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
@@ -248,8 +282,11 @@ func render() -> void:
 			render())
 		tabs_box.add_child(b)
 	K.clear(content)
+	if tab != "wear" and rig_outfit != G.outfit():
+		set_rig(G.outfit())
 	match tab:
 		"char": _tab_char()
+		"wear": _tab_wear()
 		"org": _tab_org()
 		_: _tab_inv()
 
@@ -854,6 +891,101 @@ func _tab_char() -> void:
 	rv.add_child(K.spacer())
 	rv.add_child(K.btn("Otwórz drzewko umiejętności", func(): ui.open_phone("rozwoj"), "", true))
 	hint.text = "Przeciągnij postać myszą, żeby ją obrócić"
+
+
+# ---------------------------------------------------------------- zakładka: ubrania
+## Szafa i sklep w jednym: po lewej postać w oglądanym stroju, po prawej wieszak.
+## Kupować można tylko w „Taniej Odzieży”, przebierać się — tam albo w kryjówce.
+func _tab_wear() -> void:
+	var S: Dictionary = G.S
+	var in_shop: bool = G.player != null and G.player.loc == "ciuchy"
+	var can_change: bool = G.can_change_here()
+	if not D.OUTFITS.has(wear_sel):
+		wear_sel = G.outfit()
+	set_rig(wear_sel)
+	var row := K.hbox(12)
+	content.add_child(row)
+	var left := K.vbox(8)
+	left.custom_minimum_size = Vector2(W_MID + 60.0, H_BODY)
+	row.add_child(left)
+	left.add_child(_char_view(W_MID + 60.0, 400.0))
+	var idc := _frame(W_MID + 60.0, 0, 12)
+	idc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(idc)
+	var iv := K.vbox(4)
+	idc.add_child(iv)
+	var od: Dictionary = D.OUTFITS[wear_sel]
+	var worn: bool = wear_sel == G.outfit()
+	iv.add_child(K.head(String(od.name).to_upper(), 22, K.C_TXT))
+	iv.add_child(K.lbl("masz na sobie" if worn else ("w szafie" if G.outfit_owned(wear_sel) else "przymiarka"), 12, K.C_ACC if worn else K.C_DIM))
+	iv.add_child(K.wrap(String(od.desc), 12, K.C_DIM))
+	# prawa strona: wieszak
+	var right := _frame(W_SIDE * 2.0 - 48.0, H_BODY)
+	row.add_child(right)
+	var rv := K.vbox(8)
+	right.add_child(rv)
+	_title(rv, "store", "TANIA ODZIEŻ — WIESZAK" if in_shop else "SZAFA", G.money(S.cash) if in_shop else "", K.C_ACC)
+	if not in_shop:
+		rv.add_child(K.wrap("Nowe ciuchy kupisz w „Taniej Odzieży” przy Hutniczej. Przebrać się możesz tam albo w kryjówce." if can_change else "Na ulicy się nie przebierzesz. Wróć do kryjówki albo zajrzyj do „Taniej Odzieży” przy Hutniczej.", 12, K.C_DIM))
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	rv.add_child(sc)
+	var list := K.vbox(6)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(list)
+	for id in D.OUTFITS:
+		var oid: String = id
+		var o: Dictionary = D.OUTFITS[id]
+		var owned: bool = G.outfit_owned(oid)
+		if not in_shop and not owned:
+			continue
+		var on: bool = oid == wear_sel
+		var card := K.panel(K.sb(Color(0.13, 0.17, 0.24) if on else Color(0.085, 0.102, 0.15), 10, K.C_ACC if on else Color(1, 1, 1, 0.07), 1, 10))
+		card.mouse_filter = Control.MOUSE_FILTER_STOP
+		card.gui_input.connect(func(ev: InputEvent):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and wear_sel != oid:
+				Sfx.play("click")
+				wear_sel = oid
+				render())
+		list.add_child(card)
+		var cv := K.vbox(4)
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(cv)
+		var top := K.hbox(8)
+		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(top)
+		top.add_child(K.head(String(o.name), 18, K.C_TXT))
+		if oid == G.outfit():
+			top.add_child(K.lbl("● na sobie", 11, K.C_ACC))
+		elif owned:
+			top.add_child(K.lbl("w szafie", 11, K.C_DIM))
+		top.add_child(K.spacer())
+		if not owned:
+			var locked: bool = int(S.lvl) < int(o.lvl)
+			top.add_child(K.head(("od poz. %d" % int(o.lvl)) if locked else G.money(o.price), 17, K.C_DIM if locked else (K.C_GOLD if S.cash >= float(o.price) else K.C_BAD)))
+		var traits: Array = G.outfit_traits(oid)
+		if traits.is_empty():
+			cv.add_child(K.lbl("bez zalet i wad", 11, K.C_DIM))
+		else:
+			var parts: Array = []
+			for t in traits:
+				parts.append(K.col(String(t.text), K.C_ACC if t.good else K.C_WARN))
+			var tl := K.rich("   ".join(parts), 12)
+			tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cv.add_child(tl)
+		if on:
+			var acts := K.hbox(8)
+			cv.add_child(acts)
+			if owned:
+				var wb := K.btn("  Załóż  ", func(): G.outfit_wear(oid); render(), "go", true)
+				wb.disabled = oid == G.outfit() or not can_change
+				acts.add_child(wb)
+			else:
+				var bb := K.btn("  Kup i załóż — %s  " % G.money(o.price), func(): G.outfit_buy(oid); render(), "go", true)
+				bb.disabled = S.cash < float(o.price) or int(S.lvl) < int(o.lvl)
+				acts.add_child(bb)
+	hint.text = "Kliknij strój, żeby go przymierzyć. Przeciągnij postać myszą, żeby ją obrócić."
 
 
 # ---------------------------------------------------------------- zakładka: organizer

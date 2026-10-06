@@ -75,7 +75,7 @@ func _ready() -> void:
 
 
 func max_stamina() -> float:
-	return BASE_STAMINA * (1.3 if G.has_skill("kondycja1") else 1.0)
+	return BASE_STAMINA * (1.3 if G.has_skill("kondycja1") else 1.0) * G.outfit_stat("stamina", 1.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -172,6 +172,7 @@ func _physics_process(dt: float) -> void:
 	else:
 		stamina = minf(ms, stamina + dt * (0.5 if moving else 1.0))
 	var sp := (SPRINT * (1.08 if G.has_skill("kondycja2") else 1.0)) if sprinting else (SNEAK if crouching else WALK)
+	sp *= G.outfit_stat("speed", 1.0)
 	var gp := global_position
 	var outside := loc == "out" and G.world != null
 	# pod górę wolniej
@@ -239,7 +240,7 @@ func visibility() -> float:
 		v *= 1.0 - G.rain * 0.18
 		if crouching and G.world.cover_at(gp.x, gp.z):
 			v *= 0.55
-	v *= G.outfit_stat("vis", 1.0)
+	v *= G.outfit_stat("vis", 1.0) * lerpf(1.0, G.outfit_stat("vis_night", 1.0), clampf(G.night, 0.0, 1.0))
 	vis_now = clampf(v, 0.12, 1.5)
 	return vis_now
 

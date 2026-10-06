@@ -244,6 +244,9 @@ func _build_static() -> void:
 		_static({"x": -6.5, "z": z, "rot": PI / 2.0, "pose": "arms", "name": "Ochroniarz",
 			"look": {"model": "sm1", "tall": 1.07, "kind": "jacket", "top": "0b0b0d", "bottom": "0b0b0d", "shoes": "0c0c0e", "bald": true, "build": 1.2, "height": 1.93, "seed": int(z)},
 			"lines": ["Lista zamknięta.", "Nie dzisiaj, kolego.", "Bez awantur pod klubem."]})
+	# sprzedawczyni w „Taniej Odzieży”
+	_static({"loc": "ciuchy", "x": float(D.ROOMS.ciuchy.cx) + float(D.ROOMS.ciuchy.w) * 0.5 - 1.3, "z": -float(D.ROOMS.ciuchy.d) * 0.5 + 0.55, "rot": 0.0, "pose": "arms", "name": "Pani Grażyna",
+		"label": "Pani Grażyna", "look": {"model": "f12", "female": true, "seed": 77}, "range": 3.2, "act": func(): G.main.talk_clothes()})
 	# wspólnik w laboratorium (prolog)
 	_static({"loc": "lab", "x": float(D.ROOMS.lab.cx) + 4.9, "z": -2.2, "rot": PI / 2.0, "pose": "arms", "name": "Siwy", "look": D.SIWY_LOOK,
 		"lines": ["Pakuj torbę i spadamy. Wiktor czeka do szóstej."]})
@@ -965,7 +968,7 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		match c.state:
 			"patrol", "post":
 				if c.sees and mult > 0.0:
-					c.susp += mult * dt * (1.6 if dist < 10.0 else 0.8) * 0.65 * G.outfit_stat("attention", 1.0)
+					c.susp += mult * dt * (1.6 if dist < 10.0 else 0.8) * 0.65
 				else:
 					c.susp = maxf(0.0, c.susp - dt * 0.3)
 				if c.sees:

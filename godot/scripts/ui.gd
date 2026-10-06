@@ -2035,8 +2035,8 @@ func _input(event: InputEvent) -> void:
 			elif act == "phone":
 				close_all()
 				open_phone("sms" if G.unread_total() > 0 else "")
-			elif kc == KEY_1 or kc == KEY_2 or kc == KEY_3:
-				inv.tab = ["inv", "char", "org"][kc - KEY_1]
+			elif kc >= KEY_1 and kc <= KEY_4:
+				inv.tab = ["inv", "char", "wear", "org"][kc - KEY_1]
 				inv.sel = {}
 				inv.render()
 			else:

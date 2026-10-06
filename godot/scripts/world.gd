@@ -2974,6 +2974,7 @@ func _interiors() -> void:
 	Interior.stain(g4, Vector3(c4, 0.9, R4.d * 0.5 - 0.012), Vector3(0, PI, 0), Vector2(2.6, 1.6), Color(0.05, 0.07, 0.05, 0.35))
 	Interior.note(g4, Vector3(c4 + R4.w * 0.5 - 0.01, 1.4, 1.2), -PI / 2.0, "PIWNICA NR 4\nNIE ZASTAWIAĆ ZAWORU", 0.36, 0.22)
 	_lab_room()
+	_clothes_room()
 	for id in ["garage", "basement"]:
 		var fg := Node3D.new()
 		rooms[id].add_child(fg)
@@ -2982,6 +2983,108 @@ func _interiors() -> void:
 		rooms[id].add_child(fb)
 		furn_body[id] = fb
 		inter_dyn[id] = []
+
+
+## „TANIA ODZIEŻ”: lumpeks przy Hutniczej. Wieszaki, kosze „wszystko po 5 zł”, przymierzalnia z lustrem.
+func _clothes_room() -> void:
+	var R: Dictionary = D.ROOMS.ciuchy
+	var cx: float = R.cx
+	var w: float = R.w
+	var d: float = R.d
+	var h: float = R.h
+	var g := _room("ciuchy", "old_wood_floor", "peeling_painted_wall", "d8d2c4", Color(0.92, 0.88, 0.8), 0.6)
+	Interior.baseboards(g, cx, w, d, "7a6a52", 0.1)
+	for lx in [-1.9, 1.9]:
+		Interior.ceiling_lamp(g, Vector3(cx + lx, h, 0.2), "tube", Color(1.0, 0.96, 0.88))
+	_room_light(g, cx - 1.9, 0.2, h, 1.35, Color(1.0, 0.95, 0.85), 8.0)
+	_room_light(g, cx + 1.9, 0.2, h, 1.2, Color(1.0, 0.95, 0.85), 8.0).shadow_enabled = false
+	var steel := Models.mat("8a8f96", 0.35, 0.8)
+	var cloth_cols := ["8a2a2a", "2a4a6a", "3a5a3a", "c9a23a", "1c1c20", "d9d4c8", "6a3a5a", "4a4a52", "b0582c", "2f6a6a", "e8e2d0", "5a4630"]
+	var rng2 := RandomNumberGenerator.new()
+	rng2.seed = 3107
+	# trzy wieszaki z ubraniami
+	for e in [[-2.3, -1.2, 0.0], [0.2, -1.2, 0.0], [-1.0, 1.0, 0.0]]:
+		var rx: float = cx + e[0]
+		var rz: float = e[1]
+		var rl := 2.0
+		for sx in [-1.0, 1.0]:
+			Models.cyl(g, 0.02, 0.02, 1.6, Vector3(rx + sx * rl * 0.5, 0.8, rz), steel, Vector3.ZERO, 6)
+			Models.box(g, Vector3(0.05, 0.03, 0.5), Vector3(rx + sx * rl * 0.5, 0.015, rz), steel, Vector3.ZERO, false)
+		Models.cyl(g, 0.016, 0.016, rl, Vector3(rx, 1.58, rz), steel, Vector3(0, 0, PI / 2.0), 6)
+		var x := -rl * 0.5 + 0.1
+		while x < rl * 0.5 - 0.08:
+			var col: String = cloth_cols[rng2.randi() % cloth_cols.size()]
+			var len := rng2.randf_range(0.55, 1.05)
+			var wd := rng2.randf_range(0.36, 0.48)
+			# wieszak z haczykiem i wiszący ciuch
+			Models.box(g, Vector3(0.012, 0.02, wd), Vector3(rx + x, 1.5, rz), Models.mat("3a3027", 0.7), Vector3.ZERO, false)
+			Models.box(g, Vector3(0.035, len, wd), Vector3(rx + x, 1.49 - len * 0.5, rz), Models.mat(col, 0.95), Vector3(0, rng2.randf_range(-0.12, 0.12), 0))
+			if rng2.randf() < 0.4:
+				Models.box(g, Vector3(0.03, len * 0.75, 0.1), Vector3(rx + x, 1.42 - len * 0.4, rz + wd * 0.5 + 0.04), Models.mat(col, 0.95), Vector3(0.12, 0, 0), false)
+				Models.box(g, Vector3(0.03, len * 0.75, 0.1), Vector3(rx + x, 1.42 - len * 0.4, rz - wd * 0.5 - 0.04), Models.mat(col, 0.95), Vector3(-0.12, 0, 0), false)
+			x += rng2.randf_range(0.07, 0.12)
+		add_col(rx - rl * 0.5 - 0.05, rx + rl * 0.5 + 0.05, rz - 0.3, rz + 0.3, 1.2, true, -1.0)
+		rects.pop_back()
+	# regał ze złożonymi ubraniami pod zachodnią ścianą
+	for sz in [-1.9, -0.7]:
+		_rp(g, "wooden_display_shelves_01", cx - w * 0.5 + 0.26, sz, 0.0, 1.9)
+		for row in range(3):
+			for cell in range(3):
+				var py := 0.04 + row * 0.633
+				var pz: float = sz + (cell - 1) * 0.438
+				for k in range(rng2.randi_range(1, 4)):
+					Models.box(g, Vector3(0.3, 0.07, 0.34), Vector3(cx - w * 0.5 + 0.27, py + 0.035 + k * 0.072, pz), Models.mat(cloth_cols[rng2.randi() % cloth_cols.size()], 0.95), Vector3(0, rng2.randf_range(-0.08, 0.08), 0), false)
+	add_col(cx - w * 0.5, cx - w * 0.5 + 0.5, -2.6, 0.0, 2.0, true, -1.0)
+	rects.pop_back()
+	# kosze „wszystko po 5 zł”
+	for e in [[1.9, 1.5], [2.7, 1.9]]:
+		var bx: float = cx + e[0]
+		Models.box(g, Vector3(0.8, 0.5, 0.6), Vector3(bx, 0.25, e[1]), Models.mat("a88a5e", 0.95))
+		for k in range(9):
+			Models.box(g, Vector3(rng2.randf_range(0.2, 0.4), 0.08, rng2.randf_range(0.2, 0.34)), Vector3(bx + rng2.randf_range(-0.2, 0.2), 0.52 + rng2.randf() * 0.1, e[1] + rng2.randf_range(-0.14, 0.14)), Models.mat(cloth_cols[rng2.randi() % cloth_cols.size()], 0.95), Vector3(rng2.randf_range(-0.3, 0.3), rng2.randf() * 3.0, rng2.randf_range(-0.3, 0.3)), false)
+		add_col(bx - 0.42, bx + 0.42, e[1] - 0.32, e[1] + 0.32, 1.0, true, -1.0)
+		rects.pop_back()
+	Interior.note(g, Vector3(cx + 2.3, 1.25, d * 0.5 - 0.01), PI, "WSZYSTKO Z KOSZA\nPO 5 ZŁ", 0.5, 0.3, "f2e24a")
+	# lada z kasą
+	var lx := cx + w * 0.5 - 1.3
+	Models.box(g, Vector3(1.9, 0.95, 0.6), Vector3(lx, 0.475, -d * 0.5 + 1.25), Props.pbr("old_wood_floor", 0.6, Color(0.62, 0.5, 0.4)))
+	Models.box(g, Vector3(2.0, 0.04, 0.7), Vector3(lx, 0.97, -d * 0.5 + 1.25), Models.mat("3a3027", 0.6))
+	_rp(g, "cashregister_01", lx + 0.5, -d * 0.5 + 1.25, PI, 0.42, 0.99)
+	Interior.mug(g, Vector3(lx - 0.6, 0.99, -d * 0.5 + 1.15), "c85a8a")
+	add_col(lx - 1.0, lx + 1.0, -d * 0.5 + 0.9, -d * 0.5 + 1.6, 1.1, true, -1.0)
+	rects.pop_back()
+	# przymierzalnia w rogu: zasłonka i lustro
+	var bx2 := cx + w * 0.5 - 0.75
+	var bz2 := d * 0.5 - 0.9
+	Models.cyl(g, 0.014, 0.014, 1.4, Vector3(bx2 - 0.02, 2.1, bz2 - 0.85), steel, Vector3(0, 0, PI / 2.0), 6)
+	for k in range(6):
+		Models.box(g, Vector3(0.2, 1.95, 0.03), Vector3(bx2 - 0.62 + k * 0.2, 1.1, bz2 - 0.85 + (0.02 if k % 2 == 0 else -0.02)), Models.mat("7a2a4a", 0.95), Vector3(0, 0.3 if k % 2 == 0 else -0.3, 0))
+	var mirror := StandardMaterial3D.new()
+	mirror.albedo_color = Color(0.62, 0.7, 0.76)
+	mirror.metallic = 0.55
+	mirror.roughness = 0.12
+	mirror.emission_enabled = true
+	mirror.emission = Color(0.5, 0.58, 0.66)
+	mirror.emission_energy_multiplier = 0.22
+	var mz := 1.6
+	Models.box(g, Vector3(0.03, 1.7, 0.7), Vector3(cx - w * 0.5 + 0.03, 1.1, mz), mirror, Vector3.ZERO, false)
+	for e in [[0.0, 0.875, 0.76, 0.05], [0.0, -0.875, 0.76, 0.05]]:
+		Models.box(g, Vector3(0.05, e[3], e[2]), Vector3(cx - w * 0.5 + 0.04, 1.1 + e[1], mz), Models.mat("5a4326", 0.6), Vector3.ZERO, false)
+	for sz2 in [-0.375, 0.375]:
+		Models.box(g, Vector3(0.05, 1.8, 0.05), Vector3(cx - w * 0.5 + 0.04, 1.1, mz + sz2), Models.mat("5a4326", 0.6), Vector3.ZERO, false)
+	inter.append({"loc": "ciuchy", "x": cx - w * 0.5 + 0.1, "z": mz, "y0": 0.3, "y1": 1.9, "r": 0.7, "reach": 2.8, "id": "mirror",
+		"label": func(): return "Lustro — przymierz i kup ubrania", "act": func(): G.ui.open_inventory("", "wear")})
+	# plakaty, okno wystawowe, manekin z kapeluszem
+	Interior.picture(g, Vector3(cx - 1.4, 1.75, -d * 0.5 + 0.01), 0.0, 0.8, "pic_boks")
+	Interior.picture(g, Vector3(cx + 0.2, 1.8, -d * 0.5 + 0.01), 0.0, 0.6, "pic_kalendarz", "5a4326")
+	Interior.note(g, Vector3(cx + 3.2, 1.7, -d * 0.5 + 0.01), 0.0, "ZWROTÓW NIE PRZYJMUJEMY\nPRZYMIERZALNIA ZA ZASŁONKĄ", 0.5, 0.26)
+	var wn: Dictionary = Interior.window(g, Vector3(cx - 2.2, 1.6, d * 0.5), 1.8, 1.3, "n", "sheer", false)
+	g.get_child(g.get_child_count() - 1).rotation.y = PI
+	windows.append(wn)
+	Interior.shoes(g, Vector3(cx + 0.9, 0.0, 2.6), 0.4, "5a3a1a")
+	Interior.shoes(g, Vector3(cx + 1.3, 0.0, 2.7), -0.3, "1c1c20")
+	Interior.shoes(g, Vector3(cx + 0.5, 0.0, 2.75), 0.1, "d8d4c8")
+	Interior.stain(g, Vector3(cx + 1.2, h - 0.012, -1.4), Vector3(PI / 2.0, 0, 0), Vector2(1.5, 1.1), Color(0.3, 0.24, 0.14, 0.25))
 
 
 ## LABORATORIUM W STAREJ HUCIE (prolog): hala z rzędami regałów pod fioletowymi LED-ami,

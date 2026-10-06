@@ -538,6 +538,16 @@ func talk_stasiu() -> void:
 	]})
 
 
+func talk_clothes() -> void:
+	var first := not G.flag("met_grazyna")
+	G.S.flags["met_grazyna"] = true
+	var lines := ["Dzień dobry, kochaniutki. Wszystko po praniu, wszystko z Zachodu.", "Ubranie robi człowieka: w kombinezonie nikt cię nie zaczepi, w kominiarce — wręcz przeciwnie. Przymierzalnia za zasłonką."] if first else [["Co podać, kochaniutki?", "Nowa dostawa w piątek.", "Dla pana zawsze coś się znajdzie."].pick_random()]
+	ui.dialog({"name": "Pani Grażyna", "lines": lines, "choices": [
+		{"label": "Pokaż, co masz na wieszakach", "kind": "go", "act": func(): ui.open_inventory("", "wear")},
+		{"label": "Tylko się rozglądam."},
+	]})
+
+
 func _stasiu_met() -> void:
 	G.S.flags["met_stasiu"] = true
 	G.S.items["woreczki"] = G.item("woreczki") + 10
@@ -1663,6 +1673,13 @@ func _test_ui(what: String) -> void:
 					ui.inv.ask_amount(te, "bag", "stash")
 					ui.inv._ask_set(5.5)
 		"char": ui.open_inventory("", "char")
+		"wear", "wear2", "wear3":
+			G.S.cash = 2500.0
+			G.S.lvl = 7
+			G.S["outfits"] = {"szary": true}
+			ui.open_inventory("", "wear")
+			ui.inv.wear_sel = {"wear": "biegacz", "wear2": "kominiarka", "wear3": "garnitur"}[what]
+			ui.inv.render()
 		"org":
 			_test_order("dominik")
 			ui.open_inventory("", "org")

@@ -103,9 +103,9 @@ static func run(T) -> void:
 		guard += 1
 		await T.frames(1)
 	guard = 0
-	while G.busy and guard < 400:
+	while G.busy and guard < 40:
 		guard += 1
-		await T.frames(1)
+		await T.get_tree().create_timer(0.15).timeout
 	T.ok(pr.tries == 1 and pr.stage == "escape" and Vector2(P.global_position.x - e.x, P.global_position.z - e.y).length() < 0.6 and not a.sees, "złapany wraca pod drzwi i próbuje jeszcze raz")
 
 	# --- za siatką: bieg, potem eksplozje

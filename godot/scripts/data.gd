@@ -51,7 +51,7 @@ const SHOP := [
 	{"id": "woreczki", "name": "Woreczki strunowe (20 szt.)", "price": 12, "n": 20, "lvl": 1, "desc": "Bez nich nie zaporcjujesz towaru. 1 woreczek = 1 g."},
 	{"id": "majeranek", "name": "Majeranek (20 g)", "price": 6, "n": 20, "lvl": 1, "desc": "Przyprawa z półki. Domieszany do marihuany podbija wagę, ale obniża czystość — powstaje mieszanka."},
 	{"id": "cukier", "name": "Cukier puder (20 g)", "price": 5, "n": 20, "lvl": 4, "desc": "Do rozrabiania proszków. Więcej gramów, gorszy towar."},
-	{"id": "nasiona", "name": "Nasiona konopi (1 paczka)", "price": 70, "n": 1, "lvl": 4, "desc": "Paczka na jeden cykl uprawy (namiot albo regał)."},
+	{"id": "nasiona", "name": "Nasiona konopi (1 paczka)", "price": 45, "n": 1, "lvl": 4, "desc": "Paczka na jeden cykl uprawy (namiot albo regał)."},
 	{"id": "nawoz", "name": "Nawóz (1 dawka)", "price": 45, "n": 1, "lvl": 4, "desc": "Plon większy o 25%. Jedna dawka na cykl, dopóki rośliny rosną."},
 	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 800, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Jeden zestaw = jedna synteza przy stole laboratoryjnym."},
 	{"id": "burner", "name": "Telefon na kartę", "price": 420, "n": 1, "lvl": 2, "use": true, "desc": "Nowy numer: śledztwo policji spada o 25."},
@@ -91,7 +91,7 @@ const BULK_SELL_DAY := 40
 ## hours = czas całego cyklu w zwykłym trybie, yield = gramy (dla upraw: na doniczkę), pur = czystość bazowa,
 ## smell = zapach w szczycie, power = zł za dobę, hold = etap kończy się czynnością gracza.
 const RECIPES := {
-	"konopie": {"name": "Konopie", "station": "grow", "product": "dym", "lvl": 4, "input": {"nasiona": 1}, "hours": 30.0, "yield": 9.0, "pur": 56,
+	"konopie": {"name": "Konopie", "station": "grow", "product": "dym", "lvl": 4, "input": {"nasiona": 1}, "hours": 30.0, "yield": 12.0, "pur": 56,
 		"smell": 4.0, "power": 4.0, "wet": true, "water": 4.2,
 		"stages": [{"name": "Sadzonki", "to": 0.2}, {"name": "Wzrost", "to": 0.6}, {"name": "Kwitnienie", "to": 1.0}],
 		"modes": [{"name": "Lampy 18/6", "speed": 1.0, "smell": 1.0, "power": 1.0, "water": 1.0, "pur": 0, "desc": "Zwykły cykl światła."},
@@ -110,10 +110,27 @@ const RECIPES := {
 			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.22, "desc": "Szybko, śmierdząco i z ryzykiem przypalenia."}]},
 }
 const DRY_HOURS := 8.0
-## stroje gracza (sklep z ubraniami). speed = mnożnik prędkości, vis = jak bardzo rzucasz się w oczy patrolom,
-## noise = słyszalność kroków, attention = jak szybko policja nabiera podejrzeń, gdy już Cię widzi.
+## STROJE (sklep „Tania Odzież”). Każdy strój to inna sylwetka i inne zalety:
+## speed = prędkość chodu i biegu, stamina = zapas kondycji, vis = jak bardzo rzucasz się w oczy patrolom (dzień i noc),
+## vis_night = dodatkowy mnożnik po zmroku, noise = słyszalność kroków, attention = jak szybko patrol nabiera podejrzeń,
+## gdy już Cię widzi, witness = ile z tego, co widzą świadkowie, trafia do śledztwa, charm = ile klienci gotowi są zapłacić,
+## cap = dodatkowe (albo brakujące) miejsce w kieszeniach, masked = zamaskowany: patrol reaguje nawet, gdy nic nie niesiesz.
 const OUTFITS := {
-	"dres": {"name": "Stary dres", "model": "m10", "price": 0, "lvl": 1, "desc": "To, w czym uciekłeś. Nikt nie patrzy dwa razy."},
+	"dres": {"name": "Stary dres", "model": "m10", "price": 0, "lvl": 1, "desc": "To, w czym uciekłeś z huty. Nic nie daje, nic nie zabiera."},
+	"biegacz": {"name": "Strój biegacza", "model": "ms4", "price": 320, "lvl": 2, "speed": 1.1, "stamina": 1.3, "noise": 0.8, "vis": 1.12, "cap": -5,
+		"desc": "Lekko i szybko. Jasny, z gołymi rękami — widać Cię z daleka, a kieszeni prawie brak."},
+	"szary": {"name": "Szary człowiek", "model": "m05", "price": 450, "lvl": 2, "attention": 0.75, "vis": 0.92,
+		"desc": "Beżowa kurtka, w której giniesz w tłumie. Patrol dłużej się zastanawia, zanim uzna Cię za podejrzanego."},
+	"robotnik": {"name": "Kombinezon roboczy", "model": "mc2", "price": 600, "lvl": 3, "attention": 0.6, "vis": 1.2, "cap": 10, "speed": 0.96,
+		"desc": "Robotnika w kasku nikt nie zaczepia, a w kombinezonie zmieści się więcej. Za to widać Cię z daleka i biega się ciężej."},
+	"czarny": {"name": "Czarna kurtka", "model": "m20", "price": 700, "lvl": 3, "vis_night": 0.7, "attention": 1.12,
+		"desc": "Po zmroku prawie Cię nie widać. W dzień wyglądasz, jakbyś coś kombinował."},
+	"kominiarka": {"name": "Kominiarka i rękawiczki", "model": "m20", "mask": true, "masked": true, "price": 1200, "lvl": 5, "vis": 0.92, "vis_night": 0.6, "witness": 0.3, "attention": 2.0, "charm": 0.95,
+		"desc": "Nikt Cię nie rozpozna: świadkowie i śledztwo prawie nic na Ciebie nie mają. Ale zamaskowany człowiek to dla patrolu sygnał alarmowy — reaguje od razu, nawet gdy nic nie niesiesz."},
+	"ochrona": {"name": "Mundur ochroniarza", "model": "sm1", "price": 1800, "lvl": 6, "attention": 0.5, "speed": 0.95, "charm": 0.95,
+		"desc": "Patrole biorą Cię za swojego. Klienci robią się nerwowi i płacą mniej, a w służbowych butach daleko nie pobiegniesz."},
+	"garnitur": {"name": "Garnitur", "model": "mb4", "price": 2800, "lvl": 7, "attention": 0.7, "charm": 1.06, "speed": 0.94,
+		"desc": "Klienci płacą więcej, policja rzadziej zaczepia eleganckiego pana. W lakierkach się nie ucieka."},
 }
 ## czym rozrabia się dany towar
 const FILLER := {"dym": "majeranek", "szron": "cukier", "krysztal": "cukier", "snieg": "cukier"}
@@ -258,6 +275,7 @@ const ROOMS := {
 	"garage": {"cx": 1200.0, "w": 6.0, "d": 9.0, "h": 2.7, "name": "Garaż nr 14"},
 	"basement": {"cx": 1300.0, "w": 9.0, "d": 10.0, "h": 2.4, "name": "Piwnica"},
 	"lab": {"cx": 1400.0, "w": 14.0, "d": 11.0, "h": 3.6, "name": "Laboratorium w Starej Hucie"},
+	"ciuchy": {"cx": 1500.0, "w": 8.0, "d": 6.4, "h": 2.9, "name": "Tania Odzież"},
 }
 ## drzwi zewnętrzne: punkt przed drzwiami i kierunek „na zewnątrz” (dz)
 var DOORS := {
@@ -265,6 +283,7 @@ var DOORS := {
 	"shop": {"x": -6.0, "z": 11.4, "dz": 1.0, "title": "SKLEP U STASIA", "color": "3ddc6e"},
 	"garage": {"x": 65.0, "z": 94.6, "dz": -1.0, "title": "GARAŻ 14", "color": "9aa3ab", "prop": "garaz"},
 	"basement": {"x": -75.0, "z": -11.4, "dz": -1.0, "title": "PIWNICA", "color": "8a7a66", "prop": "piwnica"},
+	"ciuchy": {"x": 42.0, "z": 11.4, "dz": 1.0, "title": "TANIA ODZIEŻ", "color": "e85ab8"},
 	# tylne drzwi laboratorium w Starej Hucie: otwarte tylko w prologu, potem zaplombowane
 	"lab": {"x": 182.0, "z": -113.4, "dz": -1.0, "title": "", "color": "8a7a66", "sealed": true},
 }
@@ -287,8 +306,8 @@ const FURNITURE := [
 	{"id": "stol", "name": "Stół roboczy z wagą", "price": 480, "model": "painted_wooden_table", "h": 0.86, "size": [1.9, 0.9], "func": "pack", "lvl": 1, "desc": "Porcjowanie i mieszanie towaru na miejscu."},
 	{"id": "regal", "name": "Regał magazynowy", "price": 340, "model": "steel_frame_shelves_01", "h": 1.95, "size": [1.05, 0.5], "func": "stash", "cap": 150, "lvl": 1, "desc": "+150 miejsc w skrytce w tej kryjówce."},
 	{"id": "skrzynia", "name": "Skrzynia", "price": 120, "model": "wooden_crate_02", "h": 0.5, "size": [0.6, 1.2], "func": "stash", "cap": 50, "lvl": 1, "desc": "+50 miejsc w skrytce."},
-	{"id": "namiot", "name": "Namiot uprawowy", "price": 900, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "pots": 2, "lvl": 4, "desc": "Dwie doniczki pod lampą. Na początek: ok. 18 g marihuany z jednego cyklu."},
-	{"id": "regal_led", "name": "Regał uprawowy LED", "price": 2200, "model": "", "h": 2.1, "size": [1.8, 0.8], "func": "grow", "pots": 4, "lvl": 6, "desc": "Stalowa rama, cztery doniczki i fioletowe LED-y. Ok. 36 g z cyklu. Ustawiaj rzędami."},
+	{"id": "namiot", "name": "Namiot uprawowy", "price": 700, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "pots": 2, "lvl": 4, "desc": "Dwie doniczki pod lampą. Na początek: ok. 24 g marihuany z jednego cyklu."},
+	{"id": "regal_led", "name": "Regał uprawowy LED", "price": 2200, "model": "", "h": 2.1, "size": [1.8, 0.8], "func": "grow", "pots": 4, "lvl": 6, "desc": "Stalowa rama, cztery doniczki i fioletowe LED-y. Ok. 48 g z cyklu. Ustawiaj rzędami."},
 	{"id": "suszarka", "name": "Suszarka siatkowa", "price": 260, "model": "", "h": 1.9, "size": [0.9, 0.9], "func": "dry", "cap": 90, "lvl": 4, "desc": "Świeży zbiór trzeba wysuszyć (8 godzin), zanim trafi na wagę. Mieści 90 g."},
 	{"id": "zbiornik", "name": "Zbiornik z pompą", "price": 700, "model": "", "h": 1.15, "size": [0.75, 0.75], "func": "tank", "lvl": 6, "desc": "Sam podlewa wszystkie uprawy w tej kryjówce. Nie musisz pamiętać o wodzie."},
 	{"id": "filtr", "name": "Filtr węglowy", "price": 700, "model": "", "h": 1.7, "size": [0.6, 0.6], "func": "filter", "lvl": 4, "desc": "Zapach z tej kryjówki spada o 60%. Mniej zapachu = mniejsze ryzyko nalotu."},

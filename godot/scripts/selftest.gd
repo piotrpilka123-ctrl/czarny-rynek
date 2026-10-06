@@ -571,6 +571,9 @@ func run() -> void:
 	ok(sj != null and absf(float(sj.prog) - 0.37) < 0.001 and String(sj.r) == "konopie" and int(sj.hold) == -1, "uprawa w toku zapisuje się razem z postępem")
 	G.Prod.discard("garage", save_tent)
 
+	# --- stroje: sklep z ubraniami, cechy, kominiarka
+	await load("res://scripts/outfit_test.gd").run(self)
+
 	# --- Giełda: dostawcy, dostawy, okazje, skup
 	await load("res://scripts/market_test.gd").run(self)
 
@@ -837,8 +840,9 @@ func _sim_production(skill: float) -> void:
 	for it in S.hide[room].items:
 		have[String(it.f)] = int(have.get(String(it.f), 0)) + 1
 	# zakupy: najpierw regał na towar, potem uprawa, suszarka, filtr, kolejne regały, na końcu chemia
-	var plan := [["regal", 2.3, -3.9, 0, 1, 200.0], ["namiot", 2.2, -1.9, 0, 4, 300.0], ["suszarka", -2.4, -3.8, 0, 4, 200.0], ["filtr", -2.5, 3.6, 0, 4, 600.0],
-		["regal_led", -1.9, -2.3, 0, 6, 900.0], ["zbiornik", -2.5, 2.5, 0, 6, 700.0], ["lab", 2.5, 1.2, 1, 5, 1500.0], ["regal_led", -1.9, -0.9, 0, 6, 2000.0], ["regal_led", -1.9, 0.5, 0, 7, 3000.0]]
+	var plan := [["regal", 2.3, -3.9, 0, 1, 200.0], ["namiot", 2.2, -1.9, 0, 4, 300.0], ["suszarka", -2.4, -3.8, 0, 4, 200.0],
+		["regal_led", -1.9, -2.3, 0, 6, 900.0], ["filtr", -2.5, 3.6, 0, 4, 900.0], ["regal_led", -1.9, -0.9, 0, 6, 1500.0], ["zbiornik", -2.5, 2.5, 0, 6, 900.0],
+		["lab", 2.5, 1.2, 1, 5, 2000.0], ["regal_led", -1.9, 0.5, 0, 7, 3000.0]]
 	var seen := {}
 	for e in plan:
 		var fid: String = e[0]

@@ -111,7 +111,7 @@ func new_state() -> Dictionary:
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
-		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "special": null, "sold_bulk": {},
+		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "special": null, "sold_bulk": {}, "outfit": "dres", "outfits": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0},
 		"pos": null, "mom_day": 0,
@@ -205,10 +205,88 @@ func add_minutes(m: float) -> void:
 			on_day()
 
 
-## cecha aktualnego stroju (sklep z ubraniami): "speed", "vis", "noise", "attention", "stamina"
+## ================================================================ stroje
+func outfit() -> String:
+	var o := String(S.get("outfit", "dres"))
+	return o if D.OUTFITS.has(o) else "dres"
+
+
+## cecha aktualnego stroju: "speed", "stamina", "vis", "vis_night", "noise", "attention", "witness", "charm", "cap"
 func outfit_stat(key: String, def := 1.0) -> float:
-	var o: Dictionary = D.OUTFITS.get(String(S.get("outfit", "dres")), {})
-	return float(o.get(key, def))
+	return float(D.OUTFITS[outfit()].get(key, def))
+
+
+func outfit_masked() -> bool:
+	return bool(D.OUTFITS[outfit()].get("masked", false))
+
+
+func outfit_owned(id: String) -> bool:
+	return id == "dres" or bool(S.get("outfits", {}).get(id, false))
+
+
+## czy tu można się przebrać (sklep z ubraniami albo dowolna kryjówka)
+func can_change_here() -> bool:
+	if player == null:
+		return true
+	var loc: String = player.loc
+	return loc == "ciuchy" or loc == "safe" or ((loc == "garage" or loc == "basement") and room_owned(loc))
+
+
+func outfit_buy(id: String) -> bool:
+	if not D.OUTFITS.has(id) or outfit_owned(id):
+		return false
+	var o: Dictionary = D.OUTFITS[id]
+	if S.cash < float(o.price) or int(S.lvl) < int(o.lvl):
+		notify("Nie stać Cię albo to jeszcze nie ten poziom.", "warn")
+		return false
+	S.cash -= float(o.price)
+	S.stats.spent = float(S.stats.spent) + float(o.price)
+	if not S.has("outfits"):
+		S["outfits"] = {}
+	S.outfits[id] = true
+	Sfx.play("cash")
+	outfit_wear(id)
+	return true
+
+
+func outfit_wear(id: String) -> bool:
+	if not outfit_owned(id) or not D.OUTFITS.has(id):
+		return false
+	S["outfit"] = id
+	# zmiana kieszeni może sprawić, że coś się nie mieści — nic nie znika, po prostu trzeba odłożyć
+	if player != null:
+		player.stamina = minf(player.stamina, player.max_stamina())
+	notify("Masz na sobie: %s." % String(D.OUTFITS[id].name), "good")
+	Sfx.play("pickup")
+	return true
+
+
+## opis zalet i wad stroju jako lista {text, good}
+func outfit_traits(id: String) -> Array:
+	var o: Dictionary = D.OUTFITS[id]
+	var out := []
+	var pct := func(v: float) -> String: return "%+d%%" % int(round((v - 1.0) * 100.0))
+	if o.has("speed"):
+		out.append({"text": "szybkość " + pct.call(float(o.speed)), "good": float(o.speed) > 1.0})
+	if o.has("stamina"):
+		out.append({"text": "kondycja " + pct.call(float(o.stamina)), "good": float(o.stamina) > 1.0})
+	if o.has("noise"):
+		out.append({"text": "hałas kroków " + pct.call(float(o.noise)), "good": float(o.noise) < 1.0})
+	if o.has("vis"):
+		out.append({"text": "widoczność " + pct.call(float(o.vis)), "good": float(o.vis) < 1.0})
+	if o.has("vis_night"):
+		out.append({"text": "widoczność nocą " + pct.call(float(o.vis_night)), "good": float(o.vis_night) < 1.0})
+	if o.has("attention"):
+		out.append({"text": "podejrzliwość patroli " + pct.call(float(o.attention)), "good": float(o.attention) < 1.0})
+	if o.has("witness"):
+		out.append({"text": "świadkowie i śledztwo " + pct.call(float(o.witness)), "good": float(o.witness) < 1.0})
+	if o.has("charm"):
+		out.append({"text": "ceny u klientów " + pct.call(float(o.charm)), "good": float(o.charm) > 1.0})
+	if o.has("cap"):
+		out.append({"text": "kieszenie %+d" % int(o.cap), "good": int(o.cap) > 0})
+	if o.get("masked", false):
+		out.append({"text": "zamaskowany: patrol reaguje zawsze", "good": false})
+	return out
 
 
 # ================================================================ towar i ekwipunek
@@ -459,11 +537,12 @@ func carry_value() -> float:
 
 
 func capacity() -> int:
+	var extra := int(outfit_stat("cap", 0.0))
 	if upg("plecak2"):
-		return 90
+		return 90 + extra
 	if upg("plecak1"):
-		return 40
-	return D.CAP_BASE
+		return 40 + extra
+	return maxi(5, D.CAP_BASE + extra)
 
 
 func upg(id: String) -> bool:
@@ -656,6 +735,9 @@ func add_heat(n: float, local := true) -> void:
 
 
 func add_invest(n: float) -> void:
+	# w kominiarce nikt Cię nie rozpozna: z tego, co widzieli świadkowie, do akt trafia tylko część
+	if n > 0.0:
+		n *= outfit_stat("witness", 1.0)
 	S.invest = clampf(S.invest + n, 0.0, 100.0)
 
 
@@ -681,7 +763,10 @@ func compute_susp() -> float:
 		m = maxf(m, (0.28 + eh / 220.0) * (0.65 if has_skill("duch") else 1.0))
 	if has_skill("cichy"):
 		m *= 0.8
-	return m
+	# zamaskowany człowiek na ulicy to podejrzany z definicji — nawet z pustymi kieszeniami
+	if outfit_masked():
+		m = maxf(m, 0.55)
+	return m * outfit_stat("attention", 1.0)
 
 
 func on_chase_start() -> void:
@@ -970,6 +1055,7 @@ func max_price(def: Dictionary, st: Dictionary, p: String, pur, g: int, o := {})
 	m *= 1.0 - minf(0.12, (g - 1) * 0.008)
 	if has_skill("twarda"):
 		m *= 1.06
+	m *= outfit_stat("charm", 1.0)
 	if o.has("mood"):
 		m *= 0.94 + float(o.mood) / 100.0 * 0.12
 	return m * float(o.get("noise", 1.0)) * float(o.get("boost", 1.0))

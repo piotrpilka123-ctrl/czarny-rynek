@@ -120,12 +120,13 @@ static func run(T) -> void:
 	T.ok(M.bulk_buyer().id == "wiktor" and M.bulk_block(store, "dym", 70, 10.0).contains("od") and M.bulk_block(store, "dym", 67, 60.0).contains("Rozrobionego"), "skup: minimum 20 g, rozrobionego nie biorą")
 	var pay: float = M.bulk_sell(store, "dym", 70, 100.0)
 	var street: float = G.market_price("dym", 70) * 100.0
-	T.ok(pay > street * 0.35 and pay < street * 0.55 and S.cash == pay and absf(float(store.bulk.dym["70"]) - 20.0) < 0.01, "skup u Wiktora: 100 g za %d zł (ulica dałaby %d zł)" % [int(pay), int(street)])
+	T.ok(pay > street * 0.3 and pay < street * 0.5 and S.cash == pay and absf(float(store.bulk.dym["70"]) - 20.0) < 0.01, "skup u Wiktora: 100 g za %d zł (ulica dałaby %d zł)" % [int(pay), int(street)])
 	T.ok(M.bulk_left_today() == D.BULK_SELL_DAY * 4 - 100 and M.bulk_block(store, "dym", 70, 20.0) == "", "dzienny limit skupu maleje (zostało %d g)" % M.bulk_left_today())
 	G.add_bulk(store, "dym", 70, 200.0)
 	T.ok(M.bulk_block(store, "dym", 70, 100.0).contains("limit"), "ponad dzienny limit skup nie weźmie")
 	S.lvl = 6
-	T.ok(M.bulk_buyer().id == "port" and float(M.bulk_buyer().rate) > 0.49, "od 6. poziomu skupuje Port — lepiej płaci")
+	var rate_w: float = D.BULK_SELL - 0.08
+	T.ok(M.bulk_buyer().id == "port" and float(M.bulk_buyer().rate) > rate_w + 0.05, "od 6. poziomu skupuje Port — lepiej płaci (%d%% zamiast %d%% ceny ulicznej)" % [int(float(M.bulk_buyer().rate) * 100.0), int(rate_w * 100.0)])
 	# stare wejście (Hurt) dalej działa: zwykłe = Wiktor, czyste = Chemik
 	S.cash = 3000.0
 	T.ok(G.order_goods("dym", 5, false, true) and String(S.drops[0].vendor) == "wiktor", "stare zamówienie „standard” idzie do Wiktora")

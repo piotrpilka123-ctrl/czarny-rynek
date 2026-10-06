@@ -639,7 +639,7 @@ static func make(o: Dictionary = {}) -> Dictionary:
 ## postać z gotowego, realistycznego modelu (people.gd); animacje wspólne z resztą gry
 static func _make_person(o: Dictionary, rng: RandomNumberGenerator, female: bool) -> Dictionary:
 	var model := String(o.model)
-	var p: Dictionary = People.instance(model)
+	var p: Dictionary = People.instance(model, String(o.get("face", "")))
 	var inst: Node3D = p.model
 	var skel: Skeleton3D = p.skel
 	female = People.is_female(model)
@@ -660,7 +660,65 @@ static func _make_person(o: Dictionary, rng: RandomNumberGenerator, female: bool
 		"walk": o.get("walk", pick_walk(rng, female, kind_name)), "idle_t": 0.0, "person": true}
 	play(rig, "Idle")
 	ap.seek(rng.randf() * 3.0, true)
+	if o.get("mask", false):
+		_balaclava(skel)
 	return rig
+
+
+## kominiarka: czarna czapa na całą głowę ze szparą na oczy (przypięta do kości głowy)
+static func _balaclava(skel: Skeleton3D) -> void:
+	if skel.find_bone("Bip01 Head") < 0:
+		return
+	var ba := BoneAttachment3D.new()
+	ba.bone_name = "Bip01 Head"
+	skel.add_child(ba)
+	var cloth := StandardMaterial3D.new()
+	cloth.albedo_color = Color(0.04, 0.04, 0.05)
+	cloth.roughness = 0.95
+	# kość szkieletu Biped: oś X w górę, Y do przodu, Z w bok
+	var m := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.118
+	sm.height = 0.236
+	sm.radial_segments = 16
+	sm.rings = 10
+	m.mesh = sm
+	m.material_override = cloth
+	m.scale = Vector3(1.0, 1.24, 1.08)
+	m.rotation = Vector3(0, 0, PI / 2.0)
+	m.position = Vector3(0.095, 0.012, 0.0)
+	ba.add_child(m)
+	var neck := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.075
+	cm.bottom_radius = 0.085
+	cm.height = 0.12
+	neck.mesh = cm
+	neck.material_override = cloth
+	neck.rotation = Vector3(0, 0, PI / 2.0)
+	neck.position = Vector3(-0.02, 0.0, 0.0)
+	ba.add_child(neck)
+	var slit := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.032, 0.03, 0.125)
+	slit.mesh = bm
+	var skin := StandardMaterial3D.new()
+	skin.albedo_color = Color(0.72, 0.56, 0.46)
+	skin.roughness = 0.7
+	slit.material_override = skin
+	slit.position = Vector3(0.105, 0.112, 0.0)
+	ba.add_child(slit)
+	for sz in [-0.03, 0.03]:
+		var eye := MeshInstance3D.new()
+		var em := SphereMesh.new()
+		em.radius = 0.011
+		em.height = 0.022
+		eye.mesh = em
+		var emat := StandardMaterial3D.new()
+		emat.albedo_color = Color(0.05, 0.05, 0.06)
+		eye.material_override = emat
+		eye.position = Vector3(0.106, 0.126, sz)
+		ba.add_child(eye)
 
 
 static func play(rig: Dictionary, anim: String, speed := 1.0, blend := -1.0) -> void:
