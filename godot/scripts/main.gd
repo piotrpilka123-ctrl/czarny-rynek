@@ -71,7 +71,7 @@ func _ready() -> void:
 		args[kv[0]] = kv[1] if kv.size() > 1 else "1"
 	Props.shadow_proxy_on = not args.has("noproxy")
 	G.main = self
-	G.test_mode = args.has("shot") or args.has("test") or args.has("rec") or args.has("tour") or args.has("trailer")
+	G.test_mode = args.has("shot") or args.has("test") or args.has("rec") or args.has("recklub") or args.has("tour") or args.has("trailer")
 	if G.test_mode or args.has("mute"):
 		Sfx.set_muted(true)
 	if G.test_mode:
@@ -188,6 +188,8 @@ func _ready() -> void:
 		_shot()
 	if args.has("rec"):
 		_record()
+	if args.has("recklub"):
+		_record_klub()
 	if args.has("test"):
 		var t: Node = load("res://scripts/selftest.gd").new()
 		t.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -2554,6 +2556,90 @@ func _shot() -> void:
 
 
 ## nagranie pokazu telefonu jako sekwencji klatek PNG (uruchamiać z --fixed-fps 30)
+## Nagranie klatek do pokazowego GIF-a z klubu Neon: wejście nocą, kontrola, parkiet, bar, sprzedaż.
+## Uruchamiać z --fixed-fps 30; klatki (co druga) trafiają do folderu z --recklub=…, z numerem ujęcia w nazwie.
+func _record_klub() -> void:
+	var dir := String(args.recklub)
+	DirAccess.make_dir_recursive_absolute(dir)
+	for i in range(40):
+		await get_tree().process_frame
+	G.S.t = 22.6 * 60.0
+	G.S.lvl = 6
+	G.S.cash = 1840.0
+	G.S.flags["hurt_on"] = true
+	G.add_pack(G.S.inv, "szron", 82, 6)
+	G.add_pack(G.S.inv, "snieg", 88, 4)
+	var R: Dictionary = D.ROOMS.club
+	var cx: float = R.cx
+	var fx := cx - 2.2
+	var door: Vector3 = world.club_door
+	var n := 0
+	var shot := 0
+	# [ile klatek, przygotowanie, ruch kamery(k 0..1)]
+	var plan := [
+		{"len": 84, "setup": func():
+			teleport("out", Vector3(door.x + 7.0, 0.0, door.z + 0.6), PI / 2.0),
+			"cam": func(k: float):
+				var e := k * k * (3.0 - 2.0 * k)
+				cine_cam(Vector3(door.x + 11.0 - e * 6.2, 1.5 + e * 0.25, door.z + 1.9 - e * 1.7), Vector3(door.x - 0.8, 2.1, door.z), 50.0)},
+		{"len": 66, "setup": func():
+			cine_off()
+			teleport("out", Vector3(door.x + 2.9, 0.0, door.z + 0.1), PI / 2.0)
+			player.pitch = 0.04
+			club_door(),
+			"cam": func(_k: float): pass},
+		{"len": 60, "setup": func():
+			ui.close_all()
+			ui.dialog({"name": "Ochroniarz", "lines": ["A to co? Amfetamina. Z tym nie wejdziesz. Zostaw to gdzieś i wróć — albo nie wracaj."]})
+			G.notify("Wpadka przy kontroli (1/3 tej nocy).", "bad"),
+			"cam": func(_k: float): pass},
+		{"len": 110, "setup": func():
+			ui.close_all()
+			teleport("club", Vector3(cx, 0.0, 4.4), 0.0),
+			"cam": func(k: float):
+				var a := -0.5 + k * 1.5
+				cine_cam(Vector3(fx + sin(a) * 6.2, 2.5 - k * 0.5, -1.2 + cos(a) * 5.6), Vector3(fx, 1.1, -1.4), 58.0)},
+		{"len": 80, "setup": func(): pass,
+			"cam": func(k: float):
+				var a := 2.4 + k * 1.1
+				cine_cam(Vector3(fx + sin(a) * 3.3, 0.9 + k * 0.5, -1.2 + cos(a) * 3.0), Vector3(fx, 1.45, -1.2), 66.0)},
+		{"len": 66, "setup": func():
+			cine_off()
+			teleport("club", Vector3(cx + 4.0, 0.0, -0.9), -PI / 2.0)
+			player.pitch = 0.02
+			club_bar(),
+			"cam": func(_k: float): pass},
+		{"len": 40, "setup": func():
+			ui.close_all()
+			teleport("club", Vector3(fx + 0.6, 0.0, 1.9), 0.25)
+			for st in npcs.statics:
+				if st.loc == "club" and st.has("want"):
+					st["want"] = "szron"
+					club_buyer(st)
+					break,
+			"cam": func(_k: float): pass},
+		{"len": 84, "setup": func():
+			for k in range(3):
+				if ui.mode == "dialog":
+					ui.advance(),
+			"cam": func(_k: float): pass},
+	]
+	for sh in plan:
+		(sh.setup as Callable).call()
+		for i in range(int(sh.len)):
+			(sh.cam as Callable).call(float(i) / maxf(1.0, float(int(sh.len) - 1)))
+			await get_tree().process_frame
+			if i >= 6 and i % 2 == 0:
+				await RenderingServer.frame_post_draw
+				var img := get_viewport().get_texture().get_image()
+				img.resize(640, int(640.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
+				img.save_jpg("%s/s%d_%04d.jpg" % [dir, shot, n], 0.9)
+				n += 1
+		shot += 1
+	print("RECKLUB ", n, " klatek")
+	get_tree().quit()
+
+
 func _record() -> void:
 	var dir := String(args.rec)
 	DirAccess.make_dir_recursive_absolute(dir)

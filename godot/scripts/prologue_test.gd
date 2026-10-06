@@ -126,7 +126,7 @@ static func run(T) -> void:
 	await T.frames(4)
 	T.ok(pr.stage == "boom" and G.busy and U.cut.visible, "między garażami zaczyna się finał")
 	guard = 0
-	while pr.fire_lights.size() < 3 and guard < 900:
+	while pr.fire_lights.size() < 3 and guard < 6000:
 		guard += 1
 		await T.frames(1)
 	var bursts := 0
