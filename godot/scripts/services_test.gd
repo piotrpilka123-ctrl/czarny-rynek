@@ -294,6 +294,32 @@ static func run(T) -> void:
 	T.ok(s_hi - s_lo > 0.7 and absf(angle_difference(b_lo, b_hi)) > (s_hi - s_lo) * 0.6, "patrol rozgląda się z latarką: barki %d°, snop %d°" % [int(rad_to_deg(s_hi - s_lo)), int(rad_to_deg(absf(angle_difference(b_lo, b_hi))))])
 	N.remove_cop(cp)
 	G.ui.close_all()
+	# --- otwarte okna nie zatrzymują świata: telefon, rozmowa; staje tylko menu pauzy
+	G.arresting = false
+	var t_a := float(S.t)
+	G.ui.open_phone("")
+	await T.frames(20)
+	T.ok(not M.get_tree().paused and float(S.t) > t_a and G.ui.mode == "phone", "telefon nie zatrzymuje czasu (+%.2f min)" % (float(S.t) - t_a))
+	G.ui.dialog({"name": "Test", "lines": ["Raz.", "Dwa."]})
+	var t_b := float(S.t)
+	await T.frames(20)
+	T.ok(not M.get_tree().paused and float(S.t) > t_b and G.ui.mode == "dialog", "rozmowa nie zatrzymuje czasu")
+	G.ui.close_all()
+	G.ui.show_pause()
+	var t_c := float(S.t)
+	await T.frames(10)
+	T.ok(M.get_tree().paused and float(S.t) == t_c, "menu pauzy dalej zatrzymuje grę")
+	G.ui.close_all()
+	T.ok(not M.get_tree().paused, "po zamknięciu menu gra rusza")
+	G.ui.open_phone("")
+	G.arrest(null)
+	T.ok(G.ui.mode == "dialog" and not G.ui.phone.visible, "patrol przerywa telefon: okno znika i zaczyna się kontrola")
+	G.ui.close_all()
+	G.arresting = false
+	var o_t := {"id": 9991, "cust": "dominik", "status": "accepted", "deadline": float(S.t) - 1.0, "respond_by": float(S.t) - 1.0}
+	G.ui.deal = {"ctx": {"order": o_t}, "over": false}
+	T.ok(G.order_in_talk(o_t) and not G.order_in_talk({"id": 5}), "zamówienie, o które trwa rozmowa, nie przepada w jej trakcie")
+	G.ui.deal = {}
 	G.S = keep
 	M.teleport(back_loc, back_pos, 0.0)
 	await T.frames(2)

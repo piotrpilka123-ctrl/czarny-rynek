@@ -1468,6 +1468,14 @@ func _tick(dt: float) -> void:
 	nav_t -= dt
 	if nav_force or nav_t <= 0.0:
 		refresh_nav()
+	if ui.is_open():
+		# otwarte okno: czas, ludzie i patrole idą dalej, ale nie celujemy i niczego nie przytrzymujemy
+		hold_inter = null
+		cur_inter = null
+		aim_hints.clear()
+		ui.set_prompt("")
+		ui.set_aim(false)
+		return
 	if build_active():
 		_build_tick()
 		ui.set_prompt("")

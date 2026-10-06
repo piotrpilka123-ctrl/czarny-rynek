@@ -183,14 +183,19 @@ func spawn_cop(at_station: bool) -> Dictionary:
 		torch = SpotLight3D.new()
 		torch.position = Vector3(0.18, 1.32, 0.28)
 		torch.rotation = Vector3(0.2, PI, 0.0)
-	torch.spot_range = TORCH_RANGE + 3.0
+	# światło słabnie z odległością jak prawdziwe (mocno przy latarce, resztka na końcu zasięgu), brzeg plamy jest miękki
+	torch.spot_range = TORCH_RANGE + 7.0
 	torch.spot_angle = rad_to_deg(TORCH_ANG)
-	torch.spot_angle_attenuation = 0.6
-	torch.spot_attenuation = 0.8
-	torch.light_color = Color(0.92, 0.96, 1.0)
-	torch.light_energy = 6.0
-	torch.light_volumetric_fog_energy = 2.5
+	torch.spot_angle_attenuation = 0.85
+	torch.spot_attenuation = 1.25
+	torch.light_color = Color(0.9, 0.95, 1.0)
+	torch.light_energy = 11.0
+	torch.light_specular = 0.6
+	torch.light_volumetric_fog_energy = 3.0
 	torch.shadow_enabled = false
+	torch.shadow_bias = 0.06
+	torch.shadow_blur = 1.4
+	Chars.torch_fx(torch, TORCH_ANG, TORCH_RANGE + 7.0)
 	torch.distance_fade_enabled = true
 	torch.distance_fade_begin = 60.0
 	torch.distance_fade_length = 15.0
@@ -968,7 +973,9 @@ func update(dt: float) -> void:
 		var sp := 0.0
 		var pose := ""
 		if n.state == "talk":
-			n.talk_t -= dt
+			# dopóki okno rozmowy jest otwarte, rozmówca stoi i słucha (czas już się nie zatrzymuje)
+			if not G.ui.is_open():
+				n.talk_t -= dt
 			if n.talk_t <= 0.0:
 				n.state = "walk"
 			n.node.rotation.y += _ang_diff(atan2(pp.x - n.x, pp.z - n.z), n.node.rotation.y) * minf(1.0, dt * 6.0)
@@ -1077,12 +1084,15 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		# w przerywniku patrolem steruje scena (prolog: odrzut przy wybuchu)
 		if c.get("scripted", false):
 			c.torch.visible = torch_on
+			c.torch.shadow_enabled = true
 			_scan(c, dt, 0.0)
 			continue
 		var dx: float = pp.x - c.x
 		var dz: float = pp.z - c.z
 		var dist := sqrt(dx * dx + dz * dz)
 		c.torch.visible = torch_on and dist < 95.0
+		# z bliska snop rzuca cienie (i dopiero wtedy działa plama z jasnym środkiem); dalekim patrolom szkoda na to mocy
+		c.torch.shadow_enabled = dist < 32.0
 		# przeczesuje teren: stojąc rozgląda się szeroko, idąc omiata drogę przed sobą; w pościgu patrzy prosto
 		var amp := 0.0
 		if float(c.hear_t) <= 0.0:

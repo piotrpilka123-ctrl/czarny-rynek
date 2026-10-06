@@ -16,6 +16,7 @@ Kod gry i scenariusz: Piotr Piłka (z pomocą Claude). Poniższe zasoby pochodz�
 | Muzyka w radiu: „Funky Disco Beats to Boogie/Woogie to” | Fupi — opengameart.org | CC0 1.0 |
 | Muzyka w prologu: „Technomania101”; w zapasie „Party Sector” | Fupi; Joth — opengameart.org | CC0 1.0 |
 | Odgłosy imprezy w prologu i wibracja telefonu (okrzyki, śmiech, gwar, śpiew, wciąganie, torsje) | Joseph Sardin i inni — bigsoundbank.com | CC0 1.0 |
+| Długie wciągnięcie nosem w prologu (`sfx/party/wciagniecie.wav`, przerobione z „Sniffing”) | spookymodem — https://opengameart.org/content/sniffing | CC-BY 3.0 |
 | Ikony interfejsu | Lucide — lucide.dev | ISC |
 | Czcionki: Barlow, Barlow Condensed, Bebas Neue, Oswald, Sedgwick Ave Display, Rubik Spray Paint | Google Fonts | SIL Open Font License 1.1 |
 | Czcionka: Permanent Marker | Google Fonts | Apache License 2.0 |

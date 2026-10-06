@@ -139,6 +139,8 @@ func start() -> void:
 		_finish()
 		return
 	M.ui.cut_title("STARA HUTA  •  04:47", "OSTATNIA PARTIA PRZED ŚWITEM")
+	# muzyka laboratorium wchodzi już na planszy z tytułem — zanim obraz się rozjaśni
+	Sfx.score("napiecie", 1.0, 1.6, 0.0)
 	await _wait(3.0)
 	if _jumped:
 		return
@@ -154,7 +156,6 @@ func start() -> void:
 	stage = "lab"
 	t = 0.0
 	M.nav_force = true
-	Sfx.score("napiecie", 1.5, 3.0, 0.0)
 	M.ui.dialog({"name": "Siwy", "lines": [
 		"No, wreszcie. Za kwadrans piąta, Kuba. Trzy dni cię nie było.",
 		"Pół kilo stoi na stole — najczystszy śnieg, jaki z tej huty wyszedł. Wiktor zapłacił z góry i czeka do szóstej.",
@@ -180,28 +181,39 @@ func _party() -> void:
 	U.cut.move_child(_party_fx, 0)
 	Sfx.party_play()
 	Sfx.party_sfx("gwar_baru", -6.0)
-	# [czas, co] — "T:tekst" = napis, reszta to zdarzenia dźwięku i obrazu
+	# [czas, co, …] — "T:tekst" = napis; "P" = wycinek nagrania [nazwa, od, długość, dB, wysokość]; reszta to zdarzenia.
+	# Każdy śmiech, okrzyk i kawałek śpiewu pada tylko raz — z nagrań wycinamy różne fragmenty.
 	var ev := [
 		[2.6, "T:— Kuba! Kuba, chodź tu! Polej mu!"],
-		[4.6, "okrzyki_1"], [6.6, "smiech_1"],
+		[4.6, "P", "okrzyki_1", 0.0, 3.0, -1.0, 1.0],
+		[6.4, "P", "smiech_1", 0.1, 2.6, -1.0, 1.0],
 		[7.2, "T:— Jeszcze jedną. Ostatnią. Słowo."],
-		[11.4, "brawa_bar"], [12.0, "DROP"], [12.1, "okrzyki_2"],
-		[13.4, "T:(ktoś sypie kreskę na blat)"],
-		[14.6, "SNIFF1"],
-		[16.4, "T:— O kurwa. O, tak. Podgłośnij to!"],
-		[17.2, "spiew"], [18.6, "smiech_2"],
-		[20.4, "T:— Która to doba? Trzecia? Czwarta?"],
-		[22.4, "okrzyki_1"],
-		[24.2, "T:— Kuba, telefon. To znowu Siwy. Odbierzesz w końcu?"],
-		[24.4, "wibracja"],
-		[25.6, "SICK"],
-		[26.4, "T:— Zaraz. Zaraz, tylko —"],
-		# bieg do łazienki, drzwi, dopiero potem torsje
-		[26.8, "STEPS"], [28.0, "DOOR"],
-		[28.7, "wymioty_1"],
-		[30.9, "wymioty_2"],
-		[32.6, "T:— Stary, ty w ogóle jeszcze żyjesz? Siwy mówi, że partia czeka."],
-		[35.4, "T:— …Żyję. Powiedz mu, że jadę."],
+		[8.7, "P", "spiew", 3.7, 1.3, -7.0, 1.0],
+		[9.9, "P", "smiech_2", 0.2, 1.65, -2.0, 1.03],
+		[11.4, "P", "brawa_bar", 0.0, 5.4, -1.0, 1.0], [12.0, "DROP"], [12.1, "P", "okrzyki_2", 0.0, 3.8, -1.0, 1.0],
+		[12.9, "T:(ktoś sieka kreskę kartą na blacie)"],
+		[13.0, "LINE"],
+		[14.2, "P", "spiew", 0.25, 2.9, -8.0, 1.0],
+		[18.3, "T:— O kurwa. O, tak. Podgłośnij to!"],
+		[19.0, "P", "spiew", 7.1, 3.55, -4.0, 1.04],
+		[20.6, "P", "smiech_1", 3.2, 1.8, -1.0, 0.97],
+		[22.3, "T:— Która to doba? Trzecia? Czwarta?"],
+		[23.2, "P", "spiew", 11.05, 3.6, -5.0, 1.0],
+		[24.6, "P", "smiech_2", 2.95, 1.8, -1.0, 1.0],
+		[26.0, "T:— Kuba, telefon. To znowu Siwy. Odbierzesz w końcu?"],
+		[26.2, "wibracja"],
+		[27.4, "SICK"],
+		# w drodze do łazienki impreza zostaje za plecami: śmiechy i śpiew cichną i robią się coraz niższe
+		[27.6, "P", "smiech_1", 5.35, 1.35, -1.0, 1.0],
+		[28.2, "T:— Zaraz. Zaraz, tylko —"],
+		[28.6, "STEPS"],
+		[29.1, "P", "spiew", 5.4, 1.2, -3.0, 1.0],
+		[29.8, "DOOR"],
+		[30.1, "P", "smiech_2", 6.3, 1.45, 0.0, 1.0],
+		[30.5, "wymioty_1"],
+		[32.7, "wymioty_2"],
+		[34.4, "T:— Stary, ty w ogóle jeszcze żyjesz? Siwy mówi, że partia czeka."],
+		[37.2, "T:— …Żyję. Powiedz mu, że jadę."],
 	]
 	var ei := 0
 	var tt := 0.0
@@ -212,11 +224,13 @@ func _party() -> void:
 	var rush := 0.0
 	var sick := 0.0
 	var sick_to := 0.0
-	while tt < 38.6 and not M.cut_skip and not _jumped:
+	var sniff_at := -1.0
+	while tt < 40.4 and not M.cut_skip and not _jumped:
 		var dt := get_process_delta_time()
 		tt += dt
 		while ei < ev.size() and tt >= float(ev[ei][0]):
-			var what := String(ev[ei][1])
+			var e0: Array = ev[ei]
+			var what := String(e0[1])
 			ei += 1
 			if what.begins_with("T:"):
 				U.cut_line(what.substr(2))
@@ -224,11 +238,11 @@ func _party() -> void:
 				cut_to = 19000.0
 				drive_to = 1.0
 				U.flash(0.5)
-			elif what == "SNIFF1":
-				# jedno wciągnięcie, nie cała seria z nagrania
-				Sfx.party_sfx("wciaganie_1", 7.0, 1.0, true, 0.15, 1.25)
-				rush = 1.0
-				U.flash(0.3)
+			elif what == "P":
+				Sfx.party_sfx(String(e0[2]), float(e0[5]), float(e0[6]), false, float(e0[3]), float(e0[4]))
+			elif what == "LINE":
+				# siekanie kartą, zgarnianie, dwa stuknięcia — i dopiero długie wciągnięcie
+				sniff_at = tt + Sfx.party_line()
 			elif what == "STEPS":
 				Sfx.party_steps(6, 0.18)
 			elif what == "DOOR":
@@ -237,15 +251,20 @@ func _party() -> void:
 				cut_to = 320.0
 				drive_to = 0.25
 				sick_to = 1.0
+				# gwar zostaje w tle do końca sceny — stłumiony i coraz niższy
+				Sfx.party_sfx("gwar_baru", -2.0, 1.0, false, 8.0)
 			elif what == "wibracja":
 				Sfx.party_sfx(what, -2.0)
 			elif what == "wymioty_1" or what == "wymioty_2":
 				Sfx.party_sfx(what, 9.0, 1.0, true)
 				cut_to = 220.0
-			elif what == "spiew":
-				Sfx.party_sfx(what, -5.0, 1.04)
 			else:
 				Sfx.party_sfx(what, -1.0)
+		# uderzenie przychodzi razem z wciągnięciem, nie przed nim
+		if sniff_at >= 0.0 and tt >= sniff_at + 0.9:
+			sniff_at = -1.0
+			rush = 1.0
+			U.flash(0.3)
 		# filtr: najpierw powoli uchyla się sam, potem skacze do zadanej wartości
 		if tt < 11.8:
 			cut_to = lerpf(180.0, 2400.0, clampf((tt - 2.0) / 9.8, 0.0, 1.0) * clampf((tt - 2.0) / 9.8, 0.0, 1.0))
@@ -255,6 +274,7 @@ func _party() -> void:
 		drive = lerpf(drive, drive_to, minf(1.0, dt * 4.0))
 		rush = maxf(0.0, rush - dt / 2.6)
 		sick = lerpf(sick, sick_to, minf(1.0, dt * 0.6))
+		Sfx.party_low(lerpf(1.0, 0.66, sick))
 		sm.set_shader_parameter("k", clampf((tt - 0.6) / 4.5, 0.0, 1.0))
 		sm.set_shader_parameter("drive", drive)
 		sm.set_shader_parameter("rush", rush)
@@ -429,7 +449,7 @@ func _begin_raid() -> void:
 	_bang = 0.4
 	_shout = 5.5
 	M.nav_force = true
-	Sfx.score("akcja", 2.5, 0.6, 3.0)
+	Sfx.score("akcja", 1.6, 0.4, 1.2)
 	Sfx.siren(true)
 	Sfx.megaphone()
 	Sfx.play("alert")
@@ -450,7 +470,7 @@ func on_outside() -> void:
 	stage = "escape"
 	t = 0.0
 	M.nav_force = true
-	Sfx.score("skradanie", 2.5, 1.5, 3.0)
+	Sfx.score("skradanie", 1.8, 1.0, 1.2)
 	_reset_cops()
 	for l in M.world.lab_fx.get("flash", []):
 		l.light_energy = 0.0

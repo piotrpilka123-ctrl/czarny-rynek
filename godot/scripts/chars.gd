@@ -1203,6 +1203,111 @@ static func shoulder_torch(rig: Dictionary) -> SpotLight3D:
 	return sp
 
 
+## Snop latarki w powietrzu: miękki stożek, najjaśniejszy przy szkle, gasnący z odległością i przy krawędzi.
+const SH_BEAM := """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
+uniform vec3 tint : source_color = vec3(0.85, 0.92, 1.0);
+uniform float power = 0.055;
+uniform float len = 8.0;
+varying float along;
+void vertex() {
+	along = 0.5 - VERTEX.y / len;
+}
+void fragment() {
+	float edge = abs(dot(normalize(NORMAL), normalize(VIEW)));
+	ALBEDO = tint;
+	// przy samym szkle snop jest wąski i ostry, dalej rozmywa się w powietrzu
+	ALPHA = pow(edge, 1.8) * pow(1.0 - along, 2.6) * power;
+}
+"""
+
+## Odblask szkła latarki: mały punkt z boku, oślepiająca plama, gdy latarka świeci prosto w patrzącego.
+const SH_GLARE := """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
+uniform vec3 tint : source_color = vec3(0.9, 0.95, 1.0);
+uniform float size = 1.5;
+varying float k;
+void vertex() {
+	vec3 org = MODEL_MATRIX[3].xyz;
+	vec3 fwd = normalize((MODEL_MATRIX * vec4(0.0, 0.0, -1.0, 0.0)).xyz);
+	vec3 to_cam = normalize(CAMERA_POSITION_WORLD - org);
+	k = pow(max(dot(fwd, to_cam), 0.0), 6.0);
+	vec4 vc = VIEW_MATRIX * vec4(org, 1.0);
+	// przed sylwetką policjanta (żeby nie wcinała się w mundur), ale za ścianami dalej jej nie widać
+	vc.z += 0.3;
+	vc.xy += VERTEX.xy * mix(0.14, size, k);
+	POSITION = PROJECTION_MATRIX * vc;
+}
+void fragment() {
+	vec2 d = UV - 0.5;
+	float r = clamp(1.0 - length(d) * 2.0, 0.0, 1.0);
+	// krótkie promienie na krzyż, jak w prawdziwym obiektywie
+	float rays = pow(max(0.0, 1.0 - abs(d.y) * 26.0), 2.0) * r + pow(max(0.0, 1.0 - abs(d.x) * 34.0), 2.0) * r * 0.6;
+	ALBEDO = tint;
+	ALPHA = clamp(pow(r, 3.0) * (0.25 + k * 1.3) + pow(r, 14.0) * 2.5 + rays * k * 0.7, 0.0, 1.0);
+}
+"""
+
+static var _torch_cookie: GradientTexture2D = null
+static var _beam_mat: ShaderMaterial = null
+static var _glare_mat: ShaderMaterial = null
+
+## Dodatki, dzięki którym latarka wygląda jak latarka: plama z jasnym środkiem i obwódką (rzutnik),
+## stożek światła w powietrzu i odblask szkła. `half_angle` w radianach, `reach` w metrach.
+static func torch_fx(sp: SpotLight3D, half_angle: float, reach: float) -> void:
+	if _torch_cookie == null:
+		var gr := Gradient.new()
+		gr.offsets = PackedFloat32Array([0.0, 0.3, 0.55, 0.78, 0.9, 1.0])
+		gr.colors = PackedColorArray([Color(1, 1, 1), Color(0.95, 0.95, 0.95), Color(0.5, 0.5, 0.5), Color(0.3, 0.3, 0.3), Color(0.42, 0.42, 0.42), Color(0, 0, 0)])
+		_torch_cookie = GradientTexture2D.new()
+		_torch_cookie.gradient = gr
+		_torch_cookie.fill = GradientTexture2D.FILL_RADIAL
+		_torch_cookie.fill_from = Vector2(0.5, 0.5)
+		_torch_cookie.fill_to = Vector2(0.5, 0.0)
+		_torch_cookie.width = 256
+		_torch_cookie.height = 256
+		var bs := Shader.new()
+		bs.code = SH_BEAM
+		_beam_mat = ShaderMaterial.new()
+		_beam_mat.shader = bs
+		var gs := Shader.new()
+		gs.code = SH_GLARE
+		_glare_mat = ShaderMaterial.new()
+		_glare_mat.shader = gs
+	sp.light_projector = _torch_cookie
+	var blen := minf(reach * 0.55, 9.0)
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.035
+	cone.bottom_radius = blen * tan(half_angle * 0.9)
+	cone.height = blen
+	cone.radial_segments = 20
+	cone.rings = 1
+	cone.cap_top = false
+	cone.cap_bottom = false
+	var bm := MeshInstance3D.new()
+	bm.name = "Snop"
+	bm.mesh = cone
+	var mat := _beam_mat.duplicate() as ShaderMaterial
+	mat.set_shader_parameter("len", blen)
+	bm.material_override = mat
+	bm.rotation.x = PI / 2.0
+	bm.position = Vector3(0, 0, -blen * 0.5 - 0.03)
+	bm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sp.add_child(bm)
+	var q := QuadMesh.new()
+	q.size = Vector2(1.0, 1.0)
+	var gl := MeshInstance3D.new()
+	gl.name = "Odblask"
+	gl.mesh = q
+	gl.material_override = _glare_mat
+	gl.extra_cull_margin = 2.5
+	gl.position = Vector3(0, 0, -0.03)
+	gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sp.add_child(gl)
+
+
 ## pistolet w dłoni (wyjęty z kabury) albo schowany
 static func set_armed(rig: Dictionary, on: bool) -> void:
 	var skel: Skeleton3D = rig.get("skel")

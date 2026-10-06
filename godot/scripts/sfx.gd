@@ -409,18 +409,26 @@ func party_prepare() -> void:
 	add_child(party_player)
 	if ResourceLoader.exists(PARTY_MUSIC):
 		party_player.stream = load(PARTY_MUSIC)
-	for i in range(5):
+	for i in range(16):
 		var p := AudioStreamPlayer.new()
 		p.bus = "Impreza"
 		add_child(p)
 		party_fx.append(p)
-	for n in ["okrzyki_1", "okrzyki_2", "smiech_1", "smiech_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wymioty_1", "wymioty_2", "wibracja"]:
-		var path := "res://assets/sfx/party/%s.ogg" % n
-		if ResourceLoader.exists(path):
-			party_sounds[n] = load(path)
+	for n in ["okrzyki_1", "okrzyki_2", "smiech_1", "smiech_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wciagniecie", "wymioty_1", "wymioty_2", "wibracja"]:
+		for ext in ["ogg", "wav"]:
+			var path := "res://assets/sfx/party/%s.%s" % [n, ext]
+			if ResourceLoader.exists(path):
+				party_sounds[n] = load(path)
+				break
+	# stukanie kartą i zgarnianie kreski składamy z nagrań, które gra już ma (Kenney, CC0)
+	for n in ["tick_001", "tick_002", "cloth1", "cloth2", "cloth3", "cloth4"]:
+		var path2 := "res://assets/sfx/%s.ogg" % n
+		if ResourceLoader.exists(path2):
+			party_sounds[n] = load(path2)
 
 
 func party_play() -> void:
+	party_low_k = 1.0
 	if muted:
 		return
 	party_prepare()
@@ -445,12 +453,12 @@ func party_vol(db: float) -> void:
 func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.0, dur := 0.0) -> AudioStreamPlayer:
 	if muted or not party_sounds.has(name):
 		return null
-	var p: AudioStreamPlayer = party_fx[party_fx_i]
-	party_fx_i = (party_fx_i + 1) % party_fx.size()
+	var p: AudioStreamPlayer = _party_voice()
 	p.bus = "Efekty" if close else "Impreza"
 	p.stream = party_sounds[name]
 	p.volume_db = db
-	p.pitch_scale = pitch
+	p.set_meta("base", pitch)
+	p.pitch_scale = pitch * (1.0 if close else party_low_k)
 	p.play(from)
 	if dur > 0.0:
 		var st: AudioStream = p.stream
@@ -462,6 +470,65 @@ func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.
 			if p.stream == st:
 				p.stop())
 	return p
+
+
+## wolny głos z puli (długie nagrania nie mogą być ucinane przez krótkie stuknięcia)
+func _party_voice() -> AudioStreamPlayer:
+	for i in range(party_fx.size()):
+		var q: AudioStreamPlayer = party_fx[(party_fx_i + i) % party_fx.size()]
+		if not q.playing:
+			party_fx_i = (party_fx_i + i + 1) % party_fx.size()
+			return q
+	var p: AudioStreamPlayer = party_fx[party_fx_i]
+	party_fx_i = (party_fx_i + 1) % party_fx.size()
+	return p
+
+
+## Głosy imprezy „siadają”: k < 1 obniża wszystko, co gra zza filtra (śmiechy, śpiewy, gwar) — tak słyszy
+## je ktoś, komu robi się niedobrze i kto odchodzi w stronę łazienki.
+var party_low_k := 1.0
+
+func party_low(k: float) -> void:
+	party_low_k = clampf(k, 0.5, 1.0)
+	for p in party_fx:
+		if p.playing and p.bus == "Impreza":
+			p.pitch_scale = float(p.get_meta("base", 1.0)) * party_low_k
+
+
+## Robienie kreski tuż przy uchu: siekanie kartą po blacie (dwie serie), zgarnianie w kreskę, dwa stuknięcia
+## na wyrównanie — i dopiero długie wciągnięcie. Zwraca czas (s), po którym zaczyna się wciągnięcie.
+func party_line() -> float:
+	if muted:
+		return 3.6
+	var taps: Array = []
+	var t := 0.0
+	for i in range(8):
+		taps.append([t, 0.0 if i == 0 else -4.0, randf_range(1.22, 1.4)])
+		t += randf_range(0.095, 0.125)
+	t += 0.28
+	for i in range(11):
+		taps.append([t, -1.0 if i == 0 else -4.5, randf_range(1.3, 1.5)])
+		t += randf_range(0.075, 0.1)
+	var scrapes := [[t + 0.3, -7.0, 1.7, "cloth1"], [t + 0.72, -6.0, 1.9, "cloth3"], [t + 1.08, -8.0, 2.15, "cloth2"]]
+	var fin := t + 1.5
+	taps.append([fin, -2.0, 1.15])
+	taps.append([fin + 0.16, -3.0, 1.2])
+	for e in taps:
+		_party_at(float(e[0]), "tick_001" if randf() < 0.6 else "tick_002", float(e[1]) + 3.0, float(e[2]))
+	for e in scrapes:
+		_party_at(float(e[0]), String(e[3]), float(e[1]) + 3.0, float(e[2]))
+	var at := fin + 0.62
+	_party_at(at, "wciagniecie" if party_sounds.has("wciagniecie") else "wciaganie_1", 1.0, 1.0)
+	return at
+
+
+func _party_at(delay: float, name: String, db: float, pitch: float) -> void:
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_interval(maxf(0.01, delay))
+	tw.tween_callback(func():
+		if party_player != null and party_player.playing:
+			party_sfx(name, db, pitch, true))
 
 
 ## kilka szybkich kroków (ktoś wbiega do łazienki)
@@ -476,8 +543,7 @@ func party_steps(n := 6, gap := 0.19) -> void:
 		tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 		tw.tween_interval(i * gap)
 		tw.tween_callback(func():
-			var p: AudioStreamPlayer = party_fx[party_fx_i]
-			party_fx_i = (party_fx_i + 1) % party_fx.size()
+			var p: AudioStreamPlayer = _party_voice()
 			p.bus = "Efekty"
 			p.stream = arr.pick_random()
 			p.volume_db = -5.0 + i * 1.2

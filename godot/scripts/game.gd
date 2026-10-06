@@ -1181,6 +1181,9 @@ func arrest(_cop) -> void:
 	if arresting or busy:
 		return
 	arresting = true
+	# patrol nie czeka, aż skończysz pisać SMS-a: otwarte okno się zamyka
+	if ui != null:
+		ui.interrupt()
 	var carry := carry_goods()
 	if carry < 0.01 and S.invest < 85.0:
 		ui.dialog({"name": "Policjant", "lines": ["Stój! Policja! Ręce na widoku!", "…Nic przy tobie nie ma. Tym razem cię puszczam, ale mam cię na oku."],
@@ -1469,6 +1472,14 @@ func hospitalize(reason: String) -> void:
 	main.hospital_talk(res)
 
 
+## zamówienie, o które właśnie toczy się rozmowa przy otwartym oknie handlu
+func order_in_talk(o: Dictionary) -> bool:
+	if ui == null or ui.deal.is_empty() or ui.deal.get("over", false):
+		return false
+	var cur = ui.deal.get("ctx", {}).get("order")
+	return cur != null and int(cur.get("id", -1)) == int(o.get("id", -2))
+
+
 # ================================================================ zdarzenia czasowe
 ## co 10 minut gry: terminy zamówień i paczki w skrytkach
 func on_tick() -> void:
@@ -1477,6 +1488,9 @@ func on_tick() -> void:
 	Prod.flat_raid_tick()
 	for o in S.orders.duplicate():
 		var st: Dictionary = S.cust[o.cust]
+		# czas płynie także w trakcie rozmowy — klient, z którym właśnie stoisz, nie może w jej połowie zniknąć
+		if order_in_talk(o):
+			continue
 		if o.status == "new" and S.t > float(o.respond_by):
 			drop_order(o)
 			st.sat = maxf(0.0, float(st.sat) - 2.0)

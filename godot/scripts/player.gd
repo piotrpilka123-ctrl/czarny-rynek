@@ -161,10 +161,13 @@ func _physics_process(dt: float) -> void:
 		cam.rotation = Vector3(pitch, 0, 0)
 		return
 	# rozglądanie strzałkami (alternatywa dla myszy)
-	yaw += (float(Input.is_physical_key_pressed(KEY_LEFT)) - float(Input.is_physical_key_pressed(KEY_RIGHT))) * 1.9 * dt
-	pitch = clampf(pitch + (float(Input.is_physical_key_pressed(KEY_UP)) - float(Input.is_physical_key_pressed(KEY_DOWN))) * 1.4 * dt, -1.45, 1.45)
-	var mx := float(G.key_down("right")) - float(G.key_down("left"))
-	var mz := float(G.key_down("back")) - float(G.key_down("fwd"))
+	# otwarte okno (rozmowa, telefon, plecak): świat żyje dalej, ale klawisze należą do okna — postać stoi
+	var free: bool = G.ui == null or not G.ui.is_open()
+	if free:
+		yaw += (float(Input.is_physical_key_pressed(KEY_LEFT)) - float(Input.is_physical_key_pressed(KEY_RIGHT))) * 1.9 * dt
+		pitch = clampf(pitch + (float(Input.is_physical_key_pressed(KEY_UP)) - float(Input.is_physical_key_pressed(KEY_DOWN))) * 1.4 * dt, -1.45, 1.45)
+	var mx := (float(G.key_down("right")) - float(G.key_down("left"))) if free else 0.0
+	var mz := (float(G.key_down("back")) - float(G.key_down("fwd"))) if free else 0.0
 	moving = mx != 0.0 or mz != 0.0
 	var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
 	var right := Vector3(cos(yaw), 0, -sin(yaw))

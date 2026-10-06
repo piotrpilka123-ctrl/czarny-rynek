@@ -651,16 +651,30 @@ func hurt() -> void:
 
 
 # ---------------------------------------------------------------- tryby
+## tryby, w których gra naprawdę stoi; w pozostałych (dialog, phone, modal, skill, inv) czas płynie dalej
+const HARD_PAUSE := ["pause", "options", "controls", "title", "end"]
+
 func set_mode(m: String) -> void:
 	mode = m
 	if G.running and not G.test_hide_hud and m != "title" and m != "end":
 		hud.visible = not (m in ["inv", "modal", "pause", "controls", "options"])
-	get_tree().paused = m != ""
+	# rozmowa, telefon, plecak i handel dzieją się w biegnącym świecie — gra staje tylko w menu
+	get_tree().paused = m in HARD_PAUSE
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if (m != "" or G.test_mode) else Input.MOUSE_MODE_CAPTURED
 
 
 func is_open() -> bool:
 	return mode != ""
+
+
+## Coś z zewnątrz przerywa to, co gracz ma otwarte (patrol, nalot): okno się zamyka,
+## a rozmowa z umówionym klientem zostaje „na potem” — nic nie przepada.
+func interrupt() -> void:
+	if mode == "" or mode in HARD_PAUSE:
+		return
+	if not deal.is_empty() and not deal.get("over", false):
+		G.deal_pause(deal)
+	close_all()
 
 
 func close_all() -> void:
