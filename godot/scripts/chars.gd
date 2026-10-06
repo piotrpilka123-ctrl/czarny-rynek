@@ -3,6 +3,7 @@ extends RefCounted
 ## z ubraniami nakładanymi shaderem i animacjami z „Universal Animation Library” (CC0).
 ## Maska ubrań jest zapisana w kolorach wierzchołków (patrz tools/README).
 
+const Face = preload("res://scripts/face.gd")
 const Stations = preload("res://scripts/stations.gd")
 const People = preload("res://scripts/people.gd")
 
@@ -670,6 +671,7 @@ static func make(o: Dictionary = {}) -> Dictionary:
 		"walk": o.get("walk", pick_walk(rng, female, kind_name)), "idle_t": 0.0}
 	play(rig, "Idle")
 	ap.seek(rng.randf() * 3.0, true)
+	add_face(rig, rng)
 	return rig
 
 
@@ -697,6 +699,7 @@ static func _make_person(o: Dictionary, rng: RandomNumberGenerator, female: bool
 		"walk": o.get("walk", pick_walk(rng, female, kind_name)), "idle_t": 0.0, "person": true}
 	play(rig, "Idle")
 	ap.seek(rng.randf() * 3.0, true)
+	add_face(rig, rng)
 	if o.get("mask", false):
 		# kominiarka uszyta na głowę; prosta bryła tylko awaryjnie
 		rig["wear"] = []
@@ -1378,7 +1381,53 @@ static func play(rig: Dictionary, anim: String, speed := 1.0, blend := -1.0) -> 
 
 
 ## animacja zależna od prędkości i pozy (odpowiednik dawnego Models.animate)
+## Mimika: mruganie, wzrok, usta przy mówieniu, miny. Każda postać dostaje też własny „wyraz twarzy na co dzień”.
+static func add_face(rig: Dictionary, rng: RandomNumberGenerator = null) -> void:
+	var sk: Skeleton3D = rig.get("skel")
+	if sk == null or sk.find_bone("Bip01 MJaw") < 0:
+		return
+	var f = Face.new()
+	sk.add_child(f)
+	if not f.bind(sk):
+		f.queue_free()
+		return
+	rig["face"] = f
+	var r := rng.randf() if rng != null else randf()
+	# większość ludzi ma twarz obojętną; część lekko się uśmiecha, część chodzi skwaszona albo zmęczona
+	if r < 0.2:
+		f.base = {"usmiech": 0.3}
+	elif r < 0.36:
+		f.base = {"zlosc": 0.3}
+	elif r < 0.48:
+		f.base = {"smutek": 0.4}
+
+
+## stały wyraz twarzy postaci (zastępuje poprzedni): mood(rig, "usmiech", 0.5); pusta nazwa = twarz obojętna
+static func mood(rig: Dictionary, mina := "", weight := 0.5) -> void:
+	var f = rig.get("face")
+	if f != null and is_instance_valid(f):
+		f.base = {mina: weight} if mina != "" else {}
+
+
+## chwilowa mina (uśmiech po udanej wymianie, złość po odmowie) — sama gaśnie
+static func emote(rig: Dictionary, mina: String, weight := 1.0, secs := 2.5) -> void:
+	var f = rig.get("face")
+	if f != null and is_instance_valid(f):
+		f.flash(mina, weight, secs)
+
+
+## postać mówi przez `secs` sekund (porusza ustami)
+static func say(rig: Dictionary, secs := 2.5) -> void:
+	var f = rig.get("face")
+	if f != null and is_instance_valid(f):
+		f.say_t = maxf(float(f.say_t), secs)
+
+
 static func animate(rig: Dictionary, _dt: float, speed: float, pose := "") -> void:
+	var fc = rig.get("face")
+	if fc != null and is_instance_valid(fc):
+		# w pozach rozmowy usta się ruszają, przy telefonie trochę rzadziej
+		fc.chatter = 0.75 if (speed <= 0.15 and pose in ["talk", "sit_talk"]) else (0.45 if (speed <= 0.15 and pose == "phone") else 0.0)
 	if speed > 4.2:
 		play(rig, "Jog_Fwd", clampf(speed / 5.36, 0.8, 1.35))
 	elif speed > 0.15:

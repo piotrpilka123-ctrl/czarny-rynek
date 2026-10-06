@@ -350,6 +350,48 @@ static func run(T) -> void:
 	S.t = t_keep
 	S.heat = heat_keep
 	S.invest = inv_keep
+	# --- mimika: każda postać mruga, mówi ustami i potrafi zmienić minę
+	var Chars = load("res://scripts/chars.gd")
+	var frig: Dictionary = Chars.make({"model": "m02", "seed": 4})
+	G.main.add_child(frig.root)
+	var cam3: Camera3D = G.main.get_viewport().get_camera_3d()
+	frig.root.global_position = cam3.global_position + Vector3(0.0, -1.6, -2.0) if cam3 != null else Vector3.ZERO
+	T.ok(frig.has("face") and frig.face != null, "postać ma kości twarzy podpięte pod mimikę")
+	if frig.has("face"):
+		var fsk: Skeleton3D = frig.skel
+		var corner := fsk.find_bone("Bip01 RMouthCorner")
+		Chars.mood(frig, "", 0.0)
+		await T.frames(8)
+		var p_neutral: Vector3 = fsk.get_bone_global_pose(corner).origin - fsk.get_bone_global_pose(fsk.find_bone("Bip01 Head")).origin
+		Chars.emote(frig, "usmiech", 1.0, 4.0)
+		Chars.say(frig, 2.0)
+		var jaw_moved := false
+		for i in range(40):
+			await T.frames(1)
+			if float(frig.face._w.mowa) > 0.2:
+				jaw_moved = true
+		var p_smile: Vector3 = fsk.get_bone_global_pose(corner).origin - fsk.get_bone_global_pose(fsk.find_bone("Bip01 Head")).origin
+		# (samo przesunięcie kości widać tylko w trakcie rysowania klatki — sprawdza je tools/blender/twarz_test.py)
+		T.ok(float(frig.face._w.usmiech) > 0.7 and p_smile.is_finite() and p_neutral.is_finite() and float(frig.face._ied) > 0.01, "chwilowa mina narasta płynnie (uśmiech %.2f)" % float(frig.face._w.usmiech))
+		T.ok(jaw_moved, "przy mówieniu postać porusza ustami")
+		frig.face._blink_in = 0.0
+		var blinked := false
+		for i in range(30):
+			await T.frames(1)
+			if float(frig.face._blink) >= 0.0:
+				blinked = true
+		T.ok(blinked, "postać mruga")
+	frig.root.queue_free()
+	var People = load("res://scripts/people.gd")
+	var with_face := 0
+	var all_models: Array = D.PEOPLE_M + D.PEOPLE_F + D.PEOPLE_COP
+	for mid0 in all_models:
+		var pi: Dictionary = People.instance(String(mid0), "")
+		if not pi.is_empty() and (pi.skel as Skeleton3D).find_bone("Bip01 MJaw") >= 0:
+			with_face += 1
+		if not pi.is_empty():
+			(pi.model as Node).free()
+	T.ok(with_face == all_models.size(), "wszystkie modele ludzi mają kości twarzy (%d z %d)" % [with_face, all_models.size()])
 	# --- obrzeża: obozowisko bezdomnych, zamknięty tunel, plac zabaw
 	var names := {}
 	for st0 in N.statics:

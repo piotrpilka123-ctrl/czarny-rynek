@@ -269,7 +269,10 @@ func _static(o: Dictionary) -> Dictionary:
 	if o.has("act"):
 		n.interact = {"label": func(): return "Zagadaj: " + String(n.name), "range": o.get("range", 2.6), "act": o.act}
 	elif not n.lines.is_empty():
-		n.interact = {"label": func(): return "Zagadaj: " + String(n.name), "range": 2.6, "act": func(): G.ui.dialog({"name": n.name, "lines": [n.lines.pick_random()]})}
+		n.interact = {"label": func(): return "Zagadaj: " + String(n.name), "range": 2.6, "act": func():
+			var line: String = n.lines.pick_random()
+			Chars.say(rig, clampf(float(line.length()) / 16.0, 1.5, 6.0))
+			G.ui.dialog({"name": n.name, "lines": [line]})}
 	Chars.animate(rig, 0.0, 0.0, n.pose)
 	statics.append(n)
 	all.append(n)
@@ -317,6 +320,9 @@ func _build_outskirts() -> void:
 	_static({"x": cx + 4.1, "z": cz + 2.7, "rot": 0.5, "pose": "kneel", "name": "Baśka", "hours": [20.0, 7.0],
 		"look": {"model": "f08", "female": true, "seed": 837},
 		"lines": ["Ciszej. Niektórzy tu próbują spać.", "Daj spokój. Jutro też jest dzień."]})
+	for st in statics:
+		if String(st.name) in ["Pan Tadek", "Mietek", "Baśka"]:
+			Chars.mood(st.rig, "smutek", 0.55)
 	# posterunek przy zamkniętym tunelu: droga nieprzejezdna, trwają prace
 	_static({"x": -194.6, "z": 20.6, "rot": PI / 2.0, "pose": "arms", "name": "Posterunkowy Wrona", "label": "Posterunkowy Wrona", "track": true,
 		"look": COP_LOOK.merged({"seed": 905, "model": D.PEOPLE_COP[0]}), "cop": true,
@@ -1260,6 +1266,9 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		var pose := ""
 		match c.state:
 			"patrol", "post":
+				if c.get("mood", "") != "calm":
+					c["mood"] = "calm"
+					Chars.mood(c.rig, "zlosc", 0.3)
 				if c.sees and mult > 0.0:
 					c.susp += mult * dt * (1.6 if dist < 10.0 else 0.8) * 0.65
 				else:
@@ -1346,6 +1355,9 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 							has_tgt = true
 			"chase":
 				max_susp = 1.0
+				if c.get("mood", "") != "chase":
+					c["mood"] = "chase"
+					Chars.mood(c.rig, "zlosc", 0.85)
 				c.alert.visible = true
 				c.alert.modulate = Color(1.0, 0.25, 0.25)
 				if c.sees:

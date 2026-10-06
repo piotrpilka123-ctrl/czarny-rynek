@@ -1341,6 +1341,13 @@ func _render_deal() -> void:
 	cop_bar = null
 	if String(deal.speech) != deal_said:
 		# gest klienta: podanie ręki przy sprzedaży, kręcenie głową przy odmowie
+		if deal_npc != null and deal_npc.get("rig") != null:
+			# twarz klienta: mówi swoje zdanie, po udanej wymianie się uśmiecha, po odmowie krzywi
+			Chars.say(deal_npc.rig, clampf(float(String(deal.speech).length()) / 18.0, 1.0, 3.5))
+			if deal.sold:
+				Chars.emote(deal_npc.rig, "usmiech", 0.9, 3.0)
+			elif deal.over or deal.pushed:
+				Chars.emote(deal_npc.rig, "zlosc", 0.9, 3.0)
 		if deal_said != "" and deal_npc != null and deal_npc.get("rig") != null:
 			if deal.sold:
 				Chars.one_shot(deal_npc.rig, "Interact")
