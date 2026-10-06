@@ -195,7 +195,7 @@ func _anim_water(u: float, e_in: float, e_out: float, face: float) -> void:
 	# oś −X konewki celuje w doniczkę; przechył wokół osi poprzecznej
 	tool.global_rotation = Vector3(0, face, 0)
 	tool.rotate_object_local(Vector3(0, 0, 1), pour * 0.62 + sin(t * 9.0) * 0.015 * pour)
-	var spout: Node3D = tool.get_node("Spout")
+	var spout := Stations._find(tool, "Spout") as Node3D
 	fx.global_position = spout.global_position
 	var dir := (base + Vector3(0, 0.05, 0) - spout.global_position).normalized()
 	fx.direction = (dir + Vector3(0, 0.25, 0)).normalized()
@@ -207,7 +207,7 @@ func _anim_water(u: float, e_in: float, e_out: float, face: float) -> void:
 	if applied:
 		var n: Node3D = _pot_node()
 		if n != null:
-			var soil: MeshInstance3D = n.get_node_or_null("Soil")
+			var soil := Stations._find(n, "Soil") as MeshInstance3D
 			if soil != null:
 				var w := smoothstep(0.3, 0.85, u)
 				(soil.material_override as StandardMaterial3D).albedo_color = Color("4a3828").lerp(Color("1e150e"), w)
@@ -220,7 +220,7 @@ func _anim_fert(u: float, e_in: float, e_out: float, face: float) -> void:
 	tool.global_rotation = Vector3(0, face, 0)
 	# butelka do góry dnem nad doniczką, potrząsana
 	tool.rotate_object_local(Vector3(0, 0, 1), tip * 2.3 + sin(t * 26.0) * 0.12 * tip)
-	var mouth: Node3D = tool.get_node("Mouth")
+	var mouth := Stations._find(tool, "Mouth") as Node3D
 	fx.global_position = mouth.global_position
 	fx.direction = Vector3(0, -1, 0)
 	fx.emitting = tip > 0.8
@@ -242,8 +242,8 @@ func _anim_cut(u: float, e_in: float, e_out: float, face: float) -> void:
 	var open := 0.5 * (1.0 - smoothstep(0.35, 0.55, cu)) + 0.5 * smoothstep(0.75, 1.0, cu)
 	if u < 0.16 or u > 0.84:
 		open = 0.5
-	(tool.get_node("A") as Node3D).rotation.y = open * 0.5
-	(tool.get_node("B") as Node3D).rotation.y = -open * 0.5
+	(Stations._find(tool, "A") as Node3D).rotation.y = open * 0.5
+	(Stations._find(tool, "B") as Node3D).rotation.y = -open * 0.5
 	if u >= 0.16 and u <= 0.84 and cu > 0.5 and snips <= ci:
 		snips = ci + 1
 		Sfx.care("snip")

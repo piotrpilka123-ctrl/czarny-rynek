@@ -73,7 +73,46 @@ static func plant_material_wilt(stage: int) -> StandardMaterial3D:
 const POT_H := 0.27
 
 ## Doniczka: „Soil” (ziemia, własny materiał — ciemnieje po podlaniu), „Plant” (krzak), „Fert” (granulki nawozu).
+static var _glb := {}
+
+## model zrobiony w Blenderze (tools/blender/*.py → assets/models/*.glb) albo null, gdy pliku nie ma
+static func model(name: String) -> Node3D:
+	if not _glb.has(name):
+		var path := "res://assets/models/%s.glb" % name
+		_glb[name] = load(path) if ResourceLoader.exists(path) else null
+	var ps: PackedScene = _glb[name]
+	return ps.instantiate() if ps != null else null
+
+
+static func _find(n: Node, name: String) -> Node:
+	if String(n.name) == name:
+		return n
+	for c in n.get_children():
+		var r := _find(c, name)
+		if r != null:
+			return r
+	return null
+
+
 static func pot_node() -> Node3D:
+	var made := model("doniczka")
+	if made != null:
+		var soil_n := _find(made, "Soil") as MeshInstance3D
+		if soil_n != null:
+			var smat := StandardMaterial3D.new()
+			smat.albedo_color = Color("3a2a1e")
+			smat.roughness = 1.0
+			soil_n.material_override = smat
+			soil_n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var fert_n := _find(made, "Fert") as Node3D
+		if fert_n != null:
+			fert_n.visible = false
+		var pl0 := plant(1, 0.2)
+		pl0.name = "Plant"
+		pl0.position = Vector3(0, POT_H - 0.025, 0)
+		pl0.visible = false
+		made.add_child(pl0)
+		return made
 	var g := Node3D.new()
 	var plastic := _m("pot2", "9a5a3c", 0.85)
 	Models.cyl(g, 0.165, 0.125, POT_H, Vector3(0, POT_H * 0.5, 0), plastic, Vector3.ZERO, 24)
@@ -113,8 +152,8 @@ static func plant_height(prog: float, seed_k := 0.0) -> float:
 
 static func refresh_pot(n: Node3D, pl, seed_k := 0.0) -> void:
 	var plant_n: MeshInstance3D = n.get_node_or_null("Plant")
-	var soil: MeshInstance3D = n.get_node_or_null("Soil")
-	var fert: Node3D = n.get_node_or_null("Fert")
+	var soil := _find(n, "Soil") as MeshInstance3D
+	var fert := _find(n, "Fert") as Node3D
 	if plant_n == null:
 		return
 	plant_n.visible = pl != null
@@ -140,6 +179,18 @@ static func refresh_pot(n: Node3D, pl, seed_k := 0.0) -> void:
 
 ## Lampa LED do uprawy: panel na łańcuchach pod sufitem. „Bars” (świecące listwy) i „Led” (światło).
 static func grow_lamp() -> Node3D:
+	var made := model("lampa_led")
+	if made != null:
+		var led0 := OmniLight3D.new()
+		led0.name = "Led"
+		led0.position = Vector3(0, 1.68, 0)
+		led0.light_color = Color(0.86, 0.36, 1.0)
+		led0.light_energy = 0.6
+		led0.omni_range = 3.6
+		led0.omni_attenuation = 0.9
+		led0.shadow_enabled = false
+		made.add_child(led0)
+		return made
 	var g := Node3D.new()
 	var h := 1.98
 	var steel := _m("steel", "2b2e33", 0.45, 0.7)
@@ -175,9 +226,9 @@ static func grow_lamp() -> Node3D:
 
 
 static func refresh_lamp(n: Node3D, on: bool, mode := 0) -> void:
-	var led: Light3D = n.get_node_or_null("Led")
-	var bars: Node3D = n.get_node_or_null("Bars")
-	var off: Node3D = n.get_node_or_null("BarsOff")
+	var led := _find(n, "Led") as Light3D
+	var bars := _find(n, "Bars") as Node3D
+	var off := _find(n, "BarsOff") as Node3D
 	if led != null:
 		led.visible = on
 		led.light_energy = 0.85 if mode == 1 else 0.6
@@ -190,6 +241,9 @@ static func refresh_lamp(n: Node3D, on: bool, mode := 0) -> void:
 # ---------------------------------------------------------------- narzędzia ogrodnika (animacje doglądania)
 ## konewka: wylot „Spout” to punkt, z którego leci woda (oś −X to kierunek lania)
 static func watering_can() -> Node3D:
+	var made := model("konewka")
+	if made != null:
+		return made
 	var g := Node3D.new()
 	var body := _m("can", "3f7a4a", 0.45, 0.2)
 	var dark := _m("can_dark", "2c5a36", 0.5, 0.2)
@@ -214,6 +268,9 @@ static func watering_can() -> Node3D:
 
 ## butelka nawozu z nakrętką; „Mouth” to wylot
 static func fert_bottle() -> Node3D:
+	var made := model("nawoz")
+	if made != null:
+		return made
 	var g := Node3D.new()
 	Models.cyl(g, 0.045, 0.05, 0.15, Vector3(0, 0.075, 0), _m("fertb", "2f8f4e", 0.4), Vector3.ZERO, 12)
 	Models.cyl(g, 0.02, 0.045, 0.035, Vector3(0, 0.167, 0), _m("fertb", "2f8f4e", 0.4), Vector3.ZERO, 12)
@@ -229,6 +286,9 @@ static func fert_bottle() -> Node3D:
 
 ## sekator: dwa ramiona („A” i „B”) obracane wokół nitu
 static func shears() -> Node3D:
+	var made := model("sekator")
+	if made != null:
+		return made
 	var g := Node3D.new()
 	var blade := _m("blade", "b9bec6", 0.25, 0.85)
 	var grip := _m("grip", "c2302a", 0.6)
