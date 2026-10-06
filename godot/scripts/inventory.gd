@@ -176,7 +176,22 @@ func set_rig(outfit_id: String) -> void:
 	_bag_refresh()
 
 
+## ubrania z pól ekwipunku na postaci w podglądzie (przebudowa tylko wtedy, gdy coś się zmieniło)
+var _dress_sig := ""
+
+func _dress(force := false) -> void:
+	if rig.is_empty() or G.S == null:
+		return
+	var gear: Dictionary = G.S.get("gear", {})
+	var sig := rig_outfit + "|" + JSON.stringify(gear)
+	if sig == _dress_sig and not force:
+		return
+	_dress_sig = sig
+	Chars.dress(rig, gear)
+
+
 func _bag_refresh() -> void:
+	_dress(true)
 	bag_mesh.visible = G.S != null and G.S.has("upg") and G.upg("plecak1")
 	var big: bool = G.S != null and G.S.has("upg") and G.upg("plecak2")
 	var bmesh := bag_mesh.mesh as BoxMesh
@@ -254,6 +269,7 @@ func has_stash() -> bool:
 
 func render() -> void:
 	var S: Dictionary = G.S
+	_dress()
 	l_cash.text = G.money(S.cash)
 	l_clock.text = "%s  •  dzień %d" % [G.clock(), G.day()]
 	K.clear(tabs_box)

@@ -691,6 +691,262 @@ static func hold(rig: Dictionary, model_name: String, xf: Transform3D) -> Node3D
 	return it
 
 
+# ================================================================ ubrania na postaci
+## Realistyczne modele mają ubranie namalowane na teksturze. Założone rzeczy pokazujemy dwojako:
+## 1) cieniowanie przebarwia tułów z rękawami, nogi, stopy i dłonie (rozpoznane po kościach) na kolor ubrania,
+## 2) dodatki (czapka, okulary, łańcuch, komin, kaptur, kołnierz, kieszenie bojówek) wiszą na kościach.
+const SH_WEAR := """shader_type spatial;
+uniform sampler2D tex_albedo : source_color, filter_linear_mipmap_anisotropic;
+uniform sampler2D tex_normal : hint_normal, filter_linear_mipmap;
+uniform float normal_on = 0.0;
+uniform int bone_region[128];
+instance uniform vec4 w_top = vec4(0.0);
+instance uniform vec4 w_pants = vec4(0.0);
+instance uniform vec4 w_shoes = vec4(0.0);
+instance uniform vec4 w_gloves = vec4(0.0);
+instance uniform float w_plaid = 0.0;
+varying vec4 reg;
+void vertex() {
+	vec4 r = vec4(0.0);
+	for (int i = 0; i < 4; i++) {
+		int rg = bone_region[int(BONE_INDICES[i])];
+		float w = BONE_WEIGHTS[i];
+		if (rg == 1) { r.x += w; } else if (rg == 2) { r.y += w; } else if (rg == 3) { r.z += w; } else if (rg == 4) { r.w += w; }
+	}
+	reg = r;
+}
+vec3 srgb(vec3 c) { return pow(c, vec3(2.2)); }
+void fragment() {
+	vec3 base = texture(tex_albedo, UV).rgb;
+	float lum = dot(base, vec3(0.299, 0.587, 0.114));
+	// fałdy i szwy z oryginalnej tekstury zostają jako delikatne cieniowanie nowego materiału
+	float shade = mix(0.72, 1.18, smoothstep(0.0, 0.35, lum));
+	vec3 c = base;
+	vec3 top = srgb(w_top.rgb);
+	if (w_plaid > 0.5) {
+		vec2 g = fract(UV * 46.0);
+		float bars = step(0.5, g.x) * 0.5 + step(0.5, g.y) * 0.5;
+		float thin = step(0.92, fract(UV.x * 23.0)) + step(0.92, fract(UV.y * 23.0));
+		top = mix(top, top * 0.32, bars) + vec3(0.5, 0.45, 0.3) * clamp(thin, 0.0, 1.0) * 0.22;
+	}
+	c = mix(c, top * shade, smoothstep(0.42, 0.58, reg.x) * w_top.a);
+	c = mix(c, srgb(w_pants.rgb) * shade, smoothstep(0.42, 0.58, reg.y) * w_pants.a);
+	c = mix(c, srgb(w_shoes.rgb) * shade, smoothstep(0.72, 0.9, reg.z) * w_shoes.a);
+	c = mix(c, srgb(w_gloves.rgb) * shade, smoothstep(0.42, 0.58, reg.w) * w_gloves.a);
+	ALBEDO = c;
+	ROUGHNESS = 0.84;
+	SPECULAR = 0.3;
+	if (normal_on > 0.5) {
+		NORMAL_MAP = texture(tex_normal, UV).rgb;
+	}
+}
+"""
+
+static var _wear_shader: Shader = null
+static var _wear_mats := {}
+
+
+static func _bone_region(bone: String) -> int:
+	var b := bone.to_lower()
+	if b.contains("finger") or b.contains("hand"):
+		return 4
+	if b.contains("foot") or b.contains("toe"):
+		return 3
+	if b.contains("thigh") or b.contains("calf") or b.contains("pelvis") or b == "bip01":
+		return 2
+	if b.contains("spine") or b.contains("clavicle") or b.contains("upperarm") or b.contains("forearm"):
+		return 1
+	return 0
+
+
+static func _wear_material(src: StandardMaterial3D, mi: MeshInstance3D, skel: Skeleton3D) -> ShaderMaterial:
+	var key := src.get_instance_id()
+	if _wear_mats.has(key):
+		return _wear_mats[key]
+	if _wear_shader == null:
+		_wear_shader = Shader.new()
+		_wear_shader.code = SH_WEAR
+	var m := ShaderMaterial.new()
+	m.shader = _wear_shader
+	m.set_shader_parameter("tex_albedo", src.albedo_texture)
+	if src.normal_enabled and src.normal_texture != null:
+		m.set_shader_parameter("tex_normal", src.normal_texture)
+		m.set_shader_parameter("normal_on", 1.0)
+	# numery kości w siatce to numery powiązań skóry, nie kości szkieletu
+	var regs := PackedInt32Array()
+	regs.resize(128)
+	var n := mi.skin.get_bind_count() if mi.skin != null else skel.get_bone_count()
+	for i in range(mini(n, 128)):
+		var bn := ""
+		if mi.skin != null:
+			bn = String(mi.skin.get_bind_name(i))
+			if bn == "" and mi.skin.get_bind_bone(i) >= 0:
+				bn = skel.get_bone_name(mi.skin.get_bind_bone(i))
+		else:
+			bn = skel.get_bone_name(i)
+		regs[i] = _bone_region(bn)
+	m.set_shader_parameter("bone_region", regs)
+	_wear_mats[key] = m
+	return m
+
+
+## zawiesza `node` na kości; `xf` to położenie w osiach postaci (X w lewo, Y w górę, Z do przodu) względem początku kości
+static func _on_bone(rig: Dictionary, bone: String, node: Node3D, xf: Transform3D) -> void:
+	var skel: Skeleton3D = rig.skel
+	var bi := skel.find_bone(bone)
+	if bi < 0:
+		node.free()
+		return
+	var rest := skel.get_bone_global_rest(bi)
+	var ba := BoneAttachment3D.new()
+	ba.bone_name = bone
+	skel.add_child(ba)
+	node.transform = rest.affine_inverse() * Transform3D(xf.basis, rest.origin + xf.origin)
+	ba.add_child(node)
+	_set_layer(ba, 2)
+	rig.wear.append(ba)
+
+
+static func _wmesh(mesh: Mesh, color: Color, rough := 0.9, metal := 0.0) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color
+	m.roughness = rough
+	m.metallic = metal
+	mi.material_override = m
+	return mi
+
+
+## ubiera postać w rzeczy z pól ekwipunku: gear = {pole: id przedmiotu}
+static func dress(rig: Dictionary, gear: Dictionary) -> void:
+	if rig.is_empty() or not rig.get("person", false):
+		return
+	for n in rig.get("wear", []):
+		if is_instance_valid(n):
+			n.queue_free()
+	rig["wear"] = []
+	var skel: Skeleton3D = rig.skel
+	var look := {}
+	for slot in gear:
+		var id := String(gear[slot])
+		if id != "" and D.ITEMS.has(id):
+			look[slot] = D.ITEMS[id].get("look", {})
+	var none := Color(0, 0, 0, 0)
+	var tint := func(slot: String) -> Color:
+		if not look.has(slot) or not look[slot].has("color"):
+			return none
+		var c := col(look[slot].color)
+		return Color(c.r, c.g, c.b, 0.94)
+	for c in skel.get_children():
+		if not (c is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = c
+		for s in range(mi.mesh.get_surface_count()):
+			var cur: Material = mi.get_surface_override_material(s)
+			var src: Material = mi.mesh.surface_get_material(s)
+			var nm := (src.resource_name if src != null else "").to_lower()
+			if cur is StandardMaterial3D and nm.ends_with("body"):
+				mi.set_surface_override_material(s, _wear_material(cur, mi, skel))
+		mi.set_instance_shader_parameter("w_top", tint.call("gora"))
+		mi.set_instance_shader_parameter("w_pants", tint.call("spodnie"))
+		mi.set_instance_shader_parameter("w_shoes", tint.call("buty"))
+		mi.set_instance_shader_parameter("w_gloves", tint.call("dlonie"))
+		mi.set_instance_shader_parameter("w_plaid", 1.0 if look.get("gora", {}).get("plaid", false) else 0.0)
+	# --- głowa: czapka z daszkiem albo zimowa
+	var head: Dictionary = look.get("glowa", {})
+	if head.has("hat"):
+		var h := _hat(String(head.hat), col(head.get("color", "15171c")))
+		var beanie: bool = String(head.hat) == "beanie"
+		h.scale = Vector3(1.1, 1.12, 1.14) if beanie else Vector3(1.12, 1.5, 1.16)
+		_on_bone(rig, "Bip01 Head", h, Transform3D(Basis(Vector3.RIGHT, -0.08), Vector3(0, 0.152 if beanie else 0.135, 0.03)))
+	# --- szyja: okulary, komin, łańcuch
+	var neck: Dictionary = look.get("szyja", {})
+	match String(neck.get("acc", "")):
+		"glasses":
+			var g := Node3D.new()
+			var dark := Color(0.03, 0.03, 0.04)
+			for sx in [-1.0, 1.0]:
+				var lm := BoxMesh.new()
+				lm.size = Vector3(0.05, 0.034, 0.006)
+				var lens := _wmesh(lm, dark, 0.15, 0.4)
+				lens.position = Vector3(sx * 0.033, 0.0, 0.0)
+				g.add_child(lens)
+				var tm := BoxMesh.new()
+				tm.size = Vector3(0.004, 0.006, 0.12)
+				var temple := _wmesh(tm, dark, 0.4)
+				temple.position = Vector3(sx * 0.068, 0.006, -0.058)
+				g.add_child(temple)
+			var bm := BoxMesh.new()
+			bm.size = Vector3(0.018, 0.006, 0.006)
+			var bridge := _wmesh(bm, dark, 0.4)
+			bridge.position = Vector3(0, 0.008, 0)
+			g.add_child(bridge)
+			_on_bone(rig, "Bip01 Head", g, Transform3D(Basis(), Vector3(0, 0.088, 0.147)))
+		"gaiter":
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.072
+			cm.bottom_radius = 0.088
+			cm.height = 0.14
+			cm.radial_segments = 20
+			var ga := _wmesh(cm, col(neck.get("color", "2a2d33")))
+			ga.scale = Vector3(1.0, 1.0, 1.32)
+			_on_bone(rig, "Bip01 Neck", ga, Transform3D(Basis(Vector3.RIGHT, 0.2), Vector3(0, 0.055, 0.04)))
+		"chain":
+			var g2 := Node3D.new()
+			var tm2 := TorusMesh.new()
+			tm2.inner_radius = 0.094
+			tm2.outer_radius = 0.101
+			tm2.rings = 28
+			tm2.ring_segments = 6
+			var ring := _wmesh(tm2, Color(0.86, 0.68, 0.24), 0.3, 0.9)
+			ring.scale = Vector3(1.0, 1.0, 1.35)
+			g2.add_child(ring)
+			var pm := BoxMesh.new()
+			pm.size = Vector3(0.022, 0.006, 0.03)
+			var pend := _wmesh(pm, Color(0.9, 0.72, 0.28), 0.25, 0.9)
+			pend.position = Vector3(0, 0.0, 0.145)
+			g2.add_child(pend)
+			_on_bone(rig, "Bip01 Neck", g2, Transform3D(Basis(Vector3.RIGHT, 1.02), Vector3(0, -0.02, 0.035)))
+	# --- góra: kaptur bluzy albo postawiony kołnierz kurtki
+	var top: Dictionary = look.get("gora", {})
+	if top.get("hood", false):
+		var sm := SphereMesh.new()
+		sm.radius = 0.1
+		sm.height = 0.2
+		sm.radial_segments = 16
+		sm.rings = 8
+		var hood := _wmesh(sm, col(top.color).darkened(0.12))
+		hood.scale = Vector3(1.3, 0.95, 0.62)
+		_on_bone(rig, "Bip01 Neck", hood, Transform3D(Basis(Vector3.RIGHT, 0.35), Vector3(0, 0.0, -0.085)))
+	if top.get("collar", false):
+		var tc := TorusMesh.new()
+		tc.inner_radius = 0.066
+		tc.outer_radius = 0.1
+		tc.rings = 20
+		tc.ring_segments = 8
+		var collar := _wmesh(tc, col(top.color).darkened(0.18))
+		collar.scale = Vector3(1.0, 2.1, 1.12)
+		_on_bone(rig, "Bip01 Neck", collar, Transform3D(Basis(Vector3.RIGHT, 0.25), Vector3(0, 0.015, 0.012)))
+	# --- spodnie: kieszenie bojówek na udach
+	var pants: Dictionary = look.get("spodnie", {})
+	if pants.get("cargo", false):
+		for b in ["Bip01 L Thigh", "Bip01 R Thigh"]:
+			var bi := skel.find_bone(b)
+			if bi < 0:
+				continue
+			var side := signf(skel.get_bone_global_rest(bi).origin.x)
+			var pk := BoxMesh.new()
+			pk.size = Vector3(0.018, 0.13, 0.1)
+			var pocket := _wmesh(pk, col(pants.color).darkened(0.1))
+			var fm := BoxMesh.new()
+			fm.size = Vector3(0.022, 0.04, 0.104)
+			var flap := _wmesh(fm, col(pants.color).darkened(0.22))
+			flap.position = Vector3(0, 0.05, 0)
+			pocket.add_child(flap)
+			_on_bone(rig, b, pocket, Transform3D(Basis(), Vector3(side * 0.07, -0.25, 0.012)))
+
+
 ## pistolet w dłoni (wyjęty z kabury) albo schowany
 static func set_armed(rig: Dictionary, on: bool) -> void:
 	var skel: Skeleton3D = rig.get("skel")

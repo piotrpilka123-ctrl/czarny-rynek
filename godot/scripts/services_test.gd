@@ -127,6 +127,20 @@ static func run(T) -> void:
 	await T.wait_busy()
 	await T.frames(3)
 	T.ok(P.loc == "out" and P.global_position.distance_to(G.world.club_door) < 4.0, "wyjście z klubu prowadzi przed wejście")
+	# --- ubrania widać na postaci w ekwipunku
+	for gid in ["czapka_daszek", "lancuch", "bluza_kaptur", "bojowki"]:
+		S.items[gid] = 1
+		G.gear_wear(gid)
+	G.ui.open_inventory("")
+	await T.frames(3)
+	var rg: Dictionary = G.ui.inv.rig
+	var worn: int = rg.get("wear", []).size()
+	T.ok(worn >= 4, "założone ubrania widać na postaci (dodatki na kościach: %d)" % worn)
+	G.gear_off("glowa")
+	G.ui.inv.render()
+	await T.frames(2)
+	T.ok(G.ui.inv.rig.get("wear", []).size() < worn, "zdjęta czapka znika z postaci")
+	G.ui.close_all()
 	# --- strzały przy długiej ucieczce na widoku
 	var N = G.npcs
 	var cp: Dictionary = N.spawn_cop(false)

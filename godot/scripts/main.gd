@@ -2313,7 +2313,9 @@ func _test_ui(what: String) -> void:
 			# podgląd pól ubioru: część ubrań na postaci, część w plecaku, gotówka w skrytce
 			for gid in ["czapka_daszek", "bluza_kaptur", "trampki", "lancuch", "jeansy", "rekawiczki", "okulary", "bojowki"]:
 				G.S.items[gid] = 1
-			for gid2 in ["czapka_daszek", "bluza_kaptur", "trampki", "lancuch"]:
+			var wear_ids: Array = Array(String(args.wear).split(",")) if args.has("wear") else ["czapka_daszek", "bluza_kaptur", "trampki", "lancuch"]
+			for gid2 in wear_ids:
+				G.S.items[gid2] = 1
 				G.gear_wear(gid2)
 			G.S.cash = 1840.0
 			G.S.stash.safe.cash = 600.0
