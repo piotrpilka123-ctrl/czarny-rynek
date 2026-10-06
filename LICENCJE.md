@@ -33,3 +33,9 @@ Syrena, deszcz, szum miasta, stukot kolejki, odgłosy prologu i „mamrotanie”
 (własna synteza). Modele z `godot/assets/models/` powstają ze skryptów Blendera w `godot/tools/blender/`.
 Gra nie zawiera żadnych utworów chronionych prawem autorskim; pliki, które sam wrzucisz do `godot/muzyka/`,
 pozostają Twoje i nie są częścią projektu.
+
+## Ubrania na postaci (godot/assets/wear)
+
+Siatki ubrań (bluza, kurtka, koszula, spodnie, rękawiczki, buty, komin, czapki) powstają skryptem
+`godot/tools/blender/make_ubrania.py` z powierzchni awatara Microsoft Rocketbox (licencja MIT, patrz wyżej) —
+są jego opracowaniem i podlegają tej samej licencji. Okulary, łańcuch, faktury tkanin i wszystkie detale są własne.

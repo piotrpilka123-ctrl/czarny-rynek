@@ -705,6 +705,7 @@ instance uniform vec4 w_pants = vec4(0.0);
 instance uniform vec4 w_shoes = vec4(0.0);
 instance uniform vec4 w_gloves = vec4(0.0);
 instance uniform float w_plaid = 0.0;
+instance uniform vec4 w_hide = vec4(0.0);
 varying vec4 reg;
 void vertex() {
 	vec4 r = vec4(0.0);
@@ -717,6 +718,10 @@ void vertex() {
 }
 vec3 srgb(vec3 c) { return pow(c, vec3(2.2)); }
 void fragment() {
+	// ciało pod uszytym ubraniem nie jest rysowane (nic nie przebija przez materiał)
+	if (dot(step(vec4(0.5), reg), w_hide) > 0.5) {
+		discard;
+	}
 	vec3 base = texture(tex_albedo, UV).rgb;
 	float lum = dot(base, vec3(0.299, 0.587, 0.114));
 	// fałdy i szwy z oryginalnej tekstury zostają jako delikatne cieniowanie nowego materiału
@@ -790,6 +795,144 @@ static func _wear_material(src: StandardMaterial3D, mi: MeshInstance3D, skel: Sk
 	return m
 
 
+const FABRIC_REPEAT := {"dzianina": 34.0, "dzins": 22.0, "plotno": 20.0, "skora": 12.0, "sciagacz": 14.0, "guma": 14.0}
+const SH_PLAID := """shader_type spatial;
+render_mode cull_disabled;
+uniform sampler2D tex_a : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_n : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform vec3 base : source_color = vec3(0.6, 0.2, 0.18);
+void fragment() {
+	// krata z rzutu (UV2 w metrach): szerokie pasy co 6 cm i cienkie nitki między nimi
+	vec2 g = UV2 / 0.06;
+	vec2 f = fract(g);
+	float bx = step(0.5, f.x);
+	float by = step(0.5, f.y);
+	vec3 c = base * mix(1.0, 0.34, bx * 0.5 + by * 0.5);
+	float thin = max(step(0.94, fract(g.x * 0.5 + 0.2)), step(0.94, fract(g.y * 0.5 + 0.2)));
+	c = mix(c, vec3(0.86, 0.8, 0.62), thin * 0.55);
+	float white = max(step(0.965, fract(g.x * 0.5 + 0.7)), step(0.965, fract(g.y * 0.5 + 0.7)));
+	c = mix(c, vec3(0.05, 0.05, 0.06), white * 0.6);
+	ALBEDO = c * texture(tex_a, UV * 18.0).r;
+	NORMAL_MAP = texture(tex_n, UV * 18.0).rgb;
+	ROUGHNESS = 0.92;
+}
+"""
+
+static var _wear_scene := {}
+static var _fabric_mats := {}
+static var _plaid_shader: Shader = null
+
+
+static var _fabric_tex := {}
+
+## faktura tkaniny z mipmapami (bez nich drobny splot mieni się morą z każdej odległości)
+static func _ftex(name: String) -> Texture2D:
+	if not _fabric_tex.has(name):
+		var src: Texture2D = load("res://assets/wear/%s.png" % name)
+		var img: Image = src.get_image()
+		if img.is_compressed():
+			img.decompress()
+		img.generate_mipmaps(name.ends_with("_n"))
+		_fabric_tex[name] = ImageTexture.create_from_image(img)
+	return _fabric_tex[name]
+
+
+static func _wear_load(id: String) -> PackedScene:
+	if not _wear_scene.has(id):
+		var path := "res://assets/wear/%s.glb" % id
+		_wear_scene[id] = load(path) if ResourceLoader.exists(path) else null
+	return _wear_scene[id]
+
+
+## materiał ubrania: kolor z modelu, faktura tkaniny rozpoznana po początku nazwy (dzianina_, dzins_, plotno_, skora_, sciagacz_, guma_, krata_)
+static func _fabric_mat(src: Material) -> Material:
+	if src == null:
+		return null
+	var nm := String(src.resource_name)
+	if _fabric_mats.has(nm):
+		return _fabric_mats[nm]
+	var kind := nm.get_slice("_", 0)
+	var out: Material = src
+	if kind == "krata" and src is BaseMaterial3D:
+		if _plaid_shader == null:
+			_plaid_shader = Shader.new()
+			_plaid_shader.code = SH_PLAID
+		var pm := ShaderMaterial.new()
+		pm.shader = _plaid_shader
+		pm.set_shader_parameter("tex_a", _ftex("plotno_a"))
+		pm.set_shader_parameter("tex_n", _ftex("plotno_n"))
+		pm.set_shader_parameter("base", (src as BaseMaterial3D).albedo_color)
+		out = pm
+	elif src is BaseMaterial3D:
+		var m: BaseMaterial3D = src.duplicate()
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		if FABRIC_REPEAT.has(kind):
+			m.albedo_texture = _ftex(kind + "_a")
+			m.normal_enabled = true
+			m.normal_texture = _ftex(kind + "_n")
+			m.normal_scale = 0.7
+			var k: float = FABRIC_REPEAT[kind]
+			m.uv1_scale = Vector3(k, k, k)
+			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		out = m
+	_fabric_mats[nm] = out
+	return out
+
+
+## ubranie szyte na szkielet: siatka z pliku przechodzi na szkielet postaci i dostaje skórę liczoną z jego pozy spoczynkowej
+static func _wear_skinned(rig: Dictionary, id: String) -> bool:
+	var ps := _wear_load(id)
+	if ps == null:
+		return false
+	var skel: Skeleton3D = rig.skel
+	var inst: Node = ps.instantiate()
+	var ok := false
+	for n in inst.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = n
+		var src: Skin = mi.skin
+		var gskel := mi.get_node_or_null(mi.skeleton) as Skeleton3D
+		if src == null:
+			continue
+		var sk := Skin.new()
+		for i in range(src.get_bind_count()):
+			var bn := String(src.get_bind_name(i))
+			if bn == "" and gskel != null and src.get_bind_bone(i) >= 0:
+				bn = gskel.get_bone_name(src.get_bind_bone(i))
+			var bi := skel.find_bone(bn)
+			if bi >= 0:
+				sk.add_named_bind(bn, skel.get_bone_global_rest(bi).affine_inverse())
+			else:
+				sk.add_named_bind(bn, src.get_bind_pose(i))
+		mi.get_parent().remove_child(mi)
+		mi.owner = null
+		skel.add_child(mi)
+		mi.transform = Transform3D.IDENTITY
+		mi.skeleton = NodePath("..")
+		mi.skin = sk
+		mi.extra_cull_margin = 0.6
+		for sf in range(mi.mesh.get_surface_count()):
+			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf)))
+		_set_layer(mi, 2)
+		rig.wear.append(mi)
+		ok = true
+	inst.free()
+	return ok
+
+
+## sztywny dodatek (czapka, okulary, łańcuch): model zapisany względem początku kości
+static func _wear_rigid(rig: Dictionary, id: String, bone: String) -> bool:
+	var ps := _wear_load(id)
+	if ps == null:
+		return false
+	var inst: Node3D = ps.instantiate()
+	for n in inst.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = n
+		for sf in range(mi.mesh.get_surface_count()):
+			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf)))
+	_on_bone(rig, bone, inst, Transform3D())
+	return true
+
+
 ## zawiesza `node` na kości; `xf` to położenie w osiach postaci (X w lewo, Y w górę, Z do przodu) względem początku kości
 static func _on_bone(rig: Dictionary, bone: String, node: Node3D, xf: Transform3D) -> void:
 	var skel: Skeleton3D = rig.skel
@@ -818,6 +961,25 @@ static func _wmesh(mesh: Mesh, color: Color, rough := 0.9, metal := 0.0) -> Mesh
 	return mi
 
 
+## sterczące kosmyki (osobna, półprzezroczysta powierzchnia modelu) przebijałyby przez czapkę — pod nakryciem głowy je chowamy
+static func _hair_cards(rig: Dictionary, show: bool) -> void:
+	var skel: Skeleton3D = rig.skel
+	var keep: Dictionary = rig.get("hair_src", {})
+	for c in skel.get_children():
+		if not (c is MeshInstance3D) or rig.wear.has(c):
+			continue
+		var mi: MeshInstance3D = c
+		for sf in range(mi.mesh.get_surface_count()):
+			var src: Material = mi.mesh.surface_get_material(sf)
+			if src == null or not String(src.resource_name).to_lower().ends_with("opacity"):
+				continue
+			var key := "%d|%d" % [mi.get_instance_id(), sf]
+			if not keep.has(key):
+				keep[key] = mi.get_surface_override_material(sf)
+			mi.set_surface_override_material(sf, keep[key] if show else People._hidden())
+	rig["hair_src"] = keep
+
+
 ## ubiera postać w rzeczy z pól ekwipunku: gear = {pole: id przedmiotu}
 static func dress(rig: Dictionary, gear: Dictionary) -> void:
 	if rig.is_empty() or not rig.get("person", false):
@@ -832,6 +994,18 @@ static func dress(rig: Dictionary, gear: Dictionary) -> void:
 		var id := String(gear[slot])
 		if id != "" and D.ITEMS.has(id):
 			look[slot] = D.ITEMS[id].get("look", {})
+	# uszyte ubrania i dodatki z plików; czego nie ma w plikach, to po staremu (przebarwienie i proste bryły)
+	var made := {}
+	for slot in look:
+		var gid := String(gear[slot])
+		var bone := String(look[slot].get("bone", ""))
+		made[slot] = _wear_rigid(rig, gid, bone) if bone != "" else _wear_skinned(rig, gid)
+	_hair_cards(rig, not made.get("glowa", false))
+	var hide := Vector4(1.0 if made.get("gora", false) else 0.0, 1.0 if made.get("spodnie", false) else 0.0,
+		1.0 if made.get("buty", false) else 0.0, 1.0 if made.get("dlonie", false) else 0.0)
+	for slot in made:
+		if made[slot]:
+			look[slot] = {}
 	var none := Color(0, 0, 0, 0)
 	var tint := func(slot: String) -> Color:
 		if not look.has(slot) or not look[slot].has("color"):
@@ -839,7 +1013,7 @@ static func dress(rig: Dictionary, gear: Dictionary) -> void:
 		var c := col(look[slot].color)
 		return Color(c.r, c.g, c.b, 0.94)
 	for c in skel.get_children():
-		if not (c is MeshInstance3D):
+		if not (c is MeshInstance3D) or rig.wear.has(c):
 			continue
 		var mi: MeshInstance3D = c
 		for s in range(mi.mesh.get_surface_count()):
@@ -853,6 +1027,7 @@ static func dress(rig: Dictionary, gear: Dictionary) -> void:
 		mi.set_instance_shader_parameter("w_shoes", tint.call("buty"))
 		mi.set_instance_shader_parameter("w_gloves", tint.call("dlonie"))
 		mi.set_instance_shader_parameter("w_plaid", 1.0 if look.get("gora", {}).get("plaid", false) else 0.0)
+		mi.set_instance_shader_parameter("w_hide", hide)
 	# --- głowa: czapka z daszkiem albo zimowa
 	var head: Dictionary = look.get("glowa", {})
 	if head.has("hat"):

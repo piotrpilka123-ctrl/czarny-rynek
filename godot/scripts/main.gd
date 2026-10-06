@@ -1903,6 +1903,41 @@ func _apply_test_args() -> void:
 					(n2 as MeshInstance3D).visible = false
 				if args.has("proprange"):
 					(n2 as MeshInstance3D).visibility_range_end = float(args.proprange)
+	if args.has("wearshot"):
+		# podgląd ubrań z bliska: ta sama postać z przodu, z boku i z tyłu (albo zbliżenie: --wearzoom=wysokość)
+		var R: Dictionary = D.ROOMS.safe
+		teleport("safe", Vector3(float(R.cx), 0.0, 1.5), 0.0)
+		var gear := {}
+		for gid in String(args.wearshot).split(","):
+			if D.ITEMS.has(gid):
+				gear[String(D.ITEMS[gid].slot)] = gid
+		var zoom_y := float(args.get("wearzoom", "0"))
+		var k := 0
+		for ry in [0.0, 1.15, PI]:
+			var look: Dictionary = D.PLAYER_LOOK.duplicate()
+			look["no_blob"] = true
+			look["model"] = String(D.OUTFITS[String(args.get("outfit", "dres"))].model)
+			look["face"] = String(D.PLAYER_LOOK.model)
+			look["tall"] = 1.0
+			look["build"] = 1.0
+			var rg: Dictionary = Chars.make(look)
+			world.rooms.safe.add_child(rg.root)
+			rg.root.position = Vector3(float(R.cx) + (k - 1) * (0.5 if zoom_y > 0.0 else 0.85), 0.0, -1.0)
+			rg.root.rotation.y = ry
+			Chars.animate(rg, 0.0, 0.0, "")
+			Chars.dress(rg, gear)
+			k += 1
+		for lx in [-1.6, 1.6]:
+			var wl := OmniLight3D.new()
+			wl.position = Vector3(float(R.cx) + lx, 1.9, 1.2)
+			wl.light_energy = 1.6
+			wl.omni_range = 7.0
+			wl.shadow_enabled = false
+			world.rooms.safe.add_child(wl)
+		if zoom_y > 0.0:
+			cine_cam(Vector3(float(R.cx), zoom_y, 0.75), Vector3(float(R.cx), zoom_y, -1.0), 28.0)
+		else:
+			cine_cam(Vector3(float(R.cx), 1.0, 2.5), Vector3(float(R.cx), 0.93, -1.0), 32.0)
 	if args.has("showmodel"):
 		# podgląd modeli z Blendera: rząd przed kamerą, z neutralnym światłem (--showmodel=radio,pistolet --showscale=2)
 		var names := String(args.showmodel).split(",")
