@@ -564,6 +564,9 @@ static func brick_stack(product: String, n: int) -> Node3D:
 
 ## sportowa torba (prolog: ostatnia partia i gotówka)
 static func duffel() -> Node3D:
+	var bag: Node3D = model("torba")
+	if bag != null:
+		return bag
 	var g := Node3D.new()
 	Models.capsule(g, 0.17, 0.74, Vector3(0, 0.17, 0), _m("duffel", "1d2330", 0.9), Vector3(0, 0, PI / 2.0))
 	Models.box(g, Vector3(0.5, 0.012, 0.03), Vector3(0, 0.335, 0), _m("zip", "8a8f96", 0.4, 0.7), Vector3.ZERO, false)

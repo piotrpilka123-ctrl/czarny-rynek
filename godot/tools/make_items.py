@@ -457,6 +457,21 @@ def knuckles_icon(name):
     _cloth(name, dr)
 
 
+def balaclava_icon(name):
+    """kominiarka: czarna dzianina z jednym otworem na oczy"""
+    def dr(d):
+        knit, dark = (38, 40, 46, 255), (20, 21, 25, 255)
+        d.rounded_rectangle([P(52), P(26), P(140), P(150)], P(40), fill=knit, outline=dark, width=P(3))
+        d.rounded_rectangle([P(62), P(140), P(130), P(170)], P(8), fill=knit, outline=dark, width=P(3))
+        d.rounded_rectangle([P(64), P(74), P(128), P(98)], P(12), fill=(196, 150, 120, 255), outline=dark, width=P(3))
+        for ex in (82, 110):
+            d.ellipse([P(ex - 6), P(81), P(ex + 6), P(91)], fill=(245, 245, 240, 255))
+            d.ellipse([P(ex - 3), P(83), P(ex + 3), P(89)], fill=(30, 30, 34, 255))
+        for k in range(5):
+            d.line([(P(60 + k * 18), P(150)), (P(60 + k * 18), P(168))], fill=dark, width=P(2))
+    _cloth(name, dr)
+
+
 def scarf_icon(name, col):
     def dr(d):
         d.ellipse([P(40), P(54), P(152), P(130)], fill=col + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
@@ -578,6 +593,7 @@ seeds('nasiona')
 pot('doniczka')
 phone('burner')
 knuckles_icon('kastet')
+balaclava_icon('ub_kominiarka')
 bottle('nawoz', (70, 130, 80), 'NAWÓZ')
 canister('chemia', (60, 90, 150), 'ODCZYNNIK')
 canister('woda', (70, 150, 200), 'WODA')

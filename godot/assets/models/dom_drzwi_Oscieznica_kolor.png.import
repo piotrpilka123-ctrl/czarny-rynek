@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://deriu32kjvst0"
-path="res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"
+uid="uid://62w5n4mfd3h7"
+path="res://.godot/imported/dom_drzwi_Oscieznica_kolor.png-ad097be5f2e1cdf14229c27c962e6666.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "58bf4405df846945f7b8906d845b371b"
+"md5": "4b889b29ac3c8ee6240f7fd2f6f166a0"
 }
 
 [deps]
 
-source_file="res://assets/models/dom_wieszak_TintKurtka_kolor.png"
-dest_files=["res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"]
+source_file="res://assets/models/dom_drzwi_Oscieznica_kolor.png"
+dest_files=["res://.godot/imported/dom_drzwi_Oscieznica_kolor.png-ad097be5f2e1cdf14229c27c962e6666.ctex"]
 
 [params]
 

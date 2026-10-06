@@ -2,19 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://deriu32kjvst0"
-path="res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"
+uid="uid://b4boqrtx2uhjt"
+path="res://.godot/imported/ub_kominiarka.png-51ddd5c27d73afc97b09b3329ff76a8f.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "58bf4405df846945f7b8906d845b371b"
 }
 
 [deps]
 
-source_file="res://assets/models/dom_wieszak_TintKurtka_kolor.png"
-dest_files=["res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"]
+source_file="res://assets/items/ub_kominiarka.png"
+dest_files=["res://.godot/imported/ub_kominiarka.png-51ddd5c27d73afc97b09b3329ff76a8f.ctex"]
 
 [params]
 
@@ -40,4 +37,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

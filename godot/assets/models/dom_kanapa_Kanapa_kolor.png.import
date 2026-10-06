@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://deriu32kjvst0"
-path="res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"
+uid="uid://cv2a5hf1wqe1x"
+path="res://.godot/imported/dom_kanapa_Kanapa_kolor.png-71d44a35ac0fcbdabd97293e058d32e1.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "58bf4405df846945f7b8906d845b371b"
+"md5": "7efb8d651bd479f7d8731ce56b3cdeb7"
 }
 
 [deps]
 
-source_file="res://assets/models/dom_wieszak_TintKurtka_kolor.png"
-dest_files=["res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"]
+source_file="res://assets/models/dom_kanapa_Kanapa_kolor.png"
+dest_files=["res://.godot/imported/dom_kanapa_Kanapa_kolor.png-71d44a35ac0fcbdabd97293e058d32e1.ctex"]
 
 [params]
 

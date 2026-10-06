@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://deriu32kjvst0"
-path="res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"
+uid="uid://bvsyd2qpntltu"
+path="res://.godot/imported/dom_lozko_Zaglowek_kolor.png-78b326ad4956030e19850adc0c9ee337.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "58bf4405df846945f7b8906d845b371b"
+"md5": "5418acb809c594556523e478a6c21308"
 }
 
 [deps]
 
-source_file="res://assets/models/dom_wieszak_TintKurtka_kolor.png"
-dest_files=["res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"]
+source_file="res://assets/models/dom_lozko_Zaglowek_kolor.png"
+dest_files=["res://.godot/imported/dom_lozko_Zaglowek_kolor.png-78b326ad4956030e19850adc0c9ee337.ctex"]
 
 [params]
 

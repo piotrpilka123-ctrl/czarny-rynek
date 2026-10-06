@@ -907,6 +907,33 @@ def komin():
     finish(B, ob, parts, 'komin')
 
 
+def kominiarka():
+    """kominiarka: dzianina na całą głowę i szyję z jednym otworem na oczy, obszyty brzeg otworu i dół"""
+    B = Body()
+    knit = mat('dzianina_kominiarka', '1b1c20', 0.95)
+    hz, hy = B.H['Bip01 Head'].z, B.H['Bip01 Head'].y
+    eL, eR = B.H['Bip01 LEye'], B.H['Bip01 REye']
+    ez = (eL.z + eR.z) / 2
+
+    def pick(co, w):
+        if w.get('Bip01 LEye', 0.0) + w.get('Bip01 REye', 0.0) > 0.5 or w.get('Bip01 MTongue', 0.0) > 0.01:
+            return False
+        if w.get('Bip01 Neck', 0.0) >= 0.2 and co.z > 1.47:
+            return True
+        if head_w(w) < 0.5:
+            return False
+        # otwór na oczy: poziomy pas z przodu twarzy
+        return not (co.y < hy - 0.055 and abs(co.z - ez) < 0.017 and abs(co.x) < 0.064)
+    bm, lps = shell(B, pick, lambda co, w: 0.01, 3, 1, rim=0.004, gap=0.009)
+    ob = to_object(B, bm, 'kominiarka', [knit])
+    parts = []
+    for lp in lps:
+        c = sum(lp, Vector()) / len(lp)
+        if len(lp) > 10:
+            parts.append(band(lp, 0.0045, knit, 'obszycie', 0.0008, 1.2))
+    finish(B, ob, parts, 'kominiarka')
+
+
 def _head_shell(B, rim_front, rim_back, off, smooth=3):
     hz, hy = B.H['Bip01 Head'].z, B.H['Bip01 Head'].y
 
@@ -1099,7 +1126,7 @@ def lancuch():
 
 
 ALL = (bluza_kaptur, kurtka_kieszenie, koszula, dresy, jeansy, bojowki, rekawiczki, rekawiczki_skora, trampki, buty_bieg, buty_robocze,
-       komin, czapka_daszek, czapka_zimowa, okulary, lancuch)
+       komin, kominiarka, czapka_daszek, czapka_zimowa, okulary, lancuch)
 if __name__ == '__main__':
     only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else []
     for f in ALL:

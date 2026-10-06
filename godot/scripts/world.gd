@@ -2801,6 +2801,14 @@ func _room(id: String, floor_tex: String, wall_tex: String, ceil_c: String, wall
 		return g
 	if id == "garage":
 		Models.box(g, Vector3(2.9, 2.3, 0.08), Vector3(cx, 1.15, ez - 0.05), Props.pbr("painted_metal_shutter", 0.5, Color(0.7, 0.75, 0.8)))
+	elif Stations.model("dom_drzwi") != null:
+		# drzwi wewnętrzne z modelu; kolor skrzydła zależy od miejsca
+		var dm: Node3D = Stations.model("dom_drzwi")
+		dm.position = Vector3(cx, 0.0, ez)
+		dm.rotation.y = PI
+		g.add_child(dm)
+		Interior._tint(dm, {"safe": Color(0.83, 0.74, 0.6), "club": Color(0.12, 0.12, 0.14), "komisariat": Color(0.4, 0.46, 0.55), "szpital": Color(0.9, 0.92, 0.9),
+			"basement": Color(0.45, 0.4, 0.34), "shop": Color(0.3, 0.45, 0.36)}.get(id, Color(0.8, 0.78, 0.74)))
 	else:
 		Models.box(g, Vector3(1.0, 2.05, 0.08), Vector3(cx, 1.03, ez - 0.05), Props.pbr("wooden_garage_door", 0.6, Color(0.8, 0.75, 0.7)))
 		Models.box(g, Vector3(1.16, 0.08, 0.12), Vector3(cx, 2.1, ez - 0.06), Models.mat("3a3027", 0.8))
@@ -2908,15 +2916,14 @@ func _interiors() -> void:
 	Interior.note(g, Vector3(cx + w * 0.5 - 0.01, 1.62, 1.75), -PI / 2.0, "WYBUCH W STAREJ HUCIE\nPolicja szuka świadków. Jedna osoba zatrzymana.", 0.46, 0.3)
 	Interior.picture(g, Vector3(cx + w * 0.5 - 0.01, 1.55, 2.35), -PI / 2.0, 0.46, "pic_kalendarz")
 	# kanapa, ława, telewizor
-	_rp(g, "sofa_02", cx - 2.05, d * 0.5 - 0.55, PI, 0.72, 0.0, 0.95, 0.45)
-	_rp(g, "throw_pillows_01", cx - 2.5, d * 0.5 - 0.6, 2.6, 0.3, 0.42)
+	_rp(g, "sofa_02", cx - 2.05, d * 0.5 - 0.55, PI, 0.88, 0.0, 0.95, 0.45)
 	_rp(g, "coffeetable_01", cx - 2.05, d * 0.5 - 1.5, 0.0, 0.4, 0.0, 0.5, 0.3)
 	Interior.pizza_box(g, Vector3(cx - 2.25, 0.4, d * 0.5 - 1.5), 0.3, 2)
 	Interior.can(g, Vector3(cx - 1.82, 0.4, d * 0.5 - 1.42), "b0382c")
 	Interior.can(g, Vector3(cx - 1.72, 0.4, d * 0.5 - 1.6), "2a6ac8", true)
 	Interior.can(g, Vector3(cx - 1.3, 0.0, d * 0.5 - 1.1), "b0382c", true)
-	_rp(g, "side_table_01", cx - 1.55, -d * 0.5 + 0.4, 0.0, 0.5, 0.0, 0.3, 0.3)
-	_rp(g, "television_02", cx - 1.55, -d * 0.5 + 0.4, 0.0, 0.42, 0.5)
+	_lm(g, "dom_szafka_tv", cx - 1.55, -d * 0.5 + 0.26, 0.0, 0.0, Vector2(0.6, 0.22))
+	_rp(g, "television_02", cx - 1.55, -d * 0.5 + 0.28, 0.0, 0.6, 0.5)
 	var tvl := _room_light(g, cx - 1.55, -d * 0.5 + 0.9, 1.3, 0.35, Color(0.5, 0.65, 1.0), 3.0)
 	tvl.shadow_enabled = false
 	tvl.set_meta("tv", true)

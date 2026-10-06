@@ -715,7 +715,7 @@ func talk_stasiu() -> void:
 func talk_clothes() -> void:
 	var first := not G.flag("met_grazyna")
 	G.S.flags["met_grazyna"] = true
-	var lines := ["Dzień dobry, kochaniutki. Wszystko po praniu, wszystko z Zachodu.", "Ubranie robi człowieka: w kombinezonie nikt cię nie zaczepi, w kominiarce — wręcz przeciwnie. Przymierzalnia za zasłonką."] if first else [["Co podać, kochaniutki?", "Nowa dostawa w piątek.", "Dla pana zawsze coś się znajdzie."].pick_random()]
+	var lines := ["Dzień dobry, kochaniutki. Wszystko po praniu, wszystko z Zachodu.", "Ubranie robi człowieka: w koszuli patrol patrzy na ciebie łaskawiej, w kominiarce — wręcz przeciwnie. Lepsze rzeczy odkładam dla stałych klientów, więc zaglądaj, jak się dorobisz."] if first else [["Co podać, kochaniutki?", "Nowa dostawa przyszła, sam zobacz.", "Dla ciebie zawsze coś się znajdzie."].pick_random()]
 	ui.dialog({"name": "Pani Grażyna", "lines": lines, "choices": [
 		{"label": "Pokaż, co masz na wieszakach", "kind": "go", "act": func(): ui.open_inventory("", "wear")},
 		{"label": "Tylko się rozglądam."},

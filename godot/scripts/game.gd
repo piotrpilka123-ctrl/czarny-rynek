@@ -336,7 +336,7 @@ func worn_traits() -> Array:
 
 
 func outfit_masked() -> bool:
-	return bool(D.OUTFITS[outfit()].get("masked", false))
+	return bool(D.OUTFITS[outfit()].get("masked", false)) or gear("glowa") == "kominiarka"
 
 
 func outfit_owned(id: String) -> bool:

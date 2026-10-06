@@ -151,7 +151,7 @@ func start() -> void:
 	stage = "lab"
 	t = 0.0
 	M.nav_force = true
-	Sfx.score("napiecie", 3.0)
+	Sfx.score("napiecie", 1.5, 3.0)
 	M.ui.dialog({"name": "Siwy", "lines": [
 		"No, wreszcie. Za kwadrans piąta, Kuba. Trzy dni cię nie było.",
 		"Pół kilo stoi na stole — najczystszy śnieg, jaki z tej huty wyszedł. Wiktor zapłacił z góry i czeka do szóstej.",
@@ -409,7 +409,7 @@ func _begin_raid() -> void:
 	_bang = 0.4
 	_shout = 5.5
 	M.nav_force = true
-	Sfx.score("akcja", 0.5)
+	Sfx.score("akcja", 0.9, 0.3)
 	Sfx.siren(true)
 	Sfx.megaphone()
 	Sfx.play("alert")
@@ -430,7 +430,7 @@ func on_outside() -> void:
 	stage = "escape"
 	t = 0.0
 	M.nav_force = true
-	Sfx.score("skradanie", 1.5)
+	Sfx.score("skradanie", 1.6, 1.5)
 	_reset_cops()
 	for l in M.world.lab_fx.get("flash", []):
 		l.light_energy = 0.0
@@ -586,12 +586,15 @@ func _boom() -> void:
 			apos = cand
 			break
 	var ground: float = W.height(eye.x, eye.z)
-	var arig: Dictionary = Chars.make({"model": "m09", "kind": "hoodie", "mask": true, "seed": 77, "top": "15161a", "bottom": "101114", "tall": 1.04})
+	var arig: Dictionary = Chars.make({"model": "m09", "kind": "hoodie", "seed": 77, "top": "15161a", "bottom": "101114", "tall": 1.04})
 	M.add_child(arig.root)
 	nodes.append(arig.root)
 	arig.root.position = Vector3(apos.x, W.height(apos.x, apos.y), apos.y)
 	arig.root.rotation.y = atan2(eye.x - apos.x, eye.z - apos.y)
 	arig.root.visible = false
+	# bandyta w prawdziwych ciuchach: czarna bluza, bojówki, skórzane rękawiczki, robocze buty, kominiarka
+	Chars.dress(arig, {"glowa": "kominiarka", "gora": "bluza_kaptur", "spodnie": "bojowki", "dlonie": "rekawiczki_skora", "buty": "buty_robocze"},
+		{"gora": Color(0.2, 0.2, 0.22), "spodnie": Color(0.28, 0.28, 0.3), "buty": Color(0.35, 0.33, 0.32)})
 	Chars.hold(arig, "rurka", Transform3D(Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0)), Vector3(0.09, 0.03, 0.0)))
 	Chars.play(arig, "Idle")
 	attacker = arig
@@ -679,7 +682,7 @@ func _boom() -> void:
 			var bpos := Vector3(bp.x, W.height(bp.x, bp.y) + float(booms[bi][2]), bp.y)
 			Fx.explosion(M, bpos, float(booms[bi][3]))
 			# pierwszy wybuch: skradanie urywa się, wchodzi motyw utraty wszystkiego
-			Sfx.score("dramat", 0.4)
+			Sfx.score("dramat", 0.35, 0.05)
 			Fx.shards(M, bpos, Vector3(-0.5, 1.0, 0.1), "debris", int(60 * float(booms[bi][3])), 20.0, 55.0, 0.2)
 			shake = maxf(shake, 0.5 + float(booms[bi][3]) * 0.25)
 			M.ui.flash(0.6 if bi == 1 else 0.28)

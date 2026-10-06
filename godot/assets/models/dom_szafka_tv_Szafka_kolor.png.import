@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://deriu32kjvst0"
-path="res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"
+uid="uid://djeqguet6q1fd"
+path="res://.godot/imported/dom_szafka_tv_Szafka_kolor.png-ae60a4a865a58ecb00fa9582f18213a1.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "58bf4405df846945f7b8906d845b371b"
+"md5": "0e501a2b7fd1e00055c89bac76a7ef63"
 }
 
 [deps]
 
-source_file="res://assets/models/dom_wieszak_TintKurtka_kolor.png"
-dest_files=["res://.godot/imported/dom_wieszak_TintKurtka_kolor.png-db33060acc577c9e6ac6685851369ed1.ctex"]
+source_file="res://assets/models/dom_szafka_tv_Szafka_kolor.png"
+dest_files=["res://.godot/imported/dom_szafka_tv_Szafka_kolor.png-ae60a4a865a58ecb00fa9582f18213a1.ctex"]
 
 [params]
 

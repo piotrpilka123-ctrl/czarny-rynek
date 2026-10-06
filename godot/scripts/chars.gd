@@ -662,7 +662,12 @@ static func _make_person(o: Dictionary, rng: RandomNumberGenerator, female: bool
 	play(rig, "Idle")
 	ap.seek(rng.randf() * 3.0, true)
 	if o.get("mask", false):
-		_balaclava(skel)
+		# kominiarka uszyta na głowę; prosta bryła tylko awaryjnie
+		rig["wear"] = []
+		if _wear_skinned(rig, "kominiarka"):
+			_hair_cards(rig, false)
+		else:
+			_balaclava(skel)
 	return rig
 
 
@@ -846,9 +851,18 @@ static func _wear_load(id: String) -> PackedScene:
 
 
 ## materiał ubrania: kolor z modelu, faktura tkaniny rozpoznana po początku nazwy (dzianina_, dzins_, plotno_, skora_, sciagacz_, guma_, krata_)
-static func _fabric_mat(src: Material) -> Material:
+static func _fabric_mat(src: Material, tint := Color.WHITE) -> Material:
 	if src == null:
 		return null
+	if tint != Color.WHITE:
+		# ciemniejszy wariant tej samej tkaniny (np. czarna bluza bandyty)
+		var tk := "%s|%s" % [String(src.resource_name), tint.to_html()]
+		if not _fabric_mats.has(tk):
+			var base: Material = _fabric_mat(src).duplicate()
+			if base is BaseMaterial3D and not String(src.resource_name).begins_with("metal"):
+				(base as BaseMaterial3D).albedo_color = (base as BaseMaterial3D).albedo_color * tint
+			_fabric_mats[tk] = base
+		return _fabric_mats[tk]
 	var nm := String(src.resource_name)
 	if _fabric_mats.has(nm):
 		return _fabric_mats[nm]
@@ -881,7 +895,7 @@ static func _fabric_mat(src: Material) -> Material:
 
 
 ## ubranie szyte na szkielet: siatka z pliku przechodzi na szkielet postaci i dostaje skórę liczoną z jego pozy spoczynkowej
-static func _wear_skinned(rig: Dictionary, id: String) -> bool:
+static func _wear_skinned(rig: Dictionary, id: String, tint := Color.WHITE) -> bool:
 	var ps := _wear_load(id)
 	if ps == null:
 		return false
@@ -912,7 +926,7 @@ static func _wear_skinned(rig: Dictionary, id: String) -> bool:
 		mi.skin = sk
 		mi.extra_cull_margin = 0.6
 		for sf in range(mi.mesh.get_surface_count()):
-			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf)))
+			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf), tint))
 		_set_layer(mi, 2)
 		rig.wear.append(mi)
 		ok = true
@@ -982,7 +996,7 @@ static func _hair_cards(rig: Dictionary, show: bool) -> void:
 
 
 ## ubiera postać w rzeczy z pól ekwipunku: gear = {pole: id przedmiotu}
-static func dress(rig: Dictionary, gear: Dictionary) -> void:
+static func dress(rig: Dictionary, gear: Dictionary, tints := {}) -> void:
 	if rig.is_empty() or not rig.get("person", false):
 		return
 	for n in rig.get("wear", []):
@@ -1000,7 +1014,7 @@ static func dress(rig: Dictionary, gear: Dictionary) -> void:
 	for slot in look:
 		var gid := String(gear[slot])
 		var bone := String(look[slot].get("bone", ""))
-		made[slot] = _wear_rigid(rig, gid, bone) if bone != "" else _wear_skinned(rig, gid)
+		made[slot] = _wear_rigid(rig, gid, bone) if bone != "" else _wear_skinned(rig, gid, tints.get(slot, Color.WHITE))
 	_hair_cards(rig, not made.get("glowa", false))
 	var hide := Vector4(1.0 if made.get("gora", false) else 0.0, 1.0 if made.get("spodnie", false) else 0.0,
 		1.0 if made.get("buty", false) else 0.0, 1.0 if made.get("dlonie", false) else 0.0)

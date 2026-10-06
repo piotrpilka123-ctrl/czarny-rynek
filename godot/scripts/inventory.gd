@@ -1078,15 +1078,16 @@ func _tab_char() -> void:
 
 
 # ---------------------------------------------------------------- zakładka: ubrania
-## Szafa i sklep w jednym: po lewej postać w oglądanym stroju, po prawej wieszak.
-## Kupować można tylko w „Taniej Odzieży”, przebierać się — tam albo w kryjówce.
+## Ubrania na sztuki: po lewej postać w tym, co ma na sobie, po prawej wieszak pogrupowany polami (czapka, dodatek, góra…).
+## Kupować można tylko w „Taniej Odzieży”; lepsze rzeczy sklep odkłada dla klientów z wyższym poziomem.
+var wear_offer: Array = []      # co aktualnie wisi na wieszaku (do testów)
+
 func _tab_wear() -> void:
 	var S: Dictionary = G.S
 	var in_shop: bool = G.player != null and G.player.loc == "ciuchy"
 	var can_change: bool = G.can_change_here()
-	if not D.OUTFITS.has(wear_sel):
-		wear_sel = G.outfit()
-	set_rig(wear_sel)
+	set_rig(G.outfit())
+	_dress()
 	var row := K.hbox(12)
 	content.add_child(row)
 	var left := K.vbox(8)
@@ -1096,21 +1097,30 @@ func _tab_wear() -> void:
 	var idc := _frame(W_MID + 60.0, 0, 12)
 	idc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(idc)
-	var iv := K.vbox(4)
+	var iv := K.vbox(3)
 	idc.add_child(iv)
-	var od: Dictionary = D.OUTFITS[wear_sel]
-	var worn: bool = wear_sel == G.outfit()
-	iv.add_child(K.head(String(od.name).to_upper(), 22, K.C_TXT))
-	iv.add_child(K.lbl("masz na sobie" if worn else ("w szafie" if G.outfit_owned(wear_sel) else "przymiarka"), 12, K.C_ACC if worn else K.C_DIM))
-	iv.add_child(K.wrap(String(od.desc), 12, K.C_DIM))
+	iv.add_child(K.lbl("MASZ NA SOBIE", 10, K.C_DIM))
+	for se in D.GEAR_SLOTS:
+		var wid: String = G.gear(String(se[0]))
+		var wr := K.hbox(6)
+		iv.add_child(wr)
+		var sl := K.lbl(String(se[1]), 11, K.C_DIM)
+		sl.custom_minimum_size = Vector2(84, 0)
+		wr.add_child(sl)
+		var wn := K.lbl(String(D.ITEMS[wid].name) if wid != "" else "—", 12, K.C_TXT if wid != "" else K.C_DIM)
+		wn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		wn.clip_text = true
+		wr.add_child(wn)
+		if wid != "":
+			wr.add_child(_marks(G.stat_marks(D.ITEMS[wid].get("stats", {})), false))
 	# prawa strona: wieszak
 	var right := _frame(W_SIDE * 2.0 - 48.0, H_BODY)
 	row.add_child(right)
 	var rv := K.vbox(8)
 	right.add_child(rv)
-	_title(rv, "store", "TANIA ODZIEŻ — WIESZAK" if in_shop else "SZAFA", G.money(S.cash) if in_shop else "", K.C_ACC)
+	_title(rv, "store", "TANIA ODZIEŻ — WIESZAK" if in_shop else "UBRANIA", G.money(S.cash) if in_shop else "", K.C_ACC)
 	if not in_shop:
-		rv.add_child(K.wrap("Nowe ciuchy kupisz w „Taniej Odzieży” przy Hutniczej. Przebrać się możesz tam albo w kryjówce." if can_change else "Na ulicy się nie przebierzesz. Wróć do kryjówki albo zajrzyj do „Taniej Odzieży” przy Hutniczej.", 12, K.C_DIM))
+		rv.add_child(K.wrap("Ubrania kupisz w „Taniej Odzieży” przy Hutniczej. Zakładasz je w zakładce Ekwipunek, przeciągając na pole przy postaci — albo przyciskiem tutaj (w kryjówce lub w sklepie).", 12, K.C_DIM))
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1118,90 +1128,73 @@ func _tab_wear() -> void:
 	var list := K.vbox(6)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(list)
-	for id in D.OUTFITS:
-		var oid: String = id
-		var o: Dictionary = D.OUTFITS[id]
-		var owned: bool = G.outfit_owned(oid)
-		if not in_shop and not owned:
-			continue
-		var on: bool = oid == wear_sel
-		var card := K.panel(K.sb(Color(0.13, 0.17, 0.24) if on else Color(0.085, 0.102, 0.15), 10, K.C_ACC if on else Color(1, 1, 1, 0.07), 1, 10))
-		card.mouse_filter = Control.MOUSE_FILTER_STOP
-		card.gui_input.connect(func(ev: InputEvent):
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and wear_sel != oid:
-				Sfx.play("click")
-				wear_sel = oid
-				render())
-		list.add_child(card)
-		var cv := K.vbox(4)
-		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(cv)
-		var top := K.hbox(8)
-		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cv.add_child(top)
-		top.add_child(K.head(String(o.name), 18, K.C_TXT))
-		if oid == G.outfit():
-			top.add_child(K.lbl("● na sobie", 11, K.C_ACC))
-		elif owned:
-			top.add_child(K.lbl("w szafie", 11, K.C_DIM))
-		top.add_child(K.spacer())
-		if not owned:
-			var locked: bool = int(S.lvl) < int(o.lvl)
-			top.add_child(K.head(("od poz. %d" % int(o.lvl)) if locked else G.money(o.price), 17, K.C_DIM if locked else (K.C_GOLD if S.cash >= float(o.price) else K.C_BAD)))
-		var traits: Array = G.outfit_traits(oid)
-		if traits.is_empty():
-			cv.add_child(K.lbl("bez zalet i wad", 11, K.C_DIM))
-		else:
-			var parts: Array = []
-			for t in traits:
-				parts.append(K.col(String(t.text), K.C_ACC if t.good else K.C_WARN))
-			var tl := K.rich("   ".join(parts), 12)
-			tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cv.add_child(tl)
-		if on:
-			var acts := K.hbox(8)
-			cv.add_child(acts)
-			if owned:
-				var wb := K.btn("  Załóż  ", func(): G.outfit_wear(oid); render(), "go", true)
-				wb.disabled = oid == G.outfit() or not can_change
-				acts.add_child(wb)
+	wear_offer.clear()
+	for se in D.GEAR_SLOTS:
+		var slot := String(se[0])
+		var ids: Array = []
+		for gid in D.ITEMS:
+			if String(D.ITEMS[gid].get("slot", "")) == slot:
+				ids.append(gid)
+		ids.sort_custom(func(a, b): return int(D.ITEMS[a].lvl) * 100000 + int(D.ITEMS[a].price) < int(D.ITEMS[b].lvl) * 100000 + int(D.ITEMS[b].price))
+		list.add_child(K.lbl(String(se[1]).to_upper(), 10, K.C_BLUE))
+		for gid in ids:
+			var iid: String = gid
+			var gd: Dictionary = D.ITEMS[iid]
+			var worn: bool = G.gear(slot) == iid
+			var have: bool = worn or G.item(iid) > 0
+			if not in_shop and not have:
+				continue
+			wear_offer.append(iid)
+			var glocked: bool = int(S.lvl) < int(gd.lvl)
+			var gc := K.panel(K.sb(Color(0.1, 0.16, 0.14) if worn else Color(0.085, 0.102, 0.15), 10, Color(K.C_ACC.r, K.C_ACC.g, K.C_ACC.b, 0.5) if worn else Color(1, 1, 1, 0.07), 1, 8))
+			list.add_child(gc)
+			var gh := K.hbox(10)
+			gc.add_child(gh)
+			var gi := K.icon(String(gd.icon), 44, K.C_TXT)
+			gi.modulate.a = 0.45 if (glocked and not have) else 1.0
+			gh.add_child(gi)
+			var gv := K.vbox(1)
+			gv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			gh.add_child(gv)
+			gv.add_child(K.rich("[b]%s[/b]%s" % [String(gd.name), K.col("   ● na sobie", K.C_ACC) if worn else (K.col("   ● w plecaku", K.C_DIM) if have else "")], 14))
+			gv.add_child(K.wrap(String(gd.desc), 11, K.C_DIM))
+			gh.add_child(_marks(G.stat_marks(gd.get("stats", {})), true))
+			var gb: Button
+			if worn:
+				gb = K.btn("Zdejmij", func(): G.gear_off(slot); render(), "", true)
+				gb.disabled = not can_change
+			elif have:
+				gb = K.btn("Załóż", func(): G.gear_wear(iid); render(), "go", true)
+				gb.disabled = not can_change
 			else:
-				var bb := K.btn("  Kup i załóż — %s  " % G.money(o.price), func(): G.outfit_buy(oid); render(), "go", true)
-				bb.disabled = S.cash < float(o.price) or int(S.lvl) < int(o.lvl)
-				acts.add_child(bb)
-	# ubrania na sztuki: w sklepie można je kupić; zakłada się je w zakładce „Ekwipunek”, przeciągając na postać
-	if in_shop:
-		list.add_child(K.gap(6))
-		list.add_child(K.lbl("UBRANIA NA SZTUKI — kupione trafiają od razu na Ciebie (albo do plecaka, gdy pole jest zajęte)", 10, K.C_DIM))
-		for se in D.GEAR_SLOTS:
-			for gid in D.ITEMS:
-				var gd: Dictionary = D.ITEMS[gid]
-				if String(gd.get("slot", "")) != String(se[0]):
-					continue
-				var iid: String = gid
-				var have: bool = G.item(iid) > 0 or G.gear(String(se[0])) == iid
-				var gc := K.panel(K.sb(Color(0.085, 0.102, 0.15), 10, Color(1, 1, 1, 0.07), 1, 8))
-				list.add_child(gc)
-				var gh := K.hbox(10)
-				gc.add_child(gh)
-				gh.add_child(K.icon(String(gd.icon), 44, K.C_TXT))
-				var gv := K.vbox(1)
-				gv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				gh.add_child(gv)
-				gv.add_child(K.rich("[b]%s[/b]  %s%s" % [String(gd.name), K.col(String(se[1]).to_lower(), K.C_BLUE), K.col("   ● masz", K.C_ACC) if have else ""], 14))
-				var gparts: Array = []
-				for t in G.stat_traits(gd.get("stats", {})):
-					gparts.append(K.col(String(t.text), K.C_ACC if t.good else K.C_WARN))
-				gv.add_child(K.rich("   ".join(gparts), 12))
-				var glocked: bool = int(S.lvl) < int(gd.lvl)
-				var gb := K.btn(("od poz. %d" % int(gd.lvl)) if glocked else ("Kup — %s" % G.money(gd.price)), func(): G.gear_buy(iid); render(), "go", true)
+				gb = K.btn(("od poz. %d" % int(gd.lvl)) if glocked else ("Kup — %s" % G.money(gd.price)), func(): G.gear_buy(iid); render(), "go", true)
 				gb.disabled = glocked or S.cash < float(gd.price)
-				gb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-				gh.add_child(gb)
-	hint.text = "Kliknij strój, żeby go przymierzyć. Ubrania na sztuki zakładasz w zakładce „Ekwipunek”: przeciągnij je na pole przy postaci."
+			gb.custom_minimum_size = Vector2(108, 0)
+			gb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			gh.add_child(gb)
+	if wear_offer.is_empty():
+		list.add_child(K.wrap("Nie masz jeszcze żadnych ubrań na zmianę.", 12, K.C_DIM))
+	hint.text = "Zielone cechy pomagają, czerwone szkodzą  •  lepsze rzeczy odblokowują kolejne poziomy"
 
 
-# ---------------------------------------------------------------- zakładka: organizer
+## znaczniki cech: wartość z ikoną, jedna pod drugą (zielone pomagają, czerwone szkodzą)
+func _marks(marks: Array, tall: bool) -> Control:
+	var fx: BoxContainer = K.vbox(-1) if tall else K.hbox(8)
+	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.alignment = BoxContainer.ALIGNMENT_CENTER
+	if tall:
+		fx.custom_minimum_size = Vector2(62, 0)
+	for mk in marks:
+		var mc: Color = K.C_ACC if mk.good else K.C_BAD
+		var mr := K.hbox(3)
+		mr.alignment = BoxContainer.ALIGNMENT_END
+		mr.tooltip_text = String(mk.tip)
+		mr.add_child(K.lbl(String(mk.text), 12, mc))
+		mr.add_child(K.icon(String(mk.icon), 14, mc))
+		fx.add_child(mr)
+	return fx
+
+
 func _note(parent: Node, ic: String, color: Color, title: String, text: String, right := "") -> void:
 	var p := K.panel(K.sb(Color(0.085, 0.102, 0.15), 9, Color(1, 1, 1, 0.06), 1, 9))
 	parent.add_child(p)

@@ -92,22 +92,36 @@ static func run(T) -> void:
 	G.main.teleport("ciuchy", Vector3(float(D.ROOMS.ciuchy.cx), 0.0, 1.5), 0.0)
 	await T.frames(2)
 	T.ok(G.can_change_here(), "w „Taniej Odzieży” można")
-	# szafa w ekwipunku: podgląd każdego stroju, kominiarka na głowie
+	# wieszak w sklepie: same ubrania na sztuki, żadnych całych strojów; lepsze rzeczy od wyższego poziomu
 	G.ui.open_inventory("", "wear")
 	await T.frames(2)
-	var shown := 0
-	var masked_ok := false
-	for id in D.OUTFITS:
-		G.ui.inv.wear_sel = id
-		G.ui.inv.render()
-		await T.frames(1)
-		if G.ui.inv.rig_outfit == id and is_instance_valid(G.ui.inv.rig.root):
-			shown += 1
-		if id == "kominiarka":
-			for ch in G.ui.inv.rig.skel.get_children():
-				if ch is BoneAttachment3D and String(ch.bone_name) == "Bip01 Head" and ch.get_child_count() >= 3:
-					masked_ok = true
-	T.ok(shown == D.OUTFITS.size() and masked_ok, "szafa pokazuje wszystkie %d strojów na postaci, kominiarka siedzi na głowie" % shown)
+	var pieces := 0
+	for iid0 in D.ITEMS:
+		if D.ITEMS[iid0].has("slot"):
+			pieces += 1
+	var offer: Array = G.ui.inv.wear_offer
+	var only_pieces := true
+	for oid0 in offer:
+		if not D.ITEMS.has(oid0) or not D.ITEMS[oid0].has("slot") or D.OUTFITS.has(oid0) and not D.ITEMS.has(oid0):
+			only_pieces = false
+	T.ok(offer.size() == pieces and only_pieces, "na wieszaku wisi %d ubrań na sztuki i ani jednego całego stroju" % offer.size())
+	var lvl_keep := int(S.lvl)
+	var cash_keep := float(S.cash)
+	S.lvl = 1
+	S.cash = 5000.0
+	T.ok(not G.gear_buy("kurtka_kieszenie") and G.gear_buy("dresy"), "poziom 1: kurtki z kieszeniami jeszcze nie sprzedadzą, dresy tak")
+	S.lvl = int(D.ITEMS.kurtka_kieszenie.lvl)
+	T.ok(G.gear_buy("kurtka_kieszenie"), "na poziomie %d kurtka jest już do kupienia" % int(S.lvl))
+	var top_lvl := 0
+	for iid1 in D.ITEMS:
+		if D.ITEMS[iid1].has("slot"):
+			top_lvl = maxi(top_lvl, int(D.ITEMS[iid1].lvl))
+	T.ok(top_lvl >= 4 and top_lvl <= 6, "najlepsze ubrania odblokowują się w środku gry (poziom %d)" % top_lvl)
+	G.gear_wear("kominiarka") if G.gear_buy("kominiarka") else null
+	T.ok(G.gear("glowa") == "kominiarka" and G.outfit_masked(), "kominiarka jako część garderoby maskuje tak samo jak dawny strój")
+	G.gear_off("glowa")
+	S.lvl = lvl_keep
+	S.cash = cash_keep
 	G.ui.inv.tab = "char"
 	G.ui.inv.render()
 	await T.frames(1)
@@ -132,7 +146,9 @@ static func run(T) -> void:
 	var gcap0: int = G.capacity()
 	var gsp0: float = G.outfit_stat("speed", 1.0)
 	T.ok(D.GEAR_SLOTS.size() == 6 and G.is_gear("bluza_kaptur") and not G.is_gear("woreczki"), "sześć pól ubioru; ubranie to przedmiot z polem")
-	T.ok(G.gear_buy("bluza_kaptur") and G.gear("gora") == "bluza_kaptur" and G.item("bluza_kaptur") == 0 and absf(S.cash - 1780.0) < 0.01, "kupione ubranie ląduje od razu na postaci")
+	S.lvl = maxi(int(S.lvl), int(D.ITEMS.bluza_kaptur.lvl))
+	var gcash0 := float(S.cash)
+	T.ok(G.gear_buy("bluza_kaptur") and G.gear("gora") == "bluza_kaptur" and G.item("bluza_kaptur") == 0 and absf(S.cash - (gcash0 - float(D.ITEMS.bluza_kaptur.price))) < 0.01, "kupione ubranie ląduje od razu na postaci")
 	T.ok(G.capacity() == gcap0 + 2 and G.carry_total() < 0.01, "bluza daje dwie kieszenie, a założona nic nie waży i nie zajmuje miejsca")
 	T.ok(G.gear_buy("kurtka_kieszenie") and G.item("kurtka_kieszenie") == 1 and G.gear("gora") == "bluza_kaptur", "drugie ubranie na zajęte pole trafia do plecaka")
 	T.ok(G.carry_total() > 0.9 and G.store_weight(S.inv) > 300.0 and G.store_weight(S.inv) < 500.0, "ubranie w plecaku waży mało (%d g)" % int(G.store_weight(S.inv)))
