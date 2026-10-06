@@ -941,6 +941,71 @@ func _load_tracks() -> void:
 			trap_streams.append(tracks[id])
 
 
+# ---------------------------------------------------------------- muzyka filmowa prologu
+## Podkład pod sceny: napięcie w laboratorium → akcja przy nalocie → skradanie na zewnątrz → dramat po wybuchu.
+## Nagrania z internetu (licencje w LICENCJE.md); dwa odtwarzacze, żeby jeden motyw przechodził płynnie w drugi.
+const SCORE := {"napiecie": "pro_napiecie", "akcja": "pro_akcja", "skradanie": "pro_skradanie", "dramat": "pro_dramat"}
+const SCORE_DB := {"napiecie": -8.0, "akcja": -7.0, "skradanie": -11.0, "dramat": -4.0}
+## od której sekundy zaczyna grać motyw (dramat ma 11 s cichego wstępu — wybuch potrzebuje pełnej orkiestry od razu)
+const SCORE_FROM := {"dramat": 11.6}
+var _score_players: Array = []
+var _score_i := 0
+var _score_now := ""
+var _score_streams := {}
+
+
+func _score_stream(key: String) -> AudioStream:
+	if not _score_streams.has(key):
+		var st: AudioStream = null
+		for ext in ["ogg", "mp3"]:
+			var path := "res://assets/music/%s.%s" % [String(SCORE.get(key, "")), ext]
+			if ResourceLoader.exists(path):
+				st = load(path)
+				break
+		if st is AudioStreamOggVorbis:
+			(st as AudioStreamOggVorbis).loop = true
+		elif st is AudioStreamMP3:
+			(st as AudioStreamMP3).loop = true
+		_score_streams[key] = st
+	return _score_streams[key]
+
+
+## przechodzi do motywu `key` (pusty = cisza) w `fade` sekund
+func score(key: String, fade := 1.5) -> void:
+	if key == _score_now:
+		return
+	_score_now = key
+	if _score_players.is_empty():
+		for i in range(2):
+			var p := AudioStreamPlayer.new()
+			p.bus = "Muzyka" if AudioServer.get_bus_index("Muzyka") >= 0 else "Master"
+			p.volume_db = -60.0
+			p.process_mode = Node.PROCESS_MODE_ALWAYS
+			add_child(p)
+			_score_players.append(p)
+	var old: AudioStreamPlayer = _score_players[_score_i]
+	if old.playing:
+		var tw := create_tween()
+		tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw.tween_property(old, "volume_db", -60.0, maxf(0.05, fade))
+		tw.tween_callback(old.stop)
+	var st := _score_stream(key) if key != "" else null
+	if st == null or muted:
+		return
+	_score_i = 1 - _score_i
+	var cur: AudioStreamPlayer = _score_players[_score_i]
+	cur.stream = st
+	cur.volume_db = -40.0
+	cur.play(float(SCORE_FROM.get(key, 0.0)))
+	var tw2 := create_tween()
+	tw2.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw2.tween_property(cur, "volume_db", float(SCORE_DB.get(key, -8.0)), maxf(0.05, fade))
+
+
+func score_name() -> String:
+	return _score_now
+
+
 func radio_track_name(i: int) -> String:
 	return String(TRACKS.get(RADIO_TRACKS[i], "")) if i >= 0 and i < RADIO_TRACKS.size() else ""
 

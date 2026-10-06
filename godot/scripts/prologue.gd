@@ -93,7 +93,7 @@ func step() -> Dictionary:
 				"done": func(): return false, "marker": func(): return {"loc": "lab", "x": float(R.cx) + 1.6, "z": 2.4}}
 		"raid":
 			return {"text": func(): return "NALOT! Uciekaj tylnymi drzwiami — naceluj na nie i naciśnij [%s]." % G.kn("use"),
-				"done": func(): return false, "marker": func(): return {"loc": "lab", "x": float(R.cx), "z": float(R.d) * 0.5 - 0.3}}
+				"done": func(): return false, "marker": func(): return {"loc": "lab", "x": M.world.lab_exit.x, "z": M.world.lab_exit.y}}
 		"escape":
 			return {"text": func(): return "Kucnij [%s] i trzymaj się cienia. Omijaj snopy latarek, poczekaj, aż patrol się odwróci. Dojdź do dziury w siatce za torami." % G.kn("crouch"),
 				"done": func(): return false, "marker": func(): return {"loc": "out", "x": gap().x, "z": gap().y}}
@@ -151,6 +151,7 @@ func start() -> void:
 	stage = "lab"
 	t = 0.0
 	M.nav_force = true
+	Sfx.score("napiecie", 3.0)
 	M.ui.dialog({"name": "Siwy", "lines": [
 		"No, wreszcie. Za kwadrans piąta, Kuba. Trzy dni cię nie było.",
 		"Pół kilo stoi na stole — najczystszy śnieg, jaki z tej huty wyszedł. Wiktor zapłacił z góry i czeka do szóstej.",
@@ -408,6 +409,7 @@ func _begin_raid() -> void:
 	_bang = 0.4
 	_shout = 5.5
 	M.nav_force = true
+	Sfx.score("akcja", 0.5)
 	Sfx.siren(true)
 	Sfx.megaphone()
 	Sfx.play("alert")
@@ -428,6 +430,7 @@ func on_outside() -> void:
 	stage = "escape"
 	t = 0.0
 	M.nav_force = true
+	Sfx.score("skradanie", 1.5)
 	_reset_cops()
 	for l in M.world.lab_fx.get("flash", []):
 		l.light_energy = 0.0
@@ -675,6 +678,8 @@ func _boom() -> void:
 			var bp: Vector2 = booms[bi][1]
 			var bpos := Vector3(bp.x, W.height(bp.x, bp.y) + float(booms[bi][2]), bp.y)
 			Fx.explosion(M, bpos, float(booms[bi][3]))
+			# pierwszy wybuch: skradanie urywa się, wchodzi motyw utraty wszystkiego
+			Sfx.score("dramat", 0.4)
 			Fx.shards(M, bpos, Vector3(-0.5, 1.0, 0.1), "debris", int(60 * float(booms[bi][3])), 20.0, 55.0, 0.2)
 			shake = maxf(shake, 0.5 + float(booms[bi][3]) * 0.25)
 			M.ui.flash(0.6 if bi == 1 else 0.28)
@@ -890,6 +895,7 @@ func _finish() -> void:
 		await M.ui.fade_to(1.0, 0.35)
 	M.ui.cut_line("")
 	Sfx.siren(false)
+	Sfx.score("", 3.0)
 	Sfx.intro_stop(1.0)
 	Sfx.party_stop()
 	if _party_fx != null and is_instance_valid(_party_fx):

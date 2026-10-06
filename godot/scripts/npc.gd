@@ -174,9 +174,13 @@ func spawn_cop(at_station: bool) -> Dictionary:
 		"notice": 0.0, "lvl": 0.0, "hear_t": 0.0, "hear_rot": 0.0, "sp_wait": 0.0, "search_pts": [], "hunt": false, "lure": false, "know": false,
 	}
 	# latarka: nocą widać, gdzie patrol patrzy — i w jej snopie ciemność nie chroni
-	var torch := SpotLight3D.new()
-	torch.position = Vector3(0.18, 1.32, 0.28)
-	torch.rotation = Vector3(0.2, PI, 0.0)
+	# latarka wisi na szelce i z niej wychodzi snop; awaryjnie (inny szkielet) światło z wysokości piersi
+	var torch: SpotLight3D = Chars.shoulder_torch(rig)
+	var torch_own := torch == null
+	if torch_own:
+		torch = SpotLight3D.new()
+		torch.position = Vector3(0.18, 1.32, 0.28)
+		torch.rotation = Vector3(0.2, PI, 0.0)
 	torch.spot_range = TORCH_RANGE + 3.0
 	torch.spot_angle = rad_to_deg(TORCH_ANG)
 	torch.spot_angle_attenuation = 0.6
@@ -189,7 +193,8 @@ func spawn_cop(at_station: bool) -> Dictionary:
 	torch.distance_fade_begin = 60.0
 	torch.distance_fade_length = 15.0
 	torch.visible = false
-	rig.root.add_child(torch)
+	if torch_own:
+		rig.root.add_child(torch)
 	c["torch"] = torch
 	_pick_next(c, false)
 	cops.append(c)

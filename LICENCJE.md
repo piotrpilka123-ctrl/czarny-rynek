@@ -39,3 +39,12 @@ pozostają Twoje i nie są częścią projektu.
 Siatki ubrań (bluza, kurtka, koszula, spodnie, rękawiczki, buty, komin, czapki) powstają skryptem
 `godot/tools/blender/make_ubrania.py` z powierzchni awatara Microsoft Rocketbox (licencja MIT, patrz wyżej) —
 są jego opracowaniem i podlegają tej samej licencji. Okulary, łańcuch, faktury tkanin i wszystkie detale są własne.
+
+## Muzyka prologu (godot/assets/music/pro_*)
+
+| Plik | Utwór i autor | Źródło | Licencja |
+|---|---|---|---|
+| pro_napiecie.mp3 | „Shadow Protocol” (track 1) — American Made Media (IndieDevs), https://x.com/TheArtBros1776 | https://opengameart.org/node/183126 | CC-BY 3.0 |
+| pro_akcja.ogg | „Chase!” — Ted Kerr | https://opengameart.org/content/chase | CC0 |
+| pro_skradanie.mp3 | „Savage Ambush” — Ruskerdax | https://opengameart.org/content/savage-ambush | CC0 |
+| pro_dramat.mp3 | „Laments of the War” — Cethiel | https://opengameart.org/content/laments-of-the-war | CC0 |

@@ -3,6 +3,7 @@ extends RefCounted
 ## z ubraniami nakładanymi shaderem i animacjami z „Universal Animation Library” (CC0).
 ## Maska ubrań jest zapisana w kolorach wierzchołków (patrz tools/README).
 
+const Stations = preload("res://scripts/stations.gd")
 const People = preload("res://scripts/people.gd")
 
 const SH_BODY := """
@@ -1120,6 +1121,36 @@ static func dress(rig: Dictionary, gear: Dictionary) -> void:
 			flap.position = Vector3(0, 0.05, 0)
 			pocket.add_child(flap)
 			_on_bone(rig, b, pocket, Transform3D(Basis(), Vector3(side * 0.07, -0.25, 0.012)))
+
+
+## Latarka kątowa przypięta do szelki na lewej piersi; snop wychodzi z jej szybki i kołysze się razem z tułowiem.
+## Zwraca światło (z szybką jako dzieckiem — gaśnie i znika razem z nim) albo null, gdy postać nie ma takiego szkieletu.
+static func shoulder_torch(rig: Dictionary) -> SpotLight3D:
+	var skel: Skeleton3D = rig.skel
+	if skel == null or skel.find_bone("Bip01 Spine2") < 0:
+		return null
+	var ps := Stations.model("pol_latarka")
+	if ps == null:
+		return null
+	if not rig.has("wear"):
+		rig["wear"] = []
+	var holder := Node3D.new()
+	holder.add_child(ps)
+	var sp := SpotLight3D.new()
+	sp.position = Vector3(0, 0.045, 0.055)
+	sp.rotation = Vector3(0.16, PI, 0.0)
+	holder.add_child(sp)
+	var lens := Stations._find(ps, "Swiatlo") as Node3D
+	if lens != null:
+		var gx := lens.transform
+		lens.get_parent().remove_child(lens)
+		lens.owner = null
+		sp.add_child(lens)
+		lens.transform = sp.transform.affine_inverse() * gx
+		if lens is GeometryInstance3D:
+			(lens as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_on_bone(rig, "Bip01 Spine2", holder, Transform3D(Basis(), Vector3(0.105, 0.085, 0.142)))
+	return sp
 
 
 ## pistolet w dłoni (wyjęty z kabury) albo schowany

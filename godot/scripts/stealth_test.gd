@@ -91,7 +91,7 @@ static func run(T) -> void:
 	P.flash.light_energy = 5.0
 	var v_flash: float = P.visibility()
 	P.flash.light_energy = 0.0
-	T.ok(v_flash > v_dark * 1.8, "latarka nocą zdradza (%.2f zamiast %.2f)" % [v_flash, v_dark])
+	T.ok(absf(v_flash - v_dark) < 0.001, "włączona latarka gracza nie zmienia tego, jak łatwo go zauważyć (%.2f i %.2f)" % [v_flash, v_dark])
 	G.rain = 1.0
 	_put(P, DARK)
 	T.ok(P.visibility() < v_dark, "deszcz dodatkowo zasłania")

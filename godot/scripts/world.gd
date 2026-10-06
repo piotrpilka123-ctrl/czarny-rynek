@@ -38,6 +38,8 @@ var lamps: Array = []
 var door_tape: Node3D = null    # taśmy na drzwiach laboratorium (po prologu)
 var mill_burnt: Node3D = null   # okopcenia i gruz pod Starą Hutą (po prologu)
 var lab_fx := {}                # światła i rekwizyty laboratorium sterowane przez prolog
+var lab_exit := Vector2.ZERO    # gdzie w hali są tylne drzwi (znacznik ucieczki w prologu)
+var mill_door_light: SpotLight3D = null   # reflektor nad tylnymi drzwiami huty od zewnątrz
 var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
 var covers: Array = []          # krzaki, za którymi da się przyczaić: Vector3(x, z, promień) w metrach świata
 var hides: Array = []           # kryjówki na czas pościgu (altanki śmietnikowe): {x, z, rot, name}
@@ -842,6 +844,8 @@ func _place(n: Node3D, x: float, z: float, ry := 0.0, solid_x := 0.0, solid_z :=
 
 ## Stara Huta po prologu: okopcone ściany nad wybitymi oknami, gruz, taśmy. W czasie prologu ukryte.
 func set_mill_burnt(on: bool) -> void:
+	if mill_door_light != null:
+		mill_door_light.visible = not on
 	if mill_burnt == null:
 		mill_burnt = Node3D.new()
 		city.add_child(mill_burnt)
@@ -1249,7 +1253,29 @@ func door(id: String) -> void:
 	var g := Node3D.new()
 	g.position = Vector3(x, gy, z)
 	add_child(g)
-	var own: Node3D = Stations.model("ul_brama" if id == "garage" else "ul_wejscie")
+	var own: Node3D = Stations.model("ul_brama" if id == "garage" else ("huta_drzwi" if id == "lab" else "ul_wejscie"))
+	if own != null and id == "lab":
+		# reflektor nad drzwiami: jasna plama pod ścianą, z której trzeba zejść w cień
+		var orf: Node3D = Stations.model("huta_reflektor")
+		if orf != null:
+			orf.position = Vector3(0, 3.4, dz * 0.02)
+			orf.rotation.y = 0.0 if dz > 0.0 else PI
+			g.add_child(orf)
+		mill_door_light = SpotLight3D.new()
+		mill_door_light.position = Vector3(0, 3.2, dz * 0.62)
+		mill_door_light.light_color = Color(1.0, 0.92, 0.76)
+		mill_door_light.light_energy = 8.0
+		mill_door_light.spot_range = 11.0
+		mill_door_light.spot_angle = 48.0
+		mill_door_light.spot_angle_attenuation = 0.7
+		mill_door_light.shadow_enabled = true
+		mill_door_light.light_volumetric_fog_energy = 2.4
+		mill_door_light.distance_fade_enabled = true
+		mill_door_light.distance_fade_begin = 60.0
+		mill_door_light.distance_fade_length = 15.0
+		g.add_child(mill_door_light)
+		# w dół i od ściany (kierunek liczony w układzie drzwi, nie świata)
+		mill_door_light.rotation = Vector3(-1.02, 0.0 if dz < 0.0 else PI, 0.0)
 	if own != null:
 		# drzwi z modelu: przód modelu patrzy na zewnątrz budynku; skrzydło barwione zależnie od miejsca
 		own.rotation.y = 0.0 if dz > 0.0 else PI
@@ -2769,8 +2795,10 @@ func _room(id: String, floor_tex: String, wall_tex: String, ceil_c: String, wall
 	for e in [[w + t * 2.0, t, cx, -d * 0.5 - t * 0.5], [w + t * 2.0, t, cx, d * 0.5 + t * 0.5], [t, d, cx - w * 0.5 - t * 0.5, 0.0], [t, d, cx + w * 0.5 + t * 0.5, 0.0]]:
 		Models.box(g, Vector3(e[0], h, e[1]), Vector3(e[2], h * 0.5, e[3]), wm)
 		add_col(e[2] - e[0] * 0.5, e[2] + e[0] * 0.5, e[3] - e[1] * 0.5, e[3] + e[1] * 0.5, h, true, -1.0)
-	# drzwi wyjściowe na południowej ścianie
+	# drzwi wyjściowe na południowej ścianie (laboratorium ma własne, stalowe, w zachodniej ścianie)
 	var ez := d * 0.5
+	if id == "lab":
+		return g
 	if id == "garage":
 		Models.box(g, Vector3(2.9, 2.3, 0.08), Vector3(cx, 1.15, ez - 0.05), Props.pbr("painted_metal_shutter", 0.5, Color(0.7, 0.75, 0.8)))
 	else:
@@ -3423,10 +3451,25 @@ func _lab_room() -> void:
 	var g := _room("lab", "concrete_floor_worn_001", "factory_brick", "262423", Color(0.6, 0.56, 0.54), 0.5)
 	var steel := Models.mat("2b2e33", 0.45, 0.7)
 	# dwie słabe, zimne świetlówki — resztę światła dają halogeny na statywach
-	for e in [[-1.0, 2.6], [3.6, -1.4]]:
-		Props._no_shadow(_rp(g, "mounted_fluorescent_lights", cx + e[0], e[1], PI / 2.0, 0.0, h - 0.1))
-		var fl := _room_light(g, cx + e[0], e[1], h, 0.85, Color(0.72, 0.86, 1.0), 10.5)
-		fl.shadow_enabled = false
+	# [x, z, moc, czy rzuca cień] — plamy ciepłego światła pod kloszami, reszta hali tonie w półmroku
+	for e in [[1.6, 2.2, 7.0, true], [5.0, -1.4, 6.0, false], [-1.6, -1.2, 6.0, true], [-4.8, -3.4, 4.5, false], [-3.9, 2.6, 4.0, false]]:
+		var pl: Node3D = _lm(g, "huta_lampa", cx + e[0], e[1], float(e[0]) * 1.7, h - 0.02)
+		Props._no_shadow(pl)
+		var sp0 := SpotLight3D.new()
+		sp0.position = Vector3(cx + e[0], h - 1.02, e[1])
+		sp0.rotation.x = -PI / 2.0
+		sp0.light_color = Color(1.0, 0.82, 0.56)
+		sp0.light_energy = e[2]
+		sp0.spot_range = 7.5
+		sp0.spot_angle = 58.0
+		sp0.spot_angle_attenuation = 0.75
+		sp0.spot_attenuation = 0.8
+		sp0.shadow_enabled = e[3]
+		sp0.light_volumetric_fog_energy = 1.2
+		g.add_child(sp0)
+		# poświata samej żarówki na kloszu i belkach
+		var gl0 := _room_light(g, cx + e[0], e[1], h - 1.0, 0.35, Color(1.0, 0.8, 0.55), 2.6)
+		gl0.shadow_enabled = false
 	# stalowe belki, kanały wentylacyjne, wentylator w zachodniej ścianie
 	for z in [-3.6, 0.0, 3.6]:
 		Models.box(g, Vector3(w, 0.22, 0.16), Vector3(cx, h - 0.16, z), Props.pbr("rusty_painted_metal", 0.5, Color(0.5, 0.48, 0.46)))
@@ -3462,10 +3505,10 @@ func _lab_room() -> void:
 	_lm(g, "lab_kanistry", cx - 4.5, -3.5, 0.8)
 	_lm(g, "lab_butle", cx - w * 0.5 + 0.22, -1.6, PI / 2.0, 0.0, Vector2(0.2, 0.35))
 	_lm(g, "lab_butle", cx - w * 0.5 + 0.22, -0.7, PI / 2.0, 0.0, Vector2(0.2, 0.35))
-	# --- suszarnia i prasa pod zachodnią ścianą
-	for z in [2.3, 3.3]:
-		_lm(g, "lab_suszarnia", cx - 6.4, z, PI / 2.0, 0.0, Vector2(0.36, 0.48))
-	var heat := _room_light(g, cx - 6.0, 2.8, 1.6, 0.4, Color(1.0, 0.5, 0.2), 2.6)
+	# --- suszarnia pod południową ścianą (zachodnia jest wolna: tam są tylne drzwi), prasa w rogu
+	for sx0 in [0.45, 1.45]:
+		_lm(g, "lab_suszarnia", cx + sx0, d * 0.5 - 0.4, PI, 0.0, Vector2(0.48, 0.36))
+	var heat := _room_light(g, cx + 0.95, d * 0.5 - 0.9, 1.6, 0.4, Color(1.0, 0.5, 0.2), 2.6)
 	heat.shadow_enabled = false
 	_lm(g, "lab_prasa", cx - 4.4, 4.5, PI, 0.0, Vector2(0.4, 0.3))
 	var pal := Props.make("pallet", 0.16)
@@ -3479,7 +3522,7 @@ func _lab_room() -> void:
 	add_col(cx - 3.5, cx - 2.3, 4.0, 5.2, 1.0, true, -1.0)
 	rects.pop_back()
 	# --- lampy robocze: trzy plamy ciepłego światła w ciemnej hali
-	for e in [[-1.3, 0.6, -2.2, 1.6, 2.4], [2.4, -1.6, 0.9, 4.6, -3.4], [-3.6, 1.4, 2.4, -5.8, 3.0]]:
+	for e in [[-1.3, 0.6, -2.2, 1.6, 2.4], [2.4, -1.6, 0.9, 4.6, -3.4], [-2.6, 3.4, 2.4, -4.4, 4.6]]:
 		_lm(g, "lab_lampa", cx + e[0], e[1], atan2(float(e[3]) - float(e[0]), float(e[4]) - float(e[1])) + PI)
 		# światło startuje tuż przed szybą halogenu (inaczej głowica lampy rzuca cień na wszystko)
 		var aim := Vector3(cx + float(e[3]), 0.6, float(e[4]))
@@ -3487,7 +3530,7 @@ func _lab_room() -> void:
 		var sp := SpotLight3D.new()
 		sp.position = head + (aim - head).normalized() * 0.32
 		sp.light_color = Color(1.0, 0.86, 0.62)
-		sp.light_energy = 9.0
+		sp.light_energy = 6.5
 		sp.spot_range = 11.0
 		sp.spot_angle = 52.0
 		sp.spot_angle_attenuation = 0.6
@@ -3536,8 +3579,37 @@ func _lab_room() -> void:
 	var mon := _room_light(g, cx + 5.5, 4.2, 1.5, 0.3, Color(0.5, 0.8, 1.0), 2.6)
 	mon.shadow_enabled = false
 	# --- brama frontowa (północ): to w nią walą, przez świetliki wpada światło kogutów
-	Models.box(g, Vector3(3.2, 2.9, 0.12), Vector3(cx + 4.4, 1.45, -d * 0.5 + 0.06), Props.pbr("rusted_shutter", 0.5, Color(0.7, 0.7, 0.72)))
-	Models.box(g, Vector3(3.5, 0.18, 0.2), Vector3(cx + 4.4, 2.98, -d * 0.5 + 0.1), steel)
+	if Stations.model("huta_brama") != null:
+		_lm(g, "huta_brama", cx + 4.4, -d * 0.5, 0.0)
+		add_col(cx + 2.6, cx + 6.2, -d * 0.5, -d * 0.5 + 0.3, h, true, -1.0)
+		rects.pop_back()
+	else:
+		Models.box(g, Vector3(3.2, 2.9, 0.12), Vector3(cx + 4.4, 1.45, -d * 0.5 + 0.06), Props.pbr("rusted_shutter", 0.5, Color(0.7, 0.7, 0.72)))
+		Models.box(g, Vector3(3.5, 0.18, 0.2), Vector3(cx + 4.4, 2.98, -d * 0.5 + 0.1), steel)
+	# --- tylne drzwi (zachodnia ściana, daleko od bramy): stalowe, z lampą w koszu, tablicą EXIT i reflektorem nad nimi
+	var exx := cx - w * 0.5
+	var exz := 3.0
+	_lm(g, "huta_drzwi", exx, exz, PI / 2.0)
+	var rf := _lm(g, "huta_reflektor", exx, exz, PI / 2.0, 3.36)
+	Props._no_shadow(rf)
+	var dsp := SpotLight3D.new()
+	dsp.position = Vector3(exx + 0.62, 3.2, exz)
+	dsp.light_color = Color(1.0, 0.9, 0.72)
+	dsp.light_energy = 3.2
+	dsp.spot_range = 7.0
+	dsp.spot_angle = 50.0
+	dsp.spot_angle_attenuation = 0.7
+	dsp.shadow_enabled = false
+	dsp.light_volumetric_fog_energy = 1.6
+	g.add_child(dsp)
+	dsp.look_at_from_position(dsp.position, Vector3(exx + 1.5, 0.0, exz), Vector3.UP)
+	var dgl := _room_light(g, exx + 0.45, exz, 2.55, 0.45, Color(1.0, 0.82, 0.55), 3.4)
+	dgl.shadow_enabled = false
+	var egl := _room_light(g, exx + 0.3, exz, 2.9, 0.35, Color(0.3, 1.0, 0.5), 2.2)
+	egl.shadow_enabled = false
+	inter.append({"loc": "lab", "x": exx + 0.12, "z": exz, "y0": 0.0, "y1": 2.2, "r": 0.7, "reach": 2.8, "id": "exit_lab",
+		"label": func(): return "Tylne drzwi — wyjdź", "act": func(): G.main.exit_room()})
+	lab_exit = Vector2(exx + 0.5, exz)
 	var panes := []
 	for sx in [-5.2, -3.4, 0.6, 2.2]:
 		panes.append(Models.box(g, Vector3(1.3, 0.7, 0.05), Vector3(cx + sx, h - 0.75, -d * 0.5 + 0.03), Models.mat("131a26", 0.2, 0.0, 0.25), Vector3.ZERO, false))

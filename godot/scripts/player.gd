@@ -247,10 +247,6 @@ func visibility() -> float:
 	if loc == "out" and G.world != null:
 		var gp := global_position
 		var dark: float = G.night * (1.0 - G.world.light_at(gp.x, gp.z))
-		if flash.light_energy > 0.05 and G.night > 0.3:
-			# latarka nocą: świecisz jak choinka
-			dark = 0.0
-			v *= 1.2
 		v *= 1.0 - dark * 0.5
 		v *= 1.0 - G.rain * 0.18
 		if crouching and G.world.cover_at(gp.x, gp.z):
