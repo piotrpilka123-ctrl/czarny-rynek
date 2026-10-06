@@ -373,7 +373,9 @@ static func run(T) -> void:
 			if float(frig.face._w.mowa) > 0.2:
 				jaw_moved = true
 				break
-		for i in range(20):
+		# czekanie na sylabę bywa długie i mina zdąży zgasnąć — odpalamy ją jeszcze raz tuż przed pomiarem
+		frig.face.flash("usmiech", 1.0, 4.0)
+		for i in range(45):
 			await T.frames(1)
 		var p_smile: Vector3 = fsk.get_bone_global_pose(corner).origin - fsk.get_bone_global_pose(fsk.find_bone("Bip01 Head")).origin
 		# (samo przesunięcie kości widać tylko w trakcie rysowania klatki — sprawdza je tools/blender/twarz_test.py)
