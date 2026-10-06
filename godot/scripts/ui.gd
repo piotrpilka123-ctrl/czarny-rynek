@@ -1911,7 +1911,7 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 			cv.draw_string(font, lp + Vector2(-50, 4), e[2], HORIZONTAL_ALIGNMENT_CENTER, 100, 10, Color(0.75, 0.8, 0.9, 0.8))
 		for d in S.drops:
 			if d.state == "ready":
-				var dd2 := G.drop_def(d.spot)
+				var dd2: Dictionary = G.Market.spot(d)
 				var p2: Vector2 = tr.call(dd2.x, dd2.z)
 				cv.draw_circle(p2, 5.0, K.C_PINK)
 	if P.loc == "out":

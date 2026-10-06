@@ -3,12 +3,13 @@ extends Control
 ## Portfel, Rozwój, Zadania, Lokale, Plecak, Ustawienia).
 
 const K = preload("res://scripts/uikit.gd")
+const MarketUI = preload("res://scripts/market_ui.gd")
 
 const APPS := [
 	["sms", "Wiadomości", "message_circle", Color(0.2, 0.72, 0.38)],
 	["kontakty", "Kontakty", "users", Color(0.25, 0.5, 0.9)],
 	["mapa", "Mapa", "map", Color(0.15, 0.6, 0.62)],
-	["hurt", "Hurt", "package", Color(0.62, 0.2, 0.2)],
+	["hurt", "Giełda", "package", Color(0.62, 0.2, 0.2)],
 	["portfel", "Portfel", "wallet", Color(0.8, 0.62, 0.15)],
 	["rozwoj", "Rozwój", "brain", Color(0.55, 0.35, 0.85)],
 	["zadania", "Zadania", "list_checks", Color(0.85, 0.45, 0.15)],
@@ -23,7 +24,7 @@ var app := ""
 var chat_id := ""
 var contact_id := ""
 var skill_sel := ""
-var hurt := {"p": "dym", "g": 5, "high": false, "credit": false}
+var hurt := {"v": "wiktor", "p": "dym", "g": 5, "m": "drop", "credit": false}
 var l_clock: Label
 var screen: Control
 var head: HBoxContainer
@@ -444,7 +445,7 @@ func _chat() -> void:
 	if order != null:
 		_order_footer(order)
 	elif chat_id == "wiktor" and G.flag("hurt_on"):
-		footer.add_child(K.btn("Otwórz Hurt", func(): go("hurt"), "", true))
+		footer.add_child(K.btn("Otwórz Giełdę", func(): go("hurt"), "", true))
 	_scroll_end()
 
 
@@ -774,84 +775,7 @@ func _map() -> void:
 
 # ---------------------------------------------------------------- hurt (Wiktor)
 func _hurt() -> void:
-	var S: Dictionary = G.S
-	_header("Hurt", "Szyfrowany kanał • Wiktor")
-	if not G.flag("hurt_on"):
-		var c0 := K.card(body)
-		c0.add_child(K.icon("lock", 28, K.C_DIM))
-		c0.add_child(K.wrap("Wiktor jeszcze Ci nie ufa. Odbierz pierwszą paczkę, sprzedaj towar i spłać zeszyt — wtedy pozwoli Ci zamawiać samodzielnie.", 13, K.C_DIM))
-	# zeszyt
-	var c := K.card(body)
-	c.add_child(K.lbl("ZESZYT (KREDYT)", 10, K.C_DIM))
-	var due := ""
-	if float(S.credit) > 0.0:
-		due = ("  •  " + K.col("PO TERMINIE", K.C_BAD)) if G.credit_overdue() else ("  •  do dnia %d" % (int(float(S.credit_due) / 1440.0) + 1))
-	c.add_child(K.rich("[b]%s[/b] / %s%s" % [K.col(G.money(S.credit), K.C_WARN if float(S.credit) > 0.0 else K.C_TXT), G.money(G.credit_limit()), due], 15))
-	c.add_child(K.bar(float(S.credit), G.credit_limit(), K.C_WARN))
-	if float(S.credit) > 0.0:
-		var f := K.flow(5)
-		c.add_child(f)
-		var b1 := K.btn("Spłać 100 zł", func(): G.pay_credit(100.0); render(), "", true)
-		b1.disabled = S.cash < 1.0
-		f.add_child(b1)
-		var b2 := K.btn("Spłać zeszyt (%s)" % G.money(minf(S.cash, float(S.credit))), func(): G.pay_credit(1e12); render(), "go", true)
-		b2.disabled = S.cash < 1.0
-		f.add_child(b2)
-	# paczki w drodze
-	if not S.drops.is_empty():
-		var cd := K.card(body)
-		cd.add_child(K.lbl("PACZKI", 10, K.C_DIM))
-		for d in S.drops:
-			var dd := G.drop_def(d.spot)
-			var txt := "[b]%d g %s[/b] (%d%%) — %s\n" % [int(d.g), D.PRODUCT_GEN[d.p], int(d.pur), dd.name]
-			if d.state == "ready":
-				var left: float = maxf(0.0, float(d.expire) - S.t)
-				txt += K.col("Czeka w skrytce", K.C_ACC) + (" • zniknie za %dh" % int(left / 60.0) if left < 5000.0 else "")
-			else:
-				txt += K.col("W drodze, ok. %d min" % int(maxf(0.0, float(d.ready) - S.t)), K.C_DIM)
-			txt += "  •  %s" % ("na zeszyt" if d.credit else ("do zapłaty: " + G.money(d.cost)))
-			cd.add_child(K.rich(txt, 12))
-		cd.add_child(K.btn("Prowadź do skrytki", func(): G.main.set_track("drop"); ui.close_all(), "", true))
-	if not G.flag("hurt_on"):
-		return
-	# zamówienie
-	var co := K.card(body)
-	co.add_child(K.lbl("NOWE ZAMÓWIENIE", 10, K.C_DIM))
-	var pf := K.flow(5)
-	co.add_child(pf)
-	for p in D.PRODUCTS:
-		var pid: String = p
-		var locked: bool = int(S.lvl) < int(D.PRODUCTS[p].lvl)
-		var b := K.btn(D.PRODUCTS[p].name + ((" (poz. %d)" % int(D.PRODUCTS[p].lvl)) if locked else ""), func(): hurt.p = pid; render(), "go" if hurt.p == p else "", true)
-		b.disabled = locked
-		pf.add_child(b)
-	co.add_child(K.wrap(D.PRODUCTS[hurt.p].desc, 11, K.C_DIM))
-	var qf := K.flow(5)
-	co.add_child(qf)
-	for g in D.WHOLESALE_SIZES:
-		var gg: int = g
-		var b := K.btn("%d g" % g, func(): hurt.g = gg; render(), "go" if int(hurt.g) == g else "", true)
-		b.disabled = g > G.wholesale_max()
-		qf.add_child(b)
-	var mf := K.flow(5)
-	co.add_child(mf)
-	mf.add_child(K.btn("Standard ~%d%%" % D.PURITY_STD, func(): hurt.high = false; render(), "go" if not hurt.high else "", true))
-	var bh := K.btn("Czysty %d%% (+35%%)" % D.PURITY_HIGH, func(): hurt.high = true; render(), "go" if hurt.high else "", true)
-	bh.disabled = int(S.lvl) < 5
-	mf.add_child(bh)
-	var pm := K.flow(5)
-	co.add_child(pm)
-	pm.add_child(K.btn("Płacę przy odbiorze", func(): hurt.credit = false; render(), "go" if not hurt.credit else "", true))
-	pm.add_child(K.btn("Na zeszyt", func(): hurt.credit = true; render(), "go" if hurt.credit else "", true))
-	var cost := G.wholesale_price(hurt.p, int(hurt.g), hurt.high)
-	var disc := float(D.WHOLESALE_DISC.get(int(hurt.g), 0.0))
-	co.add_child(K.rich("Razem: [b]%s[/b]  (%s/g%s)\nCena uliczna: ok. %s/g" % [K.col(G.money(cost), K.C_WARN), G.money(cost / float(hurt.g)), (", rabat %d%%" % int(disc * 100.0)) if disc > 0.0 else "",
-		G.money(G.market_price(hurt.p, D.PURITY_HIGH if hurt.high else D.PURITY_STD))], 13))
-	var why := G.order_block(hurt.p, int(hurt.g), hurt.credit, hurt.high)
-	var ob := K.btn("Zamów" if why == "" else why, func(): G.order_goods(hurt.p, int(hurt.g), hurt.high, hurt.credit); render(), "go")
-	ob.disabled = why != ""
-	co.add_child(ob)
-	co.add_child(K.wrap("Wiktor zostawia towar w skrytce na mieście. Paczka czeka 16 godzin. Zeszyt trzeba spłacić w %d dni." % D.CREDIT_DAYS, 11, K.C_DIM))
+	MarketUI.build(self)
 
 
 # ---------------------------------------------------------------- portfel

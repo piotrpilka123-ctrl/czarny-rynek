@@ -552,6 +552,7 @@ func build(loader = null) -> void:
 	_backdrop()
 	_curb_lines()
 	_hide_spots()
+	_lockers()
 	_build_grid()
 	if loader != null:
 		await loader.step(66.0, "Furnishing the hideouts")
@@ -937,6 +938,70 @@ func _hide_shed(x: float, z: float, ry: float, search := true) -> bool:
 	inter.append({"loc": "out", "x": front.x * SC, "z": front.y * SC, "ax": (x + f.x * 1.4 * INV) * SC, "az": (z + f.y * 1.4 * INV) * SC, "y0": 0.2, "y1": 1.7, "r": 1.5, "reach": 3.4, "id": "hide",
 		"label": func(): return "[E] Schowaj się między kontenerami", "act": func(): G.main.hide_enter(h)})
 	return true
+
+
+## Skrytkomat: ściana żółtych schowków z ekranem. Punkt odbioru paczek „pod kod”.
+func _locker_model() -> Node3D:
+	var g := Node3D.new()
+	var body_m := Models.mat("25282d", 0.5, 0.4)
+	var door_m := Models.mat("e8b820", 0.45, 0.2)
+	Models.box(g, Vector3(2.5, 2.05, 0.56), Vector3(0, 1.025, 0), body_m)
+	Models.box(g, Vector3(2.7, 0.08, 0.95), Vector3(0, 2.12, 0.18), body_m)
+	Models.box(g, Vector3(2.4, 0.03, 0.06), Vector3(0, 2.07, 0.58), Models.mat("fff4d6", 0.4, 0.0, 3.0), Vector3.ZERO, false)
+	for col in range(6):
+		if col == 3:
+			continue
+		for row in range(4):
+			var dw := 0.38
+			var dh := 0.44 if row > 0 else 0.5
+			Models.box(g, Vector3(dw - 0.03, dh - 0.03, 0.02), Vector3(-1.05 + col * 0.42, 0.26 + row * 0.47 + (0.03 if row > 0 else 0.0), 0.285), door_m, Vector3.ZERO, false)
+			Models.box(g, Vector3(0.05, 0.02, 0.015), Vector3(-1.05 + col * 0.42 + 0.12, 0.3 + row * 0.47, 0.3), Models.mat("1a1a1a", 0.6), Vector3.ZERO, false)
+	# panel: ekran i klawiatura
+	Models.box(g, Vector3(0.36, 1.9, 0.02), Vector3(0.21, 1.0, 0.285), Models.mat("1c1f24", 0.5, 0.3), Vector3.ZERO, false)
+	Models.box(g, Vector3(0.28, 0.2, 0.01), Vector3(0.21, 1.42, 0.3), Models.mat("3a9aff", 0.3, 0.0, 2.2), Vector3.ZERO, false)
+	for k in range(12):
+		Models.box(g, Vector3(0.05, 0.04, 0.012), Vector3(0.13 + (k % 3) * 0.08, 1.2 - int(k / 3.0) * 0.06, 0.3), Models.mat("9aa0a6", 0.5, 0.4), Vector3.ZERO, false)
+	var lb := Models.label("SKRYTKOMAT 24/7", Color(0.95, 0.8, 0.2), 30)
+	lb.position = Vector3(0, 2.3, 0.2)
+	lb.visibility_range_end = 26.0
+	g.add_child(lb)
+	var li := OmniLight3D.new()
+	li.position = Vector3(0, 1.95, 0.9)
+	li.light_color = Color(1.0, 0.95, 0.8)
+	li.light_energy = 1.2
+	li.omni_range = 6.5
+	li.shadow_enabled = false
+	li.set_meta("always", true)
+	g.add_child(li)
+	lamps.append(li)
+	return g
+
+
+## stawia skrytkomaty w pobliżu punktów zapisanych w D.DROPS (szuka wolnego miejsca) i poprawia ich współrzędne
+func _lockers() -> void:
+	for dd in D.DROPS:
+		if not dd.get("locker", false):
+			continue
+		var x: float = float(dd.x) * INV
+		var z: float = float(dd.z) * INV
+		var ok := false
+		for rad in [0.0, 3.0, 6.0, 9.0, 13.0, 17.0]:
+			for k in range(8 if rad > 0.0 else 1):
+				var nx: float = x + cos(k * PI / 4.0) * rad
+				var nz: float = z + sin(k * PI / 4.0) * rad
+				# na trawie, z dala od jezdni i ścieżek — żeby nie stanął na środku ulicy
+				if _area_free(nx, nz, 2.6 * INV, 2.4 * INV, 1.6) and _soft_ground(nx, nz) and _soft_ground(nx - 2.0, nz + 2.0) and _soft_ground(nx + 2.0, nz + 2.0):
+					x = nx
+					z = nz
+					ok = true
+					break
+			if ok:
+				break
+		if G.test_mode:
+			print("SKRYTKOMAT %s -> (%.1f, %.1f) %s" % [String(dd.id), x, z, "ok" if ok else "BRAK MIEJSCA"])
+		_place(_locker_model(), x, z, 0.0, 1.25, 0.3, 2.1)
+		dd.x = x * SC
+		dd.z = (z + 1.3 * INV) * SC
 
 
 ## dodatkowe altanki rozsiane po osiedlu — w każdej da się przeczekać pościg

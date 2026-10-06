@@ -571,6 +571,9 @@ func run() -> void:
 	ok(sj != null and absf(float(sj.prog) - 0.37) < 0.001 and String(sj.r) == "konopie" and int(sj.hold) == -1, "uprawa w toku zapisuje się razem z postępem")
 	G.Prod.discard("garage", save_tent)
 
+	# --- Giełda: dostawcy, dostawy, okazje, skup
+	await load("res://scripts/market_test.gd").run(self)
+
 	# --- prolog: nalot na laboratorium, ucieczka, eksplozje
 	if not M.args.has("noprologue"):
 		var keep_state: Dictionary = G.S
@@ -809,7 +812,7 @@ func _sim_one(days: int, run_i: int) -> String:
 				print("SIMDBG %d d%02d krok=%s packed=%d sold=%d woreczki=%d bulk=%s drops=%d zam=%d flagi=%s" % [run_i + 1, last_day, String(G.cur_step().get("id", "?")), int(S.stats.packed), int(S.stats.sold), G.item_at("safe", "woreczki"), str(G.bench_bulk("safe")), S.drops.size(), S.orders.size(), str(S.flags.keys())])
 			print("SIM %d d%02d | poz %2d | gotówka %5d | spłacono %5d | dług %5d | zeszyt %4d | klienci %2d | transakcje %3d | zarobione %6d | wpadki %d | przegapione %d | uprawa %4d g | synteza %4d g | naloty %d" % [
 				run_i + 1, last_day, int(S.lvl), int(S.cash + stash_cash), int(S.paid), int(S.debt), int(S.credit), G.client_count(), int(S.stats.deals), int(S.stats.earned), int(S.strikes), missed,
-				int(S.stats.get("grown", 0)), int(S.stats.get("cooked", 0)), int(S.stats.get("raids", 0))])
+				int(S.stats.get("grown", 0)), int(S.stats.get("cooked", 0)), int(S.stats.get("raids", 0))] + " | skup %4d g" % int(S.stats.get("bulk_sold", 0)))
 		if int(S.strikes) >= D.MAX_STRIKES:
 			lost = "PRZEGRANA (dług) w dniu %d" % G.day()
 			break
@@ -885,6 +888,17 @@ func _sim_production(skill: float) -> void:
 				P.collect(room, i)
 			elif int(j.hold) >= 0:
 				P.proceed(room, i)
+	# nadwyżki marihuany idą do skupu prosto z garażu (zostaje zapas na własnych klientów)
+	var need_d := 0.0
+	for c in D.CLIENTS:
+		if S.cust[c.id].unlocked and String(c.prod) == "dym":
+			need_d += (float(c.grams[0]) + float(c.grams[1])) * 0.5 * 16.0 / ((float(c.every[0]) + float(c.every[1])) * 0.5)
+	for st in G.stacks(S.stash[room], "bulk"):
+		if String(st.p) != "dym" or G.is_mix(st.pur):
+			continue
+		var spare: float = floorf(minf(float(st.n) + _stock("dym") - need_d * 2.5, minf(float(st.n), float(G.Market.bulk_left_today()))))
+		if spare >= float(D.BULK_SELL_MIN):
+			G.Market.bulk_sell(S.stash[room], "dym", int(st.pur), spare)
 	# gotowy towar jedzie do kawalerki (tyle, ile wejdzie do plecaka)
 	for e in G.entries(S.stash[room]):
 		if e.kind != "item":

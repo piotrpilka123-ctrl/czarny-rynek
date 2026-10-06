@@ -62,6 +62,31 @@ const UPGRADES := [
 	{"id": "waga", "name": "Waga jubilerska", "price": 650, "lvl": 2, "desc": "Dużo mniej strat przy porcjowaniu, a spokojna robota jest całkiem bezstratna."},
 	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 150 miejsc zamiast 60."},
 ]
+## GIEŁDA: dostawcy. Każdy ma swój charakter — cenę, czystość, czas dostawy, zasady płatności i ryzyko.
+## price = mnożnik ceny hurtowej, pur = widełki czystości, eta = minuty do dostawy skrytką,
+## blind = czystość poznajesz dopiero po otwarciu paczki, mix = szansa, że towar jest już rozrobiony,
+## risk = szansa, że dostawa jest „spalona” (przy skrytce czeka tajniak), prepay = płatne z góry.
+const VENDORS := [
+	{"id": "wiktor", "name": "Wiktor", "tag": "Pewniak", "lvl": 1, "price": 1.0, "pur": [70, 80], "eta": [40.0, 90.0], "credit": true, "min": 5, "max": 250, "risk": 0.0,
+		"desc": "Solidny towar i zeszyt. Drożej niż u innych, ale nigdy nie zawodzi.", "color": "c9a86a"},
+	{"id": "zbyszek", "name": "Tani Zbyszek", "tag": "Kot w worku", "lvl": 2, "price": 0.74, "pur": [45, 78], "eta": [20.0, 45.0], "min": 5, "max": 50, "risk": 0.1, "blind": true, "mix": 0.3,
+		"desc": "Ćwierć taniej i szybko. Czystość poznasz dopiero po otwarciu paczki — bywa, że towar jest już rozrobiony. Co dziesiąta dostawa jest spalona.", "color": "8a9a3a"},
+	{"id": "chemik", "name": "Chemik z Zagłębia", "tag": "Czysty towar", "lvl": 4, "price": 1.3, "pur": [86, 95], "eta": [150.0, 260.0], "min": 10, "max": 100, "risk": 0.0, "prepay": true,
+		"desc": "Najczystszy towar w okolicy. Płatne z góry, dostawa trwa kilka godzin, minimum 10 g.", "color": "6aa8e8"},
+	{"id": "port", "name": "Port", "tag": "Cegły z kontenera", "lvl": 6, "price": 0.8, "pur": [72, 82], "eta": [240.0, 420.0], "min": 50, "max": 250, "risk": 0.04, "prepay": true, "buys": true,
+		"desc": "Całe cegły prosto z kontenera: od 50 g, jedna piąta taniej. Płatne z góry, długa dostawa. Skupuje też nadwyżki.", "color": "c86a4a"},
+]
+## sposoby dostawy: fee = dopłata do ceny, eta = mnożnik czasu, hold = ile godzin paczka czeka
+const DELIVERY := {
+	"drop": {"name": "Skrytka", "icon": "map_pin", "fee": 0.0, "eta": 1.0, "hold": 16.0, "desc": "Paczka czeka 16 godzin w umówionym miejscu na mieście."},
+	"locker": {"name": "Skrytkomat", "icon": "lock", "fee": 0.08, "eta": 1.5, "hold": 36.0, "desc": "+8% i wolniej, ale paczka leży półtorej doby pod kodem i nikt przy niej nie węszy."},
+	"courier": {"name": "Kurier", "icon": "footprints", "fee": 0.15, "eta": 0.5, "hold": 0.6, "desc": "+15%, za to dwa razy szybciej. Kurier czeka w umówionym miejscu tylko 35 minut."},
+}
+## skup nadwyżek: ułamek ceny ulicznej za towar luzem i dzienny limit gramów na poziom
+const BULK_SELL := 0.44
+const BULK_SELL_MIN := 20
+const BULK_SELL_DAY := 40
+
 ## PRODUKCJA. Każdy przepis to dane: stanowisko, wsad, czas, etapy, plon. Nowy towar = nowy wpis (i ewentualnie stanowisko).
 ## hours = czas całego cyklu w zwykłym trybie, yield = gramy (dla upraw: na doniczkę), pur = czystość bazowa,
 ## smell = zapach w szczycie, power = zł za dobę, hold = etap kończy się czynnością gracza.
@@ -207,6 +232,9 @@ var DROPS := [
 	{"id": "dziupla", "name": "Stary dąb w parku", "x": -160.0, "z": 122.0, "lvl": 2},
 	{"id": "nasyp", "name": "Krzaki pod nasypem", "x": 127.0, "z": -66.0, "lvl": 3},
 	{"id": "zbiornik", "name": "Zbiornik w Starej Hucie", "x": 192.0, "z": 58.0, "lvl": 4},
+	# skrytkomaty (dostawa „pod kod”); pozycje ustala świat przy budowie
+	{"id": "locker_a", "name": "Skrytkomat przy pawilonie", "x": 98.0, "z": -40.0, "lvl": 99, "locker": true},
+	{"id": "locker_b", "name": "Skrytkomat na osiedlu", "x": -24.0, "z": -98.0, "lvl": 99, "locker": true},
 ]
 
 ## strefy (nazwy na HUD-zie i lokalna uwaga policji)

@@ -50,6 +50,7 @@ var ditch_hold := 0.0
 var stones: Array = []          # lecące kamyki: {node, p, v, seen}
 var throw_cd := 0.0
 var hide_at := {}               # kryjówka, w której siedzi gracz
+var drop_actors := {}           # kurierzy i zasadzki przy paczkach: id paczki → {static} albo {cop}
 var way := {}                 # znacznik celu na ekranie: {pos, color, dist}
 var build := {}               # tryb ustawiania mebla: {fid, room, r, ghost, mark, valid, x, z}
 
@@ -553,26 +554,39 @@ func _drop_inter() -> Variant:
 	for d in G.S.drops:
 		if d.state != "ready":
 			continue
-		var dd := G.drop_def(d.spot)
+		var dd: Dictionary = G.Market.spot(d)
 		if Vector2(float(dd.x) - pp.x, float(dd.z) - pp.z).length() < 3.6:
 			var drop: Dictionary = d
 			var why := String(G.pickup_block(drop))
-			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "hold": 1.5, "id": "drop", "y0": 0.0, "y1": 1.2, "r": 0.85, "reach": 2.8,
-				"label": func(): return ("Skrytka: zabierz paczkę (przytrzymaj)" if why == "" else "Skrytka: " + why), "act": func(): _take_drop(drop)}
+			var method := String(d.get("method", "drop"))
+			var what := "Skrytka: zabierz paczkę"
+			if method == "locker":
+				what = "Skrytkomat: wpisz kod %s i zabierz paczkę" % String(d.get("code", ""))
+			elif method == "courier":
+				what = "Kurier: odbierz paczkę"
+			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "hold": 1.5 if method != "courier" else 0.8, "id": "drop", "y0": 0.0, "y1": 1.6 if method != "drop" else 1.2, "r": 0.85, "reach": 2.8,
+				"label": func(): return (what + " (przytrzymaj)" if why == "" else what.get_slice(":", 0) + ": " + why), "act": func(): _take_drop(drop)}
 	return null
 
 
 func _take_drop(d: Dictionary) -> void:
-	if not G.pickup_drop(d):
+	if G.pickup_block(d) != "":
+		G.pickup_drop(d)
 		return
-	# odbiór na oczach policji
+	# odbiór na oczach policji: przy „spalonej” skrytce tajniak rusza od razu
 	var pp: Vector3 = player.global_position
 	for c in npcs.cops:
-		if c.sees and Vector2(c.x - pp.x, c.z - pp.z).length() < 16.0:
-			c.susp = minf(1.0, float(c.susp) + 0.6)
+		if (c.sees or float(c.get("lvl", 0.0)) > 0.0) and Vector2(c.x - pp.x, c.z - pp.z).length() < 16.0:
 			G.add_heat(8.0)
-			G.notify("Policjant widział, jak grzebiesz w skrytce!", "bad")
+			if d.get("burned", false):
+				G.notify("To była zasadzka! Tajniak tylko czekał, aż sięgniesz po paczkę.", "bad")
+				c.idle = 0.0
+				npcs.start_chase(c)
+			else:
+				c.susp = minf(1.0, float(c.susp) + 0.6)
+				G.notify("Policjant widział, jak grzebiesz w skrytce!", "bad")
 			break
+	G.pickup_drop(d)
 
 
 ## Interakcja wymaga nacelowania: promień wzroku musi przejść przez obiekt z normalnej odległości.
@@ -657,6 +671,47 @@ func interact() -> void:
 		hold_t = 0.0
 		return
 	cur_inter.act.call()
+
+
+## Paczka gotowa do odbioru: kurier staje w umówionym miejscu, a przy „spalonej” skrytce czai się tajniak.
+func drop_ready(d: Dictionary) -> void:
+	var sp: Dictionary = G.Market.spot(d)
+	var at := Vector2(float(sp.x), float(sp.z))
+	if String(d.get("method", "drop")) == "courier":
+		var look := {"model": ["m06", "m12", "m09"].pick_random(), "kind": "hoodie", "seed": int(d.id) * 7 + 3}
+		var q: Vector2 = world.near_free(at.x + 0.6, at.y + 0.4)
+		var n: Dictionary = npcs._static({"x": q.x / D.SC, "z": q.y / D.SC, "rot": randf() * TAU, "pose": "arms", "name": "Kurier", "look": look})
+		drop_actors[int(d.id)] = {"static": n}
+	elif d.get("burned", false):
+		# tajniak w cywilu… w mundurze, bo to prosta gra: stoi kilkanaście metrów od skrytki i na nią patrzy
+		var a := randf() * TAU
+		var cp: Vector2 = world.near_free(at.x + cos(a) * 9.0, at.y + sin(a) * 9.0)
+		var c: Dictionary = npcs.spawn_cop(false)
+		c["temp"] = true
+		c.x = cp.x
+		c.z = cp.y
+		c.state = "patrol"
+		c.idle = 99999.0
+		c.node.rotation.y = atan2(at.x - cp.x, at.y - cp.y)
+		c.node.position = Vector3(cp.x, world.height(cp.x, cp.y), cp.y)
+		drop_actors[int(d.id)] = {"cop": c}
+
+
+## Paczka odebrana albo przepadła: sprzątamy kuriera / zasadzkę.
+func drop_gone(d: Dictionary) -> void:
+	var a = drop_actors.get(int(d.id))
+	if a == null:
+		return
+	drop_actors.erase(int(d.id))
+	if a.has("static"):
+		npcs.remove_static(a.static)
+	elif a.has("cop"):
+		var c: Dictionary = a.cop
+		if npcs.cops.has(c):
+			if c.state == "chase":
+				c.idle = 0.0
+			else:
+				npcs.remove_cop(c)
 
 
 ## nalot na kryjówkę, w której akurat siedzi gracz
@@ -801,8 +856,8 @@ func _drop_target() -> Dictionary:
 	var d = G.ready_drop()
 	if d == null:
 		return {}
-	var dd := G.drop_def(d.spot)
-	return {"id": "drop", "label": "Skrytka: " + String(dd.name), "loc": "out", "x": float(dd.x), "z": float(dd.z), "color": C_DROP}
+	var dd: Dictionary = G.Market.spot(d)
+	return {"id": "drop", "label": ("Skrytka: " if String(d.get("method", "drop")) == "drop" else "") + String(dd.name), "loc": "out", "x": float(dd.x), "z": float(dd.z), "color": C_DROP}
 
 
 func _story_target() -> Dictionary:
@@ -1438,6 +1493,9 @@ func _apply_test_args() -> void:
 		if args.has("mult"):
 			G.add_pack(G.S.inv, "dym", 80, 5)
 			G.S.heat = 90.0
+	if args.has("locker"):
+		var lk: Dictionary = G.drop_def("locker_a" if String(args.locker) != "b" else "locker_b")
+		teleport("out", Vector3(float(lk.x) + 2.2, 0.0, float(lk.z) + 4.2), 0.42)
 	if args.has("hide"):
 		var hh: Dictionary = world.hides[int(args.hide) % world.hides.size()]
 		var hf := Vector2(sin(float(hh.rot) + PI), cos(float(hh.rot) + PI))
@@ -1550,6 +1608,24 @@ func _test_ui(what: String) -> void:
 			ui.phone.contact_id = "dominik"
 			ui.phone.render()
 		"mapa", "hurt", "portfel", "rozwoj", "zadania", "lokale", "plecak", "ustawienia": ui.open_phone(what)
+		"gielda", "gielda2":
+			G.S.flags["hurt_on"] = true
+			G.S.lvl = 6
+			G.S.cash = 4200.0
+			G.Market.add_trust("wiktor", 46.0)
+			G.Market.add_trust("zbyszek", 18.0)
+			G.Market.order("zbyszek", "dym", 10, "drop", false)
+			var gd: Dictionary = G.Market.order("chemik", "szron", 20, "locker", false)
+			gd.state = "ready"
+			G.Market.roll_special()
+			G.add_bulk(G.S.inv, "dym", 70, 64.0)
+			ui.open_phone("hurt")
+			if what == "gielda2":
+				ui.phone.hurt.v = "zbyszek"
+				ui.phone.render()
+				await get_tree().process_frame
+				await get_tree().process_frame
+				ui.phone.scroll.scroll_vertical = 620
 		"bench": ui.open_pack(player.loc if player.loc != "out" else "safe")
 		"station0", "station1", "station2", "station3", "station4", "station9": ui.open_station("garage", int(what.trim_prefix("station")))
 		"hideout": ui.open_hideout("garage")

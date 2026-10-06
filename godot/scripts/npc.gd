@@ -227,6 +227,13 @@ func _static(o: Dictionary) -> Dictionary:
 	return n
 
 
+func remove_static(n: Dictionary) -> void:
+	statics.erase(n)
+	all.erase(n)
+	if n.get("node") != null and is_instance_valid(n.node):
+		n.node.queue_free()
+
+
 func _build_static() -> void:
 	var sx: float = D.ROOMS.shop.cx
 	stasiu = _static({"x": sx, "z": -2.3, "loc": "shop", "name": "Wujek Staś", "label": "Wujek Staś", "track": true, "range": 3.4,

@@ -1,6 +1,7 @@
 extends Node
 
 const Prod = preload("res://scripts/production.gd")
+const Market = preload("res://scripts/market.gd")
 ## Rdzeń rozgrywki: stan, czas, towar (hurt → skrytka → porcjowanie → sprzedaż),
 ## klienci i negocjacje, policja, dług, rozwój postaci, kryjówki, fabuła, zapis.
 
@@ -110,7 +111,7 @@ func new_state() -> Dictionary:
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
-		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1,
+		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "special": null, "sold_bulk": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0},
 		"pos": null, "mom_day": 0,
@@ -600,6 +601,9 @@ func contact_name(cid: String) -> String:
 		"stas": return "Wujek Staś"
 		"mama": return "Mama"
 		"info": return "POLTEL"
+	var vd: Dictionary = Market.vendor(cid)
+	if not vd.is_empty():
+		return String(vd.name)
 	var d := cust_def(cid)
 	return String(d.name) if not d.is_empty() else cid
 
@@ -785,21 +789,35 @@ func on_tick() -> void:
 				st.sat = maxf(0.0, float(st.sat) - 14.0)
 				st.loy = maxf(0.0, float(st.loy) - 6.0)
 				chat(o.cust, "Czekałem godzinę, a ciebie nie było. Słabo.")
-	# paczki w skrytkach
+	# paczki: skrytki, skrytkomaty, kurierzy
 	for d in S.drops.duplicate():
+		var vid := String(d.get("vendor", "wiktor"))
+		var method := String(d.get("method", "drop"))
 		if d.state == "wait" and S.t >= float(d.ready):
 			d.state = "ready"
-			chat("wiktor", "Paczka czeka: %s. Masz 16 godzin, potem znika." % drop_def(d.spot).name)
+			var where: String = Market.spot_name(d)
+			match method:
+				"locker": chat(vid, "Paczka w skrytkomacie: %s. Kod: %s. Leży półtorej doby." % [where, String(d.get("code", "0000"))])
+				"courier": chat(vid, "%s — mój człowiek już stoi. Czeka 35 minut i ani chwili dłużej." % where)
+				_: chat(vid, "Paczka czeka: %s. Masz 16 godzin, potem znika." % where)
 			if S.track == null:
 				S.track = "drop"
+			if main != null:
+				main.drop_ready(d)
 			nav_dirty.emit()
 		elif d.state == "ready" and S.t > float(d.expire):
 			S.drops.erase(d)
-			chat("wiktor", "Paczka przepadła. Następnym razem rusz się szybciej — za straty i tak płacisz.")
-			S.credit = float(S.credit) + float(d.cost) * 0.5
-			if float(S.credit_due) < S.t:
-				S.credit_due = S.t + D.CREDIT_DAYS * 1440.0
+			Market.add_trust(vid, -15.0)
+			if d.get("prepaid", false):
+				chat(vid, "Nie odebrałeś. Twój problem — zapłacone, przepadło." if method != "courier" else "Mój człowiek stał jak kołek, a ciebie nie było. Kasa przepadła.")
+			else:
+				chat(vid, "Paczka przepadła. Następnym razem rusz się szybciej — za straty i tak płacisz.")
+				S.credit = float(S.credit) + float(d.cost) * 0.5
+				if float(S.credit_due) < S.t:
+					S.credit_due = S.t + D.CREDIT_DAYS * 1440.0
 			add_invest(3.0)
+			if main != null:
+				main.drop_gone(d)
 			nav_dirty.emit()
 
 
@@ -848,6 +866,7 @@ func _has_order(cid: String) -> bool:
 func on_day() -> void:
 	var d := day()
 	Prod.daily()
+	Market.roll_special()
 	for p in S.demand:
 		S.demand[p] = snappedf(randf_range(0.88, 1.2), 0.01)
 	S.cost_mult = snappedf(randf_range(0.92, 1.12), 0.01)
@@ -1669,26 +1688,15 @@ func credit_overdue() -> bool:
 	return float(S.credit) > 0.0 and S.t > float(S.credit_due)
 
 
-## dlaczego nie można zamówić ("" = można)
+## dlaczego nie można zamówić ("" = można). Stare, proste wejście: Wiktor albo — dla czystego towaru — Chemik.
 func order_block(p: String, g: int, on_credit: bool, high: bool) -> String:
 	if not flag("hurt_on"):
 		return "Wiktor jeszcze Ci nie ufa."
-	if int(S.lvl) < int(D.PRODUCTS[p].lvl):
-		return "Od poziomu %d." % int(D.PRODUCTS[p].lvl)
-	if g > wholesale_max():
-		return "Maks. %d g na Twoim poziomie." % wholesale_max()
-	if high and int(S.lvl) < 5:
-		return "Czysty towar od poziomu 5."
-	if S.drops.size() >= 2:
-		return "Najpierw odbierz zamówione paczki."
-	if credit_overdue():
+	if not high and credit_overdue():
 		if rescue_order(p, g, on_credit, high):
 			return ""
 		return "Spłać zaległy zeszyt." if all_goods() >= 1.0 or not S.drops.is_empty() else "Zeszyt po terminie: Wiktor da najwyżej 5 g marihuany na zeszyt, 25% drożej."
-	var cost := wholesale_price(p, g, high)
-	if on_credit and float(S.credit) + cost > credit_limit():
-		return "Przekroczysz limit zeszytu (%s)." % money(credit_limit())
-	return ""
+	return Market.block("chemik" if high else "wiktor", p, g, "drop", on_credit and not high)
 
 
 ## cały towar gracza: plecak i wszystkie skrytki
@@ -1707,29 +1715,25 @@ func rescue_order(p: String, g: int, on_credit: bool, high: bool) -> bool:
 func order_goods(p: String, g: int, high: bool, on_credit: bool) -> bool:
 	if order_block(p, g, on_credit, high) != "":
 		return false
-	var used := []
-	for d in S.drops:
-		used.append(d.spot)
-	var opts := []
-	for dd in D.DROPS:
-		if int(S.lvl) >= int(dd.lvl) and not used.has(dd.id):
-			opts.append(dd)
-	if opts.is_empty():
-		return false
-	var spot: Dictionary = opts.pick_random()
-	var ready: float = S.t + randf_range(40.0, 90.0)
-	var pur: int = D.PURITY_HIGH if high else D.PURITY_STD + randi_range(-1, 1) * 5
-	var rescue := rescue_order(p, g, on_credit, high)
-	var d := {"id": int(S.next_drop), "spot": spot.id, "p": p, "g": g, "pur": pur, "cost": round(wholesale_price(p, g, high) * (1.25 if rescue else 1.0)),
-		"credit": on_credit, "ready": ready, "expire": ready + 16.0 * 60.0, "state": "wait"}
-	S.next_drop = int(S.next_drop) + 1
-	S.drops.append(d)
-	chat("wiktor", "Zamawiam: %d g %s%s, %s." % [g, D.PRODUCT_GEN[p], " (czysty)" if high else "", "na zeszyt" if on_credit else "płatne przy odbiorze"], true)
-	if rescue:
+	if rescue_order(p, g, on_credit, high):
+		# deska ratunku: mimo zaległego zeszytu Wiktor daje 5 g marihuany, ale ćwierć drożej
+		var used := []
+		for d0 in S.drops:
+			used.append(d0.spot)
+		var opts := []
+		for dd in D.DROPS:
+			if int(S.lvl) >= int(dd.lvl) and not used.has(dd.id) and not dd.get("locker", false):
+				opts.append(dd)
+		if opts.is_empty():
+			return false
+		var ready: float = S.t + randf_range(40.0, 90.0)
+		var d := {"id": int(S.next_drop), "spot": opts.pick_random().id, "p": p, "g": g, "pur": D.PURITY_STD, "cost": round(wholesale_price(p, g, false) * 1.25),
+			"credit": true, "ready": ready, "expire": ready + 16.0 * 60.0, "state": "wait", "vendor": "wiktor", "method": "drop", "blind": false, "prepaid": false, "burned": false, "code": ""}
+		S.next_drop = int(S.next_drop) + 1
+		S.drops.append(d)
 		chat("wiktor", "Wisisz mi, a chcesz jeszcze? Ostatni raz. Pięć gramów, ćwierć drożej. Sprzedaj i oddaj.", false, true)
-	chat("wiktor", "Przyjąłem. Skrytka: %s. Dam znać, jak paczka będzie na miejscu (ok. %d min)." % [spot.name, int((ready - S.t) / 10.0) * 10], false, true)
-	Sfx.play("select")
-	return true
+		return true
+	return not Market.order("chemik" if high else "wiktor", p, g, "drop", on_credit and not high).is_empty()
 
 
 func ready_drop() -> Variant:
@@ -1743,6 +1747,8 @@ func ready_drop() -> Variant:
 func pickup_block(d: Dictionary) -> String:
 	if carry_total() + float(d.g) > float(capacity()) + 0.01:
 		return "Za mało miejsca: paczka %d g, wolne %s." % [int(d.g), grams(maxf(0.0, capacity() - carry_total()))]
+	if d.get("prepaid", false):
+		return ""
 	if not d.credit and S.cash < float(d.cost):
 		if float(S.credit) + float(d.cost) <= credit_limit() and not credit_overdue():
 			return ""
@@ -1755,8 +1761,10 @@ func pickup_drop(d: Dictionary) -> bool:
 	if why != "":
 		notify(why, "warn")
 		return false
-	var on_credit: bool = d.credit or S.cash < float(d.cost)
-	if on_credit:
+	var on_credit: bool = (d.credit or S.cash < float(d.cost)) and not d.get("prepaid", false)
+	if d.get("prepaid", false):
+		pass
+	elif on_credit:
 		if float(S.credit) <= 0.0:
 			S.credit_due = S.t + D.CREDIT_DAYS * 1440.0
 		S.credit = float(S.credit) + float(d.cost)
@@ -1770,7 +1778,14 @@ func pickup_drop(d: Dictionary) -> bool:
 	S.stats.pickups = int(S.stats.pickups) + 1
 	S.flags["got_first"] = true
 	Sfx.play("pickup")
-	notify("Zabrano: %d g %s (%d%%, %s)" % [int(d.g), D.PRODUCT_GEN[d.p], int(d.pur), tier_name(d.pur)], "good")
+	if d.get("blind", false):
+		var verdict := "rozrobiony" if is_mix(d.pur) else ("trafiło się nieźle" if int(d.pur) >= 68 else ("średniak" if int(d.pur) >= 55 else "słabizna"))
+		notify("Kot w worku: %d g %s, czystość %d%% — %s." % [int(d.g), D.PRODUCT_GEN[d.p], int(d.pur), verdict], "good" if int(d.pur) >= 68 and not is_mix(d.pur) else "warn")
+	else:
+		notify("Zabrano: %d g %s (%d%%, %s)" % [int(d.g), D.PRODUCT_GEN[d.p], int(d.pur), tier_name(d.pur)], "good")
+	Market.add_trust(String(d.get("vendor", "wiktor")), 3.0 + float(d.g) / 12.0)
+	if main != null:
+		main.drop_gone(d)
 	add_xp(6.0)
 	if S.track is String and S.track == "drop":
 		S.track = null
@@ -2267,7 +2282,7 @@ func _drop_marker() -> Variant:
 	var d = ready_drop()
 	if d == null:
 		return null
-	var dd := drop_def(d.spot)
+	var dd: Dictionary = Market.spot(d)
 	return {"loc": "out", "x": dd.x, "z": dd.z}
 
 
