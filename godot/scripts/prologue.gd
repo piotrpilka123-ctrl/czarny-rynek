@@ -31,22 +31,38 @@ const BATCH_G := 500.0
 
 const SH_PARTY := """
 shader_type canvas_item;
-uniform float k = 1.0;
+uniform float k = 0.0;        // wyłanianie się z czerni
+uniform float drive = 0.3;    // jak mocno światła biją w rytm
+uniform float rush = 0.0;     // uderzenie po kresce: jaskrawo, szybko, wszystko się rozjeżdża
+uniform float sick = 0.0;     // koniec: zielonkawo, mętnie, obraz pływa
+uniform float bpm = 143.0;
 void fragment() {
-	// rozmyte światła imprezy: kilka kolorowych plam pulsujących w rytm basu
 	vec2 uv = UV;
-	float beat = pow(abs(sin(TIME * 6.6)), 6.0);
+	float t = TIME;
+	float beat = pow(abs(sin(t * 3.14159 * bpm / 60.0)), 5.0);
+	// zataczanie: cały obraz faluje, po kresce pulsuje od środka
+	uv += vec2(sin(t * 1.3 + uv.y * 3.0), cos(t * 1.1 + uv.x * 2.5)) * (0.012 + 0.05 * sick);
+	uv = (uv - 0.5) * (1.0 - 0.07 * rush * beat - 0.03 * drive * beat) + 0.5;
 	vec3 c = vec3(0.0);
-	for (int i = 0; i < 6; i++) {
+	float speed = 0.3 + 1.6 * rush + 0.4 * drive;
+	for (int i = 0; i < 9; i++) {
 		float fi = float(i);
-		vec2 p = vec2(0.5 + 0.42 * sin(TIME * (0.31 + fi * 0.07) + fi * 2.1), 0.5 + 0.36 * cos(TIME * (0.27 + fi * 0.05) + fi * 1.3));
+		vec2 p = vec2(0.5 + 0.44 * sin(t * speed * (0.31 + fi * 0.07) + fi * 2.1), 0.5 + 0.38 * cos(t * speed * (0.27 + fi * 0.05) + fi * 1.3));
 		float d = distance(uv, p);
-		vec3 col = 0.5 + 0.5 * cos(vec3(0.0, 2.1, 4.2) + fi * 1.9 + TIME * 0.4);
-		c += col * exp(-d * d * (9.0 - beat * 3.0)) * (0.35 + 0.25 * beat);
+		vec3 col = 0.5 + 0.5 * cos(vec3(0.0, 2.1, 4.2) + fi * 1.9 + t * (0.4 + 2.0 * rush));
+		float sz = 10.0 - 4.0 * drive * beat - 3.0 * rush;
+		c += col * exp(-d * d * sz) * (0.22 + 0.5 * drive * beat + 0.45 * rush);
 	}
-	// zataczanie się: obraz „pływa” i ciemnieje na brzegach
-	float vig = smoothstep(0.95, 0.2, distance(uv, vec2(0.5 + 0.04 * sin(TIME * 1.3), 0.5)));
-	COLOR = vec4(c * vig * 0.8, k);
+	// stroboskop na mocnych uderzeniach
+	c += vec3(0.9, 0.95, 1.0) * pow(beat, 6.0) * 0.35 * drive * step(0.6, drive + rush);
+	// rozszczepienie barw po kresce
+	c.r *= 1.0 + 0.5 * rush * sin(uv.x * 30.0 + t * 20.0);
+	c.b *= 1.0 + 0.5 * rush * cos(uv.y * 24.0 - t * 17.0);
+	// miękkie przycięcie: nawet w szczycie zostają kolory, a nie biała plama
+	c = 1.35 * c / (1.0 + 0.75 * c);
+	c = mix(c, vec3(dot(c, vec3(0.3, 0.6, 0.1))) * vec3(0.55, 0.75, 0.35), sick * 0.8);
+	float vig = smoothstep(1.0, 0.15 + 0.2 * rush, distance(UV, vec2(0.5)));
+	COLOR = vec4(c * vig * k * (1.0 - 0.45 * sick), 1.0);
 }
 """
 
@@ -73,7 +89,7 @@ func step() -> Dictionary:
 	var R: Dictionary = D.ROOMS.lab
 	match stage:
 		"lab":
-			return {"text": func(): return ("Chodź klawiszami [%s][%s][%s][%s], rozglądaj się myszą. Podejdź do stołu z cegłami, naceluj i naciśnij [%s] — a potem spakuj partię: przeciągnij kokainę ze stołu do swojej torby." % [G.kn("fwd"), G.kn("left"), G.kn("back"), G.kn("right"), G.kn("use")]) if not _packed else "Odbierz telefon.",
+			return {"text": func(): return ("Chodź klawiszami [%s][%s][%s][%s], rozglądaj się myszą. Podejdź do stołu z cegłami, naceluj i naciśnij [%s] — a potem spakuj partię: przeciągnij kokainę ze stołu do swojej torby." % [G.kn("fwd"), G.kn("left"), G.kn("back"), G.kn("right"), G.kn("use")]) if not _packed else "Dzwoni telefon — odbierz: [%s]." % G.kn("phone"),
 				"done": func(): return false, "marker": func(): return {"loc": "lab", "x": float(R.cx) + 1.6, "z": 2.4}}
 		"raid":
 			return {"text": func(): return "NALOT! Uciekaj tylnymi drzwiami — naceluj na nie i naciśnij [%s]." % G.kn("use"),
@@ -145,13 +161,14 @@ func start() -> void:
 	]})
 
 
-## Otwarcie: nieprzerwany melanż widziany przez mgłę — plamy świateł, bas zza ściany, strzępy głosów.
-## Potem nagle czarny ekran i jedno zdanie.
+## Otwarcie: nieprzerwany melanż widziany przez mgłę. Z czerni wyłaniają się rozmyte światła i bas zza ściany,
+## filtr się otwiera, muzyka wybucha, kreska za kreską — aż wszystko zielenieje i głuchnie. Potem czerń i jedno zdanie.
 func _party() -> void:
 	var U = M.ui
 	_party_fx = ColorRect.new()
 	_party_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_party_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_party_fx.color = Color.BLACK
 	var sh := Shader.new()
 	sh.code = SH_PARTY
 	var sm := ShaderMaterial.new()
@@ -160,15 +177,76 @@ func _party() -> void:
 	U.cut.add_child(_party_fx)
 	U.cut.move_child(_party_fx, 0)
 	Sfx.party_play()
-	var bits := [[0.8, "— Jeszcze jedną, Kuba! Jeszcze jedną!"], [3.0, "(ktoś wciąga kreskę z blatu)"], [5.2, "— Która to doba? Trzecia? Czwarta?"], [7.3, "(ktoś wymiotuje w łazience)"],
-		[9.4, "— Nie odbieraj. To znowu Siwy."], [11.6, "— Stary, ty w ogóle śpisz?"]]
-	var bi := 0
+	Sfx.party_sfx("gwar_baru", -6.0)
+	# [czas, co] — "T:tekst" = napis, reszta to zdarzenia dźwięku i obrazu
+	var ev := [
+		[2.6, "T:— Kuba! Kuba, chodź tu! Polej mu!"],
+		[4.6, "okrzyki_1"], [6.6, "smiech_1"],
+		[7.2, "T:— Jeszcze jedną. Ostatnią. Słowo."],
+		[11.4, "brawa_bar"], [12.0, "DROP"], [12.1, "okrzyki_2"],
+		[13.4, "T:(ktoś sypie kreskę na blat)"],
+		[14.6, "SNIFF1"],
+		[16.4, "T:— O kurwa. O, tak. Podgłośnij to!"],
+		[17.2, "spiew"], [18.6, "smiech_2"],
+		[20.4, "T:— Która to doba? Trzecia? Czwarta?"],
+		[21.6, "SNIFF2"], [22.4, "okrzyki_1"],
+		[24.6, "T:— Nie odbieraj. To znowu Siwy."],
+		[25.2, "SICK"], [25.6, "wibracja"],
+		[27.2, "wymioty_1"],
+		[28.6, "T:(łazienka. Zimne kafle. Ktoś wali w drzwi)"],
+		[30.6, "wymioty_2"],
+		[32.4, "T:— Stary, ty w ogóle jeszcze żyjesz?"],
+	]
+	var ei := 0
 	var tt := 0.0
-	while tt < 13.6 and not M.cut_skip and not _jumped:
-		tt += get_process_delta_time()
-		if bi < bits.size() and tt >= float(bits[bi][0]):
-			U.cut_line(String(bits[bi][1]))
-			bi += 1
+	var cut_hz := 180.0
+	var cut_to := 180.0
+	var drive := 0.3
+	var drive_to := 0.3
+	var rush := 0.0
+	var sick := 0.0
+	var sick_to := 0.0
+	while tt < 35.6 and not M.cut_skip and not _jumped:
+		var dt := get_process_delta_time()
+		tt += dt
+		while ei < ev.size() and tt >= float(ev[ei][0]):
+			var what := String(ev[ei][1])
+			ei += 1
+			if what.begins_with("T:"):
+				U.cut_line(what.substr(2))
+			elif what == "DROP":
+				cut_to = 19000.0
+				drive_to = 1.0
+				U.flash(0.5)
+			elif what == "SNIFF1" or what == "SNIFF2":
+				Sfx.party_sfx("wciaganie_1" if what == "SNIFF1" else "wciaganie_2", 7.0, 1.0, true, 0.2 if what == "SNIFF1" else 0.4)
+				rush = 1.0
+				U.flash(0.3)
+			elif what == "SICK":
+				cut_to = 320.0
+				drive_to = 0.25
+				sick_to = 1.0
+			elif what == "wibracja":
+				Sfx.party_sfx(what, -2.0)
+			elif what == "wymioty_1" or what == "wymioty_2":
+				Sfx.party_sfx(what, 9.0, 1.0, true)
+			elif what == "spiew":
+				Sfx.party_sfx(what, -5.0, 1.04)
+			else:
+				Sfx.party_sfx(what, -1.0)
+		# filtr: najpierw powoli uchyla się sam, potem skacze do zadanej wartości
+		if tt < 11.8:
+			cut_to = lerpf(180.0, 2400.0, clampf((tt - 2.0) / 9.8, 0.0, 1.0) * clampf((tt - 2.0) / 9.8, 0.0, 1.0))
+		cut_hz = lerpf(cut_hz, cut_to, minf(1.0, dt * (9.0 if cut_to > cut_hz else 1.1)))
+		Sfx.party_cut(cut_hz)
+		Sfx.party_vol(lerpf(-26.0, 5.0, clampf(tt / 5.0, 0.0, 1.0)) - sick * 5.0)
+		drive = lerpf(drive, drive_to, minf(1.0, dt * 4.0))
+		rush = maxf(0.0, rush - dt / 2.6)
+		sick = lerpf(sick, sick_to, minf(1.0, dt * 0.6))
+		sm.set_shader_parameter("k", clampf((tt - 0.6) / 4.5, 0.0, 1.0))
+		sm.set_shader_parameter("drive", drive)
+		sm.set_shader_parameter("rush", rush)
+		sm.set_shader_parameter("sick", sick)
 		await get_tree().process_frame
 	# cięcie: cisza i czerń
 	Sfx.party_stop()
@@ -178,11 +256,11 @@ func _party() -> void:
 	U.cut_line("")
 	if M.cut_skip or _jumped:
 		return
-	await _wait(1.3)
+	await _wait(1.6)
 	U.cut_title("WSZYSTKO SIĘ KIEDYŚ KOŃCZY.", "")
-	await _wait(3.4)
+	await _wait(3.8)
 	U.cut_title("")
-	await _wait(0.9)
+	await _wait(1.0)
 
 
 ## ustawia patrole, radiowozy i wspólnika na czas prologu
@@ -307,15 +385,14 @@ func _on_packed(instant := false) -> void:
 	if instant:
 		_begin_raid()
 		return
-	# telefon od Wiktora — przerywa go megafon
-	Sfx.play("sms")
-	M.ui.dialog({"name": "Wiktor (telefon)", "lines": [
+	# telefon od Wiktora: dzwoni, dopóki nie odbierzesz; rozmawiasz, chodząc po hali — przerywa go megafon
+	M.ui.call_start("Wiktor", [
 		"Kuba. Za kwadrans piąta, a ja jeszcze nie śpię — zgadnij przez kogo.",
 		"Zapłaciłem ci z góry dwadzieścia pięć tysięcy, bo twoje słowo było dotąd warte tyle, co gotówka. Dotąd.",
 		{"n": "Ty", "t": "Pół kilo jest spakowane. Za godzinę masz je u siebie."},
 		"Za godzinę. Dobrze. Bo wiesz, co mówią o ludziach, którzy znikają na trzy dni z cudzymi pieniędzmi? Nic nie mówią. Nie ma komu.",
 		"Dowieź towar, Kuba. I odeśpij to, co tam robiłeś. Wyglądasz podobno jak —",
-	], "on_end": _begin_raid})
+	], _begin_raid)
 
 
 func _begin_raid() -> void:

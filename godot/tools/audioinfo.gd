@@ -2,11 +2,17 @@ extends SceneTree
 ## Długość, tempo i „ciężar basu” utworów z assets/music (sprawdzenie, czy pasują do klubu / radia):
 ## Godot --headless --path . --script tools/audioinfo.gd
 func _init() -> void:
-	var d := DirAccess.open("res://assets/music")
+	for dir in ["res://assets/music", "res://assets/sfx/party"]:
+		_scan(dir)
+	quit()
+
+
+func _scan(dir: String) -> void:
+	var d := DirAccess.open(dir)
 	for f in d.get_files():
-		if not f.ends_with(".ogg"):
+		if not (f.ends_with(".ogg") or f.ends_with(".mp3")):
 			continue
-		var st: AudioStreamOggVorbis = AudioStreamOggVorbis.load_from_file("res://assets/music/" + f)
+		var st: AudioStream = AudioStreamOggVorbis.load_from_file(dir + "/" + f) if f.ends_with(".ogg") else AudioStreamMP3.load_from_file(dir + "/" + f)
 		if st == null:
 			print("AUDIO %s — nie da się wczytać" % f)
 			continue
@@ -55,5 +61,4 @@ func _init() -> void:
 			if s > best:
 				best = s
 				best_bpm = bpm
-		print("AUDIO %-24s długość %3d s | tempo ok. %5.1f BPM | bas %2d%% energii | szczyt %.2f | średnio %.3f" % [f, int(st.get_length()), best_bpm, int(100.0 * low / maxf(0.000001, all)), peak, sqrt(all / maxf(1.0, cnt))])
-	quit()
+		print("AUDIO %-24s długość %5.1f s | tempo ok. %5.1f BPM | bas %2d%% energii | szczyt %.2f | średnio %.3f" % [f, st.get_length(), best_bpm, int(100.0 * low / maxf(0.000001, all)), peak, sqrt(all / maxf(1.0, cnt))])

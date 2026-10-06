@@ -1647,6 +1647,7 @@ func _process(dt: float) -> void:
 
 
 func _process_ui(dt: float) -> void:
+	_call_tick(dt)
 	if mode == "dialog" and not dlg.is_empty() and not dlg.done:
 		dlg.typed = float(dlg.typed) + dt * 55.0
 		d_text.visible_characters = int(dlg.typed)
@@ -1794,6 +1795,183 @@ var plant_body: VBoxContainer
 var plant_ref := {}
 var plant_t := 0.0
 var plant_sig := ""
+
+
+# ---------------------------------------------------------------- rozmowa telefoniczna (nie zatrzymuje świata)
+## Telefon wysuwa się z prawej krawędzi ekranu. Dzwoni, dopóki nie odbierzesz; odrzucony — oddzwoni po chwili.
+## W trakcie rozmowy chodzisz i robisz swoje, a czas gry płynie.
+var call := {}
+var call_card: PanelContainer
+var call_ic: TextureRect
+var call_name: Label
+var call_state_l: Label
+var call_text: RichTextLabel
+var call_hint: RichTextLabel
+var call_slide := 0.0
+
+func _build_call() -> void:
+	call_card = K.panel(K.sb(Color(0.03, 0.04, 0.06, 0.96), 18, Color(0.3, 0.9, 0.55, 0.5), 1, 14))
+	call_card.custom_minimum_size = Vector2(330, 0)
+	call_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	call_card.visible = false
+	root.add_child(call_card)
+	var v := K.vbox(8)
+	call_card.add_child(v)
+	var h := K.hbox(10)
+	v.add_child(h)
+	var av := K.panel(K.sb(Color(0.12, 0.5, 0.28), 22, Color(0, 0, 0, 0), 0, 9))
+	av.custom_minimum_size = Vector2(44, 44)
+	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	call_ic = K.icon("phone_call", 24, Color.WHITE)
+	av.add_child(call_ic)
+	h.add_child(av)
+	var hv := K.vbox(0)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	call_name = K.head("", 18)
+	hv.add_child(call_name)
+	call_state_l = K.lbl("", 12, K.C_DIM)
+	hv.add_child(call_state_l)
+	h.add_child(hv)
+	call_text = K.rich("", 15)
+	call_text.custom_minimum_size = Vector2(300, 0)
+	call_text.fit_content = true
+	call_text.visible = false
+	v.add_child(call_text)
+	call_hint = K.rich("", 12)
+	call_hint.fit_content = true
+	v.add_child(call_hint)
+
+
+func call_active() -> bool:
+	return not call.is_empty()
+
+
+## ktoś dzwoni: `lines` jak w dialog() — napisy albo {"n": "Ty", "t": "…"}
+func call_start(caller: String, lines: Array, on_end := Callable()) -> void:
+	if G.test_mode:
+		dialog({"name": caller, "lines": lines, "on_end": on_end})
+		return
+	if call_card == null:
+		_build_call()
+	var ls := []
+	for l in lines:
+		ls.append({"n": caller, "t": l} if l is String else {"n": l.get("n", caller), "t": l.t})
+	var last := caller.get_slice(" ", 0).to_lower()
+	var fem: bool = last.ends_with("a") and not last in ["kuba"]
+	call = {"name": caller, "lines": ls, "i": 0, "state": "ring", "t": 0.0, "typed": 0.0, "hold": 0.0, "again": 0.0, "said": 0, "on_end": on_end,
+		"voice": (1.26 if fem else 0.8) + float(absi(caller.hash()) % 30) / 100.0}
+	_call_ring()
+
+
+func _call_ring() -> void:
+	call.state = "ring"
+	call.t = 0.0
+	call_name.text = String(call.name)
+	call_state_l.text = "dzwoni…"
+	call_text.visible = false
+	call_hint.text = "[b][color=#4ade80][%s][/color][/b] odbierz      [b][color=#f05050][Backspace][/color][/b] odrzuć" % G.kn("phone")
+	call_card.visible = true
+	Sfx.ring(true)
+
+
+## klawisz telefonu: odbiera, a w rozmowie przewija do następnej kwestii
+func call_answer() -> void:
+	if call.is_empty():
+		return
+	if call.state == "ring":
+		Sfx.ring(false)
+		Sfx.play("open")
+		call.state = "talk"
+		call.i = 0
+		call.t = 0.0
+		_call_line()
+	elif call.state == "talk":
+		var full: int = String(call.lines[call.i].t).length()
+		if int(call.typed) < full:
+			call.typed = float(full)
+		else:
+			_call_next()
+
+
+func call_reject() -> void:
+	if call.is_empty() or call.state != "ring":
+		return
+	Sfx.ring(false)
+	Sfx.play("back")
+	call.state = "wait"
+	call.again = 7.0
+
+
+func _call_line() -> void:
+	var l: Dictionary = call.lines[call.i]
+	var me := String(l.n) == "Ty"
+	call.typed = 0.0
+	call.hold = 0.0
+	call.said = 0
+	call_text.text = ("[color=#7ee0a0][b]Ty:[/b][/color] " if me else "") + String(l.t)
+	call_text.visible_characters = 0
+	call_text.visible = true
+	call_hint.text = "[color=#8a93a6][%s] dalej[/color]" % G.kn("phone")
+
+
+func _call_next() -> void:
+	call.i = int(call.i) + 1
+	if int(call.i) >= (call.lines as Array).size():
+		_call_end()
+	else:
+		_call_line()
+
+
+func _call_end() -> void:
+	var cb: Callable = call.on_end
+	call = {}
+	Sfx.ring(false)
+	Sfx.play("close")
+	if cb.is_valid():
+		cb.call()
+
+
+func _call_tick(dt: float) -> void:
+	if call_card == null:
+		return
+	var vs := get_viewport().get_visible_rect().size
+	var show: bool = not call.is_empty() and call.state != "wait" and not cut.visible
+	call_slide = clampf(call_slide + (dt if show else -dt) / 0.28, 0.0, 1.0)
+	var e := 1.0 - (1.0 - call_slide) * (1.0 - call_slide)
+	call_card.visible = call_slide > 0.0
+	call_card.position = Vector2(vs.x - (call_card.size.x + 26.0) * e, vs.y * 0.5 - call_card.size.y * 0.5 - 40.0)
+	if call.is_empty() or get_tree().paused:
+		return
+	call.t = float(call.t) + dt
+	match String(call.state):
+		"ring":
+			# słuchawka podskakuje w rytm dzwonka
+			var k := absf(sin(float(call.t) * 11.0)) * (1.0 if fmod(float(call.t), 2.0) < 1.2 else 0.0)
+			call_ic.rotation = k * 0.35
+			call_ic.pivot_offset = call_ic.size * 0.5
+			call_card.position.x += sin(float(call.t) * 40.0) * 2.0 * (1.0 if fmod(float(call.t), 2.0) < 1.2 else 0.0)
+		"wait":
+			call.again = float(call.again) - dt
+			if float(call.again) <= 0.0:
+				_call_ring()
+		"talk":
+			call_ic.rotation = 0.0
+			call_state_l.text = "rozmowa %d:%02d" % [int(float(call.t) / 60.0), int(call.t) % 60]
+			var l: Dictionary = call.lines[call.i]
+			var body := String(l.t)
+			var pre := 4 if String(l.n) == "Ty" else 0
+			if int(call.typed) < body.length():
+				call.typed = float(call.typed) + dt * 42.0
+				call_text.visible_characters = int(call.typed) + pre
+				if String(l.n) != "Ty" and int(call.typed) >= int(call.said) + 7:
+					call.said = int(call.typed)
+					Sfx.mumble(float(call.voice))
+			else:
+				call_text.visible_characters = -1
+				# kwestia zostaje na ekranie tym dłużej, im jest dłuższa
+				call.hold = float(call.hold) + dt
+				if float(call.hold) > 2.0 + body.length() * 0.05:
+					_call_next()
 
 
 func _build_aim_menu() -> void:
@@ -2233,6 +2411,10 @@ func _input(event: InputEvent) -> void:
 					used = false
 			elif kc == KEY_ESCAPE:
 				show_pause()
+			elif call_active() and act == "phone":
+				call_answer()
+			elif call_active() and kc == KEY_BACKSPACE and call.state == "ring":
+				call_reject()
 			elif G.main.menu_active() and kc >= KEY_1 and kc <= KEY_4:
 				G.main.menu_pick(kc - KEY_1)
 			else:

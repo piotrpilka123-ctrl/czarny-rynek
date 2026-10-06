@@ -391,13 +391,13 @@ func prologue_act(what: String) -> void:
 
 
 func _intro() -> void:
-	ui.dialog({"name": "Nieznany numer", "lines": [
+	ui.call_start("Nieznany numer", [
 		"Kuba. Żyjesz. To dobrze — bo mamy do pogadania. Tu Wiktor.",
 		"Partia, za którą zapłaciłem z góry, wyparowała. Czy spłonęła z twoją hutą, czy ktoś ci ją zabrał zza garaży — mało mnie to obchodzi. Dwadzieścia pięć tysięcy. Wisisz mi je.",
 		{"n": "Ty", "t": "Ktoś mnie tam czekał, Wiktor. Wiedział, którędy pójdę. Nie mam laboratorium, nie mam ludzi, nie mam nic. Siwy siedzi."},
 		"Masz głowę i parę numerów do detalistów z osiedla, którzy brali od twoich chłopaków. Zaczniesz od nich — sam, na ulicy, jak wszyscy.",
 		"Towar na start dam ci na zeszyt. Pierwsza rata za pięć dni. Zaraz wyślę ci SMS-em, co dalej. I Kuba — tym razem się wychylisz.",
-	], "on_end": _intro_sms})
+	], _intro_sms)
 
 
 func _intro_sms() -> void:
@@ -2053,6 +2053,13 @@ func _test_order(cid: String, accept := true) -> Dictionary:
 
 
 func _test_ui(what: String) -> void:
+	if what == "call" or what == "call2":
+		G.test_mode = false
+		ui.call_start("Wiktor", ["Kuba. Za kwadrans piąta, a ja jeszcze nie śpię — zgadnij przez kogo.", {"n": "Ty", "t": "Pół kilo jest spakowane."}])
+		G.test_mode = true
+		if what == "call2":
+			get_tree().create_timer(1.0).timeout.connect(ui.call_answer)
+		return
 	match what:
 		"home": ui.open_phone("")
 		"options": ui.open_options("pause")

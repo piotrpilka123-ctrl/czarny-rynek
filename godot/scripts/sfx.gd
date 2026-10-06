@@ -369,83 +369,106 @@ func care(what: String) -> void:
 	p.play()
 
 
-## PROLOG: stłumiona impreza zza ściany — bas, gwar, śmiech, wciąganie kreski, torsje. Generowane raz, w locie.
-var _party: AudioStreamWAV = null
+## PROLOG: impreza z nagrań (CC0, spis w LICENCJE.md). Muzyka i głosy idą przez własną szynę z filtrem
+## dolnoprzepustowym: najpierw bas zza ściany, potem filtr się otwiera, na końcu znów wszystko głuchnie.
+const PARTY_MUSIC := "res://assets/music/technomania101.ogg"
+const PARTY_FROM := 98.0          # od tej sekundy utworu: 12 s narastania, potem najgłośniejsza część
 var party_player: AudioStreamPlayer = null
+var party_fx: Array = []
+var party_fx_i := 0
+var party_lp: AudioEffectLowPassFilter = null
+var party_sounds := {}
 
 func party_prepare() -> void:
-	if _party != null:
+	if party_player != null:
 		return
-	var dur := 15.0
-	var n := int(dur * RATE)
-	var b := PackedFloat32Array()
-	b.resize(n)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 2137
-	var lp := 0.0
-	var lp2 := 0.0
-	var crowd := 0.0
-	var crowd2 := 0.0
-	var ph := 0.0
-	var beat := 60.0 / 126.0
-	# zdarzenia: [czas, rodzaj]  s = wciągnięcie nosem, l = śmiech, r = torsje, g = brzęk szkła
-	var ev := [[1.6, "l"], [3.1, "s"], [3.75, "s"], [5.2, "g"], [6.0, "l"], [7.4, "r"], [8.3, "r"], [9.6, "s"], [10.4, "l"], [11.7, "r"], [12.9, "g"], [13.4, "l"]]
-	for i in range(n):
-		var t := float(i) / RATE
-		var nz := rng.randf_range(-1.0, 1.0)
-		# bas zza ściany: stopa na każdą ćwierćnutę i dudniąca linia, mocno stłumione
-		var tb := fmod(t, beat)
-		var kick := sin(TAU * (48.0 + 60.0 * exp(-tb * 30.0)) * tb) * exp(-tb * 7.0)
-		ph += (55.0 if int(t / (beat * 4.0)) % 2 == 0 else 46.0) / RATE
-		var bass := sin(ph * TAU) * (0.5 + 0.5 * sin(TAU * t / beat * 0.5)) * 0.5
-		lp += ((kick * 0.9 + bass * 0.6) - lp) * 0.06
-		# gwar: szum w paśmie mowy z falującą głośnością
-		crowd += (nz - crowd) * 0.18
-		crowd2 += (crowd - crowd2) * 0.04
-		var murmur := (crowd - crowd2) * (0.5 + 0.3 * sin(t * 3.1) + 0.2 * sin(t * 7.7 + 1.0)) * 0.35
-		var v := lp * 0.95 + murmur
-		for e in ev:
-			var te := t - float(e[0])
-			if te < 0.0 or te > 0.9:
-				continue
-			match String(e[1]):
-				"s":
-					# krótki, ostry wdech nosem: szum z rosnącą wysokością
-					if te < 0.42:
-						lp2 += (nz - lp2) * (0.25 + te * 1.4)
-						v += (nz - lp2) * sin(te / 0.42 * PI) * 0.5
-				"l":
-					# śmiech: seria krótkich „ha” o opadającej wysokości
-					var hk := fmod(te, 0.13)
-					if te < 0.78:
-						v += sin(TAU * (520.0 - te * 260.0) * hk) * exp(-hk * 26.0) * 0.16 * (1.0 - te / 0.78)
-				"r":
-					# torsje: niski, bulgoczący charkot
-					if te < 0.7:
-						v += sin(TAU * (95.0 + 30.0 * sin(te * 55.0)) * te) * sin(te / 0.7 * PI) * 0.3 + nz * sin(te / 0.7 * PI) * 0.07
-				"g":
-					if te < 0.35:
-						v += (sin(TAU * 2900.0 * te) + sin(TAU * 4100.0 * te) * 0.6) * exp(-te * 16.0) * 0.07
-		b[i] = clampf(v * minf(1.0, t / 0.6), -1.0, 1.0)
-	_party = _wav(b)
+	var bi := _add_bus("Impreza", "Master")
+	party_lp = AudioEffectLowPassFilter.new()
+	party_lp.cutoff_hz = 180.0
+	party_lp.resonance = 0.6
+	AudioServer.add_bus_effect(bi, party_lp)
+	var rv := AudioEffectReverb.new()
+	rv.room_size = 0.55
+	rv.wet = 0.16
+	rv.dry = 0.9
+	AudioServer.add_bus_effect(bi, rv)
+	party_player = AudioStreamPlayer.new()
+	party_player.bus = "Impreza"
+	add_child(party_player)
+	if ResourceLoader.exists(PARTY_MUSIC):
+		party_player.stream = load(PARTY_MUSIC)
+	for i in range(5):
+		var p := AudioStreamPlayer.new()
+		p.bus = "Impreza"
+		add_child(p)
+		party_fx.append(p)
+	for n in ["okrzyki_1", "okrzyki_2", "smiech_1", "smiech_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wymioty_1", "wymioty_2", "wibracja"]:
+		var path := "res://assets/sfx/party/%s.ogg" % n
+		if ResourceLoader.exists(path):
+			party_sounds[n] = load(path)
 
 
 func party_play() -> void:
 	if muted:
 		return
 	party_prepare()
-	if party_player == null:
-		party_player = AudioStreamPlayer.new()
-		party_player.bus = "Efekty"
-		add_child(party_player)
-	party_player.stream = _party
-	party_player.volume_db = -4.0
-	party_player.play()
+	party_cut(180.0)
+	if party_player.stream != null:
+		party_player.volume_db = -30.0
+		party_player.play(PARTY_FROM)
+
+
+func party_cut(hz: float) -> void:
+	if party_lp != null:
+		party_lp.cutoff_hz = clampf(hz, 80.0, 20000.0)
+
+
+func party_vol(db: float) -> void:
+	if party_player != null:
+		party_player.volume_db = db
+
+
+## pojedynczy odgłos imprezy; `close` = blisko i wyraźnie (poza filtrem), np. wciągnięcie kreski
+func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.0) -> AudioStreamPlayer:
+	if muted or not party_sounds.has(name):
+		return null
+	var p: AudioStreamPlayer = party_fx[party_fx_i]
+	party_fx_i = (party_fx_i + 1) % party_fx.size()
+	p.bus = "Efekty" if close else "Impreza"
+	p.stream = party_sounds[name]
+	p.volume_db = db
+	p.pitch_scale = pitch
+	p.play(from)
+	return p
 
 
 func party_stop() -> void:
 	if party_player != null:
 		party_player.stop()
+	for p in party_fx:
+		p.stop()
+
+
+## telefon: wibracja w kieszeni (nagranie), zapętlana, dopóki ktoś nie odbierze
+var ring_player: AudioStreamPlayer = null
+
+func ring(on: bool) -> void:
+	if ring_player == null:
+		ring_player = AudioStreamPlayer.new()
+		ring_player.bus = "Efekty"
+		add_child(ring_player)
+		var path := "res://assets/sfx/party/wibracja.ogg"
+		if ResourceLoader.exists(path):
+			var st = load(path)
+			if st is AudioStreamOggVorbis:
+				(st as AudioStreamOggVorbis).loop = true
+			ring_player.stream = st
+	if on and not muted and ring_player.stream != null:
+		if not ring_player.playing:
+			ring_player.volume_db = -3.0
+			ring_player.play()
+	else:
+		ring_player.stop()
 
 
 ## głuche uderzenie w tył głowy (prolog) i dzwonienie w uszach
