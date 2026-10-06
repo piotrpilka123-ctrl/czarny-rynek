@@ -167,7 +167,7 @@ func _pct(x: float) -> String:
 
 
 func _video() -> void:
-	_choice("Jakość obrazu", "quality", [["low", "Niska"], ["med", "Średnia"], ["high", "Wysoka"]], "Poziom szczegółów, cieni i efektów. Na MacBooku najlepiej działa „Średnia”.")
+	_choice("Jakość obrazu", "quality", [["low", "Niska"], ["med", "Średnia"], ["high", "Wysoka"], ["ultra", "Ultra"]], "„Ultra” jest dla mocnych kart graficznych: globalne oświetlenie, odbicia, cienie 8K, pełna rozdzielczość. Na laptopach bez osobnej karty wybierz „Niska” albo „Średnia”.")
 	_slider("Skala rozdzielczości", "res_scale", 0.5, 1.0, 0.05, _pct, "Niższa wartość = więcej klatek, mniej ostry obraz 3D. Napisy i menu zostają ostre.")
 	_toggle("Dynamiczna rozdzielczość", "dyn_res", "Gra sama lekko obniża ostrość, gdy brakuje klatek.")
 	_choice("Cienie", "shadows", [["", "Auto"], ["low", "Niskie"], ["med", "Średnie"], ["high", "Wysokie"]])

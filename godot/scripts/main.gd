@@ -257,6 +257,18 @@ func load_settings() -> void:
 			if typeof(d) == TYPE_DICTIONARY:
 				for k in d:
 					settings[k] = d[k]
+	else:
+		# pierwsze uruchomienie: poziom jakości dobrany do sprzętu. Gra celuje w komputery z osobną kartą graficzną;
+		# na układach zintegrowanych i przy małej pamięci startuje na „Niskiej”.
+		var gpu := RenderingServer.get_video_adapter_name().to_lower()
+		var ram_gb := float(OS.get_memory_info().get("physical", 0)) / 1073741824.0
+		var dedicated := RenderingServer.get_video_adapter_type() == RenderingDevice.DEVICE_TYPE_DISCRETE_GPU
+		if dedicated and ram_gb >= 15.0:
+			settings.quality = "ultra" if (gpu.contains("rtx") or gpu.contains("rx 6") or gpu.contains("rx 7") or gpu.contains("rx 9") or gpu.contains("arc")) else "high"
+		elif ram_gb >= 15.0:
+			settings.quality = "med"
+		else:
+			settings.quality = "low"
 	if not args.has("window"):
 		set_fullscreen(bool(settings.fullscreen), false)
 	if bool(settings.muted):

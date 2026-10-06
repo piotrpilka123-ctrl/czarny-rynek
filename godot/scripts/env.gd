@@ -157,7 +157,7 @@ func build(_noise_tex: Texture2D) -> void:
 ## Docelowa wysokość obrazu 3D (w pikselach) dla każdego ustawienia. Interfejs zawsze
 ## rysuje się w pełnej rozdzielczości ekranu, a scena 3D jest skalowana (FSR 1.0),
 ## dzięki czemu ekran Retina nie zarzyna karty graficznej.
-const TARGET_H := {"high": 1260.0, "med": 940.0, "low": 740.0}
+const TARGET_H := {"ultra": 4320.0, "high": 1260.0, "med": 940.0, "low": 740.0}
 
 
 ## dodatkowe ustawienia z menu Opcje (nakładane na wybrany poziom jakości)
@@ -174,22 +174,42 @@ func set_quality(q: String) -> void:
 	var vp := get_viewport()
 	if env == null or vp == null:
 		return
-	var high := q == "high"
+	var ultra := q == "ultra"
+	var high := q == "high" or ultra
+	# „Ultra” — dla mocnych kart graficznych: globalne oświetlenie (SDFGI), odbite światło i odbicia w przestrzeni
+	# ekranu, pełna rozdzielczość, cienie 8K. Na zintegrowanych układach to pokaz slajdów — stąd osobny poziom.
+	env.sdfgi_enabled = ultra
+	if ultra:
+		env.sdfgi_cascades = 6
+		env.sdfgi_min_cell_size = 0.2
+		env.sdfgi_use_occlusion = true
+		env.sdfgi_read_sky_light = true
+		env.sdfgi_energy = 1.0
+		env.ssr_max_steps = 96
+		env.ssr_fade_in = 0.15
+		env.ssr_fade_out = 2.0
+		env.ssil_radius = 5.0
+		env.ssil_intensity = 1.0
+	RenderingServer.directional_shadow_atlas_set_size(8192 if ultra else 4096, true)
+	RenderingServer.environment_glow_set_use_bicubic_upscale(high)
+	RenderingServer.environment_set_volumetric_fog_filter_active(true)
+	RenderingServer.environment_set_volumetric_fog_volume_size(160 if ultra else 64, 128 if ultra else 64)
 	env.ssao_enabled = q != "low" and opt_ssao
-	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_MEDIUM if high else RenderingServer.ENV_SSAO_QUALITY_LOW, true, 0.5, 3, 50.0, 300.0)
+	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_ULTRA if ultra else (RenderingServer.ENV_SSAO_QUALITY_MEDIUM if high else RenderingServer.ENV_SSAO_QUALITY_LOW), true, 0.5, 3, 50.0, 300.0)
 	env.glow_enabled = true
 	fog_on = q != "low" and opt_fog
 	env.volumetric_fog_enabled = fog_on and not inside
-	env.ssr_enabled = false
-	env.ssil_enabled = false
-	vp.msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
+	env.ssr_enabled = ultra
+	env.ssil_enabled = ultra
+	vp.msaa_3d = Viewport.MSAA_4X if ultra else (Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED)
+	vp.mesh_lod_threshold = 0.5 if ultra else (1.0 if high else (1.5 if q == "med" else 2.5))
 	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if high else Viewport.SCREEN_SPACE_AA_FXAA
 	apply_scale()
-	var sq := opt_shadows if opt_shadows != "" else q
+	var sq := opt_shadows if opt_shadows != "" else ("high" if ultra else q)
 	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if sq == "high" else (RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM if sq == "med" else RenderingServer.SHADOW_QUALITY_SOFT_LOW))
 	if sun != null:
 		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if sq != "low" else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-		sun.directional_shadow_max_distance = 110.0 if sq == "high" else (80.0 if sq == "med" else 60.0)
+		sun.directional_shadow_max_distance = (170.0 if ultra else 110.0) if sq == "high" else (80.0 if sq == "med" else 60.0)
 		# półcień zależny od odległości (PCSS) kosztuje ok. 2 ms na klatkę w 1440p — tylko na najwyższym poziomie
 		sun.light_angular_distance = 0.8 if sq == "high" else 0.0
 		sun.shadow_blur = 1.0 if sq == "high" else 1.4
