@@ -5,6 +5,7 @@ extends CanvasLayer
 const K = preload("res://scripts/uikit.gd")
 const Trade = preload("res://scripts/trade.gd")
 const Bench = preload("res://scripts/bench.gd")
+const StationUI = preload("res://scripts/station_ui.gd")
 const PhoneScript = preload("res://scripts/phone.gd")
 const InvScript = preload("res://scripts/inventory.gd")
 const OptsScript = preload("res://scripts/options.gd")
@@ -89,6 +90,7 @@ var dlg := {}
 var deal := {}
 var sk := {}
 var bench := {"room": "", "sel": {}, "g": 5, "mixing": false, "filler": 1, "mode": 1}
+var station := {}
 var hud_t := 0.0
 var nav_info := {}
 var cop_bar: ProgressBar = null
@@ -1067,33 +1069,13 @@ func open_shop() -> void:
 
 
 # ---------------------------------------------------------------- namiot uprawowy
-func open_grow(room: String, idx: int) -> void:
-	_open_modal("Namiot uprawowy", "Własna marihuana — taniej niż u Wiktora, ale trzeba poczekać.")
-	var j = G.grow_job(room, idx)
-	var c := K.card(modal_body)
-	if j == null:
-		c.add_child(K.rich("Namiot jest pusty. Nasiona: [b]%d[/b]" % G.item_at(room, "nasiona"), 14))
-		c.add_child(K.wrap("Plon: ok. 18 g po 36 godzinach. Im lepiej pójdzie sadzenie, tym większy plon i wyższa czystość (60–84%).", 12, K.C_DIM))
-		var b := K.btn("Zasiej (1 paczka nasion)", _grow_seed.bind(room, idx), "go")
-		b.disabled = G.item_at(room, "nasiona") <= 0
-		c.add_child(b)
-		if G.item_at(room, "nasiona") <= 0:
-			c.add_child(K.lbl("Nasiona kupisz w Sklepie u Stasia.", 12, K.C_WARN))
-	elif G.S.t >= float(j.end):
-		c.add_child(K.rich(K.col("Plon gotowy do zbioru!", K.C_ACC), 15))
-		c.add_child(K.btn("Zbierz", func(): G.grow_collect(room, idx); G.world.update_stations(); open_grow(room, idx), "go"))
-	else:
-		var total: float = float(j.end) - float(j.start)
-		var left: float = float(j.end) - G.S.t
-		c.add_child(K.rich("Rośnie… jeszcze [b]%dh %02dm[/b]" % [int(left / 60.0), int(left) % 60], 15))
-		c.add_child(K.bar(total - left, total, K.C_ACC, 9.0))
+## stanowisko produkcyjne (regał, suszarka, stół laboratoryjny) i stan kryjówki
+func open_station(room: String, idx: int) -> void:
+	StationUI.build(self, room, idx)
 
 
-func _grow_seed(room: String, idx: int) -> void:
-	skill_check("Sadzenie: konopie", 1.0 + (0.22 if G.has_skill("reka") else 0.0), func(hits: int):
-		G.grow_start(room, idx, hits)
-		G.world.update_stations()
-		open_grow(room, idx))
+func open_hideout(room: String) -> void:
+	StationUI.build_hideout(self, room)
 
 
 # ---------------------------------------------------------------- nieruchomość / meble
@@ -1120,7 +1102,7 @@ func open_build(room: String) -> void:
 	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
 	var c := K.card(modal_body)
 	c.add_child(K.lbl("KATALOG", 10, K.C_DIM))
-	var names := {"pack": "stanowisko", "stash": "skrytka", "grow": "uprawa", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
+	var names := {"pack": "stanowisko", "stash": "skrytka", "grow": "uprawa", "dry": "suszenie", "lab": "synteza", "tank": "podlewanie", "filter": "zapach", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
 	for f in D.FURNITURE:
 		var fid: String = f.id
 		var why := ""

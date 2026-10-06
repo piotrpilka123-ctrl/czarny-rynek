@@ -1,4 +1,6 @@
 extends Node
+
+const Prod = preload("res://scripts/production.gd")
 ## Rdzeń rozgrywki: stan, czas, towar (hurt → skrytka → porcjowanie → sprzedaż),
 ## klienci i negocjacje, policja, dług, rozwój postaci, kryjówki, fabuła, zapis.
 
@@ -103,13 +105,13 @@ func new_state() -> Dictionary:
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store()},
-		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0}, "upg": {}, "pockets": [null, null, null, null],
+		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
 		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1,
-		"props": {}, "hide": {"garage": {"items": [], "grow": {}}, "basement": {"items": [], "grow": {}}},
-		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0},
+		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": []}},
+		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0},
 		"pos": null, "mom_day": 0,
 	}
 
@@ -768,6 +770,8 @@ func surrender() -> void:
 # ================================================================ zdarzenia czasowe
 ## co 10 minut gry: terminy zamówień i paczki w skrytkach
 func on_tick() -> void:
+	Prod.tick(10.0)
+	Prod.raid_tick()
 	for o in S.orders.duplicate():
 		var st: Dictionary = S.cust[o.cust]
 		if o.status == "new" and S.t > float(o.respond_by):
@@ -834,6 +838,7 @@ func _has_order(cid: String) -> bool:
 
 func on_day() -> void:
 	var d := day()
+	Prod.daily()
 	for p in S.demand:
 		S.demand[p] = snappedf(randf_range(0.88, 1.2), 0.01)
 	S.cost_mult = snappedf(randf_range(0.92, 1.12), 0.01)
@@ -1877,41 +1882,24 @@ func mix(room: String, p: String, pur: int, g: float, filler_g: int) -> int:
 	return np
 
 
-func grow_job(room: String, idx: int) -> Variant:
-	return S.hide[room].grow.get(str(idx))
-
-
-func grow_label(room: String, idx: int) -> String:
-	var j = grow_job(room, idx)
+## napis nad stanowiskiem produkcyjnym (regał, suszarka, stół laboratoryjny…)
+func station_label(room: String, idx: int) -> String:
+	var f: Dictionary = Prod.furn(room, idx)
+	var nm := String(f.get("name", "Stanowisko"))
+	var j = Prod.job(room, idx)
 	if j == null:
-		return "Namiot uprawowy — zasiej nasiona"
-	if S.t >= float(j.end):
-		return "Namiot uprawowy — zbierz plon"
-	var left = float(j.end) - S.t
-	return "Namiot uprawowy — rośnie (jeszcze %dh %02dm)" % [int(left / 60.0), int(left) % 60]
-
-
-func grow_start(room: String, idx: int, hits: int) -> bool:
-	if item_at(room, "nasiona") <= 0 or grow_job(room, idx) != null:
-		return false
-	take_item(room, "nasiona", 1)
-	S.hide[room].grow[str(idx)] = {"start": S.t, "end": S.t + 36.0 * 60.0, "hits": hits}
-	notify("Zasiane. Plon za 36 godzin — jakość zależy od tego, jak Ci poszło (%d/3)." % hits, "good" if hits >= 2 else "warn")
-	return true
-
-
-func grow_collect(room: String, idx: int) -> bool:
-	var j = grow_job(room, idx)
-	if j == null or S.t < float(j.end):
-		return false
-	var g: float = round(18.0 * (1.35 if has_skill("ogrodnik") else 1.0) * (0.8 + int(j.hits) * 0.1))
-	var pur := qpure(60 + int(j.hits) * 8)
-	add_bulk(S.stash[room], "dym", pur, g)
-	S.hide[room].grow.erase(str(idx))
-	S.stats.grown = int(S.stats.grown) + int(g)
-	notify("Zebrano %s marihuany (%d%%) — trafiło do skrytki w kryjówce." % [grams(g), qpur(pur)], "good")
-	add_xp(g * 0.5)
-	return true
+		match String(f.get("func", "")):
+			"dry": return nm + (" — włóż świeży zbiór" if Prod.wet_total(room) > 0.0 else " — pusta")
+			"tank": return nm + " — podlewa uprawy"
+			"filter": return nm + " — tłumi zapach"
+		return nm + " — nastaw"
+	if float(j.prog) >= 1.0:
+		return nm + " — gotowe, zbierz"
+	if int(j.get("hold", -1)) >= 0:
+		return "%s — %s!" % [nm, Prod.stage_name(j).to_lower()]
+	var left: float = Prod.minutes_left(j)
+	var thirsty: bool = Prod.recipe(j).has("water") and float(j.water) < 25.0
+	return "%s — %s (%dh %02dm)%s" % [nm, Prod.stage_name(j).to_lower(), int(left / 60.0), int(left) % 60, " • SUCHO!" if thirsty else ""]
 
 
 # ================================================================ skrytki w kryjówkach
@@ -2088,18 +2076,19 @@ func furn_remove(room: String, idx: int) -> bool:
 	if idx < 0 or idx >= items.size():
 		return false
 	var f := furn_def(items[idx].f)
-	if f["func"] == "grow" and grow_job(room, idx) != null:
-		notify("Najpierw zbierz plon z namiotu.", "warn")
+	if Prod.job(room, idx) != null:
+		notify("Najpierw opróżnij to stanowisko.", "warn")
 		return false
 	if f["func"] == "stash" and store_total(S.stash[room]) > float(stash_cap(room) - int(f.cap)):
 		notify("Skrytka jest zbyt pełna, by usunąć ten mebel.", "warn")
 		return false
 	items.remove_at(idx)
-	var ng := {}
-	for k in S.hide[room].grow:
+	var nj := {}
+	var jobs: Dictionary = Prod.hide(room).jobs
+	for k in jobs:
 		var ki := int(k)
-		ng[str(ki - 1 if ki > idx else ki)] = S.hide[room].grow[k]
-	S.hide[room].grow = ng
+		nj[str(ki - 1 if ki > idx else ki)] = jobs[k]
+	S.hide[room].jobs = nj
 	S.cash += round(float(f.price) * 0.5)
 	notify("Sprzedano mebel za %s." % money(round(float(f.price) * 0.5)))
 	if world != null:
@@ -2339,7 +2328,7 @@ func load_game() -> bool:
 		return false
 	var base := new_state()
 	_merge(base, data)
-	for k in ["woreczki", "majeranek", "cukier", "nasiona", "burner"]:
+	for k in ["woreczki", "majeranek", "cukier", "nasiona", "burner", "nawoz", "chemia"]:
 		if not base.items.has(k):
 			base.items[k] = 0
 	if not base.flags.has("tut_save") and (int(base.step) > 0 or base.flags.has("read_wiktor")):
@@ -2350,6 +2339,7 @@ func load_game() -> bool:
 			base.flags[k] = true
 	base.wanted = false
 	S = base
+	Prod.migrate()
 	return true
 
 

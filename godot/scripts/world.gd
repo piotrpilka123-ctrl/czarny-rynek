@@ -4,6 +4,7 @@ extends Node3D
 
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
+const Stations = preload("res://scripts/stations.gd")
 const Signs = preload("res://scripts/signs.gd")
 const Facade = preload("res://scripts/facade.gd")
 const Details = preload("res://scripts/details.gd")
@@ -2787,36 +2788,18 @@ func furn_model(fid: String) -> Node3D:
 			var lap := Props.make("classic_laptop", 0.24)
 			lap.position.y = 0.5
 			n.add_child(lap)
-		if fid == "namiot":
-			var fr := Models.mat("15161a", 0.5, 0.5)
-			for sx in [-0.62, 0.62]:
-				for sz in [-0.62, 0.62]:
-					Models.box(n, Vector3(0.04, 2.0, 0.04), Vector3(sx, 1.0, sz), fr)
-			for e in [[0.0, -0.64, 1.3, 0.02], [-0.64, 0.0, 0.02, 1.3], [0.64, 0.0, 0.02, 1.3]]:
-				Models.box(n, Vector3(e[2], 2.0, e[3]), Vector3(e[0], 1.0, e[1]), Models.mat("0c0c0e", 0.8))
-			Models.box(n, Vector3(1.3, 0.03, 1.3), Vector3(0, 2.0, 0), Models.mat("0c0c0e", 0.8))
-			Models.box(n, Vector3(1.0, 0.05, 0.5), Vector3(0, 1.9, 0), Models.mat("d946ef", 0.4, 0.0, 4.0), Vector3.ZERO, false)
-			var gl := OmniLight3D.new()
-			gl.position = Vector3(0, 1.6, 0.2)
-			gl.light_color = Color(0.9, 0.4, 1.0)
-			gl.light_energy = 0.9
-			gl.omni_range = 3.0
-			n.add_child(gl)
-			var plants := Node3D.new()
-			plants.name = "Plants"
-			n.add_child(plants)
-			for k in range(4):
-				var px := -0.3 + (k % 2) * 0.6
-				var pz := -0.3 + int(k / 2.0) * 0.6
-				Models.cyl(n, 0.16, 0.13, 0.24, Vector3(px, 0.12, pz), Models.mat("3a2a20", 0.9), Vector3.ZERO, 10)
-				var pl := Node3D.new()
-				pl.position = Vector3(px, 0.24, pz)
-				plants.add_child(pl)
-				Models.cyl(pl, 0.012, 0.02, 0.6, Vector3(0, 0.3, 0), Models.mat("4a7a3a", 0.8), Vector3.ZERO, 5)
-				for j in range(6):
-					var a := j * 1.05
-					Models.cyl(pl, 0.004, 0.06, 0.5, Vector3(cos(a) * 0.1, 0.35 + (j % 3) * 0.08, sin(a) * 0.1), Models.mat("2f8f3c" if j % 2 == 0 else "3fa04a", 0.8), Vector3(sin(a) * 0.6, 0, cos(a) * 0.6), 4)
-		elif fid == "lampa":
+		var made: Node3D = null
+		match fid:
+			"namiot": made = Stations.rack(2, true)
+			"regal_led": made = Stations.rack(int(f.get("pots", 4)), false)
+			"suszarka": made = Stations.dryer()
+			"zbiornik": made = Stations.tank()
+			"filtr": made = Stations.carbon_filter()
+			"lab": made = Stations.lab_table()
+		if made != null:
+			n.free()
+			n = made
+		if fid == "lampa":
 			Models.cyl(n, 0.02, 0.02, 2.0, Vector3(0, 1.0, 0), Models.mat("3a3d42", 0.5, 0.6), Vector3.ZERO, 6)
 			Models.cyl(n, 0.18, 0.18, 0.03, Vector3(0, 0.015, 0), Models.mat("2a2c30", 0.5, 0.6), Vector3.ZERO, 10)
 			Models.box(n, Vector3(0.9, 0.06, 0.1), Vector3(0, 2.02, 0), Models.mat("fff4d6", 0.4, 0.0, 5.0), Vector3.ZERO, false)
@@ -2881,27 +2864,32 @@ func refresh_furniture(room: String) -> void:
 			"save":
 				aim.merge({"label": func(): return "Laptop — zapisz grę", "act": func(): G.main.save_here()})
 				inter_dyn[room].append(aim)
-			"grow":
-				aim.merge({"label": func(): return G.grow_label(room, idx), "act": func(): G.ui.open_grow(room, idx)})
+			"grow", "dry", "lab":
+				aim.merge({"label": func(): return G.station_label(room, idx), "act": func(): G.ui.open_station(room, idx)})
 				inter_dyn[room].append(aim)
-				grow_nodes[room][idx] = n.get_node_or_null("Plants")
+				grow_nodes[room][idx] = n
+			"tank", "filter":
+				aim.merge({"label": func(): return G.station_label(room, idx), "act": func(): G.ui.open_hideout(room)})
+				inter_dyn[room].append(aim)
 	update_stations()
 
 
-## rośliny w namiotach rosną z postępem uprawy
+## stanowiska produkcyjne pokazują swój stan: rośliny rosną, lampy świecą, w kolbach bulgocze
 func update_stations() -> void:
 	for room in grow_nodes:
-		var hide: Dictionary = G.S.hide.get(room, {})
-		var grows: Dictionary = hide.get("grow", {})
+		if not G.S.hide.has(room):
+			continue
+		var jobs: Dictionary = G.Prod.hide(room).jobs
+		var items: Array = G.S.hide[room].items
 		for idx in grow_nodes[room]:
-			var pl = grow_nodes[room][idx]
-			if pl == null or not is_instance_valid(pl):
+			var n = grow_nodes[room][idx]
+			if n == null or not is_instance_valid(n) or int(idx) >= items.size():
 				continue
-			var job = grows.get(str(idx))
-			if job == null:
-				pl.visible = false
-			else:
-				var k: float = clampf(0.15 + 0.85 * (G.S.t - float(job.start)) / maxf(1.0, float(job.end) - float(job.start)), 0.1, 1.0)
-				pl.visible = true
-				for c in pl.get_children():
-					(c as Node3D).scale = Vector3(k, k, k)
+			var job = jobs.get(str(idx))
+			match String(furn_def(String(items[int(idx)].f)).get("func", "")):
+				"grow": Stations.refresh_rack(n, job)
+				"lab": Stations.refresh_lab(n, job)
+				"dry":
+					var ld: Node3D = n.get_node_or_null("Load")
+					if ld != null:
+						ld.visible = job != null

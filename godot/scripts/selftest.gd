@@ -449,13 +449,8 @@ func run() -> void:
 	M.build_cancel()
 	G.story_tick()
 	G.story_tick()
-	S.items["nasiona"] = 1
-	ok(G.grow_start("garage", 2, 3), "zasianie w namiocie")
-	G.mods["sleeping"] = true
-	G.add_minutes(36.5 * 60.0)
-	G.mods.erase("sleeping")
-	ok(G.grow_collect("garage", 2), "zbiór po 36 godzinach")
-	ok(G.goods_total(S.stash.garage) > 15.0, "plon w skrytce garażu")
+	# --- produkcja: uprawa, suszenie, synteza, ryzyko nalotu
+	await load("res://scripts/production_test.gd").run(self)
 	U.open_inventory("garage")
 	await frames(3)
 	U.close_all()
@@ -520,13 +515,23 @@ func run() -> void:
 	G.arresting = false
 
 	# --- zapis i odczyt (bez dotykania prawdziwego pliku zapisu)
+	S.items["nasiona"] = 1
+	var save_tent := -1
+	for i in range(S.hide.garage.items.size()):
+		if String(S.hide.garage.items[i].f) == "namiot":
+			save_tent = i
+	G.Prod.start("garage", save_tent, "konopie")
+	G.Prod.job("garage", save_tent).prog = 0.37
 	var js := JSON.stringify(G.S)
 	var data = JSON.parse_string(js)
 	var base: Dictionary = G.new_state()
 	G._merge(base, data)
 	ok(int(base.lvl) == int(S.lvl) and absf(float(base.cash) - S.cash) < 1.0 and base.props.has("garaz"), "stan przechodzi przez zapis JSON")
 	ok(int(base.stash.safe.get("items", {}).get("majeranek", 0)) == int(G.store_items(S.stash.safe).get("majeranek", 0)), "przedmioty w skrytkach zapisują się")
-	ok(base.hide.garage.items.size() == 4, "meble zapisują się")
+	ok(base.hide.garage.items.size() == S.hide.garage.items.size() and base.hide.garage.items.size() >= 4, "meble zapisują się (%d)" % base.hide.garage.items.size())
+	var sj = base.hide.garage.jobs.get(str(save_tent))
+	ok(sj != null and absf(float(sj.prog) - 0.37) < 0.001 and String(sj.r) == "konopie" and int(sj.hold) == -1, "uprawa w toku zapisuje się razem z postępem")
+	G.Prod.discard("garage", save_tent)
 
 	# --- raty i zakończenia
 	S = G.S

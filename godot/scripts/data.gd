@@ -51,7 +51,9 @@ const SHOP := [
 	{"id": "woreczki", "name": "Woreczki strunowe (20 szt.)", "price": 12, "n": 20, "lvl": 1, "desc": "Bez nich nie zaporcjujesz towaru. 1 woreczek = 1 g."},
 	{"id": "majeranek", "name": "Majeranek (20 g)", "price": 6, "n": 20, "lvl": 1, "desc": "Przyprawa z półki. Domieszany do marihuany podbija wagę, ale obniża czystość — powstaje mieszanka."},
 	{"id": "cukier", "name": "Cukier puder (20 g)", "price": 5, "n": 20, "lvl": 4, "desc": "Do rozrabiania proszków. Więcej gramów, gorszy towar."},
-	{"id": "nasiona", "name": "Nasiona konopi (1 paczka)", "price": 70, "n": 1, "lvl": 5, "desc": "Paczka na jeden stojak uprawowy (4 doniczki)."},
+	{"id": "nasiona", "name": "Nasiona konopi (1 paczka)", "price": 70, "n": 1, "lvl": 5, "desc": "Paczka na jeden cykl uprawy (namiot albo regał)."},
+	{"id": "nawoz", "name": "Nawóz (1 dawka)", "price": 45, "n": 1, "lvl": 5, "desc": "Plon większy o 25%. Jedna dawka na cykl, dopóki rośliny rosną."},
+	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 950, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Jeden zestaw = jedna synteza przy stole laboratoryjnym."},
 	{"id": "burner", "name": "Telefon na kartę", "price": 420, "n": 1, "lvl": 2, "use": true, "desc": "Nowy numer: śledztwo policji spada o 25."},
 ]
 const UPGRADES := [
@@ -60,6 +62,29 @@ const UPGRADES := [
 	{"id": "waga", "name": "Waga jubilerska", "price": 650, "lvl": 2, "desc": "Dużo mniej strat przy porcjowaniu, a spokojna robota jest całkiem bezstratna."},
 	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 150 miejsc zamiast 60."},
 ]
+## PRODUKCJA. Każdy przepis to dane: stanowisko, wsad, czas, etapy, plon. Nowy towar = nowy wpis (i ewentualnie stanowisko).
+## hours = czas całego cyklu w zwykłym trybie, yield = gramy (dla upraw: na doniczkę), pur = czystość bazowa,
+## smell = zapach w szczycie, power = zł za dobę, hold = etap kończy się czynnością gracza.
+const RECIPES := {
+	"konopie": {"name": "Konopie", "station": "grow", "product": "dym", "lvl": 5, "input": {"nasiona": 1}, "hours": 30.0, "yield": 9.0, "pur": 56,
+		"smell": 4.0, "power": 4.0, "wet": true, "water": 4.2,
+		"stages": [{"name": "Sadzonki", "to": 0.2}, {"name": "Wzrost", "to": 0.6}, {"name": "Kwitnienie", "to": 1.0}],
+		"modes": [{"name": "Lampy 18/6", "speed": 1.0, "smell": 1.0, "power": 1.0, "water": 1.0, "pur": 0, "desc": "Zwykły cykl światła."},
+			{"name": "Lampy 24/0", "speed": 1.35, "smell": 1.3, "power": 2.0, "water": 1.4, "pur": -4, "desc": "Rośnie o 1/3 szybciej, ale żre prąd i wodę, mocniej pachnie i wychodzi trochę słabsza."}]},
+	"amfetamina": {"name": "Amfetamina", "station": "lab", "product": "szron", "lvl": 5, "input": {"chemia": 1}, "hours": 5.0, "yield": 28.0, "pur": 72,
+		"smell": 34.0, "power": 8.0,
+		"stages": [{"name": "Reakcja", "to": 0.45, "hold": "Przelej i schłodź"}, {"name": "Krystalizacja", "to": 0.85}, {"name": "Suszenie", "to": 1.0}],
+		"modes": [{"name": "Niska temp.", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Wolno i czysto: najlepszy towar, najmniej smrodu."},
+			{"name": "Średnia temp.", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
+			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.18, "desc": "Szybko, ale śmierdzi na całą okolicę, towar słabszy i co szósta partia się przypala."}]},
+	"metamfetamina": {"name": "Metamfetamina", "station": "lab", "product": "krysztal", "lvl": 8, "input": {"chemia": 2}, "hours": 8.0, "yield": 20.0, "pur": 74,
+		"smell": 46.0, "power": 10.0,
+		"stages": [{"name": "Redukcja", "to": 0.4, "hold": "Odfiltruj osad"}, {"name": "Krystalizacja", "to": 0.9, "hold": "Zbierz kryształy"}, {"name": "Suszenie", "to": 1.0}],
+		"modes": [{"name": "Niska temp.", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Wolno i czysto."},
+			{"name": "Średnia temp.", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
+			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.22, "desc": "Szybko, śmierdząco i z ryzykiem przypalenia."}]},
+}
+const DRY_HOURS := 8.0
 ## stroje gracza (sklep z ubraniami). speed = mnożnik prędkości, vis = jak bardzo rzucasz się w oczy patrolom,
 ## noise = słyszalność kroków, attention = jak szybko policja nabiera podejrzeń, gdy już Cię widzi.
 const OUTFITS := {
@@ -73,7 +98,9 @@ const ITEMS := {
 	"woreczki": {"name": "Woreczki strunowe", "icon": "woreczki", "size": 0.05, "w": 0.6, "unit": "szt.", "desc": "Puste woreczki do porcjowania. 1 woreczek = 1 porcja."},
 	"majeranek": {"name": "Majeranek", "icon": "majeranek", "size": 0.25, "w": 1.0, "unit": "g", "desc": "Przyprawa. Domieszana do marihuany podbija wagę i psuje jakość."},
 	"cukier": {"name": "Cukier puder", "icon": "cukier", "size": 0.2, "w": 1.0, "unit": "g", "desc": "Wypełniacz do proszków. Więcej gramów, gorszy towar."},
-	"nasiona": {"name": "Nasiona konopi", "icon": "nasiona", "size": 0.5, "w": 4.0, "unit": "pacz.", "desc": "Paczka nasion na jeden stojak uprawowy."},
+	"nasiona": {"name": "Nasiona konopi", "icon": "nasiona", "size": 0.5, "w": 4.0, "unit": "pacz.", "desc": "Paczka nasion na jeden cykl uprawy (namiot albo regał)."},
+	"nawoz": {"name": "Nawóz", "icon": "nawoz", "size": 1.0, "w": 250.0, "unit": "szt.", "desc": "Jedna dawka na cykl uprawy: plon większy o 25%, ale rośliny piją więcej wody."},
+	"chemia": {"name": "Zestaw chemikaliów", "icon": "chemia", "size": 4.0, "w": 1800.0, "unit": "szt.", "desc": "Prekursory i rozpuszczalniki na jedną syntezę przy stole laboratoryjnym."},
 	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
 }
 const SIZE_PACK := 1.0
@@ -228,7 +255,12 @@ const FURNITURE := [
 	{"id": "stol", "name": "Stół roboczy z wagą", "price": 480, "model": "painted_wooden_table", "h": 0.86, "size": [1.9, 0.9], "func": "pack", "lvl": 1, "desc": "Porcjowanie i mieszanie towaru na miejscu."},
 	{"id": "regal", "name": "Regał magazynowy", "price": 340, "model": "steel_frame_shelves_01", "h": 1.95, "size": [1.05, 0.5], "func": "stash", "cap": 150, "lvl": 1, "desc": "+150 miejsc w skrytce w tej kryjówce."},
 	{"id": "skrzynia", "name": "Skrzynia", "price": 120, "model": "wooden_crate_02", "h": 0.5, "size": [0.6, 1.2], "func": "stash", "cap": 50, "lvl": 1, "desc": "+50 miejsc w skrytce."},
-	{"id": "namiot", "name": "Namiot uprawowy", "price": 1900, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "lvl": 5, "desc": "Uprawa marihuany z nasion: ok. 18 g po 36 godzinach."},
+	{"id": "namiot", "name": "Namiot uprawowy", "price": 1400, "model": "", "h": 2.0, "size": [1.3, 1.3], "func": "grow", "pots": 2, "lvl": 5, "desc": "Dwie doniczki pod lampą. Na początek: ok. 18 g marihuany z jednego cyklu."},
+	{"id": "regal_led", "name": "Regał uprawowy LED", "price": 2600, "model": "", "h": 2.1, "size": [1.8, 0.8], "func": "grow", "pots": 4, "lvl": 6, "desc": "Stalowa rama, cztery doniczki i fioletowe LED-y. Ok. 36 g z cyklu. Ustawiaj rzędami."},
+	{"id": "suszarka", "name": "Suszarka siatkowa", "price": 380, "model": "", "h": 1.9, "size": [0.9, 0.9], "func": "dry", "cap": 90, "lvl": 5, "desc": "Świeży zbiór trzeba wysuszyć (8 godzin), zanim trafi na wagę. Mieści 90 g."},
+	{"id": "zbiornik", "name": "Zbiornik z pompą", "price": 700, "model": "", "h": 1.15, "size": [0.75, 0.75], "func": "tank", "lvl": 6, "desc": "Sam podlewa wszystkie uprawy w tej kryjówce. Nie musisz pamiętać o wodzie."},
+	{"id": "filtr", "name": "Filtr węglowy", "price": 900, "model": "", "h": 1.7, "size": [0.6, 0.6], "func": "filter", "lvl": 5, "desc": "Zapach z tej kryjówki spada o 60%. Mniej zapachu = mniejsze ryzyko nalotu."},
+	{"id": "lab", "name": "Stół laboratoryjny", "price": 4200, "model": "", "h": 0.92, "size": [2.0, 0.9], "func": "lab", "lvl": 5, "desc": "Synteza z zestawu chemikaliów: amfetamina, później metamfetamina. Śmierdzi i wymaga doglądania."},
 	{"id": "lozko", "name": "Stare łóżko", "price": 260, "model": "old_bed_frame", "h": 1.0, "size": [1.0, 2.05], "func": "bed", "lvl": 1, "desc": "Sen przewija czas i studzi gorąco na mieście."},
 	{"id": "laptop", "name": "Stolik z laptopem", "price": 420, "model": "", "h": 0.8, "size": [0.7, 0.6], "func": "save", "lvl": 1, "desc": "Zapis gry w tej kryjówce — bez wracania do kawalerki."},
 	{"id": "lampa", "name": "Świetlówka warsztatowa", "price": 110, "model": "", "h": 2.1, "size": [0.4, 0.4], "func": "light", "lvl": 1, "desc": "Porządne światło do pracy."},

@@ -776,6 +776,14 @@ func interact() -> void:
 	cur_inter.act.call()
 
 
+## nalot na kryjówkę, w której akurat siedzi gracz
+func raided_inside() -> void:
+	ui.close_all()
+	G.notify("Drzwi wylatują z zawiasów!", "bad")
+	Sfx.play("alert")
+	G.arrest(null)
+
+
 # ================================================================ skradanie: kryjówki i odciąganie patroli
 ## Chowa gracza w altance. Patrol, który to widział, wie, gdzie szukać.
 func hide_enter(h: Dictionary) -> void:
@@ -1417,6 +1425,27 @@ func _apply_test_args() -> void:
 		S.props["garaz"] = true
 		S.hide.garage.items = [{"f": "stol", "x": -1.6, "z": -3.6, "r": 0}, {"f": "regal", "x": 2.3, "z": -3.9, "r": 0}, {"f": "namiot", "x": 2.2, "z": -1.2, "r": 0}, {"f": "kanapa", "x": -2.4, "z": 0.6, "r": 1}, {"f": "lampa", "x": 0.2, "z": -4.1, "r": 0}]
 		world.refresh_furniture("garage")
+	if args.has("prod"):
+		# kryjówka z pełną linią produkcyjną w różnych fazach (zrzuty ekranu)
+		S.props["garaz"] = true
+		S.lvl = maxi(int(S.lvl), 8)
+		S.items["nasiona"] = 3
+		S.items["nawoz"] = 2
+		S.items["chemia"] = 2
+		S.hide.garage.items = [{"f": "regal_led", "x": -1.9, "z": -3.9, "r": 0}, {"f": "regal_led", "x": -1.9, "z": -2.4, "r": 0}, {"f": "regal_led", "x": -1.9, "z": -0.9, "r": 0},
+			{"f": "lab", "x": 1.8, "z": -3.8, "r": 0}, {"f": "suszarka", "x": 2.4, "z": -1.9, "r": 0}, {"f": "zbiornik", "x": 2.5, "z": -0.6, "r": 0}, {"f": "filtr", "x": 2.5, "z": 0.6, "r": 0},
+			{"f": "stol", "x": -1.9, "z": 1.2, "r": 0}, {"f": "regal", "x": 2.4, "z": 2.2, "r": 1}, {"f": "namiot", "x": -2.2, "z": 3.3, "r": 0}]
+		var PR = G.Prod
+		var hd0: Dictionary = PR.hide("garage")
+		for e in [[0, 0.93, false], [1, 0.42, true], [2, 0.1, false], [9, 1.0, false]]:
+			hd0.jobs[str(e[0])] = PR.new_job("konopie", 2 if int(e[0]) == 9 else 4)
+			hd0.jobs[str(e[0])].prog = float(e[1])
+			hd0.jobs[str(e[0])].fert = bool(e[2])
+			hd0.jobs[str(e[0])].water = 64.0 - int(e[0]) * 9.0
+		hd0.jobs["3"] = PR.new_job("amfetamina", 1)
+		hd0.jobs["3"].prog = 0.3
+		hd0.jobs["4"] = {"r": "_dry", "p": "dym", "g": 34.0, "pur": 75, "prog": 0.6}
+		world.refresh_furniture("garage")
 	if args.has("rain"):
 		S.weather = {"start": 0.0, "end": 1e12, "power": float(args.rain)}
 		env.rain = float(args.rain)
@@ -1427,6 +1456,9 @@ func _apply_test_args() -> void:
 		if args.has("pos"):
 			var p := String(args.pos).split(",")
 			pos = Vector3(float(p[0]) * D.SC, 0.0, float(p[1]) * D.SC)
+			if loc != "out":
+				# we wnętrzach: metry względem środka pokoju
+				pos = Vector3(float(D.ROOMS[loc].cx) + float(p[0]), 0.0, float(p[1]))
 		elif loc == "out":
 			pos = Vector3(float(D.DOORS.safe.x), 0.0, float(D.DOORS.safe.z) + 2.0)
 		else:
@@ -1636,6 +1668,8 @@ func _test_ui(what: String) -> void:
 			ui.phone.render()
 		"mapa", "hurt", "portfel", "rozwoj", "zadania", "lokale", "plecak", "ustawienia": ui.open_phone(what)
 		"bench": ui.open_pack(player.loc if player.loc != "out" else "safe")
+		"station0", "station1", "station2", "station3", "station4", "station9": ui.open_station("garage", int(what.trim_prefix("station")))
+		"hideout": ui.open_hideout("garage")
 		"bench_work", "bench_mix":
 			G.add_bulk(G.S.inv, "dym", 80, 18.0)
 			G.S.items["majeranek"] = 6
