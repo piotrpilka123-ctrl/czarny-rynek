@@ -327,11 +327,11 @@ const ROOMS := {
 }
 ## drzwi zewnętrzne: punkt przed drzwiami i kierunek „na zewnątrz” (dz)
 var DOORS := {
-	"safe": {"x": 8.0, "z": -76.6, "dz": 1.0, "title": "BLOK 7 — KLATKA B", "color": "c9a86a"},
-	"shop": {"x": -6.0, "z": 11.4, "dz": 1.0, "title": "SKLEP U STASIA", "color": "3ddc6e"},
-	"garage": {"x": 65.0, "z": 94.6, "dz": -1.0, "title": "GARAŻ 14", "color": "9aa3ab", "prop": "garaz"},
-	"basement": {"x": -75.0, "z": -11.4, "dz": -1.0, "title": "PIWNICA", "color": "8a7a66", "prop": "piwnica"},
-	"ciuchy": {"x": 42.0, "z": 11.4, "dz": 1.0, "title": "TANIA ODZIEŻ", "color": "e85ab8"},
+	"safe": {"x": 8.0, "z": -76.6, "dz": 1.0, "title": "BLOCK 7 — ENTRANCE B", "color": "c9a86a"},
+	"shop": {"x": -6.0, "z": 11.4, "dz": 1.0, "title": "STAŚ'S GROCERY", "color": "3ddc6e"},
+	"garage": {"x": 65.0, "z": 94.6, "dz": -1.0, "title": "GARAGE 14", "color": "9aa3ab", "prop": "garaz"},
+	"basement": {"x": -75.0, "z": -11.4, "dz": -1.0, "title": "BASEMENT", "color": "8a7a66", "prop": "piwnica"},
+	"ciuchy": {"x": 42.0, "z": 11.4, "dz": 1.0, "title": "THRIFT CLOTHES", "color": "e85ab8"},
 	# tylne drzwi laboratorium w Starej Hucie: otwarte tylko w prologu, potem zaplombowane
 	"lab": {"x": 182.0, "z": -113.4, "dz": -1.0, "title": "", "color": "8a7a66", "sealed": true},
 	# klub: wejście w ścianie wschodniej, pilnowane przez ochroniarzy (własny model drzwi i własna interakcja)
@@ -340,6 +340,55 @@ var DOORS := {
 	"szpital": {"x": -181.0, "z": 31.6, "dz": -1.0, "title": "EMERGENCY", "color": "e85a5a", "locked": "Izba przyjęć. Na szczęście nic Ci nie dolega — nie masz tu czego szukać."},
 	"komisariat": {"x": -181.0, "z": 9.4, "dz": 1.0, "title": "POLICE", "color": "9ab4ff", "locked": "Sam z siebie na komendę? Lepiej nie kusić losu."},
 }
+
+# ---------------------------------------------------------------- rozmowy telefoniczne
+## Telefony od ludzi z życia Kuby. Każdy dzwoni raz, gdy spełnią się warunki (dzień, poziom, zdarzenie),
+## w ciągu dnia, w oknie telefonu z boku ekranu — świat się nie zatrzymuje. Wpisy {"n": "Ty", "t": …} to kwestie gracza.
+const CALLS := [
+	{"id": "mama", "who": "Mama", "day": 2, "hour": [10.0, 21.0], "lines": [
+		"Kubuś? No nareszcie odbierasz. Trzeci dzień dzwonię, a tam tylko poczta.",
+		"Sąsiadka mówi, że pod hutą było pełno policji. Powiedz mi, że ciebie tam nie było. Skłam nawet, byle ładnie.",
+		{"n": "Ty", "t": "Nie było mnie tam, mamo. Mam nową robotę, wynająłem kawalerkę. Wszystko gra."},
+		"Robotę. Ty zawsze masz robotę, tylko nigdy nie wiem jaką. Zjedz coś ciepłego i zadzwoń w niedzielę. I Kuba — ojciec też zawsze mówił, że wszystko gra."]},
+	{"id": "stas", "who": "Wujek Staś", "day": 3, "hour": [8.0, 12.0], "lines": [
+		"Kuba, tu Staś. Nie przez telefon, wiem, ale posłuchaj starego, bo drugi raz nie powtórzę.",
+		"Chodzisz po osiedlu z kasą w kieszeni jak z wypłatą. Jak cię zgarną z grubszą gotówką, to nie skończy się na mandacie — zaczną ci grzebać po mieszkaniu.",
+		"Trzymaj przy sobie tyle, ile trzeba na dzień. Reszta do szafy. A towar, którego akurat nie sprzedajesz — też.",
+		{"n": "Ty", "t": "Od kiedy sklepowy zna się na takich rzeczach?"},
+		"Od czterdziestu lat mam sklep naprzeciwko komisariatu, synek. Ja się znam na wszystkim."]},
+	{"id": "siwy", "who": "Areszt śledczy", "day": 5, "hour": [16.0, 21.0], "lines": [
+		"To ja, Siwy. Mam trzy minuty na automat, więc nie przerywaj.",
+		"Nic im nie powiedziałem i nie powiem. Ale słuchaj: oni weszli od tyłu, od rampy. O rampie wiedziały cztery osoby. Ty, ja, Wiktor i ten, kto woził nam beczki.",
+		"A ten, co cię zdjął za garażami, nie szukał cię na ślepo. Stał dokładnie tam, gdzie miałeś przejść.",
+		{"n": "Ty", "t": "Myślisz, że ktoś nas sprzedał."},
+		"Myślę, że ktoś ma teraz pół kilo twojego śniegu i święty spokój. Rozejrzyj się, kto na osiedlu nagle ma za dużo pieniędzy. Kończę, strażnik idzie."]},
+	{"id": "ola", "who": "Ola z Neonu", "lvl": 3, "hour": [14.0, 22.0], "lines": [
+		"Cześć, tu Ola, stoję za barem w Neonie. Numer mam od Seby, nie pytaj.",
+		"Ludzie u nas pytają o towar co weekend, a ci, którzy coś mają, biorą potrójnie i sypią mąkę. Przydałby się ktoś normalny.",
+		"Tylko jedno: Bogdan na bramce maca kieszenie każdemu. Jak coś znajdzie, wylatujesz. Trzy razy jednej nocy i wyjeżdżasz karetką — widziałam to nie raz.",
+		{"n": "Ty", "t": "To jak mam cokolwiek wnieść?"},
+		"Mało na raz i w porządnej kurtce. W środku płacą lepiej niż na ulicy, więc i tak wyjdziesz na swoje. Otwieramy o dwudziestej."]},
+	{"id": "adwokat", "who": "Mecenas Lipko", "arrests": 1, "hour": [9.0, 18.0], "lines": [
+		"Dzień dobry, mecenas Lipko, z urzędu. Dostałem pańskie akta, więc powiem krótko, bo za długie rozmowy mi nie płacą.",
+		"Jedno zatrzymanie to incydent. Pięć to akt oskarżenia, którego nie wybroni nikt. Proszę liczyć.",
+		"Druga sprawa: gotówka. Jeśli znajdą przy panu kwotę, której nie da się wytłumaczyć zasiłkiem, prokurator wystąpi o przeszukania. Mieszkanie, garaż, wszystko.",
+		"I niech pan nie ucieka przed patrolem na ich oczach. Najpierw krzyczą, potem strzelają w powietrze, a potem już nie w powietrze. Do widzenia."]},
+	{"id": "szpital", "who": "Wiktor", "hospital": 1, "hour": [9.0, 22.0], "lines": [
+		"Słyszałem, że leżałeś na Emergency. Kwiatów nie wysłałem, nie obrażaj się.",
+		"Leżący człowiek nie zarabia, a odsetki chodzą dalej, czy stoisz, czy leżysz. To nie złośliwość, to matematyka.",
+		{"n": "Ty", "t": "Ktoś mi wyczyścił kieszenie, zanim trafiłem na salę."},
+		"Bo nosisz przy sobie za dużo. Na mieście masz mieć tyle, żeby nie było żal. Wracaj do pracy, Kuba."]},
+	{"id": "polowa", "who": "Wiktor", "paid": 12500.0, "hour": [9.0, 22.0], "lines": [
+		"Połowa. Przyznam, że stawiałem, że znikniesz po pierwszym tygodniu — przegrałem flaszkę.",
+		"Teraz będzie trudniej, bo zaczynają cię znać. Policja, konkurencja, ci, którzy pamiętają, kim byłeś przed wybuchem.",
+		"Rób swoje i nie wychylaj się bardziej, niż musisz. Jak spłacisz resztę, pogadamy o tym, kto ci tę hutę podpalił. Bo ja już chyba wiem."]},
+	{"id": "nieznany", "who": "Nieznany numer", "lvl": 6, "hour": [20.0, 23.0], "lines": [
+		"…",
+		"Dobrze ci idzie, Kuba. Lepiej, niż myślałem, kiedy leżałeś za garażami z twarzą w żwirze.",
+		{"n": "Ty", "t": "Kto mówi?"},
+		"Ten, kto niesie twoją torbę. Ciężka była. Sprzedaję ją powoli, żeby starczyło na długo.",
+		"Nie szukaj mnie. Jak przyjdzie pora, sam cię znajdę."]},
+]
 
 # ---------------------------------------------------------------- klub, szpital, komenda
 ## klub Neon wpuszcza od 20:00 do 5:00; trzecia wpadka przy kontroli jednej nocy kończy się w szpitalu

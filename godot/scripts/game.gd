@@ -994,6 +994,35 @@ func arrest_apply() -> Dictionary:
 	return res
 
 
+# ================================================================ telefony od postaci
+## czy spełnione są warunki rozmowy (dzień, pora, poziom, zdarzenia)
+func call_ready(c: Dictionary) -> bool:
+	if flag("call_" + String(c.id)):
+		return false
+	var h := hour()
+	var hr: Array = c.get("hour", [8.0, 23.0])
+	if h < float(hr[0]) or h >= float(hr[1]):
+		return false
+	if day() < int(c.get("day", 0)) or int(S.lvl) < int(c.get("lvl", 0)) or int(S.arrests) < int(c.get("arrests", 0)):
+		return false
+	if int(S.stats.get("hospital", 0)) < int(c.get("hospital", 0)) or float(S.paid) < float(c.get("paid", 0.0)):
+		return false
+	return true
+
+
+## raz na godzinę gry: jeśli ktoś ma powód zadzwonić, a telefon jest wolny — dzwoni
+func calls_tick() -> void:
+	if test_mode or ui == null or main == null or prologue != null or not running or busy or arresting or S.wanted:
+		return
+	if not ui.call.is_empty() or ui.mode != "" or mods.get("sleeping", false):
+		return
+	for c in D.CALLS:
+		if call_ready(c):
+			S.flags["call_" + String(c.id)] = true
+			ui.call_start(String(c.who), c.lines)
+			return
+
+
 # ================================================================ klub, szpital, komenda
 ## czy pozycja z plecaka jest nielegalna: towar i mieszanki, chemia, nasiona, broń
 func is_illegal(e: Dictionary) -> bool:
@@ -1221,6 +1250,7 @@ func on_tick() -> void:
 
 func on_hour() -> void:
 	var h := int(hour())
+	calls_tick()
 	# nowe zamówienia od stałych klientów
 	if not mods.get("sleeping", false):
 		var max_orders: int = clampi(1 + int(S.lvl), 2, 5)

@@ -969,7 +969,7 @@ func _locker_model() -> Node3D:
 	Models.box(g, Vector3(0.28, 0.2, 0.01), Vector3(0.21, 1.42, 0.3), Models.mat("3a9aff", 0.3, 0.0, 2.2), Vector3.ZERO, false)
 	for k in range(12):
 		Models.box(g, Vector3(0.05, 0.04, 0.012), Vector3(0.13 + (k % 3) * 0.08, 1.2 - int(k / 3.0) * 0.06, 0.3), Models.mat("9aa0a6", 0.5, 0.4), Vector3.ZERO, false)
-	var lb := Models.label("SKRYTKOMAT 24/7", Color(0.95, 0.8, 0.2), 30)
+	var lb := Models.label("PARCEL LOCKER 24/7", Color(0.95, 0.8, 0.2), 30)
 	lb.position = Vector3(0, 2.3, 0.2)
 	lb.visibility_range_end = 26.0
 	g.add_child(lb)
@@ -1321,7 +1321,7 @@ func _buildings() -> void:
 	city.add_child(hl)
 	var ne := _sign("NEON", Vector3(-7.85, 8.0, 128.0), Color(1.0, 0.3, 0.85), 330, PI / 2.0, 0.01, 10)
 	ne.shaded = false
-	var ne2 := _sign("KLUB • DISCO • BAR", Vector3(-7.85, 5.6, 128.0), Color(0.3, 0.95, 1.0), 70, PI / 2.0, 0.008, 6)
+	var ne2 := _sign("CLUB • DISCO • BAR", Vector3(-7.85, 5.6, 128.0), Color(0.3, 0.95, 1.0), 70, PI / 2.0, 0.008, 6)
 	ne2.shaded = false
 	# wejście do klubu: stalowy portal z neonowym łukiem, chodnik i słupki z liną
 	if Stations.model("klub_drzwi") != null:
@@ -1342,15 +1342,15 @@ func _buildings() -> void:
 	cl.omni_range = 9.0
 	city.add_child(cl)
 	# szyldy przy Hutniczej
-	_shopfront(-75.0, 10.0, "LOMBARD", Color(0.95, 0.8, 0.2), "rusted_shutter", true)
+	_shopfront(-75.0, 10.0, "PAWN SHOP", Color(0.95, 0.8, 0.2), "rusted_shutter", true)
 	_shopfront(-43.0, 10.0, "KEBAB", Color(0.95, 0.35, 0.2), "painted_metal_shutter", true)
-	_shopfront(31.0, 10.0, "MONOPOLOWY 24H", Color(0.4, 0.9, 0.5), "rusted_shutter", false)
-	_shopfront(-70.0, 30.0, "SKUP ZŁOMU", Color(0.8, 0.8, 0.8), "rusted_shutter", true, -1.0)
-	_shopfront(-26.0, 30.0, "FRYZJER „ELA”", Color(0.9, 0.5, 0.7), "painted_metal_shutter", true, -1.0)
-	_shopfront(24.0, 30.0, "ZAKŁAD POGRZEBOWY", Color(0.75, 0.75, 0.8), "rusted_shutter", true, -1.0)
-	_sign("SKŁAD OPAŁU", Vector3(57.0, 6.2, 29.9), Color(0.8, 0.78, 0.7), 110, PI, 0.007, 8)
-	_sign("HALA NR 2", Vector3(175.9, hd(176.0, -80.0) + 11.0, -80.0), Color(0.7, 0.68, 0.62), 220, -PI / 2.0, 0.01, 8)
-	_sign("NA SPRZEDAŻ\ntel. 600 100 …", Vector3(190.0, hd(190.0, -51.0) + 4.6, -51.9), Color(0.95, 0.85, 0.2), 90, 0.0, 0.007, 10)
+	_shopfront(31.0, 10.0, "LIQUOR 24H", Color(0.4, 0.9, 0.5), "rusted_shutter", false)
+	_shopfront(-70.0, 30.0, "SCRAP YARD", Color(0.8, 0.8, 0.8), "rusted_shutter", true, -1.0)
+	_shopfront(-26.0, 30.0, "ELA'S HAIR SALON", Color(0.9, 0.5, 0.7), "painted_metal_shutter", true, -1.0)
+	_shopfront(24.0, 30.0, "FUNERAL HOME", Color(0.75, 0.75, 0.8), "rusted_shutter", true, -1.0)
+	_sign("COAL DEPOT", Vector3(57.0, 6.2, 29.9), Color(0.8, 0.78, 0.7), 110, PI, 0.007, 8)
+	_sign("HALL NO. 2", Vector3(175.9, hd(176.0, -80.0) + 11.0, -80.0), Color(0.7, 0.68, 0.62), 220, -PI / 2.0, 0.01, 8)
+	_sign("FOR SALE\ncall 600 100 …", Vector3(190.0, hd(190.0, -51.0) + 4.6, -51.9), Color(0.95, 0.85, 0.2), 90, 0.0, 0.007, 10)
 
 
 func _shopfront(x: float, zw: float, title: String, color: Color, shutter: String, closed: bool, dz := 1.0) -> void:
@@ -1386,7 +1386,7 @@ func _pavilion() -> void:
 			li.light_energy = 1.0
 			li.omni_range = 6.0
 			city.add_child(li)
-	_sign("NA SPRZEDAŻ", Vector3(66.5, by + 2.2, -46.86), Color(0.95, 0.85, 0.2), 44, 0.0, 0.006, 8)
+	_sign("FOR SALE", Vector3(66.5, by + 2.2, -46.86), Color(0.95, 0.85, 0.2), 44, 0.0, 0.006, 8)
 
 
 func _garages() -> void:
@@ -1474,7 +1474,7 @@ func _estate() -> void:
 	var tb := _base(108.0, -140.0, 113.0, -135.0)
 	Models.box(city, Vector3(5.0, 3.4, 5.0), Vector3(110.5, tb + 1.7, -137.5), Props.pbr("concrete_slab_wall", 0.3))
 	add_col(108.0, 113.0, -140.0, -135.0, 3.4)
-	_sign("NIE DOTYKAĆ!\nURZĄDZENIE ELEKTRYCZNE", Vector3(110.5, tb + 2.2, -134.95), Color(0.95, 0.85, 0.2), 30, 0.0, 0.006, 6)
+	_sign("DANGER!\nHIGH VOLTAGE", Vector3(110.5, tb + 2.2, -134.95), Color(0.95, 0.85, 0.2), 30, 0.0, 0.006, 6)
 	# plac przed pawilonem
 	_prop("plastic_monobloc_chair_01", 65.0, -45.9, 0.4, 0.86, 0.0, false)
 	_prop("plastic_monobloc_chair_01", 66.6, -46.1, -0.9, 0.86, 0.0, false)
@@ -1510,7 +1510,7 @@ func _fake_entrance(x: float, zw: float, facing: float) -> void:
 func _lower_town() -> void:
 	_place(Props.bus_stop(), 66.2, 9.4, 0.0, 2.0, 0.3, 2.4)
 	rects.pop_back()
-	_sign("HUTNICZA 02", Vector3(62.0, 2.2, 8.75), Color(0.9, 0.9, 0.9), 34, 0.0, 0.006, 6)
+	_sign("HUTNICZA ST. 02", Vector3(62.0, 2.2, 8.75), Color(0.9, 0.9, 0.9), 34, 0.0, 0.006, 6)
 	_place(Models.kiosk(), 52.5, -4.0, PI / 2.0, 1.1, 1.4, 2.4)
 	_sign("KIOSK", Vector3(53.6, 2.7, -4.0), Color(0.95, 0.9, 0.5), 60, PI / 2.0, 0.006, 8)
 	_prop("metal_trash_can", 66.0, 9.6, 0.0, 0.9, 0.3)
@@ -1692,7 +1692,7 @@ func _industrial() -> void:
 	rects.pop_back()
 	_place(Props.fence(30.0, 2.2, "sheet"), 191.0, 29.6, 0.0, 15.0, 0.15, 2.2)
 	rects.pop_back()
-	_sign("STARA HUTA\nTEREN PRYWATNY", Vector3(180.0, 2.6, 29.4), Color(0.85, 0.8, 0.6), 46, PI, 0.006, 8)
+	_sign("OLD STEELWORKS\nPRIVATE PROPERTY", Vector3(180.0, 2.6, 29.4), Color(0.85, 0.8, 0.6), 46, PI, 0.006, 8)
 	_prop("container_green", 182.0, 62.0, 0.2, 2.6, 0.0)
 	add_col(178.9, 185.1, 60.5, 63.5, 2.6)
 	_prop("container_red", 184.0, 70.0, 1.7, 2.6, 0.0)
@@ -1927,9 +1927,9 @@ func _dense() -> void:
 	var chy := hd(84.0, -106.0)
 	Models.cyl(city, 0.9, 1.4, 24.0, Vector3(84.0, chy + 12.0, -106.0), Props.pbr("factory_brick", 0.3, Color(0.8, 0.74, 0.7)), Vector3.ZERO, 12)
 	add_col(82.4, 85.6, -107.6, -104.4, 24.0)
-	_shopfront(104.0, 10.0, "PIEKARNIA", Color(0.95, 0.75, 0.35), "rusted_shutter", true)
-	_shopfront(104.0, 32.0, "HURTOWNIA BUDOWLANA", Color(0.85, 0.85, 0.8), "painted_metal_shutter", true, -1.0)
-	_shopfront(-131.0, 10.0, "TANIA ODZIEŻ", Color(0.9, 0.5, 0.6), "painted_metal_shutter", true)
+	_shopfront(104.0, 10.0, "BAKERY", Color(0.95, 0.75, 0.35), "rusted_shutter", true)
+	_shopfront(104.0, 32.0, "BUILDING SUPPLIES", Color(0.85, 0.85, 0.8), "painted_metal_shutter", true, -1.0)
+	_shopfront(-131.0, 10.0, "SECOND HAND", Color(0.9, 0.5, 0.6), "painted_metal_shutter", true)
 	_wall(Signs.shop("BAR JAGODA", Color(0.95, 0.4, 0.5), 3.0, true), -8.86, 3.2, 91.0, PI / 2.0)
 	Models.box(city, Vector3(0.14, 2.3, 1.6), Vector3(-8.95, hd(-8.0, 91.0) + 1.15, 91.0), Models.mat("1a120e", 0.6))
 	var bl := OmniLight3D.new()
@@ -2978,7 +2978,7 @@ func _interiors() -> void:
 	var win_n: Node3D = g2.get_child(g2.get_child_count() - 1)
 	win_n.rotation.y = PI
 	var ns := Label3D.new()
-	ns.text = "U STASIA — WSZYSTKO, CZEGO TRZEBA"
+	ns.text = "STAŚ'S — EVERYTHING YOU NEED"
 	ns.font_size = 40
 	ns.pixel_size = 0.005
 	ns.modulate = Color(0.25, 0.5, 0.3)

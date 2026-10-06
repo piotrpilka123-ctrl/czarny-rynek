@@ -304,7 +304,7 @@ static func car(type := "", color = null, police := false) -> Node3D:
 			stripe.position = Vector3(0, 0.7, sd * (W * 0.5 + 0.006))
 			g.add_child(stripe)
 			var lb := Label3D.new()
-			lb.text = "POLICJA"
+			lb.text = "POLICE"
 			lb.font_size = 40
 			lb.pixel_size = 0.004
 			lb.modulate = Color.WHITE

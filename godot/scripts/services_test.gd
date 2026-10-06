@@ -127,6 +127,29 @@ static func run(T) -> void:
 	await T.wait_busy()
 	await T.frames(3)
 	T.ok(P.loc == "out" and P.global_position.distance_to(G.world.club_door) < 4.0, "wyjście z klubu prowadzi przed wejście")
+	# --- telefony od postaci: każdy dzwoni raz, gdy ma powód
+	var mama: Dictionary = D.CALLS[0]
+	var adw: Dictionary = {}
+	for cdef in D.CALLS:
+		if cdef.id == "adwokat":
+			adw = cdef
+	S.t = 1440.0 + 12.0 * 60.0
+	S.flags.erase("call_mama")
+	T.ok(G.day() >= 2 and G.call_ready(mama), "drugiego dnia w południe mama ma powód zadzwonić")
+	S.t = 1440.0 + 3.0 * 60.0
+	T.ok(not G.call_ready(mama), "nikt nie dzwoni w środku nocy")
+	S.t = 1440.0 + 12.0 * 60.0
+	S.flags["call_mama"] = true
+	T.ok(not G.call_ready(mama), "ta sama rozmowa nie powtarza się")
+	S.arrests = 0
+	var before_arrest: bool = G.call_ready(adw)
+	S.arrests = 1
+	T.ok(not before_arrest and G.call_ready(adw), "adwokat dzwoni dopiero po pierwszym zatrzymaniu")
+	var long_line := 0
+	for cdef in D.CALLS:
+		for ln in cdef.lines:
+			long_line = maxi(long_line, String(ln if ln is String else ln.t).length())
+	T.ok(D.CALLS.size() >= 6 and long_line < 260, "rozmowy są krótkimi monologami (najdłuższa kwestia: %d znaków)" % long_line)
 	# --- ubrania widać na postaci w ekwipunku
 	for gid in ["czapka_daszek", "lancuch", "bluza_kaptur", "bojowki"]:
 		S.items[gid] = 1
