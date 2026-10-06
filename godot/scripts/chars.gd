@@ -152,7 +152,7 @@ const POSES := {"": "Idle", "phone": "Idle_TalkingPhone", "talk": "Idle_Talking"
 
 const USED := ["Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Idle_No", "Yes", "Interact", "PickUp_Table", "Sitting_Idle", "Sitting_Talking",
 	"Dance", "Zombie_Idle", "Zombie_Walk_Fwd", "Walk", "Walk_Formal", "Walk_Carry", "Jog_Fwd", "Sprint", "Crouch_Idle", "Fixing_Kneeling", "Consume", "Hit_Chest",
-	"Idle_Lantern", "Driving", "Push", "Sitting_Enter", "Sitting_Exit", "Pistol_Idle", "Pistol_Aim_Neutral"]
+	"Idle_Lantern", "Driving", "Push", "Sitting_Enter", "Sitting_Exit", "Pistol_Idle", "Pistol_Aim_Neutral", "Hit_Knockback", "Melee_Hook", "Death01"]
 const LOOPED := ["Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Sitting_Idle", "Sitting_Talking", "Dance", "Zombie_Idle", "Idle_No",
 	"Walk", "Walk_Formal", "Jog_Fwd", "Sprint", "Zombie_Walk_Fwd", "Walk_Carry", "Crouch_Idle", "Fixing_Kneeling", "Idle_Lantern", "Driving", "Push", "Pistol_Idle", "Pistol_Aim_Neutral"]
 ## o ile wyprostować nogi w pozach stojących (0 = oryginał)
@@ -672,6 +672,23 @@ static func police_gear(rig: Dictionary, armed := false) -> void:
 		return
 	rig["armed"] = false
 	set_armed(rig, armed)
+
+
+## przedmiot z modeli Blendera w prawej dłoni (rurka napastnika w prologu)
+static func hold(rig: Dictionary, model_name: String, xf: Transform3D) -> Node3D:
+	var skel: Skeleton3D = rig.get("skel")
+	if skel == null or skel.find_bone("Bip01 R Hand") < 0:
+		return null
+	var St = load("res://scripts/stations.gd")
+	var it: Node3D = St.model(model_name)
+	if it == null:
+		return null
+	var ba := BoneAttachment3D.new()
+	ba.bone_name = "Bip01 R Hand"
+	skel.add_child(ba)
+	it.transform = xf
+	ba.add_child(it)
+	return it
 
 
 ## pistolet w dłoni (wyjęty z kabury) albo schowany

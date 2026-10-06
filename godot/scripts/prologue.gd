@@ -6,6 +6,8 @@ extends Node
 
 const Fx = preload("res://scripts/fx.gd")
 const Models = preload("res://scripts/models.gd")
+const Chars = preload("res://scripts/chars.gd")
+const Stations = preload("res://scripts/stations.gd")
 
 var M                       # main
 var stage := "intro"        # intro → lab → raid → escape → run → boom → done
@@ -431,7 +433,13 @@ func _process(dt: float) -> void:
 				_boom()
 
 
-# ---------------------------------------------------------------- finał: eksplozje
+# ---------------------------------------------------------------- finał: eksplozje i cios zza garaży
+var attacker := {}
+var boom_car: Node3D = null
+var drop_bag: Node3D = null
+
+## Przerywnik: huta wylatuje w powietrze (szyby, gruz, ogień z okien), fala odrzuca patrol, radiowóz staje w ogniu.
+## Potem kroki za plecami, czyjś głos, obrót — i rurka. Kamera pada na ziemię, napastnik zabiera torbę.
 func _boom() -> void:
 	stage = "boom"
 	G.busy = true
@@ -445,77 +453,279 @@ func _boom() -> void:
 	var mill := P(186.0, -86.0)
 	var mill_pt := Vector3(mill.x, W.height(mill.x, mill.y) + 7.0, mill.y)
 	var cam_end := eye + Vector3(1.2, 0.5, 0.4)
+	# --- obsada: dwóch policjantów i radiowóz między garażami a hutą
+	var actors: Array = []
+	var cop_at := [P(160.0, -80.5), P(164.5, -90.0)]
+	for i in range(2):
+		var c = [cop_a, cop_b][i]
+		if c == null:
+			continue
+		c["scripted"] = true
+		c.x = cop_at[i].x
+		c.z = cop_at[i].y
+		c.node.position = Vector3(c.x, W.height(c.x, c.z), c.z)
+		c.node.rotation.y = atan2(mill.x - c.x, mill.y - c.z)
+		c.node.visible = true
+		Chars.set_active(c.rig, true)
+		Chars.set_armed(c.rig, true)
+		Chars.play(c.rig, "Pistol_Idle")
+		actors.append({"c": c, "kb": -1.0, "from": Vector3.ZERO})
+	var cpos := P(168.5, -76.0)
+	boom_car = Models.car("sedan", "ffffff", true)
+	M.add_child(boom_car)
+	nodes.append(boom_car)
+	var car_y: float = W.height(cpos.x, cpos.y)
+	boom_car.position = Vector3(cpos.x, car_y, cpos.y)
+	boom_car.rotation.y = 2.3
+	var car_lights: Array = []
+	for k in range(2):
+		var cl := OmniLight3D.new()
+		cl.light_color = Color(0.15, 0.35, 1.0) if k == 0 else Color(1.0, 0.12, 0.1)
+		cl.omni_range = 16.0
+		cl.shadow_enabled = false
+		cl.position = Vector3(cpos.x + k * 0.4, car_y + 1.7, cpos.y)
+		M.add_child(cl)
+		nodes.append(cl)
+		car_lights.append(cl)
+	# --- napastnik czeka za plecami (poza kadrem)
+	var md := Vector2(mill.x - eye.x, mill.y - eye.z).normalized()
+	var rgt := Vector2(-md.y, md.x)
+	var apos := Vector2(eye.x, eye.z) - md * 1.9 + rgt * 0.55
+	var ground: float = W.height(eye.x, eye.z)
+	var arig: Dictionary = Chars.make({"model": "m09", "kind": "hoodie", "mask": true, "seed": 77, "top": "15161a", "bottom": "101114", "tall": 1.04})
+	M.add_child(arig.root)
+	nodes.append(arig.root)
+	arig.root.position = Vector3(apos.x, W.height(apos.x, apos.y), apos.y)
+	arig.root.rotation.y = atan2(eye.x - apos.x, eye.z - apos.y)
+	arig.root.visible = false
+	Chars.hold(arig, "rurka", Transform3D(Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0)), Vector3(0.09, 0.03, 0.0)))
+	Chars.play(arig, "Idle")
+	attacker = arig
+	drop_bag = Stations.duffel()
+	M.add_child(drop_bag)
+	nodes.append(drop_bag)
+	drop_bag.visible = false
+	# łuna pożaru: ciepłe, migające światło od strony huty — to ono wydobywa napastnika z ciemności
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(1.0, 0.55, 0.22)
+	glow.omni_range = 9.0
+	glow.omni_attenuation = 0.8
+	glow.light_energy = 0.0
+	glow.shadow_enabled = false
+	M.add_child(glow)
+	nodes.append(glow)
+	glow.global_position = eye + Vector3(md.x, 0.0, md.y) * 2.6 + Vector3(0, 1.2, 0)
+	# --- rozkład zdarzeń
 	var lines := [
 		[2.9, "Zabezpieczenie. Wiedziałem o nim tylko ja i Siwy."],
-		[7.2, "Trzy lata roboty i całe laboratorium — w sześć sekund."],
-		[11.2, "Ale ostatnia partia jest w torbie. Pół kilo. Wystarczy, żeby zacząć od no—"],
+		[7.6, "Trzy lata roboty i całe laboratorium — w sześć sekund."],
+		[10.8, "Ale ostatnia partia jest w torbie. Pół kilo. Wystarczy, żeby zacząć od no—"],
 	]
-	var hit_at := 14.6
-	var hit := false
-	var fall := 0.0
 	var booms := [
 		[1.9, P(177.0, -96.0), 2.5, 2.4],
 		[2.8, P(186.0, -84.0), 9.0, 3.4],
 		[3.5, P(181.0, -108.0), 4.0, 2.2],
 		[5.2, P(192.0, -70.0), 11.0, 2.8],
+		[8.6, P(178.0, -74.0), 3.0, 1.3],
+		[10.1, P(176.5, -101.0), 6.0, 1.1],
 	]
-	var fires := [[2.2, P(175.2, -96.0), 2.0, 1.6], [3.1, P(186.0, -84.0), 15.8, 2.6], [5.5, P(192.0, -70.0), 15.8, 2.0], [3.9, P(175.2, -106.0), 3.0, 1.2]]
+	var fires := [[2.2, P(175.2, -96.0), 2.0, 1.6], [3.1, P(186.0, -84.0), 15.8, 2.6], [5.5, P(192.0, -70.0), 15.8, 2.0], [3.9, P(175.2, -106.0), 3.0, 1.2],
+		[3.0, P(175.3, -88.0), 6.5, 1.5], [3.4, P(175.3, -80.0), 4.2, 1.3], [4.4, P(175.3, -100.0), 8.0, 1.4], [6.0, P(175.3, -72.0), 7.0, 1.2]]
+	# okna zachodniej ściany: z każdego lecą szyby i bucha ogień
+	var wins: Array = []
+	for wi in range(7):
+		for hy in [4.4, 8.2]:
+			wins.append([1.9 + wi * 0.07 + (0.5 if hy > 6.0 else 0.0) + randf() * 0.15, P(175.4, -104.0 + wi * 5.6), hy])
+	wins.sort_custom(func(a, b): return a[0] < b[0])
+	var steps_at := [12.4, 12.85, 13.25]
+	var t_voice := 13.35
+	var t_turn := 13.55
+	var t_swing := 14.05
+	var hit_at := 14.5
 	var bi := 0
 	var fi := 0
 	var li := 0
+	var wi2 := 0
+	var si := 0
 	var tt := 0.0
 	var shake := 0.0
-	var faded := false
-	while tt < 24.0 and not M.cut_skip:
+	var hit := false
+	var fall := 0.0
+	var car_done := false
+	var car_v := 0.0
+	var car_t := -1.0
+	var voiced := false
+	var swung := false
+	var grabbed := 0
+	var out_dir := (Vector2(apos.x - eye.x, apos.y - eye.z)).normalized()
+	while tt < 24.2 and not M.cut_skip:
 		var dt := get_process_delta_time()
 		tt += dt
-		# cios w tył głowy zza garaży: błysk, kamera wali się na ziemię, obraz gaśnie
-		if not hit and tt >= hit_at:
-			hit = true
-			Sfx.knock()
-			M.ui.flash(0.9)
-			M.ui.cut_line("")
-			shake = 1.6
-		if hit:
-			fall = minf(1.0, fall + dt / 0.55)
-			if tt >= hit_at + 1.6 and li == 3:
-				M.ui.cut_line("— Leż, leż. Torbę biorę ja. Pozdrów Wiktora.")
-				li = 4
-			if tt >= hit_at + 5.4 and li == 4:
-				M.ui.cut_line("Kiedy się ocknąłem, nie było torby, Siwego ani laboratorium. Został dług.")
-				li = 5
 		var e := clampf(tt / 1.5, 0.0, 1.0)
 		e = e * e * (3.0 - 2.0 * e)
 		var zoom := clampf((tt - 6.0) / 12.0, 0.0, 1.0)
 		shake = maxf(0.0, shake - dt * 1.4)
-		var target := look0.lerp(mill_pt, e) + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * shake * 1.4
-		var fe := fall * fall * (3.0 - 2.0 * fall)
-		var cam_pos := eye.lerp(cam_end, zoom)
-		cam_pos.y = lerpf(cam_pos.y, W.height(cam_pos.x, cam_pos.z) + 0.22, fe)
-		target = target.lerp(cam_pos + Vector3(fw.x, 0.25, fw.y) * 4.0, fe)
-		M.cine_cam(cam_pos, target, lerpf(float(pl.cam.fov), 46.0, e * 0.6 + zoom * 0.4) + fe * 18.0)
-		if fe > 0.0:
-			pl.cam.rotation.z = fe * 1.25
+		# --- wybuchy, ogień, szyby
 		while bi < booms.size() and tt >= float(booms[bi][0]):
 			var bp: Vector2 = booms[bi][1]
-			Fx.explosion(M, Vector3(bp.x, W.height(bp.x, bp.y) + float(booms[bi][2]), bp.y), float(booms[bi][3]))
-			shake = 1.0
-			M.ui.flash(0.55 if bi == 1 else 0.3)
+			var bpos := Vector3(bp.x, W.height(bp.x, bp.y) + float(booms[bi][2]), bp.y)
+			Fx.explosion(M, bpos, float(booms[bi][3]))
+			Fx.shards(M, bpos, Vector3(-0.5, 1.0, 0.1), "debris", int(60 * float(booms[bi][3])), 20.0, 55.0, 0.2)
+			shake = maxf(shake, 0.5 + float(booms[bi][3]) * 0.25)
+			M.ui.flash(0.6 if bi == 1 else 0.28)
+			if bi == 1:
+				# główny wybuch: fala uderzeniowa zwala patrol z nóg
+				for a in actors:
+					a.kb = 0.0
+					a.from = a.c.node.position
+					Chars.one_shot(a.c.rig, "Hit_Knockback")
 			bi += 1
+		while wi2 < wins.size() and tt >= float(wins[wi2][0]):
+			var wp: Vector2 = wins[wi2][1]
+			var wpos := Vector3(wp.x, W.height(wp.x, wp.y) + float(wins[wi2][2]), wp.y)
+			Fx.shards(M, wpos, Vector3(-1.0, 0.25, 0.0), "glass", 110, 15.0, 26.0, 0.075)
+			Fx.jet(M, wpos, Vector3(-1.0, 0.35, 0.0), 1.0)
+			wi2 += 1
 		while fi < fires.size() and tt >= float(fires[fi][0]):
 			var fp: Vector2 = fires[fi][1]
 			nodes.append(Fx.fire(M, Vector3(fp.x, W.height(fp.x, fp.y) + float(fires[fi][2]), fp.y), float(fires[fi][3]), fire_lights))
 			fi += 1
 		for i in range(fire_lights.size()):
-			fire_lights[i].light_energy = (4.0 + i) * (0.7 + 0.5 * absf(sin(tt * 9.0 + i * 2.0) * sin(tt * 5.3 + i)))
+			fire_lights[i].light_energy = (4.0 + (i % 5)) * (0.7 + 0.5 * absf(sin(tt * 9.0 + i * 2.0) * sin(tt * 5.3 + i)))
+		glow.light_energy = clampf((tt - 2.6) / 2.0, 0.0, 1.0) * (2.6 + 1.1 * absf(sin(tt * 7.3) * sin(tt * 4.1 + 1.0)))
+		# --- patrol: odrzut, potem kuli się za osłoną
+		for a in actors:
+			if float(a.kb) < 0.0:
+				continue
+			a.kb = float(a.kb) + dt
+			var c = a.c
+			var away := Vector3(c.x - mill.x, 0.0, c.z - mill.y).normalized()
+			var kq := clampf(float(a.kb) / 0.55, 0.0, 1.0)
+			var np: Vector3 = a.from + away * 2.4 * (1.0 - (1.0 - kq) * (1.0 - kq))
+			c.x = np.x
+			c.z = np.z
+			c.node.position = Vector3(np.x, W.height(np.x, np.z), np.z)
+			if float(a.kb) > 1.7 and c.rig.cur != "Crouch_Idle":
+				Chars.play(c.rig, "Crouch_Idle", 1.0, 0.4)
+		# --- radiowóz: koguty, potem zbiornik paliwa
+		if not car_done:
+			var kf := int(tt / 0.28)
+			for k in range(car_lights.size()):
+				car_lights[k].light_energy = 7.0 if (kf + k) % 2 == 0 else 0.2
+			if tt >= 6.7:
+				car_done = true
+				car_t = 0.0
+				car_v = 7.5
+				for cl2 in car_lights:
+					cl2.light_energy = 0.0
+				var cp3 := boom_car.position + Vector3(0, 0.8, 0)
+				Fx.explosion(M, cp3, 1.7)
+				Fx.shards(M, cp3, Vector3(0, 1, 0), "glass", 120, 13.0, 75.0, 0.09)
+				Fx.shards(M, cp3, Vector3(0, 1, 0), "debris", 60, 16.0, 70.0, 0.22)
+				shake = 1.2
+				M.ui.flash(0.45)
+				_char(boom_car)
+		elif car_t >= 0.0:
+			# podrzucony wrak koziołkuje i spada
+			car_t += dt
+			car_v -= 12.0 * dt
+			boom_car.position.y += car_v * dt
+			boom_car.rotation.x += dt * 2.6
+			boom_car.rotation.z += dt * 1.1
+			if boom_car.position.y <= car_y + 0.35 and car_v < 0.0:
+				boom_car.position.y = car_y + 0.35
+				boom_car.rotation.x = PI * 0.92
+				car_t = -1.0
+				shake = maxf(shake, 0.5)
+				Sfx.play("door", 6.0)
+				nodes.append(Fx.fire(M, boom_car.position + Vector3(0, 0.4, 0), 1.4, fire_lights))
+		# --- narracja
 		if li < lines.size() and tt >= float(lines[li][0]) and not hit:
 			M.ui.cut_line(String(lines[li][1]))
 			li += 1
-		if not faded and tt >= hit_at + 0.9:
-			faded = true
-			M.ui.fade_to(1.0, 1.6)
+		# --- ktoś idzie od tyłu
+		if si < steps_at.size() and tt >= float(steps_at[si]):
+			Sfx.step("gravel", false)
+			si += 1
+			arig.root.visible = true
+		if not voiced and tt >= t_voice:
+			voiced = true
+			Sfx.mumble(0.8)
+			M.ui.cut_line("— Kuba.")
+		if not swung and tt >= t_swing:
+			swung = true
+			Chars.one_shot(arig, "Melee_Hook")
+		if not hit and tt >= hit_at:
+			hit = true
+			Sfx.knock()
+			M.ui.flash(0.95)
+			M.ui.cut_line("")
+			shake = 1.8
+			var bp2 := Vector2(eye.x, eye.z) + out_dir * 0.75 - md * 0.25
+			drop_bag.position = Vector3(bp2.x, W.height(bp2.x, bp2.y), bp2.y)
+			drop_bag.rotation.y = 0.9
+			drop_bag.visible = true
+		# --- kamera: huta → obrót na głos → upadek
+		var cam_pos := eye.lerp(cam_end, zoom)
+		var dir_m := (mill_pt - cam_pos).normalized()
+		var dir_l := (look0 - cam_pos).normalized()
+		var dir := dir_l.slerp(dir_m, e)
+		var head: Vector3 = arig.root.position + Vector3(0, 1.6, 0)
+		var turn := clampf((tt - t_turn) / 0.55, 0.0, 1.0)
+		turn = turn * turn * (3.0 - 2.0 * turn)
+		if turn > 0.0:
+			dir = dir.slerp((head - cam_pos).normalized(), turn)
+		var fov := lerpf(float(pl.cam.fov), 46.0, e * 0.6 + zoom * 0.4)
+		fov = lerpf(fov, 64.0, turn)
+		if hit:
+			fall = minf(1.0, fall + dt / 0.5)
+			var fe := 1.0 - (1.0 - fall) * (1.0 - fall)
+			cam_pos = cam_pos.lerp(Vector3(cam_pos.x - md.x * 0.35, ground + 0.2, cam_pos.z - md.y * 0.35), fe)
+			var low: Vector3 = (drop_bag.position if grabbed < 2 else arig.root.position) + Vector3(0, 0.45, 0)
+			dir = dir.slerp((low - cam_pos).normalized(), fe)
+			fov = lerpf(fov, 78.0, fe)
+		var target := cam_pos + dir * 6.0 + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * shake * 0.25
+		M.cine_cam(cam_pos, target, fov)
+		if hit:
+			M.cine.rotate_object_local(Vector3(0, 0, 1), (1.0 - (1.0 - fall) * (1.0 - fall)) * 1.15)
+			# zamroczenie: ciemno zaraz po ciosie, potem mętny obraz, na końcu czerń
+			var ht := tt - hit_at
+			var dark := lerpf(0.82, 0.3, clampf((ht - 0.25) / 1.2, 0.0, 1.0)) if ht < 4.4 else lerpf(0.3, 1.0, clampf((ht - 4.4) / 1.5, 0.0, 1.0))
+			M.ui.fade_rect.color.a = dark + 0.08 * sin(ht * 2.4)
+			if grabbed == 0 and ht >= 1.3:
+				grabbed = 1
+				# podchodzi do torby i schyla się po nią
+				var bd := Vector2(drop_bag.position.x - arig.root.position.x, drop_bag.position.z - arig.root.position.z)
+				arig.root.rotation.y = atan2(bd.x, bd.y)
+				Chars.one_shot(arig, "PickUp_Table")
+				M.ui.cut_line("— Leż, leż. Torbę biorę ja. Pozdrów Wiktora.")
+			if grabbed == 1 and ht >= 2.5:
+				grabbed = 2
+				drop_bag.visible = false
+				arig.root.rotation.y = atan2(out_dir.x, out_dir.y)
+				Chars.play(arig, "Walk", 1.0, 0.3)
+			if grabbed == 2:
+				arig.root.position += Vector3(out_dir.x, 0.0, out_dir.y) * 1.25 * dt
+				arig.root.position.y = W.height(arig.root.position.x, arig.root.position.z)
+			if li == 3 and ht >= 6.3:
+				li = 4
+				M.ui.cut_line("Kiedy się ocknąłem, nie było torby, Siwego ani laboratorium. Został dług.")
 		await get_tree().process_frame
 	_finish()
+
+
+## zwęglony wrak: wszystkie części dostają czarny, matowy lakier
+func _char(n: Node) -> void:
+	var burnt := Models.mat("0c0b0a", 0.95)
+	var stack: Array = [n]
+	while not stack.is_empty():
+		var nd: Node = stack.pop_back()
+		for ch in nd.get_children():
+			stack.append(ch)
+		if nd is MeshInstance3D:
+			(nd as MeshInstance3D).material_override = burnt
+		elif nd is Light3D:
+			(nd as Light3D).visible = false
 
 
 ## testy i zrzuty ekranu: od razu ustawia wskazany etap
@@ -579,7 +789,10 @@ func _finish() -> void:
 	Sfx.party_stop()
 	if _party_fx != null and is_instance_valid(_party_fx):
 		_party_fx.queue_free()
-	M.player.cam.rotation.z = 0.0
+	for c in [cop_a, cop_b]:
+		if c != null:
+			c["scripted"] = false
+			Chars.set_armed(c.rig, false)
 	# torba z ostatnią partią przepadła za garażami
 	G.S.inv = G.new_store()
 	G.S.stash.erase("lab")

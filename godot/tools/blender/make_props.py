@@ -100,5 +100,20 @@ def pistolet():
     export('pistolet')
 
 
-for f in (radio, pistolet):
-    f()
+def rurka():
+    """kawał stalowej rury z mufą i owiniętą taśmą rękojeścią — broń napastnika w prologu. Oś wzdłuż −X."""
+    reset()
+    st = mat('rura', '5a5c60', 0.5, 0.8)
+    p = [lathe('rura', [(0.0, 0.0), (0.016, 0.0), (0.016, 0.62), (0.0, 0.62)], st, 12)]
+    p.append(lathe('mufa', [(0.016, 0.52), (0.022, 0.52), (0.024, 0.53), (0.024, 0.6), (0.022, 0.61), (0.016, 0.61)], mat('mufa', '3a3c40', 0.55, 0.8), 6))
+    p.append(lathe('tasma', [(0.0165, 0.02), (0.019, 0.02), (0.019, 0.17), (0.0165, 0.17)], mat('tasma', '14151a', 0.85), 10))
+    ob = join('Rurka', p)
+    ob.rotation_euler = (0, math.radians(-90), 0)
+    weather([ob], 512, 0.7, 0.9, (0.14, 0.08, 0.04))
+    export('rurka')
+
+
+only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else []
+for f in (radio, pistolet, rurka):
+    if not only or f.__name__ in only:
+        f()

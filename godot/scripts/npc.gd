@@ -931,6 +931,10 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		c.node.visible = outside
 		if not outside:
 			continue
+		# w przerywniku patrolem steruje scena (prolog: odrzut przy wybuchu)
+		if c.get("scripted", false):
+			c.torch.visible = torch_on
+			continue
 		var dx: float = pp.x - c.x
 		var dz: float = pp.z - c.z
 		var dist := sqrt(dx * dx + dz * dz)

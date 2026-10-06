@@ -118,6 +118,84 @@ static func explosion(parent: Node, pos: Vector3, s := 1.0, sound := true) -> No
 	return g
 
 
+## odłamki lecące w jednym kierunku: `kind` = "glass" (błyszczące szybki) albo "debris" (ciemny gruz, cegły, blacha)
+static func shards(parent: Node, pos: Vector3, dir: Vector3, kind := "glass", amount := 140, speed := 14.0, spread := 32.0, size := 0.12) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	parent.add_child(p)
+	p.global_position = pos
+	p.amount = amount
+	p.lifetime = 3.2 if kind == "glass" else 4.0
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.randomness = 0.6
+	p.visibility_aabb = AABB(Vector3(-60, -20, -60), Vector3(120, 60, 120))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(0.3, 1.2, 1.6) if kind == "glass" else Vector3(1.0, 1.0, 1.0)
+	pm.direction = dir.normalized()
+	pm.spread = spread
+	pm.initial_velocity_min = speed * 0.35
+	pm.initial_velocity_max = speed
+	pm.gravity = Vector3(0, -9.8, 0)
+	pm.damping_min = 0.2
+	pm.damping_max = 1.2
+	pm.angular_velocity_min = -720.0
+	pm.angular_velocity_max = 720.0
+	pm.angle_min = 0.0
+	pm.angle_max = 360.0
+	pm.scale_min = 0.4
+	pm.scale_max = 1.6
+	pm.particle_flag_rotate_y = true
+	p.process_material = pm
+	var m := StandardMaterial3D.new()
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var mesh: Mesh
+	if kind == "glass":
+		var q := PrismMesh.new()
+		q.size = Vector3(size, size * 1.3, 0.004)
+		mesh = q
+		m.albedo_color = Color(0.75, 0.9, 1.0, 0.85)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.metallic = 0.3
+		m.roughness = 0.08
+		m.emission_enabled = true
+		m.emission = Color(1.0, 0.75, 0.45)
+		m.emission_energy_multiplier = 0.9
+	else:
+		var b := BoxMesh.new()
+		b.size = Vector3(size * 1.6, size, size * 1.2)
+		mesh = b
+		m.albedo_color = Color(0.16, 0.12, 0.1)
+		m.roughness = 1.0
+	mesh.surface_set_material(0, m)
+	p.draw_pass_1 = mesh
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	p.emitting = true
+	var tree := parent.get_tree()
+	if tree != null:
+		tree.create_timer(6.0, true, false, true).timeout.connect(func():
+			if is_instance_valid(p):
+				p.queue_free())
+	return p
+
+
+## jęzor ognia buchający z okna (krótki, kierunkowy)
+static func jet(parent: Node, pos: Vector3, dir: Vector3, s := 1.0) -> void:
+	var g := Node3D.new()
+	parent.add_child(g)
+	g.global_position = pos
+	var f := _burst(int(26 * s), 0.8, 2.2 * s, true, [Color(1.0, 0.98, 0.8, 1.0), Color(1.0, 0.7, 0.2, 0.95), Color(0.9, 0.25, 0.04, 0.6), Color(0.15, 0.03, 0.0, 0.0)], Vector2(5.0, 13.0) * s, 0.5 * s, Vector3(0, 4.0, 0), Vector2(0.4, 1.8))
+	var pm: ParticleProcessMaterial = f.process_material
+	pm.direction = dir.normalized()
+	pm.spread = 24.0
+	g.add_child(f)
+	var tree := parent.get_tree()
+	if tree != null:
+		tree.create_timer(4.0, true, false, true).timeout.connect(func():
+			if is_instance_valid(g):
+				g.queue_free())
+
+
 ## pożar po wybuchu: płomienie, słup dymu i migające światło (zostaje, dopóki ktoś go nie usunie)
 static func fire(parent: Node, pos: Vector3, s := 1.0, lights: Array = []) -> Node3D:
 	var g := Node3D.new()
