@@ -232,14 +232,14 @@ def auto(nazwa, typ, wersja=''):
         if wersja == 'policja':
             for sx in (-1, 1):
                 det.append(rbox('pas', (0.006, L2 * 1.5, 0.17), nieb, 0.0, (sx * (W / 2 + 0.003), 0.05, zb - 0.26), segs=1))
-                tx = text('napis', 'POLICJA', 0.13, mat('bialy_napis', 'f4f4f4', 0.5), (sx * (W / 2 + 0.008), -bp + 0.05, zb - 0.31))
+                tx = text('napis', 'POLICE', 0.13, mat('bialy_napis', 'f4f4f4', 0.5), (sx * (W / 2 + 0.008), -bp + 0.05, zb - 0.31))
                 tx.rotation_euler = (R90, 0, R90 if sx > 0 else -R90)
                 det.append(tx)
-            hp = text('napis_maska', 'POLICJA', 0.16, nieb, (0, -(cab[0][0] + fx) / 2 - 0.1, hood_z + 0.075), (math.radians(4), 0, 0))
+            hp = text('napis_maska', 'POLICE', 0.16, nieb, (0, -(cab[0][0] + fx) / 2 - 0.1, hood_z + 0.075), (math.radians(4), 0, 0))
             det.append(hp)
         else:
             for sx in (-1, 1):
-                tx = text('napis', 'POLICJA', 0.26, mat('bialy_napis', 'f4f4f4', 0.5), (sx * (cw / 2 * 0.975 + 0.012), 0.6, 1.3))
+                tx = text('napis', 'POLICE', 0.26, mat('bialy_napis', 'f4f4f4', 0.5), (sx * (cw / 2 * 0.975 + 0.012), 0.6, 1.3))
                 tx.rotation_euler = (R90, 0, R90 if sx > 0 else -R90)
                 det.append(tx)
                 det.append(rbox('krata', (0.012, 0.6, 0.4), czarny, 0.0, (sx * (cw / 2 * 0.97 + 0.012), -bp + 0.42, 1.55), segs=1))

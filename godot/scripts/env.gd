@@ -379,7 +379,14 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 	var on := night > 0.08 and not inside
 	for l in world.lamps:
 		if l.has_meta("tv"):
-			l.light_energy = 0.22 + 0.2 * absf(sin(t * 7.0 + sin(t * 2.3) * 3.0))
+			# telewizor nie migocze jak stroboskop: jasność zmienia się wraz z ujęciami (co parę sekund)
+			# i lekko faluje w ich trakcie; barwa przechodzi między chłodną a cieplejszą
+			var shot := floorf(t / 2.9)
+			var k0 := fmod(absf(sin(shot * 12.9898) * 43758.5453), 1.0)
+			var k1 := fmod(absf(sin((shot + 1.0) * 12.9898) * 43758.5453), 1.0)
+			var kk := lerpf(k0, k1, smoothstep(0.92, 1.0, fmod(t / 2.9, 1.0)))
+			l.light_energy = 0.28 + 0.34 * kk + 0.04 * sin(t * 1.7)
+			l.light_color = Color(0.55, 0.68, 1.0).lerp(Color(1.0, 0.86, 0.7), clampf(kk * 1.4 - 0.5, 0.0, 0.7))
 			continue
 		if l.has_meta("fire"):
 			var fp := float(l.get_meta("fire"))

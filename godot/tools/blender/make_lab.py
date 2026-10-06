@@ -440,25 +440,64 @@ def tablica():
     export('lab_tablica')
 
 
+def _kanister(name, col, pos, rot):
+    """blaszany kanister 20 l: skośne ramię z wlewem, trzy uchwyty, szew dookoła, wytłoczone X w ramce, zamknięcie z dźwignią"""
+    m = mat(name, col, 0.5, 0.35)
+    dark = mat('korek_b', '14181f', 0.6, 0.3)
+    W_, D_, H_ = 0.345, 0.165, 0.47
+    out = [(-W_ / 2, 0.0), (W_ / 2, 0.0), (W_ / 2, 0.355), (W_ / 2 - 0.085, H_), (-W_ / 2, H_)]
+    b = [profile('korpus', out, D_, m, 0.014)]
+    # szew: cienki kołnierz w płaszczyźnie środka
+    seam = [(-W_ / 2 - 0.006, -0.004), (W_ / 2 + 0.006, -0.004), (W_ / 2 + 0.006, 0.357), (W_ / 2 - 0.082, H_ + 0.006), (-W_ / 2 - 0.006, H_ + 0.006)]
+    b.append(profile('szew', seam, 0.008, m, 0.002))
+    for sy in (-1, 1):
+        y = sy * (D_ / 2 + 0.001)
+        # ramka wytłoczenia i X
+        for (cx, cz, w, h) in ((0, 0.335, 0.27, 0.012), (0, 0.075, 0.27, 0.012), (-0.135, 0.205, 0.012, 0.27), (0.135, 0.205, 0.012, 0.27)):
+            b.append(rbox('ramka', (w, 0.008, h), m, 0.003, (cx - 0.012, y, cz), segs=1))
+        for a in (0.76, -0.76):
+            b.append(rbox('x', (0.33, 0.008, 0.02), m, 0.003, (-0.012, y, 0.205), (0, a, 0), segs=1))
+    # trzy równoległe uchwyty na płaskiej części góry
+    for sy in (-0.045, 0.0, 0.045):
+        b.append(tube('uchwyt', [(-0.135, sy, H_ - 0.004), (-0.125, sy, H_ + 0.042), (0.0, sy, H_ + 0.042), (0.012, sy, H_ - 0.004)], 0.0095, m, 8))
+    # wlew na skośnym ramieniu: szyjka, pokrywa i dźwignia zamknięcia
+    ang = math.atan2(0.085, H_ - 0.355)
+    nx, nz = W_ / 2 - 0.045, 0.415
+    neck = lathe('szyjka', [(0.03, 0.0), (0.03, 0.03), (0.034, 0.03), (0.034, 0.045), (0.0, 0.05)], dark, 12)
+    neck.rotation_euler = (0, math.radians(90) - ang, 0)
+    neck.location = (nx, 0, nz)
+    b.append(neck)
+    lev = rbox('dzwignia', (0.085, 0.022, 0.008), dark, 0.003, (nx + 0.02, 0, nz + 0.062), (0, -(math.radians(90) - ang) + 0.2, 0))
+    b.append(lev)
+    b.append(text('poj', '20 L', 0.035, m, (-0.03, -(D_ / 2 + 0.006), 0.03)))
+    g = empty(name + '_g', pos)
+    ob = join(name, b, g)
+    g.rotation_euler = rot
+    return g
+
+
 def kanistry():
-    """trzy kanistry 20 l (dwa stojące, jeden przewrócony) z żebrowaniem X i korkami"""
+    """dwa blaszane kanistry 20 l (zielony stoi, czerwony przewrócony), biały plastikowy baniak 10 l z etykietą i lejek"""
     reset()
-    p = []
-    for k, (x, y, rot, col) in enumerate(((0.0, 0.0, (0, 0, 0.1), '5a6a3a'), (0.4, 0.05, (0, 0, -0.3), 'b02a20'), (0.2, -0.45, (R90, 0, 0.7), '2c4f7a'))):
-        m = mat('kanister%d' % k, col, 0.5, 0.3)
-        g = empty('k%d' % k, (x, y, 0.0))
-        b = [rbox('korpus', (0.34, 0.16, 0.44), m, 0.03, (0, 0, 0.23), segs=4, parent=None)]
-        # wytłoczenie w kształcie X po obu stronach
-        for sy in (-1, 1):
-            for a in (0.75, -0.75):
-                b.append(rbox('x', (0.3, 0.012, 0.03), m, 0.004, (0, sy * 0.082, 0.23), (0, a, 0), segs=1))
-        b.append(tube('uchwyt', [(-0.1, 0, 0.44), (-0.08, 0, 0.5), (0.04, 0, 0.5), (0.06, 0, 0.44)], 0.012, m, 8))
-        b.append(lathe('wlew', [(0.022, 0.0), (0.022, 0.05), (0.03, 0.05), (0.03, 0.075), (0.0, 0.08)], mat('korek_b', '14181f', 0.6), 12, loc=(0.12, 0, 0.44)))
-        ob = join('Kanister%d' % k, b, g)
-        g.rotation_euler = rot
-        if k == 2:
-            g.location.z = 0.08
-    weather([o for o in bpy.context.scene.objects if o.type == 'MESH'], 512, 0.55, 0.8)
+    _kanister('KanisterZ', '55653a', (0.0, 0.0, 0.0), (0, 0, 0.12))
+    g2 = _kanister('KanisterC', 'a8281f', (0.25, -0.5, 0.085), (math.radians(90), 0, 0.75))
+    # baniak z HDPE: obły, z wtopionym uchwytem i czerwoną nakrętką
+    hd = mat('hdpe', 'e4e2d6', 0.45)
+    p = [rbox('baniak', (0.2, 0.24, 0.3), hd, 0.035, (0.46, 0.06, 0.15), segs=4)]
+    p.append(rbox('ramie', (0.2, 0.2, 0.05), hd, 0.02, (0.46, 0.04, 0.305), segs=3))
+    p.append(tube('raczka', [(0.46, 0.13, 0.31), (0.46, 0.15, 0.37), (0.46, 0.02, 0.385), (0.46, -0.03, 0.34)], 0.014, hd, 8))
+    p.append(lathe('nakretka', [(0.0, 0.0), (0.028, 0.0), (0.03, 0.03), (0.0, 0.033)], mat('nakretka', 'b8261c', 0.5), 14, loc=(0.46, -0.06, 0.33)))
+    p.append(rbox('etykieta', (0.004, 0.16, 0.12), mat('etykieta', 'f0ece0', 0.7), 0.0, (0.359, 0.06, 0.16), segs=1))
+    lab = text('napis', 'HCl 33%', 0.03, mat('tusz', '15161a', 0.7), (0.3565, 0.06, 0.175))
+    lab.rotation_euler = (math.radians(90), 0, -math.radians(90))
+    p.append(lab)
+    p.append(rbox('romb', (0.004, 0.05, 0.05), mat('ostrz', 'd8a81e', 0.6), 0.0, (0.3565, 0.06, 0.125), (math.radians(45), 0, 0), segs=1))
+    join('Baniak', p)
+    # lejek odłożony obok
+    f = lathe('Lejek', [(0.012, 0.0), (0.014, 0.09), (0.085, 0.16), (0.09, 0.16), (0.018, 0.085), (0.016, 0.0)], mat('lejek', 'd0452b', 0.5), 16, loc=(0.16, 0.3, 0.0))
+    f.rotation_euler = (math.radians(100), 0, 0.5)
+    f.location.z = 0.085
+    weather([o for o in bpy.context.scene.objects if o.type == 'MESH'], 512, 0.6, 0.75)
     export('lab_kanistry')
 
 

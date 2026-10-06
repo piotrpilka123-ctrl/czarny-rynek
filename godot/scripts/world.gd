@@ -3388,8 +3388,20 @@ func _interiors() -> void:
 	Interior.can(g, Vector3(cx - 1.3, 0.0, d * 0.5 - 1.1), "b0382c", true)
 	_lm(g, "dom_szafka_tv", cx - 1.55, -d * 0.5 + 0.26, 0.0, 0.0, Vector2(0.6, 0.22))
 	_rp(g, "television_02", cx - 1.55, -d * 0.5 + 0.28, 0.0, 0.6, 0.5)
-	var tvl := _room_light(g, cx - 1.55, -d * 0.5 + 0.9, 1.3, 0.35, Color(0.5, 0.65, 1.0), 3.0)
-	tvl.shadow_enabled = false
+	# poświata telewizora wychodzi z ekranu w głąb pokoju (nie świeci na ścianę za nim) i rzuca cienie mebli
+	var tvl := SpotLight3D.new()
+	tvl.position = Vector3(cx - 1.55, 0.98, -d * 0.5 + 0.46)
+	tvl.rotation = Vector3(-0.08, PI, 0.0)
+	tvl.spot_range = 5.5
+	tvl.spot_angle = 68.0
+	tvl.spot_angle_attenuation = 0.5
+	tvl.spot_attenuation = 1.3
+	tvl.light_color = Color(0.55, 0.68, 1.0)
+	tvl.light_energy = 0.5
+	tvl.light_specular = 0.2
+	tvl.shadow_enabled = true
+	tvl.shadow_blur = 2.0
+	g.add_child(tvl)
 	tvl.set_meta("tv", true)
 	lamps.append(tvl)
 	# aneks kuchenny pod wschodnią ścianą: szafki ze zlewem, kuchenka, lodówka
@@ -4053,8 +4065,20 @@ func _lab_room() -> void:
 	# --- „zabezpieczenie”: ładunki na ścianach, czerwone diody widać z daleka
 	for e in [[-w * 0.5 + 0.06, -2.6, PI / 2.0], [w * 0.5 - 0.06, 2.4, -PI / 2.0], [-2.4, -d * 0.5 + 0.06, 0.0], [4.6, d * 0.5 - 0.06, PI]]:
 		_lm(g, "lab_ladunek", cx + e[0], e[1], e[2], 1.5)
-		var rl := _room_light(g, cx + float(e[0]) * 0.97, float(e[1]) * 0.97, 1.5, 0.22, Color(1.0, 0.1, 0.05), 1.6)
+		# dioda zapalnika: maleńki punkt, który mruga co sekundę i ledwie barwi ścianę wokół (nie czerwona kula światła)
+		var rl := OmniLight3D.new()
+		rl.position = Vector3(cx + float(e[0]) * 0.985, 1.52, float(e[1]) * 0.985)
+		rl.light_color = Color(1.0, 0.08, 0.04)
+		rl.light_energy = 0.0
+		rl.omni_range = 0.55
+		rl.omni_attenuation = 2.0
 		rl.shadow_enabled = false
+		rl.light_specular = 0.0
+		g.add_child(rl)
+		var bt := rl.create_tween().set_loops()
+		bt.tween_interval(0.85 + 0.07 * float(absi(int(float(e[0]) * 10.0)) % 4))
+		bt.tween_property(rl, "light_energy", 0.35, 0.03)
+		bt.tween_property(rl, "light_energy", 0.0, 0.12)
 	# --- pakowanie: stół z ostatnią partią i torbą
 	var tx := cx + 1.6
 	var tz := 2.4
