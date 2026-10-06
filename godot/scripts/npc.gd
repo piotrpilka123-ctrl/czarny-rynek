@@ -2,6 +2,7 @@ extends Node3D
 ## Postacie: przechodnie, umówieni klienci, policja (piesze patrole i radiowóz),
 ## stali mieszkańcy osiedla, Wujek Staś, bezpański pies.
 
+const Twist = preload("res://scripts/twist.gd")
 const Props = preload("res://scripts/props.gd")
 const Models = preload("res://scripts/models.gd")
 const Chars = preload("res://scripts/chars.gd")
@@ -197,10 +198,42 @@ func spawn_cop(at_station: bool) -> Dictionary:
 	if torch_own:
 		rig.root.add_child(torch)
 	c["torch"] = torch
+	c["torch_rot"] = torch.rotation
+	# rozglądanie się: skręt barków i głowy (latarka na szelce idzie za nimi), każdy patrol we własnym rytmie
+	var tw: SkeletonModifier3D = null
+	if not torch_own and rig.get("skel") != null:
+		tw = Twist.new()
+		(rig.skel as Skeleton3D).add_child(tw)
+		if not tw.bind(rig.skel):
+			tw.queue_free()
+			tw = null
+	c["twist"] = tw
+	c["scan"] = 0.0
+	c["scan_amp"] = 0.0
+	c["scan_ph"] = randf() * TAU
+	c["scan_w"] = randf_range(0.8, 1.15)
 	_pick_next(c, false)
 	cops.append(c)
 	all.append(c)
 	return c
+
+
+## Rozglądanie się patrolu: `amp` to połowa kąta, o jaki odwraca barki (i snop latarki) od kierunku marszu.
+func _scan(c: Dictionary, dt: float, amp: float) -> void:
+	c.scan_amp = lerpf(float(c.scan_amp), amp, minf(1.0, dt * 1.8))
+	var a: float = float(c.scan_amp)
+	var st: float = G.now * float(c.scan_w) + float(c.scan_ph)
+	# dwa nałożone rytmy: wolny przegląd terenu i krótsze zerknięcia, żeby ruch nie był mechaniczny
+	var yaw: float = a * (sin(st) * 0.78 + sin(st * 2.3 + 1.1) * 0.22)
+	c.scan = yaw
+	var base: Vector3 = c.torch_rot
+	var tw = c.get("twist")
+	if tw != null:
+		tw.yaw = yaw
+		# sama latarka kiwa się lekko góra–dół: raz świeci pod nogi, raz dalej
+		c.torch.rotation = Vector3(base.x + sin(st * 1.6 + 0.5) * a * 0.14, base.y, base.z)
+	else:
+		c.torch.rotation = Vector3(base.x + sin(st * 1.6 + 0.5) * a * 0.14, base.y + yaw, base.z)
 
 
 func remove_cop(c: Dictionary) -> void:
@@ -1044,16 +1077,26 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		# w przerywniku patrolem steruje scena (prolog: odrzut przy wybuchu)
 		if c.get("scripted", false):
 			c.torch.visible = torch_on
+			_scan(c, dt, 0.0)
 			continue
 		var dx: float = pp.x - c.x
 		var dz: float = pp.z - c.z
 		var dist := sqrt(dx * dx + dz * dz)
-		c.torch.visible = torch_on and dist < 75.0
+		c.torch.visible = torch_on and dist < 95.0
+		# przeczesuje teren: stojąc rozgląda się szeroko, idąc omiata drogę przed sobą; w pościgu patrzy prosto
+		var amp := 0.0
+		if float(c.hear_t) <= 0.0:
+			match c.state:
+				"patrol", "post":
+					amp = 0.62 if (float(c.idle) > 0.0 or c.state == "post") else 0.36
+				"search":
+					amp = 0.7
+		_scan(c, dt, amp)
 		c.look_t -= dt
 		if c.look_t <= 0.0:
 			c.look_t = 0.2
 			# w pościgu patrzy uważniej (dalej), ale dalej tylko przed siebie
-			var lvl := see_level(c.x, c.z, c.node.rotation.y, VIEW * (1.4 if c.state == "chase" else 1.0), torch_on)
+			var lvl := see_level(c.x, c.z, c.node.rotation.y + float(c.scan), VIEW * (1.4 if c.state == "chase" else 1.0), torch_on)
 			c.lvl = lvl
 			if c.state == "chase":
 				c.notice = 1.0 if lvl > 0.0 else maxf(0.0, float(c.notice) - 0.1)

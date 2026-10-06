@@ -41,6 +41,7 @@ var lab_fx := {}                # światła i rekwizyty laboratorium sterowane p
 var lab_exit := Vector2.ZERO    # gdzie w hali są tylne drzwi (znacznik ucieczki w prologu)
 var mill_door_light: SpotLight3D = null   # reflektor nad tylnymi drzwiami huty od zewnątrz
 var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
+var drop_marks := {}            # znaki sprejem przy skrytkach: id → Decal
 var covers: Array = []          # krzaki, za którymi da się przyczaić: Vector3(x, z, promień) w metrach świata
 var hides: Array = []           # kryjówki na czas pościgu (altanki śmietnikowe): {x, z, rot, name}
 var _lamp_pts: PackedVector3Array = PackedVector3Array()
@@ -1609,10 +1610,11 @@ func _yard() -> void:
 	var placed: Array = []
 	var tr := RandomNumberGenerator.new()
 	tr.seed = 20261
-	var spots := [[0.5, -70.8], [16.5, -70.6], [31.5, -71.4], [45.0, -70.8], [-6.0, -61.6], [14.0, -60.4], [27.0, -61.6], [41.0, -60.4], [-78.0, -70.8], [-47.0, -70.8], [-36.0, -70.6],
-		[-22.0, -98.5], [16.0, -98.0], [-44.0, -117.0], [-64.0, -98.0]]
-	for i in range(26):
-		spots.append([tr.randf_range(-96.0, 70.0), tr.randf_range(-124.0, -56.0)])
+	# dwa drzewa zostają przy samym chodniku, reszta rośnie w głębi trawników
+	var spots := [[16.5, -70.6], [-47.0, -70.8], [-22.0, -98.5], [16.0, -98.0], [-44.0, -117.0], [-64.0, -98.0]]
+	for i in range(90):
+		spots.append([tr.randf_range(-96.0, 70.0), tr.randf_range(-124.0, -52.0)])
+	var by_path := 0
 	for e in spots:
 		var x := float(e[0])
 		var z := float(e[1])
@@ -1626,6 +1628,9 @@ func _yard() -> void:
 			continue
 		if z < -72.6 and z > -78.5 and x > -3.0 and x < 41.0:
 			continue
+		var edge: bool = _path_dist(x, z) < 6.5 or not (_soft_ground(x - 4.0, z) and _soft_ground(x + 4.0, z) and _soft_ground(x, z - 4.0) and _soft_ground(x, z + 4.0))
+		if edge and by_path >= 2:
+			continue
 		var close := false
 		for q in placed:
 			if (q as Vector2).distance_to(Vector2(x, z)) < 7.5:
@@ -1634,6 +1639,8 @@ func _yard() -> void:
 		if close or not is_free(x * SC, z * SC, 1.2):
 			continue
 		placed.append(Vector2(x, z))
+		if edge:
+			by_path += 1
 		var t: Node3D
 		if k % 3 == 2:
 			# niższe, rozłożyste drzewo między wysokimi
@@ -1648,6 +1655,8 @@ func _yard() -> void:
 		t.position.y -= 0.2
 		tree_pos.append(Vector2(x, z))
 		k += 1
+	if G.test_mode:
+		print("DRZEWA podwórka: %d (przy chodniku %d)" % [k, by_path])
 	# niskie zielone barierki wzdłuż chodnika przed blokiem i żywopłot po drugiej stronie
 	var bs := 2.0 * INV
 	var bx := -1.0
@@ -1874,14 +1883,46 @@ func _rail() -> void:
 	tl.set_meta("always", true)
 	city.add_child(tl)
 	lamps.append(tl)
-	# słupy trakcyjne
+	# słupy trakcyjne z siecią: lina nośna zwisa między słupami, przewód jezdny idzie prosto, co kawałek wieszak
+	var wires: Array = []
+	var last := Vector3.ZERO
 	z = -160.0
 	while z < 165.0:
 		if z < 2.0 or z > 38.0:
 			var gy := hd(149.6, z)
-			Models.cyl(city, 0.09, 0.12, 7.5, Vector3(149.6, gy + 3.7, z), steel, Vector3.ZERO, 6)
-			Models.box(city, Vector3(4.6, 0.1, 0.1), Vector3(147.5, gy + 7.0, z), steel)
+			var mast := Stations.model("ul_slup_trak")
+			if mast != null:
+				Props.set_range(_place(mast, 149.6, z, 0.0, 0.5, 0.5, 7.8), 190.0)
+			else:
+				Models.cyl(city, 0.09, 0.12, 7.5, Vector3(149.6, gy + 3.7, z), steel, Vector3.ZERO, 6)
+				Models.box(city, Vector3(4.6, 0.1, 0.1), Vector3(147.5, gy + 7.0, z), steel)
+			var at := Vector3(145.0, gy, z)
+			if last != Vector3.ZERO:
+				_wire(wires, last + Vector3(0, 6.6, 0), at + Vector3(0, 6.6, 0), 0.75, 10)
+				_wire(wires, last + Vector3(0, 5.34, 0), at + Vector3(0, 5.34, 0), 0.0, 1)
+				for k in range(1, 6):
+					var t := float(k) / 6.0
+					var top := (last + Vector3(0, 6.6, 0)).lerp(at + Vector3(0, 6.6, 0), t) - Vector3(0, 0.75 * 4.0 * t * (1.0 - t), 0)
+					_wire(wires, top, Vector3(top.x, lerpf(last.y, at.y, t) + 5.34, top.z), 0.0, 1)
+			last = at
 		z += 40.0
+	# linia napowietrzna wzdłuż siatki po stronie torów: betonowe słupy z izolatorami i trzy zwisające przewody
+	var prev: Array = []
+	# (przerwa między −100 a −62: stamtąd patrzy się na hutę w finale prologu — słup nie może zasłaniać wybuchu)
+	for pz in [-152.0, -126.0, -100.0, -62.0, -30.0, 36.0, 62.0, 88.0, 114.0]:
+		var px := 131.4
+		var pole := Stations.model("ul_slup_en")
+		if pole == null:
+			break
+		Props.set_range(_place(pole, px, pz, 0.0, 0.3, 0.3, 9.3), 190.0)
+		var py := hd(px, pz)
+		var tips := [Vector3(px - 0.9 * INV, py + 8.78, pz + 0.12 * INV), Vector3(px, py + 9.64, pz), Vector3(px + 0.9 * INV, py + 8.78, pz + 0.12 * INV)]
+		if not prev.is_empty():
+			var span: float = absf(pz - float((prev[1] as Vector3).z)) * SC
+			for i in range(3):
+				_wire(wires, prev[i], tips[i], 0.0014 * span * span * (1.0 + 0.12 * i), 12)
+		prev = tips
+	_multimesh(wires, Vector3(0.028 * INV, 0.028, 1.0), Models.mat("17191b", 0.55, 0.5), false)
 	for e in [[127.0, -64.0], [129.0, -68.5], [126.0, -70.0], [128.0, 40.0], [163.0, -30.0], [161.0, 60.0], [129.0, 90.0], [128.5, -120.0]]:
 		_bush(e[0], e[1], rng.randf_range(1.0, 1.7))
 
@@ -1951,30 +1992,37 @@ func _garage_row_ew(x0: float, x1: float, z0: float, north: bool, first_no: int)
 ## Ogrodzenie z dziurami: `holes` to współrzędne (x dla płotu wschód–zachód, z dla północ–południe),
 ## w których zostaje przejście szerokie na człowieka, z odgiętą siatką i wydeptaną ścieżką.
 ## `holes`: miejsca, w których da się przejść normalnie; `crawl`: przełazy tylko na kucaka
-func _fence_run(ax: float, az: float, bx: float, bz: float, kind: String, h: float, holes: Array, crawl: Array = []) -> void:
+## `gates`: furtki — porządne przejścia ze słupkami i uchylonym skrzydłem. Zasada: na jeden płot najwyżej jedna
+## wyrwa (dziura albo przełaz), a przejść jest więcej dzięki furtkom.
+func _fence_run(ax: float, az: float, bx: float, bz: float, kind: String, h: float, holes: Array, crawl: Array = [], gates: Array = []) -> void:
 	var ew := absf(bx - ax) > absf(bz - az)
 	var lo := minf(ax, bx) if ew else minf(az, bz)
 	var hi := maxf(ax, bx) if ew else maxf(az, bz)
 	var cuts: Array = []
 	for c in holes:
-		cuts.append([float(c), false])
+		cuts.append([float(c), 0])
 	for c in crawl:
-		cuts.append([float(c), true])
+		cuts.append([float(c), 1])
+	for c in gates:
+		cuts.append([float(c), 2])
 	cuts.sort_custom(func(a, b): return a[0] < b[0])
 	var from := lo
 	for c in cuts:
 		var cc: float = c[0]
-		var gap := 1.0 if c[1] else 1.35
+		var gap: float = [1.35, 1.0, 1.5][int(c[1])]
 		if cc - gap <= from + 1.0 or cc + gap >= hi - 1.0:
 			continue
 		if ew:
 			_barrier(from, az, cc - gap, az, kind, h)
 		else:
 			_barrier(ax, from, ax, cc - gap, kind, h)
-		if c[1]:
-			_crawl_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
-		else:
-			_fence_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
+		match int(c[1]):
+			1:
+				_crawl_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
+			2:
+				_fence_gate(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
+			_:
+				_fence_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
 		from = cc + gap
 	if ew:
 		_barrier(from, az, hi, az, kind, h)
@@ -2033,6 +2081,70 @@ func _crawl_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: floa
 	crawls.append({"x": x * SC, "z": z * SC})
 	# wydeptana ścieżka
 	_pl(3, Vector2(x, z) - across * 3.5, Vector2(x, z) + across * 3.5, 1.1)
+
+
+## Przewód rozpięty między dwoma punktami (plan miasta): `n` odcinków, zwis `sag` metrów w połowie.
+## Dopisuje przekształcenia pudełek o długości 1 do `out` — rysuje je potem jeden _multimesh.
+func _wire(out: Array, a: Vector3, b: Vector3, sag: float, n: int) -> void:
+	var from := a
+	for i in range(1, n + 1):
+		var t := float(i) / float(n)
+		var p := a.lerp(b, t)
+		p.y -= sag * 4.0 * t * (1.0 - t)
+		var v := p - from
+		if v.length() > 0.001:
+			var up := Vector3.UP if absf(v.normalized().y) < 0.95 else Vector3.RIGHT
+			out.append(Transform3D(Basis.looking_at(v.normalized(), up).scaled_local(Vector3(1.0, 1.0, v.length())), (from + p) * 0.5))
+		from = p
+
+
+## Furtka: słupki (w murze filary z czapami), skrzydło uchylone na oścież i wydeptana ścieżka.
+## Przejdzie tędy każdy — także patrol.
+func _fence_gate(x: float, z: float, ew: bool, kind: String, h: float, gap: float) -> void:
+	var along := Vector2(1, 0) if ew else Vector2(0, 1)
+	var across := Vector2(0, 1) if ew else Vector2(1, 0)
+	var by := hd(x, z)
+	var steel := Models.mat("3c443e", 0.55, 0.6)
+	var hinge: Vector2 = Vector2(x, z) - along * gap
+	if kind == "mur":
+		var cm := Props.pbr("dirty_concrete", 0.35, Color(0.72, 0.72, 0.7))
+		var cap := Models.mat("5a5a58", 0.9)
+		for sd in [-1.0, 1.0]:
+			var pp: Vector2 = Vector2(x, z) + along * sd * (gap + 0.36)
+			Models.box(city, Vector3(0.72, h + 0.3, 0.72), Vector3(pp.x, by + (h + 0.3) * 0.5 - 0.1, pp.y), cm)
+			Models.box(city, Vector3(0.92, 0.1, 0.92), Vector3(pp.x, by + h + 0.25, pp.y), cap, Vector3.ZERO, false)
+	else:
+		for sd in [-1.0, 1.0]:
+			var pp2: Vector2 = Vector2(x, z) + along * sd * gap
+			Models.cyl(city, 0.055, 0.055, h + 0.14, Vector3(pp2.x, by + (h + 0.14) * 0.5, pp2.y), steel, Vector3.ZERO, 8)
+			Models.cyl(city, 0.075, 0.075, 0.04, Vector3(pp2.x, by + h + 0.15, pp2.y), steel, Vector3.ZERO, 8)
+	# skrzydło: rama z rur, wypełnienie jak w płocie (w murze — pręty), otwarte na oścież
+	var len := gap * 2.0 - 0.12
+	var lh := minf(h, 1.9) - 0.16
+	var leaf := Node3D.new()
+	leaf.position = Vector3(hinge.x, by + 0.1, hinge.y)
+	leaf.rotation.y = (0.0 if ew else -PI / 2.0) + deg_to_rad(104.0 + rng.randf_range(-14.0, 10.0))
+	city.add_child(leaf)
+	for yy in [0.0, lh]:
+		Models.cyl(leaf, 0.022, 0.022, len, Vector3(len * 0.5, yy, 0.0), steel, Vector3(0, 0, PI / 2.0), 6)
+	for xx in [0.04, len]:
+		Models.cyl(leaf, 0.022, 0.022, lh, Vector3(xx, lh * 0.5, 0.0), steel, Vector3.ZERO, 6)
+	if kind == "mur":
+		for i in range(1, 7):
+			Models.cyl(leaf, 0.011, 0.011, lh, Vector3(len * float(i) / 7.0, lh * 0.5, 0.0), steel, Vector3.ZERO, 5)
+		Models.cyl(leaf, 0.016, 0.016, len, Vector3(len * 0.5, lh * 0.55, 0.0), steel, Vector3(0, 0, PI / 2.0), 5)
+	else:
+		var fill := Props.fence_panel(len - 0.06, lh - 0.04, "mesh" if kind == "siatka" else "sheet")
+		fill.position = Vector3(len * 0.5, 0.02, 0.0)
+		leaf.add_child(fill)
+		# zastrzał po przekątnej, żeby skrzydło nie opadało
+		var dg := sqrt(len * len + lh * lh)
+		Models.cyl(leaf, 0.014, 0.014, dg, Vector3(len * 0.5, lh * 0.5, 0.0), steel, Vector3(0, 0, atan2(len, lh)), 5)
+	# zawiasy i skobel
+	for yy in [0.25, lh - 0.25]:
+		Models.box(leaf, Vector3(0.1, 0.07, 0.05), Vector3(0.0, yy, 0.0), steel, Vector3.ZERO, false)
+	Models.box(leaf, Vector3(0.05, 0.12, 0.07), Vector3(len, lh * 0.5, 0.0), steel, Vector3.ZERO, false)
+	_pl(3, Vector2(x, z) - across * 5.0, Vector2(x, z) + across * 5.0, 1.7)
 
 
 func _fence_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: float) -> void:
@@ -2163,26 +2275,26 @@ func _dense() -> void:
 	# --- mury i płoty: ciasne podwórka, mniej otwartej przestrzeni
 	# Płoty mają dziury: GPS prowadzi oficjalnymi przejściami (schody, tunel, bramy),
 	# ale kto zna teren, przejdzie na skróty przez wyrwę w siatce.
-	_fence_run(-98.0, -31.6, -34.0, -31.6, "siatka", 1.8, [-66.0])
+	_fence_run(-98.0, -31.6, -34.0, -31.6, "siatka", 1.8, [-66.0], [], [-86.0, -45.0])
 	_fence_run(-20.0, -31.6, 9.0, -31.6, "siatka", 1.8, [], [-6.0])
-	_fence_run(15.0, -31.6, 54.0, -31.6, "siatka", 1.8, [37.0], [22.0])
-	_fence_run(66.0, -31.6, 104.0, -31.6, "siatka", 1.8, [88.0], [74.0])
-	_fence_run(-90.0, 57.6, -50.0, 57.6, "mur", 2.2, [], [-70.0])
+	_fence_run(15.0, -31.6, 54.0, -31.6, "siatka", 1.8, [37.0], [], [23.0, 48.0])
+	_fence_run(66.0, -31.6, 104.0, -31.6, "siatka", 1.8, [88.0], [], [74.0])
+	_fence_run(-90.0, 57.6, -50.0, 57.6, "mur", 2.2, [], [-70.0], [-56.0])
 	_barrier(-44.0, 57.6, -9.0, 57.6, "mur", 2.2)
 	_fence_run(8.0, 57.6, 40.0, 57.6, "mur", 2.2, [], [24.0])
 	_barrier(46.0, 52.0, 68.0, 52.0, "blacha", 2.0)
 	_barrier(-48.5, 60.0, -48.5, 96.0, "siatka", 1.8)
-	_fence_run(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8, [123.0], [142.0])
+	_fence_run(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8, [123.0], [], [146.0])
 	_barrier(-92.0, -17.6, -62.0, -17.6, "mur", 2.0)
 	_fence_run(-54.0, -17.6, -31.0, -17.6, "mur", 2.0, [], [-42.0])
 	_barrier(-23.0, -17.6, 8.0, -17.6, "mur", 2.0)
 	_fence_run(16.0, -17.6, 46.0, -17.6, "mur", 2.0, [31.0])
 	_barrier(40.0, 100.0, 40.0, 130.0, "blacha", 2.0)
-	_fence_run(128.6, 32.0, 128.6, 120.0, "siatka", 1.8, [78.0], [50.0, 104.0])
-	_fence_run(128.6, -160.0, 128.6, -72.0, "siatka", 1.8, [-112.0], [-90.0])
-	_fence_run(128.6, -60.0, 128.6, -20.0, "siatka", 1.8, [-40.0])
+	_fence_run(128.6, 32.0, 128.6, 120.0, "siatka", 1.8, [78.0], [], [50.0, 104.0])
+	_fence_run(128.6, -160.0, 128.6, -72.0, "siatka", 1.8, [], [-90.0], [-112.0, -140.0])
+	_fence_run(128.6, -60.0, 128.6, -20.0, "siatka", 1.8, [-40.0], [], [-27.0])
 	# nowe ogrodzenia w miejscach, gdzie dało się biegać na przełaj
-	_fence_run(44.0, 127.0, 104.0, 127.0, "blacha", 2.0, [71.0], [92.0])  # garaże / wysypisko
+	_fence_run(44.0, 127.0, 104.0, 127.0, "blacha", 2.0, [71.0], [], [92.0, 52.0])  # garaże / wysypisko
 	_fence_run(-146.0, 57.6, -113.0, 57.6, "siatka", 1.8, [-130.0])       # tyły kamienicy od strony parku
 	_fence_run(104.0, -60.0, 104.0, -34.0, "siatka", 1.8, [])             # skarpa przy nasypie
 	ctl1_tex.update(img1)
@@ -2591,14 +2703,70 @@ func _multimesh(xforms: Array, size: Vector3, material: Material, shadow: bool) 
 	city.add_child(mi)
 
 
-## znaczniki skrytek (dyskretne: kreda na murze) — widoczne tylko z bliska
+## Znaki skrytek: mały biały szablon sprejem (liść, czaszka, woreczek…) u stóp najbliższej ściany albo grata.
+## Dobrze schowany — widać go dopiero z kilku kroków i tylko przy skrytkach z terenu gracza.
 func _markers() -> void:
+	var k := 0
 	for d in D.DROPS:
-		var dx: float = float(d.x) * INV
-		var dz: float = float(d.z) * INV
-		var l := _sign("x", Vector3(dx, hd(dx, dz) + 0.12, dz), Color(0.9, 0.9, 0.85, 0.7), 60, 0.0, 0.006, 4)
-		l.rotation.x = -PI / 2.0
-		l.visibility_range_end = 14.0
+		if d.get("locker", false):
+			continue
+		var x: float = float(d.x)
+		var z: float = float(d.z)
+		# nowa skrytka nie może wypaść w ścianie ani w płocie: szukamy najbliższego wolnego miejsca
+		if not is_free(x, z, 0.35):
+			var found := false
+			for rad in [0.6, 1.2, 1.8, 2.6, 3.6]:
+				for j in range(8):
+					var nx: float = x + cos(j * PI / 4.0) * rad
+					var nz: float = z + sin(j * PI / 4.0) * rad
+					if is_free(nx, nz, 0.35):
+						x = nx
+						z = nz
+						found = true
+						break
+				if found:
+					break
+			if G.test_mode:
+				print("SKRYTKA %s -> (%.1f, %.1f) %s" % [String(d.id), x * INV, z * INV, "ok" if found else "BRAK MIEJSCA"])
+			d.x = x
+			d.z = z
+		# znak przytulony do najbliższej przeszkody (mur, śmietnik, opony), jeśli jakaś jest w zasięgu ręki
+		var mx := x
+		var mz := z
+		var best := 2.4
+		for c in rects:
+			var qx := clampf(x, float(c.x0), float(c.x1))
+			var qz := clampf(z, float(c.z0), float(c.z1))
+			var dv := Vector2(x - qx, z - qz)
+			var dl := dv.length()
+			if dl > 0.05 and dl < best:
+				best = dl
+				mx = qx + dv.x / dl * 0.32
+				mz = qz + dv.y / dl * 0.32
+		var dc := Decal.new()
+		dc.texture_albedo = load("res://assets/tex/gen_znak_%d.png" % int(d.get("mark", 0)))
+		dc.modulate = Color(0.95, 0.95, 0.9)
+		dc.albedo_mix = 0.92
+		dc.size = Vector3(0.44, 1.3, 0.44)
+		dc.position = Vector3(mx, height(mx, mz) + 0.3, mz)
+		dc.rotation.y = float(k) * 1.37
+		dc.normal_fade = 0.25
+		dc.upper_fade = 0.02
+		dc.lower_fade = 0.02
+		dc.cull_mask = 1
+		dc.distance_fade_enabled = true
+		dc.distance_fade_begin = 11.0
+		dc.distance_fade_length = 4.0
+		add_child(dc)
+		drop_marks[String(d.id)] = dc
+		k += 1
+	refresh_drops()
+
+
+func refresh_drops() -> void:
+	var open: Array = G.drops_open() if G.S.has("cust") else []
+	for id in drop_marks:
+		(drop_marks[id] as Decal).visible = open.has(id)
 
 
 # ================================================================ graf ścieżek
@@ -3725,7 +3893,9 @@ func _lab_room() -> void:
 		var sp := SpotLight3D.new()
 		sp.position = head + (aim - head).normalized() * 0.32
 		sp.light_color = Color(1.0, 0.86, 0.62)
-		sp.light_energy = 6.5
+		# lampa nad stołem pakowania świeci słabiej: białe cegły w folii nie mogą się wypalać do bieli
+		var table: bool = absf(float(e[3]) - 1.6) < 0.1
+		sp.light_energy = 3.4 if table else 6.5
 		sp.spot_range = 11.0
 		sp.spot_angle = 52.0
 		sp.spot_angle_attenuation = 0.6
@@ -3735,7 +3905,7 @@ func _lab_room() -> void:
 		g.add_child(sp)
 		sp.look_at_from_position(sp.position, aim, Vector3.UP)
 		# odbite światło: miękka poświata wokół oświetlonego miejsca
-		var bounce := _room_light(g, aim.x, aim.z, 1.3, 0.55, Color(1.0, 0.84, 0.62), 5.5)
+		var bounce := _room_light(g, aim.x, aim.z, 1.3, 0.3 if table else 0.55, Color(1.0, 0.84, 0.62), 5.5)
 		bounce.shadow_enabled = false
 	# --- „zabezpieczenie”: ładunki na ścianach, czerwone diody widać z daleka
 	for e in [[-w * 0.5 + 0.06, -2.6, PI / 2.0], [w * 0.5 - 0.06, 2.4, -PI / 2.0], [-2.4, -d * 0.5 + 0.06, 0.0], [4.6, d * 0.5 - 0.06, PI]]:

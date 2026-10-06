@@ -369,6 +369,7 @@ func start_game(from_save: bool) -> void:
 	if not loaded and G.S.get("ground", []).is_empty():
 		G.loot_spawn()
 	world.refresh_ground()
+	world.refresh_drops()
 	var R: Dictionary = D.ROOMS.safe
 	if loaded and G.S.pos != null:
 		teleport(String(G.S.pos.loc), Vector3(float(G.S.pos.x), 0.0, float(G.S.pos.z)), float(G.S.pos.yaw))
@@ -1127,7 +1128,8 @@ func _drop_target() -> Dictionary:
 	if d == null:
 		return {}
 	var dd: Dictionary = G.Market.spot(d)
-	return {"id": "drop", "label": ("Skrytka: " if String(d.get("method", "drop")) == "drop" else "") + String(dd.name), "loc": "out", "x": float(dd.x), "z": float(dd.z), "color": C_DROP}
+	var mark: String = G.drop_mark(dd)
+	return {"id": "drop", "label": ("Skrytka: " if String(d.get("method", "drop")) == "drop" else "") + String(dd.name) + (" (znak: %s)" % mark if mark != "" else ""), "loc": "out", "x": float(dd.x), "z": float(dd.z), "color": C_DROP}
 
 
 func _story_target() -> Dictionary:

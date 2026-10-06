@@ -47,4 +47,4 @@ są jego opracowaniem i podlegają tej samej licencji. Okulary, łańcuch, faktu
 | pro_napiecie.mp3 | „Shadow Protocol” (track 1) — American Made Media (IndieDevs), https://x.com/TheArtBros1776 | https://opengameart.org/node/183126 | CC-BY 3.0 |
 | pro_akcja.ogg | „Chase!” — Ted Kerr | https://opengameart.org/content/chase | CC0 |
 | pro_skradanie.mp3 | „Savage Ambush” — Ruskerdax | https://opengameart.org/content/savage-ambush | CC0 |
-| pro_dramat.mp3 | „Laments of the War” — Cethiel | https://opengameart.org/content/laments-of-the-war | CC0 |
+| pro_final.mp3 | „Cinematic Epic Trailer – With SFX” (Cinematic Trailer Music) — Gregor Quendel | https://opengameart.org/content/cinematic-trailer-music-collection | CC-BY 4.0 |

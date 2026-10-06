@@ -7,8 +7,11 @@ Wszystkie postacie, miejsca i wydarzenia są fikcyjne. Gra nie zachęca do łama
 
 | | |
 |---|---|
-| ![Ulica i HUD](screenshots/02-ulica-hud.png) | ![Rozmowa z klientem](screenshots/03-rozmowa-z-klientem.png) |
-| ![Klub Neon nocą](screenshots/07-klub-neon.png) | ![Ekwipunek](screenshots/04-ekwipunek.png) |
+| ![Osiedle wiosną](screenshots/01-osiedle-wiosna.jpg) | ![Spocik pod blokiem](screenshots/02-spocik-pod-blokiem.jpg) |
+| ![Laboratorium w Starej Hucie](screenshots/06-laboratorium.jpg) | ![Wybuch huty](screenshots/08-wybuch-huty.jpg) |
+| ![Klub Neon](screenshots/05-klub-neon.jpg) | ![Ucieczka nocą](screenshots/07-ucieczka-noca.jpg) |
+| ![Kawalerka](screenshots/04-kawalerka.jpg) | ![Ekwipunek i ubrania](screenshots/09-ekwipunek.jpg) |
+| ![Giełda w telefonie](screenshots/10-gielda.jpg) | ![Sąsiad przy grillu](screenshots/03-sasiad-przy-grillu.jpg) |
 
 ## Jak uruchomić
 

@@ -18,6 +18,9 @@ var flashes: Array = []     # koguty radiowozów przed hutą
 var fire_lights: Array = [] # światła pożaru po wybuchach
 var cop_a = null
 var cop_b = null
+var extra: Array = []           # patrole dostawione na czas prologu (znikają po nim)
+## dalsze patrole (plan miasta): [x, z, x2, z2] chodzi tam i z powrotem, [x, z, obrót] stoi i się rozgląda
+const FAR_PATROLS := [[150.0, -160.0, 178.0, -162.0], [204.0, -150.0, -0.44], [150.0, -40.0, 150.0, -12.0], [158.0, -42.0, -1.57], [100.0, -150.0, 122.0, -150.0]]
 var siwy = null
 var _bang := 0.0
 var _shout := 0.0
@@ -280,6 +283,11 @@ func _setup_world() -> void:
 		N.spawn_cop(false)
 	cop_a = N.cops[0]
 	cop_b = N.cops[1]
+	# dalsze patrole: obława przeczesuje teren wokół huty — snopy latarek widać z daleka, ale nie stoją na drodze ucieczki
+	while N.cops.size() < 2 + FAR_PATROLS.size():
+		var ex: Dictionary = N.spawn_cop(false)
+		ex["temp"] = true
+		extra.append(ex)
 	for i in range(N.cops.size()):
 		var c: Dictionary = N.cops[i]
 		c.state = "patrol"
@@ -289,7 +297,19 @@ func _setup_world() -> void:
 		c.sees = false
 		c.idle = 99999.0
 		c.beat = null
-		if i >= 2:
+		if i >= 2 and i - 2 < FAR_PATROLS.size():
+			var fp: Array = FAR_PATROLS[i - 2]
+			var a0 := P(float(fp[0]), float(fp[1]))
+			c.x = a0.x
+			c.z = a0.y
+			c.node.position = Vector3(a0.x, W.height(a0.x, a0.y), a0.y)
+			if fp.size() >= 4:
+				c.idle = 0.0
+				c.beat = [P(float(fp[2]), float(fp[3])), a0]
+				c.beat_i = 0
+			else:
+				c.node.rotation.y = float(fp[2])
+		elif i >= 2:
 			var far := P(-181.0 + i * 3.0, 14.0)
 			c.x = far.x
 			c.z = far.y
@@ -434,7 +454,7 @@ func on_outside() -> void:
 	_reset_cops()
 	for l in M.world.lab_fx.get("flash", []):
 		l.light_energy = 0.0
-	G.notify("Radiowozy stoją od frontu. Z tyłu kręcą się tylko dwa patrole z latarkami.", "warn")
+	G.notify("Radiowozy stoją od frontu. Z tyłu kręcą się dwa patrole z latarkami — dalsze przeczesują teren w oddali.", "warn")
 
 
 func _caught() -> void:
@@ -1004,6 +1024,10 @@ func _finish() -> void:
 	for l in W.lab_fx.get("flash", []):
 		l.light_energy = 0.0
 	var N = M.npcs
+	for ex in extra:
+		if N.cops.has(ex):
+			N.remove_cop(ex)
+	extra.clear()
 	for c in N.cops:
 		c.idle = 0.0
 		c.beat = null

@@ -944,10 +944,12 @@ func _load_tracks() -> void:
 # ---------------------------------------------------------------- muzyka filmowa prologu
 ## Podkład pod sceny: napięcie w laboratorium → akcja przy nalocie → skradanie na zewnątrz → dramat po wybuchu.
 ## Nagrania z internetu (licencje w LICENCJE.md); dwa odtwarzacze, żeby jeden motyw przechodził płynnie w drugi.
-const SCORE := {"napiecie": "pro_napiecie", "akcja": "pro_akcja", "skradanie": "pro_skradanie", "dramat": "pro_dramat"}
-const SCORE_DB := {"napiecie": -8.0, "akcja": -7.0, "skradanie": -11.0, "dramat": -4.0}
+const SCORE := {"napiecie": "pro_napiecie", "akcja": "pro_akcja", "skradanie": "pro_skradanie", "dramat": "pro_final"}
+## skradanie i laboratorium grają cicho, w tle — mają tylko trzymać napięcie, nie zagłuszać kroków i latarek
+const SCORE_DB := {"napiecie": -12.5, "akcja": -7.0, "skradanie": -17.5, "dramat": -5.0}
 ## od której sekundy gra motyw (dramat ma 11 s cichego wstępu — wybuch potrzebuje pełnej orkiestry od razu)
-const SCORE_FROM := {"dramat": 11.6}
+## „dramat”: uderzenie orkiestry wypada w 18,0 s utworu — start tuż przed nim, żeby trafiło równo w wybuch
+const SCORE_FROM := {"dramat": 17.96}
 var _score_players: Array = []
 var _score_i := 0
 var _score_now := ""

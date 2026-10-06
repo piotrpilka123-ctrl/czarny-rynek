@@ -113,13 +113,9 @@ static func order(vid: String, p: String, g: int, method := "drop", on_credit :=
 				sp.append(s0)
 		spot_id = "spot:" + String(sp.pick_random().id)
 	else:
-		var opts := []
-		for dd in D.DROPS:
-			if not dd.get("locker", false) and int(S.lvl) >= int(dd.lvl) and not used.has(String(dd.id)):
-				opts.append(dd)
-		if opts.is_empty():
+		spot_id = G.drop_pick(used)
+		if spot_id == "":
 			return {}
-		spot_id = String(opts.pick_random().id)
 	var cost := price(vid, p, g, method)
 	var pur_lo: int = int(v.pur[0])
 	var pur_hi: int = int(v.pur[1])

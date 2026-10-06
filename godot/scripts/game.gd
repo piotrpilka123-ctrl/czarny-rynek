@@ -160,6 +160,69 @@ func drop_def(id: String) -> Dictionary:
 	return {}
 
 
+## teren: okolica mieszkania i miejsca spotkań klientów, których już masz
+func turf() -> Array:
+	var out := ["dom"]
+	for c in D.CLIENTS:
+		if S.cust[c.id].unlocked:
+			for sid in c.spots:
+				if not out.has(sid):
+					out.append(sid)
+	return out
+
+
+## skrytka leży na Twoim terenie (skrytkomaty rządzą się swoimi prawami)
+func drop_open(dd: Dictionary, held: Array = []) -> bool:
+	if dd.get("locker", false):
+		return false
+	return (turf() if held.is_empty() else held).has(String(dd.get("turf", "dom")))
+
+
+func drops_open() -> Array:
+	var held := turf()
+	var out := []
+	for dd in D.DROPS:
+		if drop_open(dd, held):
+			out.append(String(dd.id))
+	return out
+
+
+## nazwa znaku, którym oznaczona jest skrytka („czaszka”, „liść”…)
+func drop_mark(dd: Dictionary) -> String:
+	return String(D.DROP_MARKS[int(dd.get("mark", 0)) % D.DROP_MARKS.size()]) if dd.has("mark") else ""
+
+
+## odległość skrytki od mieszkania (metry)
+func drop_dist(dd: Dictionary) -> float:
+	return Vector2(float(dd.x) - float(D.DOORS.safe.x), float(dd.z) - float(D.DOORS.safe.z)).length()
+
+
+## losuje wolną skrytkę z terenu; im dalej sięga teren, tym częściej wypada dalsza
+func drop_pick(used: Array = []) -> String:
+	var held := turf()
+	var opts := []
+	var far := 1.0
+	for dd in D.DROPS:
+		if drop_open(dd, held):
+			far = maxf(far, drop_dist(dd))
+			if not used.has(String(dd.id)):
+				opts.append(dd)
+	if opts.is_empty():
+		return ""
+	var w := []
+	var total := 0.0
+	for dd in opts:
+		var k: float = 0.35 + pow(drop_dist(dd) / far, 2.0) * 1.65
+		w.append(k)
+		total += k
+	var r := randf() * total
+	for i in range(opts.size()):
+		r -= float(w[i])
+		if r <= 0.0:
+			return String(opts[i].id)
+	return String(opts.back().id)
+
+
 func notify(text: String, kind := "") -> void:
 	toast.emit(text, kind)
 
@@ -1434,7 +1497,7 @@ func on_tick() -> void:
 			match method:
 				"locker": chat(vid, "Paczka w skrytkomacie: %s. Kod: %s. Leży półtorej doby." % [where, String(d.get("code", "0000"))])
 				"courier": chat(vid, "%s — mój człowiek już stoi. Czeka 35 minut i ani chwili dłużej." % where)
-				_: chat(vid, "Paczka czeka: %s. Masz 16 godzin, potem znika." % where)
+				_: chat(vid, "Paczka czeka: %s. Szukaj znaku sprejem: %s. Masz 16 godzin, potem znika." % [where, drop_mark(Market.spot(d))])
 			if S.track == null:
 				S.track = "drop"
 			if main != null:
@@ -1823,11 +1886,23 @@ func unlock_client(id: String, text := "Cześć, słyszałem o tobie.") -> bool:
 	var st: Dictionary = S.cust[id]
 	if st.unlocked:
 		return false
+	var before := drops_open()
 	st.unlocked = true
 	st.next = S.t + randf_range(1.0, 3.0) * 60.0
 	chat(id, text)
 	notify("Nowy klient: %s" % cust_def(id).name, "good")
 	add_xp(10.0)
+	# nowy klient = nowy teren: dostawcy zaczynają zostawiać towar dalej
+	var fresh := []
+	for sid in drops_open():
+		if not before.has(sid):
+			fresh.append(String(drop_def(sid).name))
+	if not fresh.is_empty():
+		if world != null:
+			world.refresh_drops()
+		if flag("got_first"):
+			chat("wiktor", "Kręcisz się już dalej, to i towar będę zostawiał dalej. Nowe skrytki: %s. Każda ma swój mały znak sprejem pod ścianą." % ", ".join(fresh))
+			notify("Teren rośnie: %d nowe skrytki." % fresh.size() if fresh.size() > 1 else "Teren rośnie: nowa skrytka.", "good")
 	return true
 
 
@@ -2358,14 +2433,11 @@ func order_goods(p: String, g: int, high: bool, on_credit: bool) -> bool:
 		var used := []
 		for d0 in S.drops:
 			used.append(d0.spot)
-		var opts := []
-		for dd in D.DROPS:
-			if int(S.lvl) >= int(dd.lvl) and not used.has(dd.id) and not dd.get("locker", false):
-				opts.append(dd)
-		if opts.is_empty():
+		var sid := drop_pick(used)
+		if sid == "":
 			return false
 		var ready: float = S.t + randf_range(40.0, 90.0)
-		var d := {"id": int(S.next_drop), "spot": opts.pick_random().id, "p": p, "g": g, "pur": D.PURITY_STD, "cost": round(wholesale_price(p, g, false) * 1.25),
+		var d := {"id": int(S.next_drop), "spot": sid, "p": p, "g": g, "pur": D.PURITY_STD, "cost": round(wholesale_price(p, g, false) * 1.25),
 			"credit": true, "ready": ready, "expire": ready + 16.0 * 60.0, "state": "wait", "vendor": "wiktor", "method": "drop", "blind": false, "prepaid": false, "burned": false, "code": ""}
 		S.next_drop = int(S.next_drop) + 1
 		S.drops.append(d)

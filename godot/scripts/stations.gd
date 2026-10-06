@@ -541,9 +541,27 @@ static func refresh_lab(n: Node3D, j) -> void:
 
 
 ## owinięta taśmą cegła towaru (kolor zależy od rodzaju) i stos takich cegieł
+static var _wrap_mats := {}
+
+## sprasowana cegła towaru w folii (model z Blendera: tools/blender/make_cegla.py)
 static func brick(product := "dym") -> Node3D:
+	var wrap := {"dym": "4a5a2c", "szron": "c9c2a2", "krysztal": "8fb2c8", "snieg": "c9c6bc"}
+	var made := model("cegla")
+	if made != null:
+		if not _wrap_mats.has(product):
+			# folia: lekki połysk na wierzchu, pod spodem matowy, zbity proszek
+			var m := StandardMaterial3D.new()
+			m.albedo_color = Models.col(String(wrap.get(product, "888888")))
+			m.roughness = 0.62
+			m.clearcoat_enabled = true
+			m.clearcoat = 0.35
+			m.clearcoat_roughness = 0.3
+			_wrap_mats[product] = m
+		var body := _find(made, "TintCegla") as MeshInstance3D
+		if body != null:
+			body.material_override = _wrap_mats[product]
+		return made
 	var g := Node3D.new()
-	var wrap := {"dym": "4a5a2c", "szron": "d9d2b0", "krysztal": "9ec4dc", "snieg": "eef1f4"}
 	Models.box(g, Vector3(0.24, 0.07, 0.15), Vector3(0, 0.035, 0), _m("brick_" + product, String(wrap.get(product, "888888")), 0.45))
 	Models.box(g, Vector3(0.245, 0.072, 0.035), Vector3(0, 0.035, 0), _m("tape", "8a6a3a", 0.6), Vector3.ZERO, false)
 	Models.box(g, Vector3(0.035, 0.072, 0.152), Vector3(0, 0.035, 0), _m("tape", "8a6a3a", 0.6), Vector3.ZERO, false)
@@ -556,8 +574,8 @@ static func brick_stack(product: String, n: int) -> Node3D:
 		var b := brick(product)
 		var layer := int(i / 4.0)
 		var k := i % 4
-		b.position = Vector3((k % 2) * 0.26 - 0.13 + (0.02 if layer % 2 == 1 else 0.0), layer * 0.072, int(k / 2.0) * 0.17 - 0.085)
-		b.rotation.y = 0.04 * sin(i * 3.7)
+		b.position = Vector3((k % 2) * 0.255 - 0.1275 + (0.02 if layer % 2 == 1 else 0.0), layer * 0.071, int(k / 2.0) * 0.162 - 0.081)
+		b.rotation.y = 0.06 * sin(i * 3.7)
 		g.add_child(b)
 	return g
 

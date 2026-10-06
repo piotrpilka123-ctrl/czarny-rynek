@@ -10,9 +10,13 @@ func _ready() -> void:
 	for s in SPOTS:
 		s.x = float(s.x) * SC
 		s.z = float(s.z) * SC
+	var mark_i := 0
 	for s in DROPS:
 		s.x = float(s.x) * SC
 		s.z = float(s.z) * SC
+		if not s.get("locker", false):
+			s["mark"] = mark_i % DROP_MARKS.size()
+			mark_i += 1
 	for z in ZONES:
 		for k in ["x0", "x1", "z0", "z1"]:
 			z[k] = float(z[k]) * SC
@@ -300,14 +304,31 @@ var HOMES := {
 	"kam1": {"x": -58.0, "z": 11.6}, "kam4": {"x": 13.0, "z": 11.6}, "kam6": {"x": -27.0, "z": 28.4}, "garaze": {"x": 66.0, "z": 84.0},
 	"huta": {"x": 172.0, "z": 31.0}, "klub": {"x": -6.0, "z": 126.0},
 }
-## skrytki, w których Wiktor zostawia towar
+## znaki sprejem przy skrytkach (tekstury gen_znak_N.png): mały biały szablon u stóp ściany
+const DROP_MARKS := ["liść", "woreczek", "czaszka", "krzyżyk", "kryształ", "śnieżynka"]
+## skrytki, w których dostawcy zostawiają towar — każda ma swój znak sprejem (mark, nadawany przy starcie).
+## turf: miejsce spotkań, które musi należeć do Twojego terenu (ma tam klienta), żeby skrytka weszła do gry;
+## "dom" = okolica mieszkania, dostępna od początku. Im większy teren, tym dalej wypadają dostawy.
 var DROPS := [
-	{"id": "smietnik", "name": "Za altanką śmietnikową", "x": 47.0, "z": -111.5, "lvl": 1},
-	{"id": "zaulek", "name": "Zaułek za kamienicą", "x": -84.0, "z": -13.5, "lvl": 1},
-	{"id": "opony", "name": "Stos opon za garażami", "x": 108.5, "z": 110.0, "lvl": 2},
-	{"id": "dziupla", "name": "Stary dąb w parku", "x": -160.0, "z": 122.0, "lvl": 2},
-	{"id": "nasyp", "name": "Krzaki pod nasypem", "x": 127.0, "z": -66.0, "lvl": 3},
-	{"id": "zbiornik", "name": "Zbiornik w Starej Hucie", "x": 192.0, "z": 58.0, "lvl": 4},
+	{"id": "smietnik", "name": "Za altanką śmietnikową", "x": 47.0, "z": -111.5, "turf": "dom"},
+	{"id": "trzepak", "name": "Pod trzepakiem", "x": -33.0, "z": -110.4, "turf": "dom"},
+	{"id": "zaulek", "name": "Zaułek za kamienicą", "x": -84.0, "z": -13.5, "turf": "klatka5"},
+	{"id": "pawilon", "name": "Za pawilonem", "x": 84.0, "z": -59.0, "turf": "dom"},
+	{"id": "piaskownica", "name": "Przy placu zabaw", "x": -1.0, "z": -113.0, "turf": "plac"},
+	{"id": "wiata", "name": "Za wiatą przystanku", "x": 69.0, "z": 9.4, "turf": "przystanek"},
+	{"id": "podworze", "name": "Trzepak za kamienicą", "x": -66.0, "z": 56.0, "turf": "brama"},
+	{"id": "opony", "name": "Stos opon za garażami", "x": 108.5, "z": 110.0, "turf": "garaze"},
+	{"id": "trafo", "name": "Za trafostacją", "x": 110.5, "z": -142.0, "turf": "garaze"},
+	{"id": "plot", "name": "Pod blaszanym płotem", "x": 60.0, "z": 125.2, "turf": "garaze"},
+	{"id": "dziupla", "name": "Stary dąb w parku", "x": -160.0, "z": 122.0, "turf": "park"},
+	{"id": "krzaki", "name": "Krzaki w głębi parku", "x": -122.0, "z": 86.0, "turf": "park"},
+	{"id": "nasyp", "name": "Krzaki pod nasypem", "x": 127.0, "z": -66.0, "turf": "tunel"},
+	{"id": "przepust", "name": "Przy wylocie tunelu", "x": 121.0, "z": 31.0, "turf": "tunel"},
+	{"id": "bramka", "name": "Za bramką na boisku", "x": -88.0, "z": 128.0, "turf": "boisko"},
+	{"id": "zaklub", "name": "Za klubem Neon", "x": -26.0, "z": 142.6, "turf": "klub"},
+	{"id": "zbiornik", "name": "Zbiornik w Starej Hucie", "x": 192.0, "z": 58.0, "turf": "huta"},
+	{"id": "portiernia", "name": "Za portiernią huty", "x": 187.0, "z": -18.2, "turf": "huta"},
+	{"id": "kontenery", "name": "Między kontenerami w hucie", "x": 180.6, "z": 65.2, "turf": "huta"},
 	# skrytkomaty (dostawa „pod kod”); pozycje ustala świat przy budowie
 	{"id": "locker_a", "name": "Skrytkomat przy pawilonie", "x": 98.0, "z": -40.0, "lvl": 99, "locker": true},
 	{"id": "locker_b", "name": "Skrytkomat na osiedlu", "x": -24.0, "z": -98.0, "lvl": 99, "locker": true},

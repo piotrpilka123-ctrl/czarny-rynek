@@ -127,6 +127,52 @@ static func run(T) -> void:
 	await T.wait_busy()
 	await T.frames(3)
 	T.ok(P.loc == "out" and P.global_position.distance_to(G.world.club_door) < 4.0, "wyjście z klubu prowadzi przed wejście")
+	# --- skrytki: znak sprejem, teren rośnie z klientami, dostawy wypadają dalej
+	for c0 in D.CLIENTS:
+		S.cust[c0.id].unlocked = c0.id == "dominik"
+	var open0: Array = G.drops_open()
+	T.ok(open0.has("smietnik") and open0.has("trzepak") and open0.has("zaulek") and open0.has("pawilon") and not open0.has("zbiornik") and not open0.has("zaklub"), "na początku skrytki są tylko w okolicy bloku i miejsc Dominika (%d)" % open0.size())
+	var marks: int = 0
+	var shown: int = 0
+	G.world.refresh_drops()
+	for id0 in G.world.drop_marks:
+		marks += 1
+		if G.world.drop_marks[id0].visible:
+			shown += 1
+	var plain: int = 0
+	for dd0 in D.DROPS:
+		if not dd0.get("locker", false):
+			plain += 1
+			if not G.world.is_free(float(dd0.x), float(dd0.z), 0.3):
+				T.ok(false, "skrytka %s stoi w ścianie" % String(dd0.id))
+	T.ok(plain >= 18 and marks == plain and shown == open0.size(), "każda skrytka ma znak sprejem, widać tylko te z terenu (%d z %d)" % [shown, marks])
+	T.ok(G.drop_mark(G.drop_def("smietnik")) == "liść" and G.drop_mark(G.drop_def("zaulek")) != G.drop_mark(G.drop_def("smietnik")) and G.drop_mark(G.drop_def("locker_a")) == "", "skrytki mają różne znaki (liść, czaszka…), skrytkomat żadnego")
+	S.flags["got_first"] = true
+	var chats0: int = (S.chats.get("wiktor", []) as Array).size()
+	S.cust["kowal"].unlocked = false
+	G.unlock_client("kowal")
+	var open1: Array = G.drops_open()
+	T.ok(open1.has("zbiornik") and open1.has("portiernia") and open1.has("nasyp") and open1.size() > open0.size() and G.world.drop_marks["zbiornik"].visible, "klient w hucie otwiera skrytki w hucie i pod nasypem (%d)" % open1.size())
+	T.ok((S.chats.get("wiktor", []) as Array).size() == chats0 + 1, "Wiktor daje znać o nowych skrytkach")
+	var near_n: int = 0
+	var far_n: int = 0
+	for i in range(600):
+		var pk: Dictionary = G.drop_def(G.drop_pick())
+		if G.drop_dist(pk) > 60.0:
+			far_n += 1
+		else:
+			near_n += 1
+	var near_c: int = 0
+	var far_c: int = 0
+	for sid0 in open1:
+		if G.drop_dist(G.drop_def(sid0)) > 60.0:
+			far_c += 1
+		else:
+			near_c += 1
+	T.ok(far_c > 0 and near_c > 0 and float(far_n) / float(far_c) > 1.5 * float(near_n) / float(near_c), "im większy teren, tym częściej towar czeka daleko (%d daleko / %d blisko)" % [far_n, near_n])
+	T.ok(G.drop_pick(open1) == "" and not G.drop_open(G.drop_def("locker_a")), "zajęte skrytki nie wypadają drugi raz, skrytkomat to osobna sprawa")
+	S.cust["kowal"].unlocked = false
+	G.world.refresh_drops()
 	# --- znaleziska: rzeczy na ziemi, śmietniki, lombard
 	var cash_g := float(S.cash)
 	S.items["telefon_stary"] = 2
@@ -224,6 +270,28 @@ static func run(T) -> void:
 		N.update_shots(1.0, here, false)
 	T.ok(N.flee_stage == 0 and N.flee_t == 0.0, "zatrzymanie się cofa licznik strzałów")
 	S.wanted = false
+	# --- latarka patrolu: stojąc rozgląda się na boki, a snop idzie za barkami
+	cp.state = "patrol"
+	cp.idle = 999.0
+	cp.hear_t = 0.0
+	cp.susp = 0.0
+	var s_lo := 9.0
+	var s_hi := -9.0
+	var b_lo := 0.0
+	var b_hi := 0.0
+	for i in range(900):
+		await T.frames(1)
+		var fw: Vector3 = -(cp.torch as Node3D).global_transform.basis.z
+		var beam: float = atan2(fw.x, fw.z)
+		if float(cp.scan) < s_lo:
+			s_lo = float(cp.scan)
+			b_lo = beam
+		if float(cp.scan) > s_hi:
+			s_hi = float(cp.scan)
+			b_hi = beam
+		if s_hi - s_lo > 0.7:
+			break
+	T.ok(s_hi - s_lo > 0.7 and absf(angle_difference(b_lo, b_hi)) > (s_hi - s_lo) * 0.6, "patrol rozgląda się z latarką: barki %d°, snop %d°" % [int(rad_to_deg(s_hi - s_lo)), int(rad_to_deg(absf(angle_difference(b_lo, b_hi))))])
 	N.remove_cop(cp)
 	G.ui.close_all()
 	G.S = keep
