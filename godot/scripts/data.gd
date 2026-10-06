@@ -150,7 +150,43 @@ const ITEMS := {
 	"nawoz": {"name": "Nawóz", "icon": "nawoz", "size": 0.4, "w": 90.0, "unit": "dawek", "desc": "Dawka na jeden krzak: plon większy o 25%, ale roślina pije więcej wody."},
 	"chemia": {"name": "Zestaw chemikaliów", "icon": "chemia", "size": 4.0, "w": 1800.0, "unit": "szt.", "desc": "Prekursory i rozpuszczalniki na jedną syntezę przy stole laboratoryjnym."},
 	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
+	# --- UBRANIA: lekkie przedmioty z polem `slot`. Założone (przeciągnięte na postać) nic nie ważą i nie zajmują miejsca.
+	# Cechy są celowo niewielkie — strój pomaga, ale nie robi gry za gracza.
+	"czapka_daszek": {"name": "Czapka z daszkiem", "icon": "ub_czapka_daszek", "size": 0.5, "w": 80.0, "unit": "szt.", "slot": "glowa", "price": 90, "lvl": 1,
+		"stats": {"witness": 0.94, "attention": 0.97}, "desc": "Daszek zasłania twarz przed kamerami i ciekawskimi."},
+	"czapka_zimowa": {"name": "Czarna czapka", "icon": "ub_czapka_zimowa", "size": 0.5, "w": 70.0, "unit": "szt.", "slot": "glowa", "price": 70, "lvl": 1,
+		"stats": {"vis_night": 0.96}, "desc": "Naciągnięta na czoło. Po zmroku odrobinę trudniej Cię wypatrzyć."},
+	"okulary": {"name": "Ciemne okulary", "icon": "ub_okulary", "size": 0.5, "w": 30.0, "unit": "szt.", "slot": "szyja", "price": 80, "lvl": 1,
+		"stats": {"witness": 0.93, "charm": 0.98}, "desc": "Trudniej Cię opisać. Klient woli jednak widzieć oczy tego, od kogo kupuje."},
+	"komin": {"name": "Komin na szyję", "icon": "ub_komin", "size": 0.5, "w": 60.0, "unit": "szt.", "slot": "szyja", "price": 130, "lvl": 2,
+		"stats": {"witness": 0.9, "attention": 1.04}, "desc": "Podciągnięty na nos chroni przed rozpoznaniem, ale patrol patrzy na Ciebie odrobinę uważniej."},
+	"lancuch": {"name": "Łańcuch z tombaku", "icon": "ub_lancuch", "size": 0.5, "w": 90.0, "unit": "szt.", "slot": "szyja", "price": 240, "lvl": 2,
+		"stats": {"charm": 1.03, "attention": 1.03}, "desc": "Wygląda na złoto. Klienci traktują Cię poważniej — policja też."},
+	"bluza_kaptur": {"name": "Bluza z kapturem", "icon": "ub_bluza", "size": 1.0, "w": 320.0, "unit": "szt.", "slot": "gora", "price": 220, "lvl": 1,
+		"stats": {"vis_night": 0.94, "cap": 2}, "desc": "Kaptur na głowę, ręce w kieszeni-kangurce. Dwa dodatkowe miejsca na towar."},
+	"kurtka_kieszenie": {"name": "Kurtka z kieszeniami", "icon": "ub_kurtka", "size": 1.0, "w": 380.0, "unit": "szt.", "slot": "gora", "price": 380, "lvl": 2,
+		"stats": {"cap": 4, "speed": 0.99}, "desc": "Cztery wewnętrzne kieszenie. Trochę krępuje ruchy."},
+	"koszula": {"name": "Koszula w kratę", "icon": "ub_koszula", "size": 1.0, "w": 200.0, "unit": "szt.", "slot": "gora", "price": 260, "lvl": 3,
+		"stats": {"attention": 0.96, "charm": 1.02}, "desc": "Wyglądasz jak ktoś, kto idzie do pracy. Patrole zerkają rzadziej."},
+	"rekawiczki": {"name": "Rękawiczki robocze", "icon": "ub_rekawiczki", "size": 0.5, "w": 60.0, "unit": "szt.", "slot": "dlonie", "price": 50, "lvl": 1,
+		"stats": {"witness": 0.95}, "desc": "Żadnych odcisków na woreczkach i klamkach."},
+	"rekawiczki_skora": {"name": "Skórzane rękawiczki", "icon": "ub_rekawiczki_skora", "size": 0.5, "w": 80.0, "unit": "szt.", "slot": "dlonie", "price": 180, "lvl": 3,
+		"stats": {"witness": 0.92, "charm": 1.01}, "desc": "Bez odcisków i z klasą."},
+	"dresy": {"name": "Spodnie dresowe", "icon": "ub_dresy", "size": 1.0, "w": 240.0, "unit": "szt.", "slot": "spodnie", "price": 120, "lvl": 1,
+		"stats": {"speed": 1.02, "stamina": 1.04}, "desc": "Nic nie krępuje nóg, kiedy trzeba biec."},
+	"jeansy": {"name": "Jeansy", "icon": "ub_jeansy", "size": 1.0, "w": 340.0, "unit": "szt.", "slot": "spodnie", "price": 180, "lvl": 1,
+		"stats": {"attention": 0.97}, "desc": "Zwyczajne spodnie zwyczajnego człowieka."},
+	"bojowki": {"name": "Bojówki", "icon": "ub_bojowki", "size": 1.0, "w": 360.0, "unit": "szt.", "slot": "spodnie", "price": 240, "lvl": 2,
+		"stats": {"cap": 3}, "desc": "Kieszenie na udach: trzy dodatkowe miejsca."},
+	"trampki": {"name": "Trampki", "icon": "ub_trampki", "size": 1.0, "w": 300.0, "unit": "szt.", "slot": "buty", "price": 150, "lvl": 1,
+		"stats": {"noise": 0.92}, "desc": "Miękka podeszwa. Kroki słychać z mniejszej odległości."},
+	"buty_bieg": {"name": "Buty do biegania", "icon": "ub_buty_bieg", "size": 1.0, "w": 280.0, "unit": "szt.", "slot": "buty", "price": 280, "lvl": 2,
+		"stats": {"speed": 1.03, "stamina": 1.06}, "desc": "Lekkie i sprężyste. Dalej dobiegniesz, zanim zabraknie tchu."},
+	"buty_robocze": {"name": "Buty robocze", "icon": "ub_buty_robocze", "size": 1.0, "w": 400.0, "unit": "szt.", "slot": "buty", "price": 200, "lvl": 2,
+		"stats": {"attention": 0.98, "speed": 0.99}, "desc": "W takich chodzi pół osiedla. Ciężkie, ale nikt na nie nie patrzy."},
 }
+## pola ubioru wokół postaci w ekwipunku: [id, nazwa, strona (-1 lewa, 1 prawa), wysokość na sylwetce 0..1 od góry]
+const GEAR_SLOTS := [["glowa", "Czapka", 1, 0.06], ["szyja", "Dodatek", -1, 0.17], ["gora", "Góra", 1, 0.33], ["dlonie", "Rękawiczki", 1, 0.52], ["spodnie", "Spodnie", -1, 0.66], ["buty", "Buty", -1, 0.9]]
 const SIZE_PACK := 1.0
 const SIZE_BULK := 1.0
 const W_PACK := 1.4

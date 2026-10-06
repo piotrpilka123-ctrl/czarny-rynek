@@ -342,7 +342,7 @@ func run() -> void:
 	var labels := 0
 	for st0 in both:
 		for e2 in G.entries(st0):
-			if e2.kind != "item":
+			if e2.kind != "item" and e2.kind != "cash":
 				labels += 1
 	ok(labels == stack_n and labels >= 4, "ekwipunek pokazuje każdy stos osobno (%d pozycji)" % labels)
 	# zapis i odczyt nie gubi znacznika

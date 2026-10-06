@@ -99,6 +99,18 @@ func can_stand() -> bool:
 	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
 
 
+## czy sylwetka (stojąca albo skulona) mieści się w danym miejscu — używane w testach przełazów
+func fits_at(pos: Vector3, crouched: bool) -> bool:
+	var q := PhysicsShapeQueryParameters3D.new()
+	var cap := CapsuleShape3D.new()
+	cap.radius = 0.34
+	cap.height = BODY_LOW if crouched else BODY_H
+	q.shape = cap
+	q.transform = Transform3D(Basis.IDENTITY, pos + Vector3(0, (0.52 if crouched else 0.9), 0))
+	q.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+
+
 func set_crouch(on: bool) -> bool:
 	if on == crouching:
 		return true

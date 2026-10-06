@@ -111,7 +111,7 @@ func new_state() -> Dictionary:
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
-		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "special": null, "sold_bulk": {}, "outfit": "dres", "outfits": {},
+		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "special": null, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0},
 		"pos": null, "mom_day": 0,
@@ -212,8 +212,103 @@ func outfit() -> String:
 
 
 ## cecha aktualnego stroju: "speed", "stamina", "vis", "vis_night", "noise", "attention", "witness", "charm", "cap"
+## cecha z ubioru: cały strój (zmienia wygląd) razem z ubraniami założonymi w polach wokół postaci.
+## „cap” (kieszenie) się sumuje, pozostałe cechy to mnożniki.
 func outfit_stat(key: String, def := 1.0) -> float:
-	return float(D.OUTFITS[outfit()].get(key, def))
+	var v := float(D.OUTFITS[outfit()].get(key, def))
+	for slot in S.get("gear", {}):
+		var id := String(S.gear[slot])
+		if id == "" or not D.ITEMS.has(id):
+			continue
+		var st: Dictionary = D.ITEMS[id].get("stats", {})
+		if st.has(key):
+			v = (v + float(st[key])) if key == "cap" else (v * float(st[key]))
+	return v
+
+
+# ---------------------------------------------------------------- ubrania w polach wokół postaci
+func gear(slot: String) -> String:
+	var id := String(S.get("gear", {}).get(slot, ""))
+	return id if D.ITEMS.has(id) else ""
+
+
+func is_gear(id: String) -> bool:
+	return D.ITEMS.has(id) and D.ITEMS[id].has("slot")
+
+
+## zakłada ubranie z plecaka; to, co było na tym miejscu, wraca do plecaka
+func gear_wear(id: String) -> bool:
+	if not is_gear(id) or item(id) <= 0:
+		return false
+	if not S.has("gear"):
+		S["gear"] = {}
+	var slot := String(D.ITEMS[id].slot)
+	var old := gear(slot)
+	S.items[id] = item(id) - 1
+	if old != "":
+		S.items[old] = item(old) + 1
+	S.gear[slot] = id
+	Sfx.play("pickup")
+	return true
+
+
+## zdejmuje ubranie do plecaka (jeśli jest w nim miejsce)
+func gear_off(slot: String) -> bool:
+	var id := gear(slot)
+	if id == "":
+		return false
+	var lost_cap := float(D.ITEMS[id].get("stats", {}).get("cap", 0.0))
+	if carry_total() + float(D.ITEMS[id].size) > float(capacity()) - lost_cap + 0.01:
+		notify("Nie masz gdzie tego schować — %s pełne." % ("kieszenie" if bag_name() == "Kieszenie" else "plecak"), "warn")
+		return false
+	S.gear[slot] = ""
+	S.items[id] = item(id) + 1
+	Sfx.play("pickup")
+	return true
+
+
+func gear_buy(id: String) -> bool:
+	if not is_gear(id):
+		return false
+	var d: Dictionary = D.ITEMS[id]
+	if S.cash < float(d.price) or int(S.lvl) < int(d.lvl):
+		notify("Nie stać Cię albo to jeszcze nie ten poziom.", "warn")
+		return false
+	S.cash -= float(d.price)
+	S.stats.spent = float(S.stats.spent) + float(d.price)
+	# kupione ubranie od razu ląduje na Tobie, jeśli pole jest wolne; inaczej w plecaku
+	S.items[id] = item(id) + 1
+	if gear(String(d.slot)) == "":
+		gear_wear(id)
+	Sfx.play("cash")
+	return true
+
+
+## opis cech jak w strojach: [{text, good}]
+func stat_traits(o: Dictionary) -> Array:
+	var out := []
+	var pct := func(v: float) -> String: return "%+d%%" % int(round((v - 1.0) * 100.0))
+	for e in [["speed", "szybkość", true], ["stamina", "kondycja", true], ["noise", "hałas kroków", false], ["vis", "widoczność", false], ["vis_night", "widoczność nocą", false],
+			["attention", "podejrzliwość patroli", false], ["witness", "świadkowie i śledztwo", false], ["charm", "ceny u klientów", true]]:
+		if o.has(e[0]):
+			var v := float(o[e[0]])
+			out.append({"text": "%s %s" % [e[1], pct.call(v)], "good": (v > 1.0) == bool(e[2])})
+	if o.has("cap"):
+		out.append({"text": "kieszenie %+d" % int(o.cap), "good": int(o.cap) > 0})
+	return out
+
+
+## łączne cechy tego, co masz na sobie (strój + ubrania)
+func worn_traits() -> Array:
+	var tot := {}
+	for key in ["speed", "stamina", "noise", "vis", "vis_night", "attention", "witness", "charm"]:
+		var v := outfit_stat(key, 1.0)
+		if absf(v - 1.0) > 0.004:
+			tot[key] = v
+	var c := int(outfit_stat("cap", 0.0))
+	if c != 0:
+		tot["cap"] = c
+	return stat_traits(tot)
 
 
 func outfit_masked() -> bool:
@@ -440,14 +535,24 @@ func entries(st: Dictionary) -> Array:
 		if n <= 0:
 			continue
 		var d: Dictionary = D.ITEMS[id]
-		out.append({"kind": "item", "p": "", "pur": 0, "id": id, "n": float(n), "name": d.name, "sub": "", "icon": d.icon, "tier": -1,
+		out.append({"kind": "item", "p": "", "pur": 0, "id": id, "n": float(n), "name": d.name, "sub": "ubranie" if d.has("slot") else "", "icon": d.icon, "tier": -1,
 			"qty": "%d %s" % [n, d.unit], "usize": float(d.size), "uw": float(d.w), "step": 1.0, "unit": d.unit,
 			"size": half_up(n * float(d.size)), "weight": n * float(d.w), "desc": d.desc})
+	# gotówka to też przedmiot: nic nie waży, nie zajmuje miejsca, przenosi się jak wszystko inne
+	var money_n := float(S.cash) if is_same(st, S.inv) else float(st.get("cash", 0.0))
+	if money_n >= 1.0:
+		out.append({"kind": "cash", "p": "", "pur": 0, "id": "cash", "n": floorf(money_n), "name": "Gotówka", "sub": "nic nie waży", "icon": "cash", "tier": -1,
+			"qty": money(money_n), "usize": 0.0, "uw": 0.0, "step": 1.0, "unit": "zł", "size": 0.0, "weight": 0.0,
+			"desc": "Banknoty. Nie zajmują miejsca w plecaku. Przy zatrzymaniu policja zabiera to, co masz przy sobie — resztę trzymaj w skrytce."})
 	return out
 
 
 ## przenosi pozycję między plecakiem a skrytką; zwraca przeniesioną ilość
 func move_entry(room: String, e: Dictionary, to_stash: bool, amount: float) -> float:
+	if e.kind == "cash":
+		var before := float(S.cash)
+		move_cash(room, to_stash, amount)
+		return absf(float(S.cash) - before)
 	if e.kind != "item":
 		return move_stack(room, to_stash, e.kind, e.p, int(e.pur), amount)
 	var from: Dictionary = store_items(S.inv if to_stash else S.stash[room])
@@ -464,6 +569,8 @@ func move_entry(room: String, e: Dictionary, to_stash: bool, amount: float) -> f
 
 ## ile najwięcej tej pozycji da się przenieść (ogranicza wolne miejsce po drugiej stronie)
 func move_limit(room: String, e: Dictionary, to_stash: bool) -> float:
+	if e.kind == "cash":
+		return float(e.n)
 	var space: float = (float(stash_cap(room)) - store_total(S.stash[room])) if to_stash else (float(capacity()) - carry_total())
 	var step: float = e.get("step", 1.0)
 	var fit := floorf(maxf(0.0, space) / maxf(0.001, float(e.usize)) / step + 0.001) * step
@@ -478,6 +585,8 @@ func move_limit(room: String, e: Dictionary, to_stash: bool) -> float:
 
 ## wyrzuca pozycję z plecaka (bezpowrotnie)
 func discard_entry(e: Dictionary, amount: float) -> void:
+	if e.kind == "cash":
+		return
 	if e.kind == "pack":
 		take_pack(S.inv, e.p, int(e.pur), int(amount))
 	elif e.kind == "bulk":

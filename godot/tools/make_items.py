@@ -397,6 +397,157 @@ def wet_buds(name, seed):
     save(im, name)
 
 
+# ---------------------------------------------------------------- ubrania (ikony pól wokół postaci)
+def _cloth(name, draw):
+    im = canvas()
+    d = ImageDraw.Draw(im)
+    draw(d)
+    save(im, name)
+
+
+def cap_icon(name, col, beanie=False):
+    def dr(d):
+        if beanie:
+            d.pieslice([P(42), P(40), P(150), P(170)], 180, 360, fill=col + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+            d.rounded_rectangle([P(38), P(100), P(154), P(128)], P(8), fill=shade(col, 1.25) + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+            for x in range(46, 150, 10):
+                d.line([(P(x), P(104)), (P(x), P(124))], fill=shade(col, 0.8) + (255,), width=P(2))
+        else:
+            d.pieslice([P(40), P(46), P(140), P(160)], 180, 360, fill=col + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+            d.polygon([(P(88), P(100)), (P(170), P(104)), (P(166), P(118)), (P(88), P(112))], fill=shade(col, 0.8) + (255,), outline=shade(col, 0.5) + (255,))
+            d.ellipse([P(84), P(48), P(96), P(58)], fill=shade(col, 1.4) + (255,))
+            d.arc([P(52), P(58), P(128), P(150)], 200, 340, fill=shade(col, 1.35) + (255,), width=P(2))
+    _cloth(name, dr)
+
+
+def glasses_icon(name):
+    def dr(d):
+        for cx in (66, 126):
+            d.rounded_rectangle([P(cx - 28), P(80), P(cx + 28), P(118)], P(12), fill=(20, 22, 26, 255), outline=(60, 62, 68, 255), width=P(3))
+            d.line([(P(cx - 16), P(88)), (P(cx - 4), P(88))], fill=(120, 130, 150, 255), width=P(3))
+        d.line([(P(94), P(90)), (P(98), P(90))], fill=(60, 62, 68, 255), width=P(4))
+        d.line([(P(38), P(88)), (P(24), P(80))], fill=(60, 62, 68, 255), width=P(4))
+        d.line([(P(154), P(88)), (P(168), P(80))], fill=(60, 62, 68, 255), width=P(4))
+    _cloth(name, dr)
+
+
+def chain_icon(name):
+    def dr(d):
+        for k in range(22):
+            a = math.pi * (0.08 + 0.84 * k / 21.0)
+            x = 96 - math.cos(a) * 56
+            y = 50 + math.sin(a) * 86
+            d.ellipse([P(x - 6), P(y - 4.5), P(x + 6), P(y + 4.5)], outline=(214, 172, 60, 255) if k % 2 == 0 else (170, 130, 40, 255), width=P(3))
+        d.ellipse([P(84), P(128), P(108), P(152)], fill=(226, 186, 70, 255), outline=(150, 112, 30, 255), width=P(2))
+    _cloth(name, dr)
+
+
+def scarf_icon(name, col):
+    def dr(d):
+        d.ellipse([P(40), P(54), P(152), P(130)], fill=col + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+        d.ellipse([P(64), P(62), P(128), P(100)], fill=shade(col, 0.55) + (255,))
+        for k in range(6):
+            d.arc([P(44 + k * 6), P(60 + k * 4), P(148 - k * 6), P(128 - k * 2)], 20, 160, fill=shade(col, 0.8) + (255,), width=P(2))
+    _cloth(name, dr)
+
+
+def top_icon(name, col, kind):
+    def dr(d):
+        body = [(P(58), P(60)), (P(134), P(60)), (P(140), P(166)), (P(52), P(166))]
+        d.polygon(body, fill=col + (255,), outline=shade(col, 0.6) + (255,))
+        for sx in (-1, 1):
+            cx = 96 + sx * 38
+            d.polygon([(P(cx), P(60)), (P(cx + sx * 36), P(84)), (P(cx + sx * 30), P(150)), (P(cx + sx * 12), P(150)), (P(cx + sx * 6), P(96))], fill=shade(col, 0.92) + (255,), outline=shade(col, 0.6) + (255,))
+        if kind == 'hoodie':
+            d.pieslice([P(66), P(26), P(126), P(90)], 180, 360, fill=shade(col, 0.85) + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+            d.rounded_rectangle([P(70), P(118), P(122), P(150)], P(8), outline=shade(col, 0.65) + (255,), width=P(2))
+            for sx in (-1, 1):
+                d.line([(P(96 + sx * 8), P(64)), (P(96 + sx * 10), P(96))], fill=(230, 230, 224, 255), width=P(2))
+        elif kind == 'jacket':
+            d.line([(P(96), P(60)), (P(96), P(166))], fill=(150, 154, 160, 255), width=P(3))
+            for sx in (-1, 1):
+                d.rounded_rectangle([P(96 + sx * 12 - (0 if sx > 0 else 24)), P(112), P(96 + sx * 12 + (24 if sx > 0 else 0)), P(146)], P(4), outline=shade(col, 0.6) + (255,), width=P(2))
+            d.polygon([(P(80), P(60)), (P(96), P(78)), (P(112), P(60)), (P(104), P(52)), (P(88), P(52))], fill=shade(col, 0.7) + (255,))
+        else:
+            for x in range(58, 140, 14):
+                d.line([(P(x), P(62)), (P(x - 4), P(164))], fill=shade(col, 0.72) + (255,), width=P(3))
+            for y in range(70, 166, 16):
+                d.line([(P(56), P(y)), (P(138), P(y))], fill=shade(col, 1.25) + (255,), width=P(2))
+            d.polygon([(P(82), P(60)), (P(96), P(76)), (P(110), P(60)), (P(104), P(54)), (P(88), P(54))], fill=shade(col, 1.3) + (255,))
+            for y in (90, 110, 130, 150):
+                d.ellipse([P(94), P(y), P(99), P(y + 5)], fill=(230, 230, 224, 255))
+    _cloth(name, dr)
+
+
+def gloves_icon(name, col):
+    def dr(d):
+        for sx, ox in ((-1, 62), (1, 130)):
+            d.rounded_rectangle([P(ox - 24), P(86), P(ox + 24), P(158)], P(12), fill=col + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+            for k in range(4):
+                fx = ox - 20 + k * 13
+                d.rounded_rectangle([P(fx), P(40 + abs(k - 1.5) * 8), P(fx + 11), P(98)], P(5), fill=col + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+            d.rounded_rectangle([P(ox + sx * 22 - 6), P(92), P(ox + sx * 22 + 10 if sx > 0 else ox + sx * 22 + 6), P(128)], P(5), fill=shade(col, 0.9) + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+            d.rectangle([P(ox - 24), P(146), P(ox + 24), P(158)], fill=shade(col, 0.7) + (255,))
+    _cloth(name, dr)
+
+
+def pants_icon(name, col, kind):
+    def dr(d):
+        d.polygon([(P(58), P(30)), (P(134), P(30)), (P(142), P(170)), (P(104), P(170)), (P(96), P(78)), (P(88), P(170)), (P(50), P(170))], fill=col + (255,), outline=shade(col, 0.6) + (255,))
+        d.rectangle([P(58), P(30), P(134), P(42)], fill=shade(col, 0.75) + (255,))
+        if kind == 'dres':
+            for sx in (-1, 1):
+                for k in range(3):
+                    x = 96 + sx * (36 + k * 3)
+                    d.line([(P(x), P(44)), (P(x + sx * 5), P(168))], fill=(236, 236, 230, 255), width=P(1.5))
+            d.line([(P(90), P(40)), (P(88), P(60))], fill=(236, 236, 230, 255), width=P(2))
+        elif kind == 'cargo':
+            for sx in (-1, 1):
+                x0 = 96 + sx * 20 - (0 if sx > 0 else 22)
+                d.rounded_rectangle([P(x0), P(92), P(x0 + 22), P(124)], P(3), fill=shade(col, 0.88) + (255,), outline=shade(col, 0.6) + (255,), width=P(2))
+                d.line([(P(x0), P(100)), (P(x0 + 22), P(100))], fill=shade(col, 0.6) + (255,), width=P(2))
+        else:
+            for sx in (-1, 1):
+                d.arc([P(96 + sx * 22 - 14), P(40), P(96 + sx * 22 + 14), P(66)], 0 if sx < 0 else 90, 90 if sx < 0 else 180, fill=(210, 160, 70, 255), width=P(2))
+            d.line([(P(96), P(42)), (P(96), P(76))], fill=(210, 160, 70, 255), width=P(2))
+    _cloth(name, dr)
+
+
+def shoe_icon(name, col, kind):
+    def dr(d):
+        d.polygon([(P(34), P(96)), (P(84), P(70)), (P(104), P(96)), (P(150), P(110)), (P(164), P(128)), (P(160), P(138)), (P(34), P(138))], fill=col + (255,), outline=shade(col, 0.6) + (255,))
+        sole = (236, 232, 220) if kind != 'work' else (60, 50, 40)
+        d.rounded_rectangle([P(30), P(134), P(166), P(150 if kind != 'work' else 156)], P(6), fill=sole + (255,), outline=shade(sole, 0.6) + (255,), width=P(2))
+        for k in range(4):
+            x = 88 + k * 13
+            d.line([(P(x), P(92 + k * 4)), (P(x + 10), P(84 + k * 4))], fill=(240, 240, 234, 255), width=P(2.5))
+        if kind == 'run':
+            d.polygon([(P(60), P(128)), (P(110), P(104)), (P(118), P(110)), (P(70), P(132))], fill=(236, 236, 230, 255))
+        elif kind == 'canvas':
+            d.ellipse([P(60), P(98), P(82), P(120)], outline=(236, 236, 230, 255), width=P(2))
+            d.pieslice([P(138), P(106), P(170), P(140)], 250, 80, fill=(236, 232, 220, 255))
+        else:
+            d.rectangle([P(34), P(80), P(84), P(98)], fill=shade(col, 0.8) + (255,))
+    _cloth(name, dr)
+
+
+cap_icon('ub_czapka_daszek', (40, 60, 110))
+cap_icon('ub_czapka_zimowa', (28, 30, 34), True)
+glasses_icon('ub_okulary')
+chain_icon('ub_lancuch')
+scarf_icon('ub_komin', (70, 76, 84))
+top_icon('ub_bluza', (72, 78, 92), 'hoodie')
+top_icon('ub_kurtka', (74, 86, 62), 'jacket')
+top_icon('ub_koszula', (150, 50, 46), 'shirt')
+gloves_icon('ub_rekawiczki', (190, 160, 90))
+gloves_icon('ub_rekawiczki_skora', (52, 36, 28))
+pants_icon('ub_dresy', (30, 34, 46), 'dres')
+pants_icon('ub_jeansy', (58, 84, 130), 'jeans')
+pants_icon('ub_bojowki', (96, 100, 70), 'cargo')
+shoe_icon('ub_trampki', (40, 44, 52), 'canvas')
+shoe_icon('ub_buty_bieg', (220, 70, 60), 'run')
+shoe_icon('ub_buty_robocze', (120, 86, 50), 'work')
+
 for i, k in enumerate(['dym', 'szron', 'krysztal', 'snieg']):
     baggie('pack_' + k, k, 10 + i)
     brick('brick_' + k, k, 30 + i)

@@ -618,11 +618,29 @@ static func bus_stop() -> Node3D:
 
 
 ## sam płat ogrodzenia (bez słupków), dolna krawędź na wysokości 0
+## płat siatki: prostokąt z teksturą plecionki powtarzaną co kilka oczek (UV w metrach, niezależnie od długości)
+static func _mesh_sheet(length: float, h: float) -> MeshInstance3D:
+	var tile := 0.34
+	var inv := 1.0 / D.SC          # ogrodzenia stoją w mieście ściśniętym w poziomie — tekstura ma zostać kwadratowa
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pts := [Vector3(-length * 0.5, 0, 0), Vector3(length * 0.5, 0, 0), Vector3(length * 0.5, h, 0), Vector3(-length * 0.5, h, 0)]
+	var uvs := [Vector2(0, h / tile), Vector2(length / (tile * inv), h / tile), Vector2(length / (tile * inv), 0), Vector2(0, 0)]
+	for i in [0, 1, 2, 0, 2, 3]:
+		st.set_normal(Vector3(0, 0, 1))
+		st.set_uv(uvs[i])
+		st.add_vertex(pts[i])
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = mesh_fence_material()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
 static func fence_panel(length: float, h: float, kind := "mesh") -> Node3D:
 	var g := Node3D.new()
 	if kind == "mesh":
-		var p := Models.box(g, Vector3(length, h, 0.012), Vector3(0, h * 0.5, 0), mesh_fence_material(), Vector3.ZERO, false)
-		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		g.add_child(_mesh_sheet(length, h))
 	else:
 		Models.box(g, Vector3(length, h, 0.06), Vector3(0, h * 0.5, 0), pbr("rusty_corrugated_iron", 0.5))
 	return g
@@ -630,16 +648,33 @@ static func fence_panel(length: float, h: float, kind := "mesh") -> Node3D:
 
 static var _mesh_fence_mat: StandardMaterial3D = null
 
+## Siatka ogrodzeniowa: plecionka z drutu (tools/make_fence.py). Z bliska widać oczka, z daleka zlewa się w szarą mgiełkę —
+## dlatego mieszanie przezroczystości, a nie wycinanie (wycinana znikałaby po kilku metrach).
 static func mesh_fence_material() -> StandardMaterial3D:
 	if _mesh_fence_mat == null:
 		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.45, 0.48, 0.45, 0.42)
+		m.albedo_texture = tex("res://assets/tex/gen_siatka.png")
+		m.albedo_color = Color(0.9, 0.92, 0.9, 1.0)
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
-		m.roughness = 0.6
-		m.metallic = 0.4
+		m.roughness = 0.5
+		m.metallic = 0.5
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 		_mesh_fence_mat = m
 	return _mesh_fence_mat
+
+
+## słupek ogrodzenia z modelu Blendera (albo zwykła rura, gdy modelu brak)
+static func fence_post(parent: Node, x: float, h: float) -> void:
+	var St = load("res://scripts/stations.gd")
+	var post: Node3D = St.model("plot_slupek")
+	if post == null:
+		Models.cyl(parent, 0.03, 0.03, h, Vector3(x, h * 0.5, 0), Models.mat("4a4f4a", 0.6, 0.5), Vector3.ZERO, 5)
+		return
+	var inv := 1.0 / D.SC
+	post.position = Vector3(x, 0, 0)
+	post.scale = Vector3(inv, h, inv)
+	parent.add_child(post)
 
 
 static func fence(length: float, h := 1.6, kind := "mesh") -> Node3D:
@@ -647,17 +682,15 @@ static func fence(length: float, h := 1.6, kind := "mesh") -> Node3D:
 	var post := Models.mat("4a4f4a", 0.6, 0.5)
 	var n: int = max(1, int(round(length / 2.5)))
 	for i in range(n + 1):
-		Models.cyl(g, 0.03, 0.03, h, Vector3(-length * 0.5 + i * length / n, h * 0.5, 0), post, Vector3.ZERO, 5)
+		fence_post(g, -length * 0.5 + i * length / n, h)
 	if kind == "mesh":
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.45, 0.48, 0.45, 0.42)
-		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		m.cull_mode = BaseMaterial3D.CULL_DISABLED
-		m.roughness = 0.6
-		m.metallic = 0.4
-		var p := Models.box(g, Vector3(length, h - 0.1, 0.01), Vector3(0, h * 0.5, 0), m, Vector3.ZERO, false)
-		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var sh := _mesh_sheet(length, h - 0.08)
+		sh.position.y = 0.04
+		g.add_child(sh)
+		# drut naciągowy u dołu i w połowie wysokości
+		for wy in [0.1, h * 0.5]:
+			Models.cyl(g, 0.006, 0.006, length, Vector3(0, wy, 0), post, Vector3(0, 0, PI / 2.0), 4).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	else:
 		Models.box(g, Vector3(length, h - 0.15, 0.06), Vector3(0, h * 0.5 + 0.05, 0), pbr("rusty_corrugated_iron", 0.5))
-	Models.cyl(g, 0.02, 0.02, length, Vector3(0, h, 0), post, Vector3(0, 0, PI / 2.0), 5)
+	Models.cyl(g, 0.02, 0.02, length, Vector3(0, h - 0.03, 0), post, Vector3(0, 0, PI / 2.0), 6)
 	return g

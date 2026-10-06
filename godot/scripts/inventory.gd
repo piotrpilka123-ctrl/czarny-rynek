@@ -330,10 +330,7 @@ func _tab_inv() -> void:
 	row.add_child(mid)
 	var view := _char_view(W_MID, 318.0)
 	mid.add_child(view)
-	_slot(view, 0, 0, "backpack", "NOSISZ", G.bag_name(), "%d miejsc" % int(cap))
-	_slot(view, 1, 0, "scale", "WAGA", "Jubilerska" if G.upg("waga") else "Kuchenna", "dokładniejsza" if G.upg("waga") else "zwykła")
-	_slot(view, 0, 1, "banknote", "PORTFEL", G.money(S.cash), "gotówka")
-	_slot(view, 1, 1, "phone", "TELEFON", "Burner ×%d" % G.item("burner") if G.item("burner") > 0 else "Własny numer", "na kartę" if G.item("burner") > 0 else "znany policji")
+	_gear_slots(view, W_MID, 318.0)
 	mid.add_child(_detail())
 	# --- prawa strona: skrytka albo kosz
 	if has_stash():
@@ -347,9 +344,8 @@ func _tab_inv() -> void:
 		_title(rv, "warehouse", "SKRYTKA — " + String(D.ROOMS[room].name).to_upper(), "%s / %d" % [G.units(sused), int(scap)])
 		_list(rv, st, "stash", "Skrytka jest pusta. Przeciągnij tu rzeczy z plecaka.")
 		rv.add_child(_cap_bar(sused, scap, K.C_GOLD))
-		rv.add_child(_cash_row(st))
 		right.set_drag_forwarding(Callable(), _can_drop.bind("stash"), _drop.bind("stash"))
-		hint.text = "Przeciągnij rzecz na drugą stronę i wybierz ilość suwakiem   •   kliknięcie — opis   •   dwuklik — szybkie przeniesienie"
+		hint.text = "Przeciągnij rzecz na drugą stronę i wybierz ilość   •   ubranie przeciągnij na pole przy postaci   •   gotówkę przenosisz jak każdą rzecz"
 	else:
 		var right2 := K.vbox(10)
 		right2.custom_minimum_size = Vector2(W_SIDE, H_BODY)
@@ -369,7 +365,7 @@ func _tab_inv() -> void:
 		var nb := _nearest_stash()
 		if nb != "":
 			iv.add_child(K.rich(K.col("Najbliższa skrytka: ", K.C_DIM) + "[b]%s[/b]" % nb, 13))
-		hint.text = "Przeciągnij rzecz do kosza, żeby ją wyrzucić (wybierzesz ilość)   •   kliknięcie — opis   •   skrytki są w kryjówkach"
+		hint.text = "Ubranie przeciągnij na pole przy postaci (albo kliknij dwa razy)   •   do kosza — wyrzucasz   •   kliknięcie — opis"
 
 
 func _nearest_stash() -> String:
@@ -540,6 +536,11 @@ func _row_input(ev: InputEvent, e: Dictionary, side: String) -> void:
 	if not (ev is InputEventMouseButton) or ev.pressed or ev.button_index != MOUSE_BUTTON_LEFT:
 		return
 	Sfx.play("click")
+	if ev.double_click and side == "bag" and e.kind == "item" and G.is_gear(String(e.id)):
+		G.gear_wear(String(e.id))
+		sel = {}
+		render()
+		return
 	if ev.double_click and has_stash():
 		ask_amount(e, side, "stash" if side == "bag" else "bag")
 		return
@@ -564,18 +565,144 @@ func _drag(_at: Vector2, e: Dictionary, side: String) -> Variant:
 
 
 func _can_drop(_at: Vector2, data: Variant, side: String) -> bool:
-	if not (data is Dictionary) or not data.has("e"):
+	if not (data is Dictionary):
+		return false
+	# ubranie zdejmowane z postaci wraca tylko do plecaka
+	if data.has("gear"):
+		return side == "bag"
+	if not data.has("e"):
 		return false
 	if side == "bin":
-		return data.side == "bag"
+		return data.side == "bag" and String(data.e.kind) != "cash"
 	return data.side != side and has_stash()
 
 
 func _drop(_at: Vector2, data: Variant, side: String) -> void:
+	if data.has("gear"):
+		G.gear_off(String(data.gear))
+		sel = {}
+		render()
+		return
 	ask_amount(data.e, data.side, side)
 
 
+# ---------------------------------------------------------------- ubrania: pola wokół postaci
+## Sześć pól jak na szkicu: po prawej czapka, góra i rękawiczki, po lewej dodatek, spodnie i buty — każde na wysokości
+## swojej części ciała, połączone z nią kreską. Ubranie zakłada się, przeciągając je z plecaka na pole.
+func _gear_slots(view: Control, w: float, h: float) -> void:
+	var lines := Control.new()
+	lines.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(lines)
+	var marks: Array = []
+	var sw := 126.0
+	var sh := 52.0
+	for e in D.GEAR_SLOTS:
+		var slot: String = e[0]
+		var side: int = e[2]
+		var y := clampf(float(e[3]) * h - sh * 0.5, 0.0, h - sh)
+		var id: String = G.gear(slot)
+		var on: bool = not sel.is_empty() and String(sel.side) == "gear" and String(sel.id) == id and id != ""
+		var p := K.panel(K.sb(Color(0.07, 0.1, 0.13, 0.94) if id != "" else Color(0.04, 0.05, 0.07, 0.88), 8, K.C_ACC if on else (Color(0.3, 0.9, 0.55, 0.45) if id != "" else Color(1, 1, 1, 0.14)), 1, 6))
+		p.custom_minimum_size = Vector2(sw, sh)
+		p.size = Vector2(sw, sh)
+		p.position = Vector2(0.0 if side < 0 else w - sw, y)
+		p.mouse_filter = Control.MOUSE_FILTER_STOP
+		p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		p.tooltip_text = "%s — przeciągnij tu ubranie z plecaka" % String(e[1]) if id == "" else "Dwuklik albo przeciągnięcie do plecaka zdejmuje."
+		view.add_child(p)
+		var hb := K.hbox(6)
+		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(hb)
+		if id != "":
+			var ic := K.icon(String(D.ITEMS[id].icon), 30, K.C_TXT)
+			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hb.add_child(ic)
+		var vb := K.vbox(0)
+		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vb.add_child(K.lbl(String(e[1]).to_upper(), 9, K.C_ACC if id != "" else K.C_DIM))
+		var nl := K.wrap(String(D.ITEMS[id].name) if id != "" else "puste", 11, K.C_TXT if id != "" else Color(1, 1, 1, 0.35), sw - (50.0 if id != "" else 16.0))
+		nl.max_lines_visible = 2
+		nl.add_theme_constant_override("line_spacing", -2)
+		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(nl)
+		hb.add_child(vb)
+		p.set_drag_forwarding(_drag_gear.bind(slot), _can_drop_gear.bind(slot), _drop_gear.bind(slot))
+		p.gui_input.connect(_gear_input.bind(slot))
+		# kreska od pola do sylwetki
+		var x0 := sw if side < 0 else w - sw
+		var x1 := w * 0.5 + side * (26.0 if slot != "dlonie" else 52.0)
+		marks.append([Vector2(x0, y + sh * 0.5), Vector2(x1, float(e[3]) * h)])
+	lines.draw.connect(func():
+		for m in marks:
+			lines.draw_line(m[0], m[1], Color(1, 1, 1, 0.22), 1.0, true)
+			lines.draw_rect(Rect2(m[1] - Vector2(2, 2), Vector2(4, 4)), Color(0.3, 0.9, 0.55, 0.8)))
+	# plecak: decyduje o tym, ile się zmieści (kupujesz u Stasia)
+	var bp := K.panel(K.sb(Color(0.05, 0.062, 0.088, 0.9), 8, Color(1, 1, 1, 0.1), 1, 6))
+	bp.custom_minimum_size = Vector2(sw, sh)
+	bp.size = Vector2(sw, sh)
+	bp.position = Vector2(w - sw, h - sh)
+	bp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(bp)
+	var bh := K.hbox(6)
+	bp.add_child(bh)
+	bh.add_child(K.icon("backpack", 18, K.C_BLUE))
+	var bv := K.vbox(0)
+	bv.add_child(K.lbl("PLECAK • %d MIEJSC" % int(G.capacity()), 9, K.C_DIM))
+	var bl := K.lbl(G.bag_name(), 11, K.C_TXT)
+	bl.clip_text = true
+	bl.custom_minimum_size = Vector2(sw - 36.0, 0)
+	bv.add_child(bl)
+	bh.add_child(bv)
+
+
+func _gear_input(ev: InputEvent, slot: String) -> void:
+	if not (ev is InputEventMouseButton) or ev.pressed or ev.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var id: String = G.gear(slot)
+	if id == "":
+		return
+	Sfx.play("click")
+	if ev.double_click:
+		G.gear_off(slot)
+		sel = {}
+	else:
+		sel = {"side": "gear", "kind": "item", "p": "", "pur": 0, "id": id}
+	render()
+
+
+func _drag_gear(_at: Vector2, slot: String) -> Variant:
+	var id: String = G.gear(slot)
+	if id == "":
+		return null
+	var pv := K.panel(K.sb(Color(0.09, 0.11, 0.16, 0.95), 9, K.C_ACC, 1, 8))
+	var h := K.hbox(8)
+	pv.add_child(h)
+	h.add_child(K.icon(String(D.ITEMS[id].icon), 40, K.C_TXT))
+	h.add_child(K.lbl(String(D.ITEMS[id].name), 14, K.C_TXT))
+	var holder := Control.new()
+	holder.add_child(pv)
+	pv.position = Vector2(12, 8)
+	holder.z_index = 100
+	set_drag_preview(holder)
+	return {"gear": slot}
+
+
+func _can_drop_gear(_at: Vector2, data: Variant, slot: String) -> bool:
+	return data is Dictionary and data.has("e") and String(data.side) == "bag" and String(data.e.kind) == "item" \
+		and G.is_gear(String(data.e.id)) and String(D.ITEMS[String(data.e.id)].slot) == slot
+
+
+func _drop_gear(_at: Vector2, data: Variant, _slot: String) -> void:
+	G.gear_wear(String(data.e.id))
+	sel = {}
+	render()
+
+
 func _fmt_amount(e: Dictionary, v: float) -> String:
+	if String(e.kind) == "cash":
+		return G.money(v)
 	if String(e.unit) == "g":
 		return G.grams(v)
 	return "%d %s" % [int(round(v)), e.unit]
@@ -759,6 +886,13 @@ func _apply_move(e: Dictionary, to: String, amount: float) -> void:
 func _find_sel() -> Dictionary:
 	if sel.is_empty():
 		return {}
+	if String(sel.side) == "gear":
+		var gid := String(sel.id)
+		if not D.ITEMS.has(gid):
+			return {}
+		var gd: Dictionary = D.ITEMS[gid]
+		return {"kind": "item", "p": "", "pur": 0, "id": gid, "n": 1.0, "name": gd.name, "sub": "na sobie", "icon": gd.icon, "tier": -1, "qty": "na sobie",
+			"usize": 0.0, "uw": 0.0, "step": 1.0, "unit": "szt.", "size": 0.0, "weight": 0.0, "desc": gd.desc}
 	var st: Dictionary = G.S.inv if sel.side == "bag" else G.S.stash.get(room, {})
 	if st.is_empty():
 		return {}
@@ -784,6 +918,10 @@ func _detail() -> Control:
 		_stat(v, "package", "Porcje gotowe do sprzedaży", str(G.packed_total(S.inv)))
 		_stat(v, "weight", "Waga ładunku", G.weight_text(G.store_weight(S.inv)))
 		_stat(v, "shield_alert", "Przy kontroli stracisz", G.grams(goods) if goods > 0.0 else "nic", K.C_WARN if goods > 0.0 else K.C_ACC)
+		var wt: Array = []
+		for t in G.worn_traits():
+			wt.append(K.col(String(t.text), K.C_ACC if t.good else K.C_WARN))
+		v.add_child(K.rich(K.col("Ubranie: ", K.C_DIM) + ("   ".join(wt) if not wt.is_empty() else K.col("nic nie zmienia", K.C_DIM)), 11))
 		v.add_child(K.spacer())
 		v.add_child(K.wrap("Przeciągnij rzecz na drugą stronę — pojawi się suwak z wyborem ilości. Kliknięcie pokazuje opis.", 11, K.C_DIM))
 		return p
@@ -798,13 +936,24 @@ func _detail() -> Control:
 	if int(e.tier) >= 0:
 		v.add_child(K.rich("%s  •  %s" % [K.tier_bb(e.pur), e.sub], 12))
 	v.add_child(K.wrap(e.desc, 12, K.C_DIM))
+	# ubranie: co daje i gdzie się je nosi
+	if e.kind == "item" and G.is_gear(String(e.id)):
+		var parts: Array = []
+		for t in G.stat_traits(D.ITEMS[String(e.id)].get("stats", {})):
+			parts.append(K.col(String(t.text), K.C_ACC if t.good else K.C_WARN))
+		v.add_child(K.rich("   ".join(parts) if not parts.is_empty() else K.col("bez zalet i wad", K.C_DIM), 12))
 	_stat(v, "layers", "Ilość", String(e.qty))
 	_stat(v, "box", "Miejsce / waga", "%s  /  %s" % [G.units(e.size), G.weight_text(e.weight)])
-	if e.kind != "item":
+	if e.kind != "item" and e.kind != "cash":
 		_stat(v, "banknote", "Na ulicy", "ok. %s/g" % G.money(G.market_price(e.p, e.pur)), K.C_ACC)
 	v.add_child(K.spacer())
 	if sel.side == "bag" and e.kind == "item" and e.id == "burner":
 		v.add_child(K.btn("Użyj — zmień numer", func(): G.use_burner(); render(), "go", true))
+	elif String(sel.side) == "gear":
+		v.add_child(K.wrap("Założone ubranie nic nie waży. Dwuklik na polu albo przeciągnięcie do plecaka je zdejmuje.", 11, K.C_DIM))
+	elif sel.side == "bag" and e.kind == "item" and G.is_gear(String(e.id)):
+		var gid2 := String(e.id)
+		v.add_child(K.btn("Załóż", func(): G.gear_wear(gid2); sel = {}; render(), "go", true))
 	else:
 		v.add_child(K.wrap("Przeciągnij na skrytkę%s, żeby wybrać ilość." % ("" if has_stash() else " (w kryjówce)") if sel.side == "bag" else "Przeciągnij do plecaka, żeby wybrać ilość.", 11, K.C_DIM))
 	return p
@@ -985,7 +1134,36 @@ func _tab_wear() -> void:
 				var bb := K.btn("  Kup i załóż — %s  " % G.money(o.price), func(): G.outfit_buy(oid); render(), "go", true)
 				bb.disabled = S.cash < float(o.price) or int(S.lvl) < int(o.lvl)
 				acts.add_child(bb)
-	hint.text = "Kliknij strój, żeby go przymierzyć. Przeciągnij postać myszą, żeby ją obrócić."
+	# ubrania na sztuki: w sklepie można je kupić; zakłada się je w zakładce „Ekwipunek”, przeciągając na postać
+	if in_shop:
+		list.add_child(K.gap(6))
+		list.add_child(K.lbl("UBRANIA NA SZTUKI — kupione trafiają od razu na Ciebie (albo do plecaka, gdy pole jest zajęte)", 10, K.C_DIM))
+		for se in D.GEAR_SLOTS:
+			for gid in D.ITEMS:
+				var gd: Dictionary = D.ITEMS[gid]
+				if String(gd.get("slot", "")) != String(se[0]):
+					continue
+				var iid: String = gid
+				var have: bool = G.item(iid) > 0 or G.gear(String(se[0])) == iid
+				var gc := K.panel(K.sb(Color(0.085, 0.102, 0.15), 10, Color(1, 1, 1, 0.07), 1, 8))
+				list.add_child(gc)
+				var gh := K.hbox(10)
+				gc.add_child(gh)
+				gh.add_child(K.icon(String(gd.icon), 44, K.C_TXT))
+				var gv := K.vbox(1)
+				gv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				gh.add_child(gv)
+				gv.add_child(K.rich("[b]%s[/b]  %s%s" % [String(gd.name), K.col(String(se[1]).to_lower(), K.C_BLUE), K.col("   ● masz", K.C_ACC) if have else ""], 14))
+				var gparts: Array = []
+				for t in G.stat_traits(gd.get("stats", {})):
+					gparts.append(K.col(String(t.text), K.C_ACC if t.good else K.C_WARN))
+				gv.add_child(K.rich("   ".join(gparts), 12))
+				var glocked: bool = int(S.lvl) < int(gd.lvl)
+				var gb := K.btn(("od poz. %d" % int(gd.lvl)) if glocked else ("Kup — %s" % G.money(gd.price)), func(): G.gear_buy(iid); render(), "go", true)
+				gb.disabled = glocked or S.cash < float(gd.price)
+				gb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				gh.add_child(gb)
+	hint.text = "Kliknij strój, żeby go przymierzyć. Ubrania na sztuki zakładasz w zakładce „Ekwipunek”: przeciągnij je na pole przy postaci."
 
 
 # ---------------------------------------------------------------- zakładka: organizer

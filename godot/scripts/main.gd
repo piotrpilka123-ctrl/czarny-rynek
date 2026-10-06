@@ -1471,6 +1471,14 @@ func _wanted_tick(dt: float) -> void:
 
 
 func _slow() -> void:
+	# pierwszy przełaz pod ogrodzeniem: jednorazowa podpowiedź, jak się schylić
+	if player.loc == "out" and not G.flag("crawl_hint") and not player.crouching:
+		var pc: Vector3 = player.global_position
+		for cr in world.crawls:
+			if absf(float(cr.x) - pc.x) < 2.6 and absf(float(cr.z) - pc.z) < 2.6:
+				G.S.flags["crawl_hint"] = true
+				G.notify("Siatka jest tu podwinięta. Naciśnij [%s], żeby kucnąć, i przejdź pod nią." % G.kn("crouch"), "good")
+				break
 	var pp: Vector3 = player.global_position
 	G.zone_name = ""
 	G.zone_id = ""
@@ -2147,6 +2155,15 @@ func _test_ui(what: String) -> void:
 				bv.reading = 0.0
 		"stash": ui.open_stash("safe")
 		"inv": ui.open_inventory("")
+		"gear":
+			# podgląd pól ubioru: część ubrań na postaci, część w plecaku, gotówka w skrytce
+			for gid in ["czapka_daszek", "bluza_kaptur", "trampki", "lancuch", "jeansy", "rekawiczki", "okulary", "bojowki"]:
+				G.S.items[gid] = 1
+			for gid2 in ["czapka_daszek", "bluza_kaptur", "trampki", "lancuch"]:
+				G.gear_wear(gid2)
+			G.S.cash = 1840.0
+			G.S.stash.safe.cash = 600.0
+			ui.open_inventory("safe")
 		"invsel":
 			ui.open_stash("safe")
 			ui.inv.sel = {"side": "bag", "kind": "pack", "p": "dym", "pur": 80, "id": ""}

@@ -59,6 +59,15 @@ static func run(T) -> void:
 		if Vector2(float(cr.x) - 128.6 * D.SC, float(cr.z) - (-90.0 * D.SC)).length() < 1.0:
 			crawl_ok = true
 	T.ok(crawl_ok, "w siatce za torami jest przełaz na kucaka")
+	await T.frames(2)
+	var gxz := Vector2(128.6 * D.SC, -90.0 * D.SC)
+	var gpos := Vector3(gxz.x, W.height(gxz.x, gxz.y), gxz.y)
+	T.ok(P.fits_at(gpos, true) and not P.fits_at(gpos, false), "pod podwiniętą siatką mieści się tylko skulona sylwetka")
+	var has_crawl_inter := false
+	for it in W.inter:
+		if String(it.get("id", "")) == "crawl":
+			has_crawl_inter = true
+	T.ok(not has_crawl_inter, "przełaz nie ma własnej interakcji — wystarczy kucnąć")
 	# bezpieczna trasa: łukiem na południowy zachód, na kucaka, gdy patrol B idzie plecami
 	var a: Dictionary = pr.cop_a
 	var b: Dictionary = pr.cop_b

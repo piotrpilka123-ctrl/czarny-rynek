@@ -121,6 +121,58 @@ static func run(T) -> void:
 	var base: Dictionary = G.new_state()
 	G._merge(base, JSON.parse_string(JSON.stringify(S)))
 	T.ok(String(base.outfit) == "kominiarka" and base.outfits.has("garnitur") and base.outfits.has("biegacz"), "strój i szafa zapisują się")
+	# ---------------------------------------------------------------- ubrania na sztuki: pola wokół postaci
+	S.outfit = "dres"
+	S.gear = {}
+	S.lvl = 5
+	S.cash = 2000.0
+	S.inv = G.new_store()
+	for k in S.items:
+		S.items[k] = 0
+	var gcap0: int = G.capacity()
+	var gsp0: float = G.outfit_stat("speed", 1.0)
+	T.ok(D.GEAR_SLOTS.size() == 6 and G.is_gear("bluza_kaptur") and not G.is_gear("woreczki"), "sześć pól ubioru; ubranie to przedmiot z polem")
+	T.ok(G.gear_buy("bluza_kaptur") and G.gear("gora") == "bluza_kaptur" and G.item("bluza_kaptur") == 0 and absf(S.cash - 1780.0) < 0.01, "kupione ubranie ląduje od razu na postaci")
+	T.ok(G.capacity() == gcap0 + 2 and G.carry_total() < 0.01, "bluza daje dwie kieszenie, a założona nic nie waży i nie zajmuje miejsca")
+	T.ok(G.gear_buy("kurtka_kieszenie") and G.item("kurtka_kieszenie") == 1 and G.gear("gora") == "bluza_kaptur", "drugie ubranie na zajęte pole trafia do plecaka")
+	T.ok(G.carry_total() > 0.9 and G.store_weight(S.inv) > 300.0 and G.store_weight(S.inv) < 500.0, "ubranie w plecaku waży mało (%d g)" % int(G.store_weight(S.inv)))
+	T.ok(G.gear_wear("kurtka_kieszenie") and G.gear("gora") == "kurtka_kieszenie" and G.item("bluza_kaptur") == 1 and G.capacity() == gcap0 + 4, "przebranie: stara góra wraca do plecaka")
+	S.items["buty_bieg"] = 1
+	S.items["dresy"] = 1
+	G.gear_wear("buty_bieg")
+	G.gear_wear("dresy")
+	var gsp1: float = G.outfit_stat("speed", 1.0)
+	T.ok(gsp1 > gsp0 * 1.02 and gsp1 < gsp0 * 1.08, "ubrania zmieniają cechy, ale niewiele (szybkość %+d%%)" % int(round((gsp1 / gsp0 - 1.0) * 100.0)))
+	var gworst := 1.0
+	for gid in D.ITEMS:
+		for sk in D.ITEMS[gid].get("stats", {}):
+			if sk != "cap":
+				gworst = maxf(gworst, maxf(float(D.ITEMS[gid].stats[sk]), 1.0 / float(D.ITEMS[gid].stats[sk])))
+	T.ok(gworst <= 1.12, "żadne pojedyncze ubranie nie zmienia cechy o więcej niż 12%")
+	T.ok(G.gear_off("buty") and G.gear("buty") == "" and G.item("buty_bieg") == 1, "zdjęte buty wracają do plecaka")
+	T.ok(not G.gear_wear("woreczki") and not G.gear_wear("trampki"), "nie założysz czegoś, co nie jest ubraniem albo czego nie masz")
+	T.ok(not G.worn_traits().is_empty(), "karta postaci podaje łączne cechy ubioru")
+	# gotówka jako przedmiot
+	S.cash = 500.0
+	S.stash.safe.cash = 0.0
+	var cash_e := {}
+	for e in G.entries(S.inv):
+		if String(e.kind) == "cash":
+			cash_e = e
+	T.ok(not cash_e.is_empty() and float(cash_e.n) == 500.0 and float(cash_e.size) == 0.0 and float(cash_e.weight) == 0.0, "gotówka jest w plecaku przedmiotem, który nic nie waży i nie zajmuje miejsca")
+	T.ok(absf(G.move_entry("safe", cash_e, true, 200.0) - 200.0) < 0.01 and S.cash == 300.0 and float(S.stash.safe.cash) == 200.0, "gotówkę przenosi się do skrytki jak każdą rzecz")
+	var st_cash := false
+	for e in G.entries(S.stash.safe):
+		if String(e.kind) == "cash" and float(e.n) == 200.0:
+			st_cash = true
+	T.ok(st_cash, "w skrytce gotówka też jest pozycją na liście")
+	G.ui.open_inventory("safe")
+	await T.frames(2)
+	T.ok(G.ui.mode == "inv", "ekwipunek z polami ubioru otwiera się bez błędów")
+	G.ui.close_all()
+	var gbase: Dictionary = G.new_state()
+	G._merge(gbase, JSON.parse_string(JSON.stringify(S)))
+	T.ok(String(gbase.gear.get("gora", "")) == "kurtka_kieszenie" and int(gbase.items.get("bluza_kaptur", 0)) == 1, "założone ubrania i te w plecaku zapisują się")
 	G.S = keep
 	G.main.teleport(back_loc, back_pos, 0.0)
 	await T.frames(2)

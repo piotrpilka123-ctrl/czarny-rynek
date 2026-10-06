@@ -169,6 +169,29 @@ def profile(name, pts, depth, material, bevel=0.003, parent=None, holes=()):
     return out
 
 
+def sheet(name, w, h, nx, ny, fn, material, parent=None, loc=(0, 0, 0)):
+    """tkanina: stojący prostokąt w×h (płaszczyzna XZ, dół na z=0) przesuwany funkcją fn(u, v) -> (dx, dy, dz)"""
+    bm = bmesh.new()
+    rows = []
+    for j in range(ny + 1):
+        row = []
+        for i in range(nx + 1):
+            u, v = i / nx, j / ny
+            dx, dy, dz = fn(u, v)
+            row.append(bm.verts.new((-w / 2 + u * w + dx, dy, v * h + dz)))
+        rows.append(row)
+    for j in range(ny):
+        for i in range(nx):
+            bm.faces.new((rows[j][i], rows[j][i + 1], rows[j + 1][i + 1], rows[j + 1][i]))
+    bm.normal_update()
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    ob = _finish(me, name, material, True, parent)
+    ob.location = loc
+    return ob
+
+
 def text(name, body, size, material, loc=(0, 0, 0), rot=(math.radians(90), 0, 0), depth=0.0008, parent=None, align='CENTER'):
     """napis jako płaska siatka (etykiety, tabliczki); domyślnie stoi pionowo, czytany od strony −Y"""
     cu = bpy.data.curves.new(name, 'FONT')

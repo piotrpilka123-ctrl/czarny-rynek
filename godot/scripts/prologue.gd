@@ -152,12 +152,10 @@ func start() -> void:
 	t = 0.0
 	M.nav_force = true
 	M.ui.dialog({"name": "Siwy", "lines": [
-		"No, wreszcie. Śpiąca królewna raczyła zejść do piwnicy. Wiesz, która godzina? Za kwadrans piąta, Kuba.",
-		{"n": "Ty", "t": "Wiem. Trzy dni mnie nie było."},
-		"Trzy dni. Ja tu od trzech dni oddycham acetonem, a ty wracasz z miną, jakbyś pił z diabłem na umór. Dobra, nie moja sprawa.",
-		"Pół kilo stoi na stole. Najczystszy śnieg, jaki z tej huty wyszedł. Wiktor zapłacił z góry i czeka do szóstej — a Wiktor nie lubi czekać.",
-		{"n": "Ty", "t": "Trzy lata bez jednej wpadki. Dowieziemy to i robimy przerwę. Długą."},
-		"Ty i przerwa. Pakuj torbę, ja doglądam kolby. I Kuba — umyj twarz, zanim pójdziesz do ludzi.",
+		"No, wreszcie. Za kwadrans piąta, Kuba. Trzy dni cię nie było.",
+		"Pół kilo stoi na stole — najczystszy śnieg, jaki z tej huty wyszedł. Wiktor zapłacił z góry i czeka do szóstej.",
+		{"n": "Ty", "t": "Dowieziemy to i robimy przerwę. Długą."},
+		"Ty i przerwa. Pakuj torbę, ja doglądam kolby.",
 	]})
 
 
@@ -189,13 +187,17 @@ func _party() -> void:
 		[16.4, "T:— O kurwa. O, tak. Podgłośnij to!"],
 		[17.2, "spiew"], [18.6, "smiech_2"],
 		[20.4, "T:— Która to doba? Trzecia? Czwarta?"],
-		[21.6, "SNIFF2"], [22.4, "okrzyki_1"],
-		[24.6, "T:— Nie odbieraj. To znowu Siwy."],
-		[25.2, "SICK"], [25.6, "wibracja"],
-		[27.2, "wymioty_1"],
-		[28.6, "T:(łazienka. Zimne kafle. Ktoś wali w drzwi)"],
-		[30.6, "wymioty_2"],
-		[32.4, "T:— Stary, ty w ogóle jeszcze żyjesz?"],
+		[22.4, "okrzyki_1"],
+		[24.2, "T:— Kuba, telefon. To znowu Siwy. Odbierzesz w końcu?"],
+		[24.4, "wibracja"],
+		[25.6, "SICK"],
+		[26.4, "T:— Zaraz. Zaraz, tylko —"],
+		# bieg do łazienki, drzwi, dopiero potem torsje
+		[26.8, "STEPS"], [28.0, "DOOR"],
+		[28.7, "wymioty_1"],
+		[30.9, "wymioty_2"],
+		[32.6, "T:— Stary, ty w ogóle jeszcze żyjesz? Siwy mówi, że partia czeka."],
+		[35.4, "T:— …Żyję. Powiedz mu, że jadę."],
 	]
 	var ei := 0
 	var tt := 0.0
@@ -206,7 +208,7 @@ func _party() -> void:
 	var rush := 0.0
 	var sick := 0.0
 	var sick_to := 0.0
-	while tt < 35.6 and not M.cut_skip and not _jumped:
+	while tt < 38.6 and not M.cut_skip and not _jumped:
 		var dt := get_process_delta_time()
 		tt += dt
 		while ei < ev.size() and tt >= float(ev[ei][0]):
@@ -218,10 +220,15 @@ func _party() -> void:
 				cut_to = 19000.0
 				drive_to = 1.0
 				U.flash(0.5)
-			elif what == "SNIFF1" or what == "SNIFF2":
-				Sfx.party_sfx("wciaganie_1" if what == "SNIFF1" else "wciaganie_2", 7.0, 1.0, true, 0.2 if what == "SNIFF1" else 0.4)
+			elif what == "SNIFF1":
+				# jedno wciągnięcie, nie cała seria z nagrania
+				Sfx.party_sfx("wciaganie_1", 7.0, 1.0, true, 0.15, 1.25)
 				rush = 1.0
 				U.flash(0.3)
+			elif what == "STEPS":
+				Sfx.party_steps(6, 0.18)
+			elif what == "DOOR":
+				Sfx.play("door", 6.0)
 			elif what == "SICK":
 				cut_to = 320.0
 				drive_to = 0.25
@@ -230,6 +237,7 @@ func _party() -> void:
 				Sfx.party_sfx(what, -2.0)
 			elif what == "wymioty_1" or what == "wymioty_2":
 				Sfx.party_sfx(what, 9.0, 1.0, true)
+				cut_to = 220.0
 			elif what == "spiew":
 				Sfx.party_sfx(what, -5.0, 1.04)
 			else:
@@ -388,10 +396,9 @@ func _on_packed(instant := false) -> void:
 	# telefon od Wiktora: dzwoni, dopóki nie odbierzesz; rozmawiasz, chodząc po hali — przerywa go megafon
 	M.ui.call_start("Wiktor", [
 		"Kuba. Za kwadrans piąta, a ja jeszcze nie śpię — zgadnij przez kogo.",
-		"Zapłaciłem ci z góry dwadzieścia pięć tysięcy, bo twoje słowo było dotąd warte tyle, co gotówka. Dotąd.",
+		"Zapłaciłem z góry dwadzieścia pięć tysięcy, bo twoje słowo było dotąd warte tyle, co gotówka. Dotąd.",
 		{"n": "Ty", "t": "Pół kilo jest spakowane. Za godzinę masz je u siebie."},
-		"Za godzinę. Dobrze. Bo wiesz, co mówią o ludziach, którzy znikają na trzy dni z cudzymi pieniędzmi? Nic nie mówią. Nie ma komu.",
-		"Dowieź towar, Kuba. I odeśpij to, co tam robiłeś. Wyglądasz podobno jak —",
+		"Dowieź towar, Kuba. Bo o ludziach, którzy znikają z cudzymi pieniędzmi, nikt potem nie opowiada. Nie ma —",
 	], _begin_raid)
 
 
@@ -567,7 +574,14 @@ func _boom() -> void:
 	# --- napastnik czeka za plecami (poza kadrem)
 	var md := Vector2(mill.x - eye.x, mill.y - eye.z).normalized()
 	var rgt := Vector2(-md.y, md.x)
-	var apos := Vector2(eye.x, eye.z) - md * 1.9 + rgt * 0.55
+	# napastnik staje za plecami tam, gdzie jest wolne miejsce, i odejdzie w stronę, na której nic nie stoi
+	var here := Vector2(eye.x, eye.z)
+	var apos := here - md * 1.9 + rgt * 0.55
+	for ang in [0.0, 0.5, -0.5, 0.95, -0.95, 1.4, -1.4]:
+		var cand: Vector2 = here + (-md).rotated(ang) * 1.9
+		if not W.grid.is_point_solid(W._cell(cand.x, cand.y)) and not W.grid.is_point_solid(W._cell((here.x + cand.x) * 0.5, (here.y + cand.y) * 0.5)):
+			apos = cand
+			break
 	var ground: float = W.height(eye.x, eye.z)
 	var arig: Dictionary = Chars.make({"model": "m09", "kind": "hoodie", "mask": true, "seed": 77, "top": "15161a", "bottom": "101114", "tall": 1.04})
 	M.add_child(arig.root)
@@ -635,6 +649,20 @@ func _boom() -> void:
 	var swung := false
 	var grabbed := 0
 	var out_dir := (Vector2(apos.x - eye.x, apos.y - eye.z)).normalized()
+	var best_free := -1
+	for ang2 in [0.0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, 2.4, -2.4, PI]:
+		var dd := (apos - here).normalized().rotated(ang2)
+		var free := 0
+		for st2 in range(1, 9):
+			var q: Vector2 = apos + dd * (st2 * 0.8)
+			if W.grid.is_point_solid(W._cell(q.x, q.y)):
+				break
+			free += 1
+		if free > best_free:
+			best_free = free
+			out_dir = dd
+		if free >= 8:
+			break
 	while tt < 24.2 and not M.cut_skip:
 		var dt := get_process_delta_time()
 		tt += dt

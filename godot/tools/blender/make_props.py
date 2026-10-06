@@ -113,7 +113,22 @@ def rurka():
     export('rurka')
 
 
+def slupek():
+    """słupek ogrodzenia z rury: kapturek, trzy obejmy z uszami na drut naciągowy, betonowa stopa. Wysokość 1 m — gra skaluje."""
+    reset()
+    st = mat('ocynk', '6a706c', 0.5, 0.7)
+    p = [lathe('rura', [(0.0, 0.0), (0.028, 0.0), (0.028, 0.985), (0.0, 0.985)], st, 10)]
+    p.append(lathe('kaptur', [(0.03, 0.97), (0.034, 0.975), (0.034, 0.99), (0.02, 1.0), (0.0, 1.0)], mat('kaptur', '2a2c2a', 0.6), 10))
+    for z in (0.12, 0.5, 0.9):
+        p.append(lathe('obejma', [(0.029, z - 0.012), (0.033, z - 0.012), (0.033, z + 0.012), (0.029, z + 0.012)], mat('obejma', '4a4f4a', 0.55, 0.7), 10))
+        p.append(rbox('ucho', (0.02, 0.006, 0.02), mat('obejma', '4a4f4a', 0.55, 0.7), 0.002, (0.04, 0, z), segs=1))
+    p.append(rbox('stopa', (0.16, 0.16, 0.06), mat('beton', '8a8880', 0.95), 0.012, (0, 0, 0.0)))
+    ob = join('Slupek', p)
+    weather([ob], 256, 0.6, 0.6, (0.3, 0.18, 0.1))
+    export('plot_slupek')
+
+
 only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else []
-for f in (radio, pistolet, rurka):
+for f in (radio, pistolet, rurka, slupek):
     if not only or f.__name__ in only:
         f()

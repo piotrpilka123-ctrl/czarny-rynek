@@ -428,8 +428,9 @@ func party_vol(db: float) -> void:
 		party_player.volume_db = db
 
 
-## pojedynczy odgłos imprezy; `close` = blisko i wyraźnie (poza filtrem), np. wciągnięcie kreski
-func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.0) -> AudioStreamPlayer:
+## pojedynczy odgłos imprezy; `close` = blisko i wyraźnie (poza filtrem), np. wciągnięcie kreski.
+## `dur` > 0 ucina nagranie po tylu sekundach (nagrania wciągania mają po kilka powtórzeń — gra potrzebuje jednego).
+func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.0, dur := 0.0) -> AudioStreamPlayer:
 	if muted or not party_sounds.has(name):
 		return null
 	var p: AudioStreamPlayer = party_fx[party_fx_i]
@@ -439,7 +440,37 @@ func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.
 	p.volume_db = db
 	p.pitch_scale = pitch
 	p.play(from)
+	if dur > 0.0:
+		var st: AudioStream = p.stream
+		var tw := create_tween()
+		tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw.tween_interval(dur)
+		tw.tween_property(p, "volume_db", -50.0, 0.18)
+		tw.tween_callback(func():
+			if p.stream == st:
+				p.stop())
 	return p
+
+
+## kilka szybkich kroków (ktoś wbiega do łazienki)
+func party_steps(n := 6, gap := 0.19) -> void:
+	if muted:
+		return
+	var arr: Array = steps.get("tile", steps.get("concrete", []))
+	if arr.is_empty():
+		return
+	for i in range(n):
+		var tw := create_tween()
+		tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw.tween_interval(i * gap)
+		tw.tween_callback(func():
+			var p: AudioStreamPlayer = party_fx[party_fx_i]
+			party_fx_i = (party_fx_i + 1) % party_fx.size()
+			p.bus = "Efekty"
+			p.stream = arr.pick_random()
+			p.volume_db = -5.0 + i * 1.2
+			p.pitch_scale = randf_range(1.05, 1.2)
+			p.play())
 
 
 func party_stop() -> void:

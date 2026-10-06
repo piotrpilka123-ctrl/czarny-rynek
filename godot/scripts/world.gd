@@ -1745,7 +1745,7 @@ func _fence_run(ax: float, az: float, bx: float, bz: float, kind: String, h: flo
 
 ## Przełaz: dół płotu jest podwinięty (albo mur ma wyrwę przy ziemi). Gracz przejdzie tylko na kucaka,
 ## policja wcale — dla niej to dalej pełny płot.
-const CRAWL_H := 1.06
+const CRAWL_H := 1.22
 
 func _crawl_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: float) -> void:
 	var along := Vector2(1, 0) if ew else Vector2(0, 1)
@@ -1768,7 +1768,10 @@ func _crawl_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: floa
 	else:
 		for sd in [-1.0, 1.0]:
 			var pp2 = Vector2(x, z) + along * sd * gap
-			Models.cyl(city, 0.03, 0.03, h, Vector3(pp2.x, by + h * 0.5, pp2.y), steel, Vector3.ZERO, 5)
+			var pn := Node3D.new()
+			pn.position = Vector3(pp2.x, by, pp2.y)
+			city.add_child(pn)
+			Props.fence_post(pn, 0.0, h)
 		var up := Props.fence_panel(w, h - CRAWL_H, "mesh" if kind == "siatka" else "sheet")
 		up.position = Vector3(x, by + CRAWL_H, z)
 		up.rotation.y = ry
@@ -1787,10 +1790,8 @@ func _crawl_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: floa
 		add_col(x - pad, x + pad, z - gap, z + gap, h - CRAWL_H, true, by + CRAWL_H, h)
 	_col_opaque = true
 	rects.pop_back()
+	# bez interakcji: kto kucnie [C], ten przejdzie. Gra podpowiada to raz, przy pierwszym przełazie (main._slow)
 	crawls.append({"x": x * SC, "z": z * SC})
-	inter.append({"loc": "out", "x": x * SC, "z": z * SC, "y0": 0.0, "y1": 1.2, "r": 0.8, "reach": 3.2, "id": "crawl",
-		"label": func(): return "Przełaz — przejdziesz tylko na kucaka  [C]" if not G.player.crouching else "Przełaz",
-		"act": func(): G.player.set_crouch(true)})
 	# wydeptana ścieżka
 	_pl(3, Vector2(x, z) - across * 3.5, Vector2(x, z) + across * 3.5, 1.1)
 
