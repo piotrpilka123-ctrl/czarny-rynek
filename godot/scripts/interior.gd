@@ -5,6 +5,7 @@ extends RefCounted
 
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
+const Stations = preload("res://scripts/stations.gd")
 
 static var _mats := {}
 static var _pane_tex: ImageTexture = null
@@ -33,6 +34,56 @@ static func _tex_mat(path: String, unshaded := false, alpha := false) -> Standar
 
 
 ## listwy przypodłogowe dookoła pokoju; `door_w` = przerwa na drzwi w ścianie południowej
+static var _tint_mats := {}
+
+## model z Blendera postawiony w `pos` (null, gdy pliku nie ma — wtedy zostaje stara wersja z brył)
+static func _model(g: Node3D, name: String, pos: Vector3, rot_y := 0.0, scl := Vector3.ONE) -> Node3D:
+	var n: Node3D = Stations.model(name)
+	if n == null:
+		return null
+	n.position = pos
+	n.rotation.y = rot_y
+	n.scale = scl
+	g.add_child(n)
+	return n
+
+
+## barwi części modelu o nazwach zaczynających się od „Tint” (jasne w modelu, kolor nadaje gra)
+static func _tint(n: Node, color: Color, emit := false) -> void:
+	if n is MeshInstance3D and (String(n.name).begins_with("Tint") or (emit and String(n.name).begins_with("Swiatlo"))):
+		var mi: MeshInstance3D = n
+		for i in range(mi.mesh.get_surface_count()):
+			var src: Material = mi.mesh.surface_get_material(i)
+			var key := "%d|%s|%s" % [src.get_instance_id() if src != null else 0, color.to_html(), emit]
+			if not _tint_mats.has(key):
+				var m: StandardMaterial3D = (src.duplicate() if src is StandardMaterial3D else StandardMaterial3D.new())
+				if emit:
+					m.emission_enabled = true
+					m.emission = color
+					m.albedo_color = color
+				else:
+					m.albedo_color = Color(color.r, color.g, color.b, m.albedo_color.a)
+				_tint_mats[key] = m
+			mi.set_surface_override_material(i, _tint_mats[key])
+	for c in n.get_children():
+		_tint(c, color, emit)
+
+
+## lampa nie rzuca cienia od własnego światła (druty przy żarówce zaciemniały cały klosz i ściany)
+static func _no_shadow(n: Node) -> void:
+	if n is GeometryInstance3D:
+		(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for c in n.get_children():
+		_no_shadow(c)
+
+
+static func _hide(n: Node, prefix: String) -> void:
+	if n is Node3D and String(n.name).begins_with(prefix):
+		(n as Node3D).visible = false
+	for c in n.get_children():
+		_hide(c, prefix)
+
+
 static func baseboards(g: Node3D, cx: float, w: float, d: float, color := "d9d4c8", h := 0.09, door_w := 1.2) -> void:
 	var m := _m("bb_" + color, color, 0.7)
 	Models.box(g, Vector3(w, h, 0.025), Vector3(cx, h * 0.5, -d * 0.5 + 0.012), m, Vector3.ZERO, false)
@@ -73,16 +124,35 @@ static func window(g: Node3D, at: Vector3, w: float, h: float, wall := "n", curt
 	pane.emission_energy_multiplier = 1.0
 	pane.roughness = 0.15
 	Models.box(n, Vector3(w, h, 0.03), Vector3(0, 0, 0.02), pane, Vector3.ZERO, false)
+	# rama, parapet, klamki i firanki z modelu (okno 1,5 × 1,2 m skalowane do zadanego otworu)
+	var wm: Node3D = Stations.model("dom_okno")
+	if wm != null:
+		wm.scale = Vector3(w / 1.5, h / 1.2, 1.0)
+		n.add_child(wm)
+		if curtain != "sheer" and curtain != "drapes":
+			_hide(wm, "Firanka")
+			_hide(wm, "Karnisz")
+		elif curtain == "drapes":
+			_tint(wm, Color(0.42, 0.29, 0.23))
+		if curtain == "blinds":
+			var bm0 := _m("blind", "d8d2c2", 0.6)
+			var rows0 := int(h / 0.07)
+			for k0 in range(rows0):
+				if k0 > rows0 * 0.72:
+					break
+				Models.box(n, Vector3(w - 0.04, 0.012, 0.05), Vector3(0, h * 0.5 - 0.04 - k0 * 0.07, 0.085), bm0, Vector3(0.5, 0, 0), false)
+		curtain = "model"
 	# rama: obwód, słupek i ślemię
-	for sx in [-1.0, 1.0]:
-		Models.box(n, Vector3(0.07, h + 0.1, 0.09), Vector3(sx * (w * 0.5 + 0.01), 0, 0.05), frame, Vector3.ZERO, false)
-	for sy in [-1.0, 1.0]:
-		Models.box(n, Vector3(w + 0.1, 0.07, 0.09), Vector3(0, sy * (h * 0.5 + 0.01), 0.05), frame, Vector3.ZERO, false)
-	Models.box(n, Vector3(0.055, h, 0.07), Vector3(0, 0, 0.05), frame, Vector3.ZERO, false)
-	Models.box(n, Vector3(w, 0.045, 0.07), Vector3(0, h * 0.18, 0.05), frame, Vector3.ZERO, false)
-	Models.box(n, Vector3(w + 0.24, 0.045, 0.2), Vector3(0, -h * 0.5 - 0.05, 0.11), frame)
-	for sx in [-0.5, 0.5]:
-		Models.box(n, Vector3(0.03, 0.09, 0.02), Vector3(sx * 0.12, -h * 0.1, 0.09), _m("handle", "b8b0a0", 0.4, 0.6), Vector3.ZERO, false)
+	if curtain != "model":
+		for sx in [-1.0, 1.0]:
+			Models.box(n, Vector3(0.07, h + 0.1, 0.09), Vector3(sx * (w * 0.5 + 0.01), 0, 0.05), frame, Vector3.ZERO, false)
+		for sy in [-1.0, 1.0]:
+			Models.box(n, Vector3(w + 0.1, 0.07, 0.09), Vector3(0, sy * (h * 0.5 + 0.01), 0.05), frame, Vector3.ZERO, false)
+		Models.box(n, Vector3(0.055, h, 0.07), Vector3(0, 0, 0.05), frame, Vector3.ZERO, false)
+		Models.box(n, Vector3(w, 0.045, 0.07), Vector3(0, h * 0.18, 0.05), frame, Vector3.ZERO, false)
+		Models.box(n, Vector3(w + 0.24, 0.045, 0.2), Vector3(0, -h * 0.5 - 0.05, 0.11), frame)
+		for sx in [-0.5, 0.5]:
+			Models.box(n, Vector3(0.03, 0.09, 0.02), Vector3(sx * 0.12, -h * 0.1, 0.09), _m("handle", "b8b0a0", 0.4, 0.6), Vector3.ZERO, false)
 	# zasłony
 	if curtain == "sheer" or curtain == "drapes":
 		Models.cyl(n, 0.012, 0.012, w + 0.5, Vector3(0, h * 0.5 + 0.16, 0.14), _m("rod", "5a4a3a", 0.5, 0.3), Vector3(0, 0, PI / 2.0), 6)
@@ -125,6 +195,11 @@ static func window(g: Node3D, at: Vector3, w: float, h: float, wall := "n", curt
 
 ## lampa sufitowa: "shade" (klosz), "bulb" (goła żarówka na kablu), "tube" (świetlówka)
 static func ceiling_lamp(g: Node3D, pos: Vector3, kind := "shade", color := Color(1.0, 0.84, 0.6)) -> void:
+	var lm := _model(g, {"shade": "dom_lampa_klosz", "bulb": "dom_lampa_zarowka", "tube": "dom_lampa_swietlowka"}.get(kind, ""), pos)
+	if lm != null:
+		_tint(lm, color, true)
+		_no_shadow(lm)
+		return
 	var c := "%02x%02x%02x" % [int(color.r * 255), int(color.g * 255), int(color.b * 255)]
 	if kind == "tube":
 		Models.box(g, Vector3(1.24, 0.05, 0.14), Vector3(pos.x, pos.y - 0.025, pos.z), _m("tubebody", "c8c8c4", 0.5, 0.3), Vector3.ZERO, false)
@@ -197,6 +272,10 @@ static func rug(g: Node3D, pos: Vector3, size: Vector2, rot_y := 0.0, tint := Co
 
 ## półka ścienna z książkami i drobiazgami
 static func wall_shelf(g: Node3D, pos: Vector3, rot_y: float, w := 0.9, seed_v := 1) -> void:
+	var sm := _model(g, "dom_polka", pos, rot_y, Vector3(w / 1.0, 1.0, 1.0))
+	if sm != null:
+		mug(sm, Vector3(0.42, 0.0125, 0.1), "c9c4b6")
+		return
 	var n := Node3D.new()
 	n.position = pos
 	n.rotation.y = rot_y
@@ -217,6 +296,12 @@ static func wall_shelf(g: Node3D, pos: Vector3, rot_y: float, w := 0.9, seed_v :
 
 
 static func bottle(g: Node3D, pos: Vector3, color := "3a6a3a", lying := false) -> void:
+	var bm := _model(g, "dom_butelka", pos + (Vector3(0, 0.032, 0) if lying else Vector3.ZERO))
+	if bm != null:
+		if lying:
+			bm.rotation = Vector3(0, float(absi(color.hash()) % 60) * 0.1, PI / 2.0)
+		_tint(bm, Models.col(color))
+		return
 	var m := _m("bottle_" + color, color, 0.15, 0.0, 0.0, 0.75)
 	var rot := Vector3(0, 0, PI / 2.0) if lying else Vector3.ZERO
 	var p := pos + (Vector3(0, 0.032, 0) if lying else Vector3(0, 0.09, 0))
@@ -226,15 +311,30 @@ static func bottle(g: Node3D, pos: Vector3, color := "3a6a3a", lying := false) -
 
 
 static func can(g: Node3D, pos: Vector3, color := "b0382c", crushed := false) -> void:
+	var cm0 := _model(g, "dom_puszka", pos)
+	if cm0 != null:
+		if crushed:
+			cm0.scale = Vector3(1.05, 0.5, 1.0)
+			cm0.rotation = Vector3(0.22, float(absi(color.hash()) % 60) * 0.1, 0.08)
+		_tint(cm0, Models.col(color))
+		return
 	var c := Models.cyl(g, 0.032, 0.032, 0.07 if crushed else 0.12, pos + Vector3(0, 0.035 if crushed else 0.06, 0), _m("can_" + color, color, 0.35, 0.7), Vector3(0.2 if crushed else 0.0, 0, 0), 8)
 	c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 static func mug(g: Node3D, pos: Vector3, color := "d9d4c8") -> void:
+	var mm := _model(g, "dom_kubek", pos, float(absi(color.hash()) % 60) * 0.1)
+	if mm != null:
+		_tint(mm, Models.col(color))
+		return
 	Models.cyl(g, 0.04, 0.035, 0.09, pos + Vector3(0, 0.045, 0), _m("mug_" + color, color, 0.5), Vector3.ZERO, 8).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 static func pizza_box(g: Node3D, pos: Vector3, rot_y := 0.0, n := 1) -> void:
+	if Stations.model("dom_pizza") != null:
+		for i0 in range(n):
+			_model(g, "dom_pizza", pos + Vector3(0, i0 * 0.046, 0), rot_y + i0 * 0.2)
+		return
 	for i in range(n):
 		Models.box(g, Vector3(0.33, 0.04, 0.33), pos + Vector3(0, 0.02 + i * 0.041, 0), _m("pizza", "b89a6a", 0.9), Vector3(0, rot_y + i * 0.2, 0), false)
 		Models.box(g, Vector3(0.18, 0.002, 0.18), pos + Vector3(0, 0.041 + i * 0.041, 0), _m("pizzalogo", "a8322a", 0.9), Vector3(0, rot_y + i * 0.2, 0), false)
@@ -246,6 +346,10 @@ static func papers(g: Node3D, pos: Vector3, rot_y := 0.0, n := 3) -> void:
 
 
 static func shoes(g: Node3D, pos: Vector3, rot_y := 0.0, color := "1c1c20") -> void:
+	var sh0 := _model(g, "dom_buty", pos, rot_y + PI)
+	if sh0 != null:
+		_tint(sh0, Models.col(color))
+		return
 	for sx in [-0.07, 0.07]:
 		var n := Node3D.new()
 		n.position = pos + Vector3(cos(rot_y) * sx, 0, -sin(rot_y) * sx)
@@ -257,6 +361,8 @@ static func shoes(g: Node3D, pos: Vector3, rot_y := 0.0, color := "1c1c20") -> v
 
 
 static func ashtray(g: Node3D, pos: Vector3) -> void:
+	if _model(g, "dom_popielniczka", pos) != null:
+		return
 	Models.cyl(g, 0.06, 0.05, 0.025, pos + Vector3(0, 0.0125, 0), _m("ashtray", "5a6a72", 0.2, 0.0, 0.0, 0.7), Vector3.ZERO, 10).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for k in range(3):
 		Models.cyl(g, 0.004, 0.004, 0.05, pos + Vector3(-0.02 + k * 0.02, 0.03, 0.01 * k), _m("butt", "d8c8a8", 0.9), Vector3(1.2, k * 1.1, 0), 4).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -300,6 +406,8 @@ static func stain(g: Node3D, pos: Vector3, rot: Vector3, size: Vector2, color :=
 ## Aneks kuchenny wzdłuż ściany (oś X), frontem do +Z: szafki, blat, zlew, płytki, szafki wiszące.
 ## Zwraca szerokość zabudowy (do kolizji).
 static func kitchenette(g: Node3D, at: Vector3, w: float, rot_y := 0.0) -> void:
+	if _model(g, "dom_aneks", at, rot_y, Vector3(w / 1.3, 1.0, 1.0)) != null:
+		return
 	var n := Node3D.new()
 	n.position = at
 	n.rotation.y = rot_y
@@ -334,6 +442,8 @@ static func kitchenette(g: Node3D, at: Vector3, w: float, rot_y := 0.0) -> void:
 
 ## lodówka: biała bryła z uszczelką, uchwytami i magnesami
 static func fridge(g: Node3D, at: Vector3, rot_y := 0.0, h := 1.62) -> void:
+	if _model(g, "dom_lodowka", at, rot_y, Vector3(1.0, h / 1.62, 1.0)) != null:
+		return
 	var n := Node3D.new()
 	n.position = at
 	n.rotation.y = rot_y
@@ -350,6 +460,10 @@ static func fridge(g: Node3D, at: Vector3, rot_y := 0.0, h := 1.62) -> void:
 
 ## wieszak z kurtką przy drzwiach
 static func coat_rack(g: Node3D, pos: Vector3, rot_y: float, jacket := "34455a") -> void:
+	var cr := _model(g, "dom_wieszak", pos, rot_y)
+	if cr != null:
+		_tint(cr, Models.col(jacket))
+		return
 	var n := Node3D.new()
 	n.position = pos
 	n.rotation.y = rot_y

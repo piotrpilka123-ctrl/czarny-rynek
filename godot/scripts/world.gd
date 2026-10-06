@@ -2754,9 +2754,16 @@ func _interiors() -> void:
 	Interior.rug(g, Vector3(cx - 1.7, 0, 0.75), Vector2(2.4, 1.6), 0.04)
 	# łóżko pod zachodnią ścianą
 	_rp(g, "old_bed_frame", cx - w * 0.5 + 0.62, -d * 0.5 + 1.1, 0.0, 1.0, 0.0, 0.55, 1.05)
-	Models.box(g, Vector3(0.84, 0.16, 1.86), Vector3(cx - w * 0.5 + 0.62, 0.42, -d * 0.5 + 1.1), Models.mat("b9b4a6", 0.95))
-	Models.box(g, Vector3(0.8, 0.07, 1.2), Vector3(cx - w * 0.5 + 0.62, 0.52, -d * 0.5 + 1.4), Models.mat("3d4f66", 0.95), Vector3(0, 0.05, 0))
-	Models.box(g, Vector3(0.55, 0.1, 0.36), Vector3(cx - w * 0.5 + 0.62, 0.54, -d * 0.5 + 0.42), Models.mat("d8d4c8", 0.95), Vector3(0, -0.1, 0.04))
+	var bedding: Node3D = Stations.model("dom_posciel")
+	if bedding != null:
+		# materac, skotłowana kołdra i poduszka z modelu (poduszka od strony ściany)
+		bedding.position = Vector3(cx - w * 0.5 + 0.62, 0.0, -d * 0.5 + 1.1)
+		bedding.rotation.y = PI
+		g.add_child(bedding)
+	else:
+		Models.box(g, Vector3(0.84, 0.16, 1.86), Vector3(cx - w * 0.5 + 0.62, 0.42, -d * 0.5 + 1.1), Models.mat("b9b4a6", 0.95))
+		Models.box(g, Vector3(0.8, 0.07, 1.2), Vector3(cx - w * 0.5 + 0.62, 0.52, -d * 0.5 + 1.4), Models.mat("3d4f66", 0.95), Vector3(0, 0.05, 0))
+		Models.box(g, Vector3(0.55, 0.1, 0.36), Vector3(cx - w * 0.5 + 0.62, 0.54, -d * 0.5 + 0.42), Models.mat("d8d4c8", 0.95), Vector3(0, -0.1, 0.04))
 	inter.append({"loc": "safe", "x": cx - w * 0.5 + 0.62, "z": -d * 0.5 + 1.1, "y0": 0.1, "y1": 0.75, "r": 0.9, "reach": 2.5, "id": "bed",
 		"label": func(): return "Łóżko — sen", "act": func(): G.main.sleep()})
 	Interior.picture(g, Vector3(cx - w * 0.5 + 0.01, 1.55, -d * 0.5 + 1.0), PI / 2.0, 0.7, "pic_koncert")
@@ -3270,6 +3277,13 @@ func _lab_room() -> void:
 
 ## waga kuchenna, woreczki i towar na stole
 func _scale_set(g: Node3D, at: Vector3) -> void:
+	var wm: Node3D = Stations.model("dom_waga")
+	if wm != null:
+		# waga z wyświetlaczem, woreczki, pojemnik i łyżeczka z modelu; na szalce porcja towaru
+		wm.position = at
+		g.add_child(wm)
+		Models.sphere(wm, 0.03, Vector3(0, 0.058, -0.03), Models.mat("3f7a3a", 0.95), Vector3(1.3, 0.55, 1.1), false, 8)
+		return
 	var s := Node3D.new()
 	s.position = at
 	g.add_child(s)
