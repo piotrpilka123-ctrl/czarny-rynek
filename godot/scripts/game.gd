@@ -227,6 +227,17 @@ func notify(text: String, kind := "") -> void:
 	toast.emit(text, kind)
 
 
+## „Pierwszy raz”: duża karta z wyjaśnieniem mechaniki, pokazywana tylko raz na zapis gry.
+## Zwraca true, jeśli karta właśnie się pokazała.
+func tip(key: String, title: String, text: String, secs := 11.0) -> bool:
+	if S.flags.get("tip_" + key, false) or test_hide_hud:
+		return false
+	S.flags["tip_" + key] = true
+	if ui != null:
+		ui.tip_show(title, text, secs)
+	return true
+
+
 # ================================================================ czas
 func day() -> int:
 	return int(floor(S.t / 1440.0)) + 1
@@ -2332,6 +2343,22 @@ func drops_owed() -> float:
 	for d in S.drops:
 		n += float(d.get("cost", 0.0))
 	return n
+
+
+## podpowiedzi „pierwszy raz” zależne od tego, co się właśnie dzieje (wołane co ćwierć sekundy z main._slow)
+func tips_tick() -> void:
+	if ui == null or player == null or not running or prologue != null:
+		return
+	if npcs != null and not npcs.aware.is_empty() and player.loc == "out":
+		tip("patrol", "Ktoś Cię zauważa", "Łuk przy celowniku pokazuje, z której strony patrzy patrol. Ikona oka przy pasku kondycji mówi, jak bardzo rzucasz się w oczy. Kucnij [%s], zejdź z widoku albo po prostu idź spokojnie — bez towaru i bez biegania policja nie ma powodu Cię zatrzymać." % kn("crouch"))
+	if player.tired:
+		tip("zadyszka", "Zadyszka", "Pasek kondycji spadł do zera: przez chwilę nie pobiegniesz i idziesz wolniej. Oddech wraca po sekundzie przerwy — najszybciej, gdy stoisz albo kucasz. W pościgu adrenalina pozwala biec dłużej.")
+	if night > 0.6 and player.loc == "out":
+		tip("noc", "Noc", "Po ciemku trudniej Cię zauważyć, ale snop latarki patrolu odbiera tę przewagę. Własną latarkę włączasz klawiszem [%s] — świeci tylko Tobie pod nogi, nie zdradza Cię bardziej." % kn("flash"))
+	if ready_drop() != null and flag("hurt_on"):
+		tip("skrytka", "Paczka w skrytce", "Wiktor zostawił towar. Idź do miejsca z wiadomości, znajdź mały biały znak sprejem i przytrzymaj [%s]. Nic nie płacisz na miejscu — należność idzie na zeszyt, a gotówkę zanosisz do skrzynki Wiktora." % kn("use"))
+	if carry_total() > float(capacity()) - 0.6 and carry_total() > 3.0:
+		tip("pelny", "Pełne kieszenie", "Każdy gram i każdy woreczek zajmuje miejsce. Nadmiar odłóż do szafy w kawalerce albo kup u Stasia plecak. Z dużą ilością towaru kontrola osobista kończy się gorzej.")
 
 
 func _credit_add(n: float) -> void:

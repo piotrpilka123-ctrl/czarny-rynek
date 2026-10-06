@@ -1777,6 +1777,7 @@ func _slow() -> void:
 			G.zone_name = zn.name
 			G.zone_id = zn.id
 	G.story_tick()
+	G.tips_tick()
 	world.update_stations()
 	world.club_tick()
 	var club_d := pp.distance_to(world.club_door) if player.loc == "out" else 999.0

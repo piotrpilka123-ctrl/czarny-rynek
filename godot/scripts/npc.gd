@@ -1106,6 +1106,8 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 				lead_cop = c0
 	var pv := Vector2(P.velocity.x, P.velocity.z)
 	pv = pv.normalized() if pv.length() > 0.3 else Vector2.ZERO
+	if lead_cop != null and outside:
+		Sfx.siren_dist(lead_d)
 	for c in cops.duplicate():
 		c.node.visible = outside
 		if not outside:

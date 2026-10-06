@@ -98,6 +98,7 @@ var deal_fill: ColorRect = null      # pasek przytrzymania przy podawaniu towaru
 var deal_watch_l: Label = null
 var deal_cop_l: Control = null
 var deal_holding := false
+var tip_box: Control = null          # karta „pierwszy raz” (najwyżej jedna naraz)
 var waymark: Control
 var mini_card: PanelContainer
 var ic_stance: TextureRect
@@ -436,6 +437,51 @@ func _build_hud() -> void:
 	toasts.alignment = BoxContainer.ALIGNMENT_END
 	toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tcc.add_child(toasts)
+
+
+## Karta „pierwszy raz”: wysuwa się u góry ekranu ponad wszystkim (także nad plecakiem i telefonem),
+## zostaje kilkanaście sekund albo do kliknięcia. Kolejna karta zastępuje poprzednią.
+func tip_show(title: String, text: String, secs := 11.0) -> void:
+	if tip_box != null and is_instance_valid(tip_box):
+		tip_box.queue_free()
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	cc.offset_top = 14.0
+	cc.offset_bottom = 150.0
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cc.z_index = 60
+	root.add_child(cc)
+	tip_box = cc
+	var p := K.panel(K.sb(Color(0.04, 0.07, 0.1, 0.96), 12, K.C_BLUE, 2, 14))
+	p.custom_minimum_size = Vector2(620, 0)
+	cc.add_child(p)
+	var h := K.hbox(12)
+	p.add_child(h)
+	var ic := K.icon("lightbulb", 28.0, K.C_GOLD)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	h.add_child(ic)
+	var v := K.vbox(3)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(v)
+	v.add_child(K.lbl("PIERWSZY RAZ  •  " + title.to_upper(), 11, K.C_BLUE))
+	v.add_child(K.wrap(text, 14, K.C_TXT, 540.0))
+	var xb := K.btn("", func(): cc.queue_free(), "flat", true)
+	xb.icon = K.tex("x")
+	xb.add_theme_constant_override("icon_max_width", 13)
+	xb.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	h.add_child(xb)
+	Sfx.play("open")
+	cc.modulate.a = 0.0
+	cc.offset_top = -60.0
+	# animacja należy do karty: gdy kartę zastąpi następna, ta po prostu znika razem z nią
+	var tw := cc.create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.set_parallel(true)
+	tw.tween_property(cc, "modulate:a", 1.0, 0.25)
+	tw.tween_property(cc, "offset_top", 14.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(secs)
+	tw.chain().tween_property(cc, "modulate:a", 0.0, 0.5)
+	tw.chain().tween_callback(cc.queue_free)
 
 
 func toast_add(text: String, kind: String) -> void:
@@ -916,6 +962,7 @@ func open_phone(app := "") -> void:
 	if mode != "phone":
 		Sfx.play("open")
 	set_mode("phone")
+	G.tip("telefon", "Telefon", "[%s] otwiera i chowa telefon. W Wiadomościach piszą klienci i Wiktor — pod rozmową są duże kafle odpowiedzi (klawisze 1–4). [Esc] cofa o ekran. Uwaga: świat się nie zatrzymuje, kiedy patrzysz w telefon." % G.kn("phone"))
 	phone.open(app)
 
 
@@ -1204,6 +1251,7 @@ func open_deal(ctx: Dictionary) -> bool:
 	deal_said = ""
 	_deal_stage(ctx)
 	_render_deal()
+	G.tip("wymiana", "Wymiana z ręki do ręki", "Wybierz woreczek, ewentualnie zmień cenę i przytrzymaj „Podaj towar” (myszą, [%s] albo spacją). Czas płynie: pasek u góry pokazuje, ilu ludzi jest w pobliżu i czy patrzy patrol. Podbicie ceny może nie przejść — wtedy wraca cena wyjściowa i drugi raz już nie spróbujesz." % G.kn("use"))
 	return true
 
 

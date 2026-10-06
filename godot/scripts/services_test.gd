@@ -385,6 +385,17 @@ static func run(T) -> void:
 	PL.stamina = st_keep
 	PL.sprinting = false
 	PL.moving = false
+	# --- karty „pierwszy raz”: każda mechanika tłumaczona raz
+	S.flags.erase("tip_test1")
+	var hide_keep: bool = G.test_hide_hud
+	G.test_hide_hud = false
+	T.ok(G.tip("test1", "Tytuł", "Treść") and not G.tip("test1", "Tytuł", "Treść") and G.ui.tip_box != null and is_instance_valid(G.ui.tip_box), "karta „pierwszy raz” pokazuje się tylko raz")
+	S.flags.erase("tip_skrytka_eq")
+	G.ui.open_inventory("safe")
+	await T.frames(3)
+	T.ok(S.flags.get("tip_skrytka_eq", false), "pierwsze otwarcie skrytki tłumaczy przeciąganie rzeczy (z ręką pokazującą ruch)")
+	G.ui.close_all()
+	G.test_hide_hud = hide_keep
 	# --- otwarte okna nie zatrzymują świata: telefon, rozmowa; staje tylko menu pauzy
 	G.arresting = false
 	var t_a := float(S.t)

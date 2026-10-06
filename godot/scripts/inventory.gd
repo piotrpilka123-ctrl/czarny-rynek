@@ -255,6 +255,53 @@ func open(room_id := "", start_tab := "inv") -> void:
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tw.tween_property(self, "modulate:a", 1.0, 0.14)
 	render()
+	_first_time()
+
+
+## Pierwsze otwarcie plecaka ze schowkiem obok: karta z wyjaśnieniem i „ręka”, która pokazuje przeciąganie.
+func _first_time() -> void:
+	var shown := false
+	if G.prologue != null and room == "lab":
+		shown = G.tip("torba", "Pakowanie torby", "Po prawej leży towar ze stołu, po lewej Twoja torba. Złap kokainę lewym przyciskiem myszy, przeciągnij na lewą stronę i puść. W oknie ilości wybierz wszystko i zatwierdź [Enter].")
+		if shown:
+			drag_demo(false)
+	elif room == "wiktor":
+		shown = G.tip("skrzynka", "Skrzynka Wiktora", "Przeciągnij gotówkę z plecaka (po lewej) do skrzynki (po prawej) i wybierz kwotę. Gdy zamkniesz okno, Wiktor zabierze to, co ma bliższy termin — zeszyt za towar albo ratę długu — a nadwyżkę zaliczy na dług.")
+		if shown:
+			drag_demo(true)
+	elif has_stash():
+		shown = G.tip("skrytka_eq", "Przenoszenie rzeczy", "Po lewej masz plecak, po prawej skrytkę. Złap rzecz lewym przyciskiem myszy, przeciągnij na drugą stronę i puść — przy większej ilości wybierasz, ile przenosisz. Ubranie przeciągasz na pole przy postaci. Towar w skrytce jest bezpieczny, przy sobie — nie.")
+		if shown:
+			drag_demo(true)
+	else:
+		G.tip("plecak", "Plecak", "Tu widzisz wszystko, co masz przy sobie, i ile to zajmuje. Kliknięcie pokazuje opis. Przeciągnięcie rzeczy na pole po prawej wyrzuca ją na ziemię — ktoś inny może ją potem znaleźć. Zakładki u góry: postać, ubrania, notatki.")
+
+
+## „Ręka” pokazująca przeciąganie między stronami okna: jedzie z jednej strony na drugą trzy razy i znika.
+func drag_demo(to_right: bool) -> void:
+	var hand := K.icon("hand", 34.0, K.C_GOLD)
+	hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hand.z_index = 50
+	add_child(hand)
+	var w := size.x if size.x > 100.0 else 1280.0
+	var hgt := size.y if size.y > 100.0 else 720.0
+	var a := Vector2(w * 0.5 - 430.0, hgt * 0.5 - 60.0)
+	var b := Vector2(w * 0.5 + 400.0, hgt * 0.5 - 60.0)
+	if not to_right:
+		var t0 := a
+		a = b
+		b = t0
+	var tw := hand.create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	for i in range(3):
+		tw.tween_callback(func(): hand.position = a; hand.modulate.a = 0.0; hand.scale = Vector2(1.15, 1.15))
+		tw.tween_property(hand, "modulate:a", 1.0, 0.25)
+		tw.tween_property(hand, "scale", Vector2(0.9, 0.9), 0.18)
+		tw.tween_property(hand, "position", b, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(hand, "scale", Vector2(1.15, 1.15), 0.15)
+		tw.tween_property(hand, "modulate:a", 0.0, 0.3)
+		tw.tween_interval(0.35)
+	tw.tween_callback(hand.queue_free)
 
 
 func close() -> void:

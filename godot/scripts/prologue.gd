@@ -182,34 +182,34 @@ func _party() -> void:
 	Sfx.party_play()
 	Sfx.party_sfx("gwar_baru", -6.0)
 	# [czas, co, …] — "T:tekst" = napis; "P" = wycinek nagrania [nazwa, od, długość, dB, wysokość]; reszta to zdarzenia.
-	# Każdy śmiech, okrzyk i kawałek śpiewu pada tylko raz — z nagrań wycinamy różne fragmenty.
+	# Zamiast śmiechów — krótkie okrzyki faceta w euforii; każdy kawałek śpiewu pada tylko raz.
 	var ev := [
 		[2.6, "T:— Kuba! Kuba, chodź tu! Polej mu!"],
 		[4.6, "P", "okrzyki_1", 0.0, 3.0, -1.0, 1.0],
-		[6.4, "P", "smiech_1", 0.1, 2.6, -1.0, 1.0],
+		[6.4, "P", "euforia_1", 0.0, 1.2, 3.0, 1.0],
 		[7.2, "T:— Jeszcze jedną. Ostatnią. Słowo."],
 		[8.7, "P", "spiew", 3.7, 1.3, -7.0, 1.0],
-		[9.9, "P", "smiech_2", 0.2, 1.65, -2.0, 1.03],
+		[9.9, "P", "euforia_3", 0.0, 0.7, 3.0, 1.05],
 		[11.4, "P", "brawa_bar", 0.0, 5.4, -1.0, 1.0], [12.0, "DROP"], [12.1, "P", "okrzyki_2", 0.0, 3.8, -1.0, 1.0],
 		[13.4, "T:(ktoś sypie kreskę na blat)"],
 		[14.4, "LINE"],
 		[14.2, "P", "spiew", 0.25, 2.9, -8.0, 1.0],
 		[18.3, "T:— O kurwa. O, tak. Podgłośnij to!"],
 		[19.0, "P", "spiew", 7.1, 3.55, -4.0, 1.04],
-		[20.6, "P", "smiech_1", 3.2, 1.8, -1.0, 0.97],
+		[20.6, "P", "euforia_2", 0.0, 1.0, 3.0, 0.97],
 		[22.3, "T:— Która to doba? Trzecia? Czwarta?"],
 		[23.2, "P", "spiew", 11.05, 3.6, -5.0, 1.0],
-		[24.6, "P", "smiech_2", 2.95, 1.8, -1.0, 1.0],
+		[24.6, "P", "euforia_4", 0.0, 0.6, 3.0, 1.0],
 		[26.0, "T:— Kuba, telefon. To znowu Siwy. Odbierzesz w końcu?"],
 		[26.2, "wibracja"],
 		[27.4, "SICK"],
-		# w drodze do łazienki impreza zostaje za plecami: śmiechy i śpiew cichną i robią się coraz niższe
-		[27.6, "P", "smiech_1", 5.35, 1.35, -1.0, 1.0],
+		# w drodze do łazienki impreza zostaje za plecami: okrzyki i śpiew cichną i robią się coraz niższe
+		[27.6, "P", "euforia_1", 0.0, 1.2, 3.0, 0.94],
 		[28.2, "T:— Zaraz. Zaraz, tylko —"],
 		[28.6, "STEPS"],
 		[29.1, "P", "spiew", 5.4, 1.2, -3.0, 1.0],
 		[29.8, "DOOR"],
-		[30.1, "P", "smiech_2", 6.3, 1.45, 0.0, 1.0],
+		[30.1, "P", "euforia_2", 0.0, 1.0, 4.0, 0.9],
 		[30.5, "wymioty_1"],
 		[32.7, "wymioty_2"],
 		[34.4, "T:— Stary, ty w ogóle jeszcze żyjesz? Siwy mówi, że partia czeka."],
@@ -420,7 +420,7 @@ func act(what: String) -> void:
 		return
 	# stół otwiera się jak każda skrytka: po lewej torba, po prawej towar — przeciągasz go do siebie
 	M.ui.open_inventory("lab")
-	G.notify("Przeciągnij kokainę ze stołu (po prawej) do swojej torby (po lewej) i wybierz całą ilość.")
+	# kartę „pierwszy raz” i rękę pokazującą przeciąganie pokazuje samo okno (inventory._first_time)
 
 
 func _on_packed(instant := false) -> void:
@@ -542,10 +542,10 @@ func _process(dt: float) -> void:
 				return
 			if not pl.crouching and t > 3.5 and not _hinted.has("crouch"):
 				_hinted["crouch"] = true
-				G.notify("Naciśnij [%s], żeby kucnąć. Na kucaka jesteś cichy i dużo mniej widoczny." % G.kn("crouch"), "warn")
+				G.tip("kucanie", "Skradanie", "Naciśnij [%s], żeby kucnąć. Na kucaka idziesz wolno, ale cicho i dużo trudniej Cię zauważyć — zwłaszcza po ciemku i poza snopem latarki. Drugie naciśnięcie albo bieg podnosi Cię z kucek." % G.kn("crouch"), 9.0)
 			if t > 9.0 and not _hinted.has("eye"):
 				_hinted["eye"] = true
-				G.notify("Ikona oka przy pasku kondycji pokazuje, jak bardzo rzucasz się w oczy. Łuk przy celowniku — z której strony ktoś Cię zauważa.")
+				G.tip("oko", "Kto Cię widzi", "Ikona oka przy pasku kondycji pokazuje, jak bardzo rzucasz się w oczy: przekreślone oko = prawie Cię nie widać. Żółty łuk przy celowniku wskazuje stronę, z której ktoś właśnie Cię zauważa — im pełniejszy, tym mniej masz czasu.", 9.0)
 			# każdy patrol obławy cofa pod drzwi — także te dalsze, z boków
 			for c in M.npcs.cops:
 				if c != null and c.sees:
@@ -556,6 +556,7 @@ func _process(dt: float) -> void:
 				t = 0.0
 				M.nav_force = true
 				Sfx.play("good")
+				G.tip("bieg", "Bieg", "Przytrzymaj [%s], żeby biec. Bieg zużywa kondycję (pasek na dole) i słychać go z daleka — po wyczerpaniu łapiesz zadyszkę i przez chwilę tylko idziesz." % G.kn("sprint"), 7.0)
 		"run":
 			if Vector2(pp.x, pp.z).distance_to(run_end()) < 3.4 or pp.x < 119.0 * D.SC:
 				_boom()

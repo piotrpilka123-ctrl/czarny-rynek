@@ -31,7 +31,7 @@ var _task := -1
 var _abort := false
 var _amb: AudioStreamWAV = null
 var _rain: AudioStreamWAV = null
-var _siren: AudioStreamWAV = null
+var _siren: AudioStream = null
 var _train: AudioStreamWAV = null
 var _syll: Array = []
 var voice_player: AudioStreamPlayer
@@ -186,6 +186,11 @@ func siren(on: bool) -> void:
 		siren_player.play()
 	elif not on and siren_player.playing:
 		siren_player.stop()
+
+
+## syrenę słychać tym głośniej, im bliżej jest najbliższy ścigający patrol (metry)
+func siren_dist(d: float) -> void:
+	siren_player.volume_db = lerpf(-14.0, -31.0, clampf(d / 70.0, 0.0, 1.0))
 
 
 ## podkład wstępu fabularnego (groza + syreny); gotowy chwilę po starcie gry
@@ -414,7 +419,7 @@ func party_prepare() -> void:
 		p.bus = "Impreza"
 		add_child(p)
 		party_fx.append(p)
-	for n in ["okrzyki_1", "okrzyki_2", "smiech_1", "smiech_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wciagniecie", "wymioty_1", "wymioty_2", "wibracja"]:
+	for n in ["okrzyki_1", "okrzyki_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wciagniecie", "euforia_1", "euforia_2", "euforia_3", "euforia_4", "wymioty_1", "wymioty_2", "wibracja"]:
 		for ext in ["ogg", "wav"]:
 			var path := "res://assets/sfx/party/%s.%s" % [n, ext]
 			if ResourceLoader.exists(path):
@@ -779,6 +784,12 @@ func _generate() -> void:
 
 func _set_loops(s1: AudioStreamWAV, s2: AudioStreamWAV, s3: AudioStreamWAV) -> void:
 	_siren = s1
+	# prawdziwa syrena dwutonowa (nagranie) zamiast syntezy — gra w pętli podczas pościgu
+	if ResourceLoader.exists("res://assets/sfx/syrena.ogg"):
+		var rec: AudioStream = load("res://assets/sfx/syrena.ogg")
+		if rec is AudioStreamOggVorbis:
+			(rec as AudioStreamOggVorbis).loop = true
+		_siren = rec
 	_amb = s2
 	_rain = s3
 
