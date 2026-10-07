@@ -414,6 +414,37 @@ static func run(T) -> void:
 			has_play += 1
 	T.ok(has_play >= 20, "plac zabaw: piaskownica, karuzela, ważka, drabinka i płotek (%d elementów)" % has_play)
 	T.ok(G.world.litter_count > 300 and G.world.litter_count < 900, "na mieście leżą drobne śmieci (%d sztuk)" % G.world.litter_count)
+	# --- granice mapy: kolizja dookoła bez dziur, a tam, gdzie coś dochodzi do muru, stoi zamknięcie
+	var space: PhysicsDirectSpaceState3D = G.world.get_world_3d().direct_space_state
+	var bq := PhysicsPointQueryParameters3D.new()
+	var edge: Array = []
+	var ea := -206.0
+	while ea <= 206.0:
+		edge.append(Vector2(ea, -171.0))
+		edge.append(Vector2(ea, 171.0))
+		ea += 3.0
+	ea = -168.0
+	while ea <= 168.0:
+		edge.append(Vector2(-210.5, ea))
+		edge.append(Vector2(210.5, ea))
+		ea += 3.0
+	var holes := 0
+	for ep in edge:
+		bq.position = Vector3(ep.x * D.SC, G.world.hd(clampf(ep.x, -208.0, 208.0), clampf(ep.y, -169.0, 169.0)) + 1.2, ep.y * D.SC)
+		if space.intersect_point(bq, 1).is_empty():
+			holes += 1
+	T.ok(holes == 0, "mur graniczny jest szczelny dookoła mapy (%d punktów, %d bez kolizji)" % [edge.size(), holes])
+	var portals := 0
+	var gates := 0
+	for ch1 in G.world.city.get_children():
+		if String(ch1.scene_file_path).contains("portal_kolejowy"):
+			portals += 1
+		elif String(ch1.scene_file_path).contains("brama_huty"):
+			gates += 1
+	T.ok(portals == 2 and gates == 1, "tory wchodzą na obu końcach w zamknięty portal, a Hutnicza kończy się bramą huty (%d portale, %d brama)" % [portals, gates])
+	var ge: Vector2 = G.world.GATE_E
+	T.ok(not G.world.is_free((ge.x - 3.0) * D.SC, (ge.y + 8.0) * D.SC, 0.2) and G.world.is_free((ge.x - 14.0) * D.SC, 20.0 * D.SC, 0.5), "przy bramie huty stoi portiernia, a dojazd do szlabanu jest wolny")
+	T.ok(G.world.ring2 >= 40, "za murem stoi drugi rząd bloków, który zasłania przerwy w pierwszym (%d)" % G.world.ring2)
 	# --- radiowóz: jedzie prawym pasem, skręca stopniowo, na końcu trasy zawraca
 	var car: Dictionary = N.car
 	var car_keep := {"seg": car.seg, "x": car.x, "z": car.z, "rot": car.rot, "wait": car.wait, "speed": car.speed}

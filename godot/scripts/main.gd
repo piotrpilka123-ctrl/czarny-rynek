@@ -190,6 +190,21 @@ func _ready() -> void:
 		_record()
 	if args.has("recklub"):
 		_record_klub()
+	if args.has("probe"):
+		# wysokość terenu w punktach planu: --probe="x,z;x,z;…"
+		for pt in String(args.probe).split(";", false):
+			var xz := pt.split(",")
+			print("HD %s = %.2f" % [pt, world.hd(float(xz[0]), float(xz[1]))])
+		get_tree().quit()
+		return
+	if args.has("plan"):
+		# plan miasta z góry do pliku (bez okna): --plan=ścieżka [--box=x0,z0,x1,z1]
+		var pb: Array = []
+		for v in String(args.get("box", "")).split(",", false):
+			pb.append(float(v))
+		world.dump_plan(String(args.plan), pb if pb.size() == 4 else [])
+		get_tree().quit()
+		return
 	if args.has("test"):
 		var t: Node = load("res://scripts/selftest.gd").new()
 		t.process_mode = Node.PROCESS_MODE_ALWAYS

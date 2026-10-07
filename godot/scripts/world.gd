@@ -42,6 +42,7 @@ var lab_fx := {}                # światła i rekwizyty laboratorium sterowane p
 var lab_exit := Vector2.ZERO    # gdzie w hali są tylne drzwi (znacznik ucieczki w prologu)
 var mill_door_light: SpotLight3D = null   # reflektor nad tylnymi drzwiami huty od zewnątrz
 var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
+var ring2 := 0                      # ile bloków stoi w drugim rzędzie za murem
 var litter_count := 0               # ile drobnych śmieci leży na mieście
 var camp_fire: Node3D = null      # ognisko w obozowisku bezdomnych
 var box_door: Node3D = null       # drzwiczki skrzynki Wiktora (uchylają się, gdy wkładasz pieniądze)
@@ -513,6 +514,72 @@ func _map_texture() -> void:
 	map_tex = ImageTexture.create_from_image(m)
 
 
+## Plan miasta z góry do pliku PNG (narzędzie bez okna: ./tools/plan.sh) — nawierzchnie, wysokość terenu,
+## budynki i wszystkie kolizje. 3 piksele na jednostkę planu; `box` = [x0, z0, x1, z1] wycina fragment (wtedy 8 px).
+func dump_plan(path: String, box: Array = []) -> void:
+	var k := 3.0 if box.is_empty() else 8.0
+	var bx0: float = X0 if box.is_empty() else float(box[0])
+	var bz0: float = Z0 if box.is_empty() else float(box[1])
+	var bx1: float = -X0 if box.is_empty() else float(box[2])
+	var bz1: float = -Z0 if box.is_empty() else float(box[3])
+	var w := int((bx1 - bx0) * k)
+	var h := int((bz1 - bz0) * k)
+	var m := Image.create(w, h, false, Image.FORMAT_RGB8)
+	for pz in range(h):
+		for px in range(w):
+			var x := bx0 + px / k
+			var z := bz0 + pz / k
+			var ix := clampi(int((x - X0) * 2.0), 0, MAP_W - 1)
+			var iz := clampi(int((z - Z0) * 2.0), 0, MAP_H - 1)
+			var a := img1.get_pixel(ix, iz)
+			var b := img2.get_pixel(ix, iz)
+			var c := Color(0.2, 0.32, 0.18)
+			if a.r > 0.5: c = Color(0.3, 0.3, 0.33)
+			elif a.g > 0.5: c = Color(0.62, 0.62, 0.62)
+			elif a.b > 0.5: c = Color(0.5, 0.5, 0.48)
+			elif a.a > 0.5: c = Color(0.5, 0.4, 0.28)
+			elif b.r > 0.5: c = Color(0.45, 0.38, 0.33)
+			var hh := hd(x, z)
+			c = c * (0.75 + clampf(hh, -2.0, 16.0) * 0.035)
+			# warstwice co metr
+			if absf(hh - roundf(hh)) < 0.03 and absf(hh) > 0.2:
+				c = c.darkened(0.25)
+			m.set_pixel(px, pz, c)
+	var all: Array = []
+	for r in blocks:
+		all.append([r, Color(0.9, 0.2, 0.85)])
+	for r in rects:
+		all.append([r, Color(0.85, 0.2, 0.15) if float(r.h) > 1.6 else Color(0.95, 0.65, 0.1)])
+	for e in all:
+		var r: Dictionary = e[0]
+		if float(r.x0) > 400.0:
+			continue
+		var rx0 := int((float(r.x0) / SC - bx0) * k)
+		var rz0 := int((float(r.z0) / SC - bz0) * k)
+		var rx1 := int((float(r.x1) / SC - bx0) * k)
+		var rz1 := int((float(r.z1) / SC - bz0) * k)
+		var col: Color = e[1]
+		m.fill_rect(Rect2i(rx0, rz0, maxi(1, rx1 - rx0), maxi(1, rz1 - rz0)).intersection(Rect2i(0, 0, w, h)), col)
+	for b2 in blds:
+		var r2 := Rect2i(int((b2.x0 - bx0) * k) + 1, int((b2.z0 - bz0) * k) + 1, maxi(1, int((b2.x1 - b2.x0) * k) - 2), maxi(1, int((b2.z1 - b2.z0) * k) - 2))
+		m.fill_rect(r2.intersection(Rect2i(0, 0, w, h)), Color(0.25, 0.3, 0.55) if not b2.get("low", false) else Color(0.4, 0.45, 0.7))
+	# siatka co 20 jednostek (grubsza co 100) — do odczytywania współrzędnych
+	var g := ceilf(bx0 / 20.0) * 20.0
+	while g < bx1:
+		var gx := int((g - bx0) * k)
+		for pz in range(0, h, 1 if int(g) % 100 == 0 else 3):
+			m.set_pixel(gx, pz, Color(1, 1, 1) if int(g) == 0 else Color(0, 0, 0))
+		g += 20.0
+	g = ceilf(bz0 / 20.0) * 20.0
+	while g < bz1:
+		var gz := int((g - bz0) * k)
+		for px in range(0, w, 1 if int(g) % 100 == 0 else 3):
+			m.set_pixel(px, gz, Color(1, 1, 1) if int(g) == 0 else Color(0, 0, 0))
+		g += 20.0
+	m.save_png(path)
+	print("PLAN ", path, " ", w, "x", h)
+
+
 # ================================================================ budowa
 ## `loader` (opcjonalny ekran ładowania) dostaje opis kolejnych etapów budowy miasta
 func build(loader = null) -> void:
@@ -573,6 +640,7 @@ func build(loader = null) -> void:
 	_viaduct()
 	_lamps()
 	_backdrop()
+	_border_gates()
 	_curb_lines()
 	_hide_spots()
 	_build_grid()
@@ -2171,7 +2239,7 @@ func _industrial() -> void:
 	# brama i ogrodzenie
 	_place(Props.fence(6.0, 2.2, "sheet"), 165.0, 29.6, 0.0, 3.0, 0.15, 2.2)
 	rects.pop_back()
-	_place(Props.fence(30.0, 2.2, "sheet"), 191.0, 29.6, 0.0, 15.0, 0.15, 2.2)
+	_place(Props.fence(27.0, 2.2, "sheet"), 189.5, 29.6, 0.0, 13.5, 0.15, 2.2)
 	rects.pop_back()
 	_sign("OLD STEELWORKS\nPRIVATE PROPERTY", Vector3(180.0, 2.6, 29.4), Color(0.85, 0.8, 0.6), 46, PI, 0.006, 8)
 	_prop("container_green", 182.0, 62.0, 0.2, 2.6, 0.0)
@@ -2697,6 +2765,8 @@ func _ground_details() -> void:
 
 
 # ---------------------------------------------------------------- estakada kolejki nad miastem
+const VIA_LEN := 540.0      # długość estakady kolejki (od hali do hali)
+
 func _viaduct() -> void:
 	var cm := Props.pbr("concrete_wall_008", 0.25, Color(0.66, 0.66, 0.64))
 	var dark := Props.pbr("dirty_concrete", 0.3, Color(0.55, 0.55, 0.54))
@@ -2704,13 +2774,25 @@ func _viaduct() -> void:
 	var top := 14.2
 	var GC := [Color(0.9, 0.9, 0.9), Color(0.85, 0.2, 0.2), Color(0.25, 0.5, 0.9), Color(0.95, 0.8, 0.2), Color(0.3, 0.8, 0.4)]
 	# płyta toru, belki i bariery
-	Models.box(city, Vector3(430.0, 0.9, 7.6), Vector3(0.0, top - 0.45, zc), cm)
-	Models.box(city, Vector3(430.0, 1.3, 1.6), Vector3(0.0, top - 1.5, zc), dark)
+	# (płyta sięga za mur graniczny i po obu stronach wchodzi w halę — kolejka nie pojawia się znikąd)
+	Models.box(city, Vector3(VIA_LEN, 0.9, 7.6), Vector3(0.0, top - 0.45, zc), cm)
+	Models.box(city, Vector3(VIA_LEN, 1.3, 1.6), Vector3(0.0, top - 1.5, zc), dark)
 	for sz in [-3.6, 3.6]:
-		Models.box(city, Vector3(430.0, 1.0, 0.3), Vector3(0.0, top + 0.5, zc + sz), dark)
+		Models.box(city, Vector3(VIA_LEN, 1.0, 0.3), Vector3(0.0, top + 0.5, zc + sz), dark)
 	var steel := Models.mat("3a3632", 0.5, 0.7)
 	for rz in [-1.3, 1.3]:
-		Models.box(city, Vector3(430.0, 0.12, 0.14), Vector3(0.0, top + 0.08, zc + rz), steel, Vector3.ZERO, false)
+		Models.box(city, Vector3(VIA_LEN, 0.12, 0.14), Vector3(0.0, top + 0.08, zc + rz), steel, Vector3.ZERO, false)
+	var hall := Models.mat("3a3836", 0.95)
+	var hole := Models.mat("050505", 1.0)
+	for sx in [-1.0, 1.0]:
+		# filar za murem i ciemny wjazd w ścianie hali
+		var fy := hd(208.0 * sx, zc)
+		Models.box(city, Vector3(2.8, top - 0.9 - fy + 1.0, 2.8), Vector3(221.0 * sx, fy - 1.0 + (top - 0.9 - fy + 1.0) * 0.5, zc), cm)
+		Models.box(city, Vector3(0.8, 6.6, 9.0), Vector3(231.6 * sx, top + 3.1, zc), hole, Vector3.ZERO, false)
+		Models.box(city, Vector3(1.2, 0.8, 10.4), Vector3(231.5 * sx, top + 6.8, zc), cm, Vector3.ZERO, false)
+		# hala, w którą wjeżdża kolejka: na wschodzie wyższa część huty, na zachodzie zajezdnia
+		Models.box(city, Vector3(40.2, 24.0, 40.0), Vector3(252.0 * sx, 11.5, zc), hall, Vector3.ZERO, false)
+		Models.box(city, Vector3(28.0, 5.0, 28.0), Vector3(254.0 * sx, 25.5, zc), hall, Vector3.ZERO, false)
 	var tags := ["DBS", "SKERO", "STAL", "HWK", "86", "ELO", "KSH", "OLD TOWN", "BLOKI"]
 	var x := -204.0
 	var k := 0
@@ -2840,6 +2922,9 @@ func _backdrop() -> void:
 	var xw := -204.0
 	while xw < 204.0:
 		for zz in [-169.2, 169.2]:
+			if xw > 131.0 and xw < 145.0:
+				# tu stoi portal kolejowy
+				continue
 			var gy := hd(xw + 6.0, zz)
 			Models.box(city, Vector3(11.9, 4.6, 0.4), Vector3(xw + 6.0, gy + 1.9, zz), wm)
 			Models.box(city, Vector3(12.0, 0.14, 0.56), Vector3(xw + 6.0, gy + 4.25, zz), wtop, Vector3.ZERO, false)
@@ -2849,6 +2934,9 @@ func _backdrop() -> void:
 		for xx in [-208.8, 208.8]:
 			if xx < 0.0 and zw + 6.0 > 0.0 and zw + 6.0 < 40.0:
 				# tu stoi portal tunelu
+				continue
+			if xx > 0.0 and zw > 11.0 and zw < 25.0:
+				# tu jest brama główna huty
 				continue
 			var gy2 := hd(xx, zw + 6.0)
 			Models.box(city, Vector3(0.4, 4.6, 11.9), Vector3(xx, gy2 + 1.9, zw + 6.0), wm)
@@ -2888,12 +2976,104 @@ func _backdrop() -> void:
 			var kk2: String = keys[rng.randi_range(0, keys.size() - 1)]
 			var bx3 = xx2 + rng.randf_range(-6.0, 6.0)
 			var mi3 := Models.box(city, Vector3(16.0, hh2, d2), Vector3(bx3, hd(xx2 * 0.9, pz) + hh2 * 0.5 - 0.5, pz + d2 * 0.5), fac[kk2])
+			# korytarz estakady zostaje wolny: tam stoi hala, w którą wjeżdża kolejka
+			mi3.visible = pz + d2 < -46.0 or pz > -2.0
 			mi3.set_instance_shader_parameter("b_origin", Vector3((bx3 - 8.0) * SC, hd(xx2 * 0.9, pz), pz * SC))
 			mi3.set_instance_shader_parameter("b_wall", Color(0.74, 0.72, 0.68) * rng.randf_range(0.85, 1.1))
 			mi3.set_instance_shader_parameter("b_accent", Color(0.65, 0.58, 0.48))
 			mi3.set_instance_shader_parameter("b_seed", rng.randf() * 10.0)
 			mi3.set_instance_shader_parameter("b_dead", rng.randf_range(0.0, 0.4))
 		pz += rng.randf_range(34.0, 46.0)
+	# drugi, wyższy rząd bloków dalej za murem: zasłania przerwy w pierwszym, żeby nigdzie nie było widać pustki po horyzont
+	var r2 := RandomNumberGenerator.new()
+	r2.seed = 5150
+	for side in range(4):
+		var along := -262.0
+		var lim := 262.0 if side < 2 else 226.0
+		if side >= 2:
+			along = -226.0
+		while along < lim:
+			var w2 := r2.randf_range(30.0, 42.0)
+			var h2 := float(r2.randi_range(9, 16)) * 3.0
+			var key2: String = ["plyta", "plyta2", "plyta", "kamC"][r2.randi_range(0, 3)]
+			var off := r2.randf_range(-5.0, 5.0)
+			var c2 := along + w2 * 0.5
+			var size2 := Vector3(w2, h2, 14.0)
+			var pos2 := Vector3(c2, 0.0, (214.0 + off) * (-1.0 if side == 0 else 1.0))
+			var gy2b := hd(clampf(c2, -205.0, 205.0), 166.0 * (-1.0 if side == 0 else 1.0))
+			var skip := false
+			if side >= 2:
+				size2 = Vector3(14.0, h2, w2)
+				pos2 = Vector3((258.0 + off) * (-1.0 if side == 2 else 1.0), 0.0, c2)
+				gy2b = hd(205.0 * (-1.0 if side == 2 else 1.0), clampf(c2, -166.0, 166.0))
+				# po wschodniej stronie stoi hala huty z kominami, po zachodniej zajezdnia
+				skip = (side == 3 and c2 > -75.0 and c2 < 95.0) or (side == 2 and c2 + w2 * 0.5 > -48.0 and c2 - w2 * 0.5 < 0.0)
+			if not skip:
+				pos2.y = gy2b + h2 * 0.5 - 0.5
+				var m4 := Models.box(city, size2, pos2, fac[key2])
+				m4.set_instance_shader_parameter("b_origin", Vector3((pos2.x - size2.x * 0.5) * SC, gy2b, (pos2.z - size2.z * 0.5) * SC))
+				m4.set_instance_shader_parameter("b_wall", Color(0.7, 0.69, 0.66) * r2.randf_range(0.8, 1.05))
+				m4.set_instance_shader_parameter("b_accent", Color(0.6, 0.55, 0.47))
+				m4.set_instance_shader_parameter("b_seed", r2.randf() * 10.0)
+				m4.set_instance_shader_parameter("b_dead", r2.randf_range(0.0, 0.35))
+				m4.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				ring2 += 1
+			along += w2 + r2.randf_range(0.0, 3.0)
+
+
+## Zamknięcia granic mapy tam, gdzie coś dochodzi do muru. Tor kolejowy na obu końcach wchodzi w przepust pod wiaduktem
+## drogowym (zamknięta brama z prętów, semafor na „stój”), a Hutnicza kończy się na wschodzie bramą główną huty
+## z portiernią i opuszczonym szlabanem. Kolizja muru granicznego zostaje — to tylko to, co widać.
+const GATE_E := Vector2(208.8, 24.0)
+
+func _border_gates() -> void:
+	for zz in [-169.2, 169.2]:
+		var pm := Stations.model("portal_kolejowy")
+		if pm == null:
+			break
+		_place(pm, 145.0, float(zz), 0.0 if zz < 0.0 else PI)
+		Props.set_range(pm, 280.0)
+		# ściana portalu wystaje przed mur graniczny, a brama stoi metr przed nią
+		var z_in: float = float(zz) + (2.2 if zz < 0.0 else -2.2)
+		add_col(131.5, 158.5, minf(float(zz), z_in), maxf(float(zz), z_in), 9.0)
+		rects.pop_back()
+		# czerwone światło semafora widać z daleka, zwłaszcza nocą
+		var sl := OmniLight3D.new()
+		sl.light_color = Color(1.0, 0.16, 0.1)
+		sl.light_energy = 0.9
+		sl.omni_range = 5.0
+		sl.shadow_enabled = false
+		sl.position = Vector3(145.0 + (-6.7 if zz < 0.0 else 6.7), hd(145.0, float(zz)) + 3.98, float(zz) + (3.0 if zz < 0.0 else -3.0))
+		sl.distance_fade_enabled = true
+		sl.distance_fade_begin = 60.0
+		sl.distance_fade_length = 15.0
+		city.add_child(sl)
+	var gm := Stations.model("brama_huty")
+	if gm == null:
+		return
+	_place(gm, GATE_E.x, GATE_E.y, -PI / 2.0)
+	Props.set_range(gm, 260.0)
+	# mur ze słupami i bramą, portiernia, opuszczony szlaban
+	add_col(GATE_E.x - 1.3, GATE_E.x + 0.4, GATE_E.y - 13.0, GATE_E.y + 13.0, 6.0)
+	rects.pop_back()
+	add_col(GATE_E.x - 6.0, GATE_E.x, GATE_E.y + 3.4, GATE_E.y + 12.4, 3.1)
+	add_col(GATE_E.x - 8.5, GATE_E.x - 7.7, GATE_E.y - 9.7, GATE_E.y + 3.4, 1.1)
+	rects.pop_back()
+	var gl := OmniLight3D.new()
+	gl.light_color = Color(1.0, 0.82, 0.55)
+	gl.light_energy = 1.3
+	gl.omni_range = 7.0
+	gl.shadow_enabled = false
+	gl.position = Vector3(GATE_E.x - 6.2, hd(GATE_E.x, GATE_E.y) + 2.3, GATE_E.y + 10.2)
+	city.add_child(gl)
+	lamps.append(gl)
+	# co zostało po ostatniej zmianie: paleta, beczki i pachołki przy portierni
+	for e in [["pallet", 202.4, 30.6, 0.3, 0.16], ["barrel_01", 207.2, 13.0, 0.0, 0.9], ["barrel_01", 206.2, 12.6, 0.0, 0.9], ["cinderblock", 204.8, 12.4, 0.7, 0.3]]:
+		_prop(String(e[0]), float(e[1]), float(e[2]), float(e[3]), float(e[4]), 0.0, false)
+	for e in [[199.4, 16.4], [199.2, 23.4]]:
+		var pc := Stations.model("pacholek")
+		if pc != null:
+			Props.set_range(_place(pc, float(e[0]), float(e[1]), float(e[0])), 70.0)
 
 
 func _flush_multimeshes() -> void:

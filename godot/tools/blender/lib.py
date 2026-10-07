@@ -16,7 +16,7 @@ def reset():
 
 
 def mat(name, color, rough=0.7, metal=0.0, emit=0.0, alpha=1.0, wzor=''):
-    """wzor: faktura wypalana razem z brudem (weather) — 'sztruks', 'drewno', 'karton', 'beton', 'tkanina'"""
+    """wzor: faktura wypalana razem z brudem (weather) — 'sztruks', 'drewno', 'karton', 'beton', 'tkanina', 'cegla'"""
     if name in _mats:
         return _mats[name]
     m = bpy.data.materials.new(name)
@@ -298,6 +298,30 @@ def _pattern(nt, kind, base):
     if kind == 'beton':
         pores = shade(noise(160.0, 2.0), 0.7, 1.08, 0.35, 0.55)
         return mul(pores, shade(noise(3.0, 5.0), 0.82, 1.15))
+    if kind == 'cegla':
+        # cegły 25 × 6,5 cm ze spoiną, w wiązaniu wozówkowym; współrzędna pozioma = x + y, więc wzór trzyma się ścian obu kierunków
+        sep = N.new('ShaderNodeSeparateXYZ')
+        L.new(tc.outputs['Object'], sep.inputs['Vector'])
+        add = N.new('ShaderNodeMath')
+        add.operation = 'ADD'
+        L.new(sep.outputs['X'], add.inputs[0])
+        L.new(sep.outputs['Y'], add.inputs[1])
+        comb = N.new('ShaderNodeCombineXYZ')
+        L.new(add.outputs[0], comb.inputs['X'])
+        L.new(sep.outputs['Z'], comb.inputs['Y'])
+        br = N.new('ShaderNodeTexBrick')
+        br.offset = 0.5
+        br.inputs['Scale'].default_value = 1.0
+        br.inputs['Mortar Size'].default_value = 0.014
+        br.inputs['Mortar Smooth'].default_value = 0.1
+        br.inputs['Bias'].default_value = 0.0
+        br.inputs['Brick Width'].default_value = 0.262
+        br.inputs['Row Height'].default_value = 0.079
+        br.inputs['Color1'].default_value = (*[c * 0.72 for c in base[:3]], 1)
+        br.inputs['Color2'].default_value = (*[min(1.0, c * 1.15) for c in base[:3]], 1)
+        br.inputs['Mortar'].default_value = (0.36, 0.34, 0.31, 1)
+        L.new(comb.outputs['Vector'], br.inputs['Vector'])
+        return mul(br.outputs['Color'], shade(noise(2.0, 4.0), 0.82, 1.12))
     return None
 
 
