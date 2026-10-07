@@ -11,10 +11,10 @@ static func _tile_style(on: bool, hover := false) -> StyleBoxFlat:
 	return K.sb(Color(0.13, 0.17, 0.24) if on else (Color(0.11, 0.135, 0.2) if hover else Color(0.085, 0.102, 0.15)), 10, K.C_ACC if on else Color(1, 1, 1, 0.16 if hover else 0.07), 1, 9)
 
 
-## kafel woreczka w kieszeni: kliknięcie wybiera, co podajesz
+## kafel towaru w kieszeni (jedna czystość): kliknięcie wybiera, z czego podajesz; pod nazwą widać, w jakich paczkach go masz
 static func _stack_tile(U, s: Dictionary, on: bool, fits: bool) -> Control:
 	var p := K.panel(_tile_style(on))
-	p.custom_minimum_size = Vector2(196, 54)
+	p.custom_minimum_size = Vector2(216, 54)
 	p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	p.mouse_entered.connect(func():
 		if not on:
@@ -29,11 +29,12 @@ static func _stack_tile(U, s: Dictionary, on: bool, fits: bool) -> Control:
 	var v := K.vbox(0)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	v.add_child(K.lbl(String(D.PRODUCTS[s.p].name), 13, K.C_TXT if fits else K.C_DIM))
-	var pure: bool = not G.is_mix(s.pur) and int(s.pur) >= 95
-	v.add_child(K.lbl("czystość %d%%%s" % [int(s.pur), "" if pure or not G.is_mix(s.pur) else " • mieszanka"], 11, Color(0.6, 0.64, 0.7)))
+	v.add_child(K.lbl("%s  •  %d%%%s" % [String(D.PRODUCTS[s.p].name), int(s.pur), " mieszanka" if G.is_mix(s.pur) else ""], 13, K.C_TXT if fits else K.C_DIM))
+	var bl := K.lbl(String(s.text), 11, Color(0.6, 0.64, 0.7))
+	bl.clip_text = true
+	v.add_child(bl)
 	h.add_child(v)
-	var cnt := K.head("×%d" % int(s.n), 18, K.C_TXT)
+	var cnt := K.head("%d g" % int(s.grams), 16, K.C_TXT)
 	cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(cnt)
 	p.gui_input.connect(func(ev: InputEvent):
@@ -71,7 +72,7 @@ static func build(U) -> void:
 	var who: Dictionary = deal.who
 	var ctx: Dictionary = deal.ctx
 	var body: VBoxContainer = U.modal_body
-	var live := G.stacks(S.inv, "pack")
+	var live: Array = G.deal_groups()
 	if live.is_empty():
 		deal.over = true
 		deal.speech = "„Nie masz już towaru? To po co stoimy.”"
@@ -79,16 +80,16 @@ static func build(U) -> void:
 		U._render_deal()
 		return
 	var sel: Dictionary = deal.sel
-	var have := int(S.inv.pack[sel.p].get(str(int(sel.pur)), 0))
-	if have <= 0:
-		deal.sel = live[0]
+	var still := false
+	for gr0 in live:
+		if String(gr0.p) == String(sel.p) and int(gr0.pur) == int(sel.pur):
+			still = true
+	if not still:
+		G.deal_choose(deal, String(live[0].p), int(live[0].pur))
 		sel = deal.sel
-		have = int(sel.n)
 	var street: bool = ctx.get("agreed") == null
-	var max_q: int = maxi(1, mini(have, int(deal.want)))
-	deal.qty = clampi(int(deal.qty), 1, max_q)
 	var sting: bool = ctx.get("sting", false)
-	# --- co podajesz: woreczki z kieszeni (tylko właściwy towar się nadaje)
+	# --- co podajesz: towar z kieszeni (tylko właściwy się nadaje); gra sama dobiera paczki na zamówione gramy
 	var top := K.hbox(10)
 	body.add_child(top)
 	var tiles := K.hbox(6)
@@ -103,14 +104,24 @@ static func build(U) -> void:
 		tiles.add_child(_stack_tile(U, s, s.p == sel.p and int(s.pur) == int(sel.pur), fits))
 		shown += 1
 	top.add_child(K.spacer())
-	# ile gramów: przy zamówieniu z góry wiadomo, na ulicy możesz dać mniej
-	if max_q > 1 and street:
-		var qh := K.hbox(4)
-		qh.add_child(K.lbl("ile:", 11, K.C_DIM))
-		for q0 in range(1, max_q + 1):
-			var q: int = q0
-			qh.add_child(K.btn("%d g" % q, func(): G.deal_qty(deal, q); U._render_deal(), "go" if int(deal.qty) == q else "", true))
-		top.add_child(qh)
+	# ile gramów: przy zamówieniu z góry wiadomo; na ulicy możesz dać mniej — ale tylko tyle, ile da się złożyć z paczek
+	if street:
+		var sums: Array = G.bag_sums(sel.get("sizes", []), int(deal.want))
+		if sums.size() > 1:
+			var qh := K.hbox(4)
+			qh.add_child(K.lbl("ile:", 11, K.C_DIM))
+			for q0 in sums.slice(maxi(0, sums.size() - 6)):
+				var q: int = q0
+				qh.add_child(K.btn("%d g" % q, func(): G.deal_qty(deal, q); U._render_deal(), "go" if int(deal.qty) == q else "", true))
+			top.add_child(qh)
+	# które paczki pójdą z ręki do ręki
+	var give_txt := []
+	for gb in deal.get("give", []):
+		give_txt.append("%d × %s %d g" % [int(gb.n), G.pack_kind(int(gb.g)), int(gb.g)])
+	if int(deal.qty) > 0:
+		body.add_child(K.icon_label("package", "Podajesz: %s  (razem %d g%s)" % [", ".join(give_txt), int(deal.qty), "" if int(deal.qty) >= int(deal.want) else " z %d g" % int(deal.want)], 12, K.C_TXT if int(deal.qty) >= int(deal.want) else K.C_WARN, 14.0))
+	else:
+		body.add_child(K.icon_label("triangle_alert", "Nie da się złożyć %d g z Twoich paczek — są za duże. Przepakuj towar przy wadze." % int(deal.want), 12, K.C_BAD, 14.0))
 	if int(sel.pur) < int(who.minpur) and (int(deal.st.get("deals", 9)) >= 3 or not deal.st.has("deals")) and not sting:
 		body.add_child(K.icon_label("triangle_alert", "Ten klient zwykle bierze towar od %d%% w górę — może to wyczuć i odmówić." % int(who.minpur), 11, K.C_WARN, 13.0))
 	# --- cena: SUMA za całość na środku, po bokach dwa małe przyciski — w lewo taniej (−10, −1), w prawo drożej (+1, +10)

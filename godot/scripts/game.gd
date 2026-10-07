@@ -107,14 +107,14 @@ func new_state() -> Dictionary:
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "rank": 0, "job": {}, "job_streak": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store(), "loot": new_store()},
-		"items": {"notes": 1, "woreczki": 0, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
+		"items": {"notes": 1, "woreczki": D.START_BAGS, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
 		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0, "hospital": 0, "box_paid": 0.0},
-		"pos": null, "mom_day": 0, "scale": 0, "owned": {},
+		"pos": null, "mom_day": 0, "scale": 0, "owned": {}, "bagsv": 1,
 	}
 
 
@@ -532,7 +532,7 @@ func goods_total(st: Dictionary) -> float:
 			n += float(st.bulk[p][k])
 	for p in st.pack:
 		for k in st.pack[p]:
-			n += float(st.pack[p][k])
+			n += float(st.pack[p][k]) * pack_g(String(k))
 	return n
 
 
@@ -553,7 +553,7 @@ func store_total(st: Dictionary) -> float:
 			n += float(st.bulk[p][k]) * D.SIZE_BULK
 	for p in st.pack:
 		for k in st.pack[p]:
-			n += float(st.pack[p][k]) * D.SIZE_PACK
+			n += float(st.pack[p][k]) * pack_g(String(k)) * D.SIZE_PACK
 	var its := store_items(st)
 	for id in its:
 		if D.ITEMS.has(id):
@@ -569,7 +569,7 @@ func store_weight(st: Dictionary) -> float:
 			w += float(st.bulk[p][k]) * D.W_BULK
 	for p in st.pack:
 		for k in st.pack[p]:
-			w += float(st.pack[p][k]) * D.W_PACK
+			w += float(st.pack[p][k]) * pack_g(String(k)) * D.W_PACK
 	var its := store_items(st)
 	for id in its:
 		if D.ITEMS.has(id):
@@ -619,14 +619,21 @@ func entries(st: Dictionary) -> Array:
 	for kind in ["pack", "bulk"]:
 		for s in stacks(st, kind):
 			var pd: Dictionary = D.PRODUCTS[s.p]
-			var us: float = D.SIZE_PACK if kind == "pack" else D.SIZE_BULK
-			var uw: float = D.W_PACK if kind == "pack" else D.W_BULK
-			out.append({"kind": kind, "p": s.p, "pur": int(s.pur), "id": "", "n": float(s.n), "name": pd.name,
-				"sub": ("gotowe porcje" if kind == "pack" else ("cegła" if float(s.n) >= 100.0 else "luzem")),
-				"icon": ("pack_" if kind == "pack" else ("brick_" if float(s.n) >= 100.0 else "bulk_")) + String(s.p), "tier": tier(s.pur),
-				"qty": ("%d szt." % int(s.n)) if kind == "pack" else grams(s.n), "usize": us, "uw": uw, "step": 1.0 if kind == "pack" else 0.5,
-				"unit": "szt." if kind == "pack" else "g", "size": half_up(float(s.n) * us), "weight": float(s.n) * uw,
-				"desc": ("Zaporcjowany towar gotowy do sprzedaży." if kind == "pack" else "Towar luzem. Zanim sprzedasz, zaporcjuj go na stole z wagą.")})
+			if kind == "pack":
+				# paczka: jeden woreczek o wadze, jaką się zapakowało (woreczek do 199 g, kostka od 200 g, cegła od 500 g)
+				var pg := int(s.g)
+				var cnt := int(s.n)
+				out.append({"kind": kind, "p": s.p, "pur": int(s.pur), "g": pg, "id": "", "n": float(cnt), "name": "%s — %s %d g" % [pd.name, pack_kind(pg), pg],
+					"sub": "gotowe do sprzedaży" if pg < D.PACK_BLOCK else "na hurt", "icon": pack_icon(String(s.p), pg), "tier": tier(s.pur),
+					"qty": ("%d szt." % cnt) if cnt != 1 else "1 szt.", "usize": D.SIZE_PACK * pg, "uw": D.W_PACK * pg, "step": 1.0,
+					"unit": "szt.", "size": half_up(float(cnt * pg) * D.SIZE_PACK), "weight": float(cnt * pg) * D.W_PACK,
+					"desc": "Towar zapakowany w %s po %d g (razem %d g). Klientowi podajesz całe paczki — muszą się złożyć na tyle gramów, ile zamówił." % [pack_kind(pg), pg, cnt * pg]})
+			else:
+				out.append({"kind": kind, "p": s.p, "pur": int(s.pur), "g": 1, "id": "", "n": float(s.n), "name": pd.name,
+					"sub": "luzem", "icon": "bulk_" + String(s.p), "tier": tier(s.pur),
+					"qty": grams(s.n), "usize": D.SIZE_BULK, "uw": D.W_BULK, "step": 1.0,
+					"unit": "g", "size": half_up(float(s.n) * D.SIZE_BULK), "weight": float(s.n) * D.W_BULK,
+					"desc": "Towar luzem. Zanim sprzedasz, zapakuj go w woreczki na stole z wagą."})
 	var its := store_items(st)
 	for id in D.ITEMS:
 		var n := int(its.get(id, 0))
@@ -652,7 +659,7 @@ func move_entry(room: String, e: Dictionary, to_stash: bool, amount: float) -> f
 		move_cash(room, to_stash, amount)
 		return absf(float(S.cash) - before)
 	if e.kind != "item":
-		return move_stack(room, to_stash, e.kind, e.p, int(e.pur), amount)
+		return move_stack(room, to_stash, e.kind, e.p, int(e.pur), amount, int(e.get("g", 1)))
 	var from: Dictionary = store_items(S.inv if to_stash else S.stash[room])
 	var to: Dictionary = store_items(S.stash[room] if to_stash else S.inv)
 	var id: String = e.id
@@ -693,7 +700,7 @@ func discard_entry(e: Dictionary, amount: float) -> void:
 	if e.kind == "cash":
 		return
 	if e.kind == "pack":
-		take_pack(S.inv, e.p, int(e.pur), int(amount))
+		take_pack(S.inv, e.p, int(e.pur), int(amount), int(e.get("g", 1)))
 	elif e.kind == "bulk":
 		take_bulk(S.inv, e.p, int(e.pur), amount)
 	else:
@@ -701,7 +708,7 @@ func discard_entry(e: Dictionary, amount: float) -> void:
 	if player != null:
 		var f: Vector2 = player.forward()
 		var pp: Vector3 = player.global_position
-		ground_add(String(player.loc), pp.x + f.x * 0.7, pp.z + f.y * 0.7, {"kind": String(e.kind), "p": String(e.p), "pur": int(e.pur), "id": String(e.id), "n": amount, "name": String(e.name)})
+		ground_add(String(player.loc), pp.x + f.x * 0.7, pp.z + f.y * 0.7, {"kind": String(e.kind), "p": String(e.p), "pur": int(e.pur), "g": int(e.get("g", 1)), "id": String(e.id), "n": amount, "name": String(e.name)})
 	notify("Upuszczono na ziemię: %s." % e.name, "warn")
 
 
@@ -723,7 +730,7 @@ func _loot_put(rec: Dictionary) -> void:
 	var n := float(rec.n)
 	match String(rec.kind):
 		"cash": st.cash = float(st.cash) + n
-		"pack": add_pack(st, String(rec.p), int(rec.pur), int(n))
+		"pack": add_pack(st, String(rec.p), int(rec.pur), int(n), int(rec.get("g", 1)))
 		"bulk": add_bulk(st, String(rec.p), int(rec.pur), n)
 		_:
 			if D.ITEMS.has(String(rec.id)):
@@ -795,7 +802,7 @@ func _loot_left() -> Array:
 	var st := loot_store()
 	for kind in ["pack", "bulk"]:
 		for sx in stacks(st, kind):
-			out.append({"kind": kind, "p": String(sx.p), "pur": int(sx.pur), "id": "", "n": float(sx.n), "name": String(D.PRODUCTS[sx.p].name)})
+			out.append({"kind": kind, "p": String(sx.p), "pur": int(sx.pur), "g": int(sx.get("g", 1)), "id": "", "n": float(sx.n), "name": String(D.PRODUCTS[sx.p].name)})
 	var its := store_items(st)
 	for id in its:
 		if int(its[id]) > 0 and D.ITEMS.has(id):
@@ -896,10 +903,11 @@ func ground_take(rec: Dictionary) -> bool:
 		"cash":
 			S.cash += n
 		"pack":
-			if float(capacity()) - carry_total() < n * D.SIZE_PACK - 0.01:
+			var rg := int(rec.get("g", 1))
+			if float(capacity()) - carry_total() < n * rg * D.SIZE_PACK - 0.01:
 				notify("Brak miejsca w plecaku.", "warn")
 				return false
-			add_pack(S.inv, String(rec.p), int(rec.pur), int(n))
+			add_pack(S.inv, String(rec.p), int(rec.pur), int(n), rg)
 		"bulk":
 			if float(capacity()) - carry_total() < n * D.SIZE_BULK - 0.01:
 				notify("Brak miejsca w plecaku.", "warn")
@@ -926,7 +934,7 @@ func ground_name(rec: Dictionary) -> String:
 	var n := float(rec.n)
 	match String(rec.kind):
 		"cash": return money(n)
-		"pack": return "%s — %d szt." % [String(D.PRODUCTS[rec.p].name), int(n)]
+		"pack": return "%s — %d × %d g" % [String(D.PRODUCTS[rec.p].name), int(n), int(rec.get("g", 1))]
 		"bulk": return "%s — %s" % [String(D.PRODUCTS[rec.p].name), grams(n)]
 	var id := String(rec.id)
 	var nm := String(D.ITEMS[id].name) if D.ITEMS.has(id) else "coś"
@@ -1090,7 +1098,19 @@ func take_item(room: String, id: String, n: int) -> void:
 		its[id] = maxi(0, int(its.get(id, 0)) - (n - a))
 
 
+## ile GRAMÓW zapakowanego towaru leży w schowku (wszystkie paczki, niezależnie od wagi)
 func packed_total(st: Dictionary, product := "") -> int:
+	var n := 0
+	for p in st.pack:
+		if product != "" and p != product:
+			continue
+		for k in st.pack[p]:
+			n += int(st.pack[p][k]) * pack_g(String(k))
+	return n
+
+
+## ile paczek (sztuk) leży w schowku
+func packed_bags(st: Dictionary, product := "") -> int:
 	var n := 0
 	for p in st.pack:
 		if product != "" and p != product:
@@ -1100,11 +1120,33 @@ func packed_total(st: Dictionary, product := "") -> int:
 	return n
 
 
+## --- klucz stosu paczek: "czystość" dla woreczka 1 g (jak w starych zapisach) albo "czystość:gramy" dla większych
+func pack_key(pur, g := 1) -> String:
+	return str(qpur(pur)) if g <= 1 else "%d:%d" % [qpur(pur), g]
+
+
+func pack_g(k: String) -> int:
+	return maxi(1, int(k.get_slice(":", 1))) if k.contains(":") else 1
+
+
+func pack_pur(k: String) -> int:
+	return int(k.get_slice(":", 0))
+
+
+## nazwa paczki po wadze
+func pack_kind(g: int) -> String:
+	return "cegła" if g >= D.PACK_BRICK else ("kostka" if g >= D.PACK_BLOCK else "woreczek")
+
+
+func pack_icon(p: String, g: int) -> String:
+	return ("brick_" if g >= D.PACK_BRICK else ("kostka_" if g >= D.PACK_BLOCK else "pack_")) + p
+
+
 func carry_value() -> float:
 	var v := 0.0
 	for p in S.inv.pack:
 		for k in S.inv.pack[p]:
-			v += float(S.inv.pack[p][k]) * float(D.PRODUCTS[p].base)
+			v += float(S.inv.pack[p][k]) * pack_g(String(k)) * float(D.PRODUCTS[p].base)
 	for p in S.inv.bulk:
 		for k in S.inv.bulk[p]:
 			v += float(S.inv.bulk[p][k]) * float(D.PRODUCTS[p].base) * 0.8
@@ -1153,14 +1195,15 @@ func stacks(st: Dictionary, kind: String) -> Array:
 		for k in st[kind][p]:
 			var n := float(st[kind][p][k])
 			if n > 0.001:
-				out.append({"p": p, "pur": int(k), "n": n})
-	out.sort_custom(func(a, b): return (String(a.p) + "%03d" % (100 - int(a.pur))) < (String(b.p) + "%03d" % (100 - int(b.pur))))
+				# paczki: n = liczba sztuk, g = waga jednej; luz: n = gramy
+				out.append({"p": p, "pur": pack_pur(String(k)), "n": n, "g": pack_g(String(k)) if kind == "pack" else 1})
+	out.sort_custom(func(a, b): return (String(a.p) + "%03d%04d" % [100 - int(a.pur), int(a.g)]) < (String(b.p) + "%03d%04d" % [100 - int(b.pur), int(b.g)]))
 	return out
 
 
-## towar luzem liczymy w połówkach grama (1 g, 2,5 g, 10 g…), nigdy 0,7 g
+## towar liczymy tylko w całych gramach — żadnych połówek
 func add_bulk(st: Dictionary, p: String, pur, g: float) -> void:
-	g = snappedf(g, 0.5)
+	g = roundf(g)
 	if g <= 0.0:
 		return
 	var k := str(qpur(pur))
@@ -1170,24 +1213,26 @@ func add_bulk(st: Dictionary, p: String, pur, g: float) -> void:
 func take_bulk(st: Dictionary, p: String, pur, g: float) -> float:
 	var k := str(qpur(pur))
 	var have := float(st.bulk[p].get(k, 0.0))
-	var n: float = minf(have, snappedf(g, 0.5))
+	var n: float = minf(have, roundf(g))
 	if n <= 0.0:
 		return 0.0
-	st.bulk[p][k] = snappedf(have - n, 0.5)
-	if float(st.bulk[p][k]) < 0.25:
+	st.bulk[p][k] = roundf(have - n)
+	if float(st.bulk[p][k]) < 0.5:
 		st.bulk[p].erase(k)
 	return n
 
 
-func add_pack(st: Dictionary, p: String, pur, n: int) -> void:
+## dokłada n paczek po g gramów (g = 1: zwykły woreczek)
+func add_pack(st: Dictionary, p: String, pur, n: int, g := 1) -> void:
 	if n <= 0:
 		return
-	var k := str(qpur(pur))
+	var k := pack_key(pur, g)
 	st.pack[p][k] = int(st.pack[p].get(k, 0)) + n
 
 
-func take_pack(st: Dictionary, p: String, pur, n: int) -> int:
-	var k := str(qpur(pur))
+## zabiera do n paczek po g gramów; zwraca, ile sztuk zabrano
+func take_pack(st: Dictionary, p: String, pur, n: int, g := 1) -> int:
+	var k := pack_key(pur, g)
 	var have := int(st.pack[p].get(k, 0))
 	var t: int = mini(have, n)
 	if t <= 0:
@@ -2257,19 +2302,32 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 	var d := {"ctx": ctx, "who": who, "st": st, "product": ctx.product, "want": int(ctx.grams), "qty": int(ctx.grams), "sel": {}, "price": 0.0, "base": 0.0, "pct": 0.0, "sum": 0,
 		"tol": 0.0, "pushed": false, "hold": 0.0, "speech": "", "over": false, "sold": false, "late": 0.0, "early": early, "credit": false,
 		"cop": null, "cop_t": 0.0, "cop_max": 6.0, "notes": []}
-	var best = null
-	for s in st_list:
-		if s.p != ctx.product:
-			continue
-		if best == null or (int(s.pur) >= int(who.minpur) and (int(best.pur) < int(who.minpur) or int(s.pur) < int(best.pur))):
-			best = s
 	if o != null and o.has("hold"):
 		d.pushed = bool(o.hold.get("pushed", false))
 		d.notes.append("Wróciłeś — klient dalej czeka.")
-	d.sel = best if best != null else st_list[0]
-	d.qty = clampi(int(d.want), 1, int(d.sel.n))
+	# dobór paczek: najlepiej dokładnie tyle gramów, ile klient chce, z czystości, którą jeszcze lubi (najsłabszej z takich)
+	d["give"] = []
+	d["ask"] = int(d.want)
+	var groups: Array = deal_groups()
+	var pick = null
+	var pick_score := -1.0
+	for gr in groups:
+		if String(gr.p) != String(ctx.product):
+			continue
+		var cb: Dictionary = bag_combo(gr.sizes, int(d.want))
+		var sc := float(cb.sum) * 10.0 + (5.0 if int(gr.pur) >= int(who.minpur) else 0.0) + (100.0 if int(cb.sum) == int(d.want) else 0.0) - float(gr.pur) * 0.01
+		if sc > pick_score:
+			pick_score = sc
+			pick = gr
+	if pick == null:
+		pick = groups[0]
+	deal_choose(d, String(pick.p), int(pick.pur))
 	d.base = float(ctx.agreed) if ctx.get("agreed") != null else round(market_price(d.sel.p))
 	deal_set(d, 0)
+	if int(d.qty) <= 0 and String(d.sel.p) == String(ctx.product):
+		d.notes.append("Masz tylko większe paczki niż %d g — nie ma jak ich podzielić na ulicy. Przepakuj towar przy wadze." % int(d.want))
+	elif int(d.qty) < int(d.want) and String(d.sel.p) == String(ctx.product):
+		d.notes.append("Z Twoich paczek da się złożyć %d g z %d g, o które prosił." % [int(d.qty), int(d.want)])
 	# o ile procent ponad cenę wyjściową klient jeszcze zapłaci
 	var tol := 2.0 + float(st.get("hunger", 0.4)) * 10.0 + minf(100.0, float(st.get("loy", 0.0))) / 100.0 * 6.0 + (float(who.get("wealth", 1.0)) - 1.0) * 20.0
 	tol += (float(st.get("sat", 55.0)) - 50.0) / 50.0 * 4.0 + (2.0 if early else 0.0) - (3.0 if rain > 0.3 else 0.0)
@@ -2349,12 +2407,91 @@ func deal_set(d: Dictionary, pct: float) -> bool:
 
 ## zmiana liczby gramów (handel uliczny): suma idzie za nią, odchylenie od ceny zostaje
 func deal_qty(d: Dictionary, q: int) -> void:
-	var pct := float(d.pct)
-	d.qty = maxi(1, q)
-	var keep: bool = d.pushed
-	d.pushed = false
-	deal_set_sum(d, int(round(deal_base_sum(d) * (1.0 + pct / 100.0))))
-	d.pushed = keep
+	d["ask"] = maxi(1, q)
+	deal_choose(d, String(d.sel.p), int(d.sel.pur))
+
+
+## paczki z plecaka pogrupowane po towarze i czystości: [{p, pur, grams, sizes: [{g, n}], text}]
+func deal_groups() -> Array:
+	var m := {}
+	for sx in stacks(S.inv, "pack"):
+		var key := "%s|%d" % [sx.p, int(sx.pur)]
+		if not m.has(key):
+			m[key] = {"p": String(sx.p), "pur": int(sx.pur), "grams": 0, "sizes": []}
+		m[key].grams = int(m[key].grams) + int(sx.n) * int(sx.g)
+		m[key].sizes.append({"g": int(sx.g), "n": int(sx.n)})
+	var out: Array = m.values()
+	for gr in out:
+		gr.sizes.sort_custom(func(a, b): return int(a.g) > int(b.g))
+		var parts := []
+		for e in gr.sizes:
+			parts.append("%d×%d g" % [int(e.n), int(e.g)])
+		gr["text"] = " + ".join(parts)
+	out.sort_custom(func(a, b): return (String(a.p) + "%03d" % (100 - int(a.pur))) < (String(b.p) + "%03d" % (100 - int(b.pur))))
+	return out
+
+
+## Złożenie `want` gramów z paczek o podanych wagach ([{g, n}]): {sum, bags: [{g, n}]}.
+## Zwraca układ dokładny, a gdy się nie da — największy możliwy poniżej (paczek na ulicy się nie dzieli).
+func bag_combo(sizes: Array, want: int) -> Dictionary:
+	var reach := {0: {}}
+	for e in sizes:
+		var g := int(e.g)
+		if g > want:
+			continue
+		for c in range(mini(int(e.n), int(want / float(g)))):
+			var add := {}
+			for s0 in reach:
+				var s1: int = int(s0) + g
+				if s1 <= want and not reach.has(s1) and not add.has(s1):
+					var m: Dictionary = (reach[s0] as Dictionary).duplicate()
+					m[g] = int(m.get(g, 0)) + 1
+					add[s1] = m
+			if add.is_empty():
+				break
+			reach.merge(add)
+			if reach.has(want):
+				break
+	var top := 0
+	for s2 in reach:
+		top = maxi(top, int(s2))
+	var bags := []
+	for g2 in reach[top]:
+		bags.append({"g": int(g2), "n": int(reach[top][g2])})
+	bags.sort_custom(func(a, b): return int(a.g) > int(b.g))
+	return {"sum": top, "bags": bags}
+
+
+## jakie ilości (gramy) da się w ogóle złożyć z paczek tej grupy, do `limit` gramów — rosnąco
+func bag_sums(sizes: Array, limit: int) -> Array:
+	var out := []
+	for w in range(1, limit + 1):
+		if int(bag_combo(sizes, w).sum) == w:
+			out.append(w)
+	return out
+
+
+## wybiera, z której czystości podajesz, i dobiera paczki na d.ask gramów (d.give, d.qty)
+func deal_choose(d: Dictionary, p: String, pur: int) -> void:
+	var sizes: Array = []
+	var total := 0
+	for gr in deal_groups():
+		if String(gr.p) == p and int(gr.pur) == pur:
+			sizes = gr.sizes
+			total = int(gr.grams)
+	var pct := float(d.get("pct", 0.0))
+	var cb: Dictionary = bag_combo(sizes, mini(int(d.get("ask", d.want)), int(d.want)))
+	d["sel"] = {"p": p, "pur": pur, "n": float(total), "g": 1, "sizes": sizes}
+	var give := []
+	for b in cb.bags:
+		give.append({"pur": pur, "g": int(b.g), "n": int(b.n)})
+	d["give"] = give
+	d["qty"] = int(cb.sum)
+	if d.has("base") and float(d.base) > 0.0 and not d.get("over", false):
+		var keep: bool = d.pushed
+		d.pushed = false
+		deal_set_sum(d, int(round(deal_base_sum(d) * (1.0 + pct / 100.0))))
+		d.pushed = keep
 
 
 ## Co wiesz o szansie przy danej cenie: "sure" | "ok" | "risk" | "no" | "" (nie wiesz — obcy albo mało transakcji).
@@ -2416,6 +2553,10 @@ func deal_hand(d: Dictionary) -> void:
 		return
 	d.hold = 0.0
 	var who: Dictionary = d.who
+	if int(d.qty) <= 0 and String(d.sel.p) == String(d.ctx.product):
+		d.speech = "„%d g chciałem, a ty masz same wielkie paczki? Rozpakuj to w domu.”" % int(d.want)
+		Sfx.play("error")
+		return
 	if d.sel.p != d.ctx.product and not d.ctx.get("sting", false):
 		d.speech = "„To nie to. Chciałem %s.”" % String(D.PRODUCT_GEN[d.ctx.product])
 		return
@@ -2479,7 +2620,7 @@ func deal_hand(d: Dictionary) -> void:
 
 func deal_sell(d: Dictionary, price: float, line: String) -> void:
 	var ref: float = float(d.base) * (1.0 + maxf(0.0, float(d.tol)) / 100.0)
-	var res := complete_sale(d.ctx, d.sel.p, int(d.sel.pur), int(d.qty), price, ref, d.credit)
+	var res := complete_sale(d.ctx, d.sel.p, int(d.sel.pur), int(d.qty), price, ref, d.credit, d.get("give", []))
 	d.over = true
 	d.sold = true
 	d.speech = "%s\n[b][color=#4ade80]+%s[/color][/b] za %d g %s." % [line, money(res.paid), int(d.qty), D.PRODUCT_GEN[d.sel.p]]
@@ -2534,9 +2675,14 @@ func deal_finish(d: Dictionary, res: Dictionary) -> void:
 
 
 # ================================================================ sprzedaż
-func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, mx: float, credit := false) -> Dictionary:
+## bags: które paczki idą z ręki do ręki — [{pur, g, n}]; bez tej listy schodzi g woreczków po 1 g (stary sposób, testy)
+func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, mx: float, credit := false, bags: Array = []) -> Dictionary:
 	var total: float = round(price * g)
-	take_pack(S.inv, p, pur, g)
+	if bags.is_empty():
+		take_pack(S.inv, p, pur, g)
+	else:
+		for b in bags:
+			take_pack(S.inv, p, int(b.pur), int(b.n), int(b.g))
 	var paid := total
 	var owed := 0.0
 	var st = ctx.who.get("st")
@@ -3000,18 +3146,28 @@ func bench_pool(room: String) -> Array:
 				if kind == "bulk":
 					m[key].n = float(m[key].n) + float(sx.n)
 				else:
+					# k = ile paczek, kg = ile w nich gramów
 					m[key].k = int(m[key].k) + int(sx.n)
+					m[key]["kg"] = int(m[key].get("kg", 0)) + int(sx.n) * int(sx.g)
 	return m.values()
 
 
-## rozsypuje gotowe porcje z powrotem do luzu (żeby je domieszać albo zważyć od nowa); zwraca, ile porcji poszło
+## rozsypuje paczki z powrotem do luzu (żeby je domieszać albo zapakować inaczej); n = ile GRAMÓW najwyżej rozsypać
+## (zawsze całe paczki, od najmniejszych). Zwraca, ile gramów wróciło do luzu. Woreczki przepadają.
 func unpack(room: String, p: String, pur: int, n: int) -> int:
 	var done := 0
 	for src in [S.inv, S.stash[room]]:
-		var t: int = take_pack(src, p, pur, n - done)
-		if t > 0:
-			add_bulk(src, p, pur, float(t))
-			done += t
+		var keys: Array = []
+		for k in src.pack[p]:
+			if pack_pur(String(k)) == qpur(pur):
+				keys.append(String(k))
+		keys.sort_custom(func(a, b): return pack_g(a) < pack_g(b))
+		for k in keys:
+			var g1 := pack_g(k)
+			while done + g1 <= n and int(src.pack[p].get(k, 0)) > 0:
+				take_pack(src, p, pur, 1, g1)
+				add_bulk(src, p, pur, float(g1))
+				done += g1
 	if done > 0:
 		add_minutes(0.1 * done)
 	return done
@@ -3073,22 +3229,69 @@ func pack_limit(room: String, p: String, pur: int) -> int:
 	return int(floor(have + 0.001))
 
 
-## porcjuje JEDEN gram: 1 = porcja gotowa, 0 = gram rozsypany, -1 = nie ma z czego
+## ile pustych woreczków jest pod ręką przy tym stole (kieszenie + skrytka)
+func bags_at(room: String) -> int:
+	return item_at(room, "woreczki")
+
+
+func _spill_tip() -> void:
+	# pierwszy rozsypany gram na kuchennej: podpowiedź, gdzie kupić lepszą wagę (raz)
+	if scale() == 0 and not flag("tip_waga"):
+		S.flags["tip_waga"] = true
+		notify("Gram poszedł na blat. Stara waga kuchenna tak ma — dokładniejszą sprzedaje Zenek w lombardzie przy Hutniczej.", "warn")
+
+
+## Pakuje JEDNĄ paczkę o wadze g gramów: {ok, lost, why}. Potrzebny jest pusty woreczek i g gramów luzem;
+## przy gorszej wadze część gramów ląduje na blacie (lost) — wtedy schodzi ich z kupki więcej.
+func pack_bag(room: String, p: String, pur: int, g: int) -> Dictionary:
+	g = clampi(g, 1, D.PACK_MAX)
+	if bags_at(room) <= 0:
+		return {"ok": false, "lost": 0, "why": "Nie masz pustych woreczków — kupisz je u Stasia."}
+	if pack_limit(room, p, pur) < g:
+		return {"ok": false, "lost": 0, "why": "Za mało towaru luzem na paczkę %d g." % g}
+	var lost := 0
+	var good := 0
+	var inv_part := 0.0
+	while good < g:
+		if pack_limit(room, p, pur) <= 0:
+			break
+		var fi: float = take_bulk(S.inv, p, pur, 1.0)
+		if fi < 0.5:
+			take_bulk(S.stash[room], p, pur, 1.0)
+		if randf() < pack_waste():
+			lost += 1
+			S.stats.wasted = int(S.stats.wasted) + 1
+			_spill_tip()
+		else:
+			good += 1
+			inv_part += fi
+	add_minutes(pack_minutes() * float(good + lost))
+	var to_inv: bool = inv_part >= float(good) * 0.5
+	if good < g:
+		# zabrakło towaru w połowie paczki: to, co odważone, wraca na kupkę
+		add_bulk(S.inv if to_inv else S.stash[room], p, pur, float(good))
+		return {"ok": false, "lost": lost, "why": "Zabrakło towaru — rozsypało się %d g." % lost}
+	take_item(room, "woreczki", 1)
+	# paczka wraca tam, skąd wzięto większość towaru (plecak albo skrytka)
+	add_pack(S.inv if to_inv else S.stash[room], p, pur, 1, g)
+	S.stats.packed = int(S.stats.packed) + g
+	add_xp(0.3 * g)
+	return {"ok": true, "lost": lost, "why": ""}
+
+
+## stary, pojedynczy krok: jeden gram do jednego woreczka. 1 = woreczek gotowy, 0 = gram rozsypany, -1 = nie ma z czego albo w co
 func pack_one(room: String, p: String, pur: int, _mode := 1) -> int:
-	if pack_limit(room, p, pur) <= 0:
+	if pack_limit(room, p, pur) <= 0 or bags_at(room) <= 0:
 		return -1
 	var from_inv: float = take_bulk(S.inv, p, pur, 1.0)
-	if from_inv < 0.999:
-		take_bulk(S.stash[room], p, pur, 1.0 - from_inv)
+	if from_inv < 0.5:
+		take_bulk(S.stash[room], p, pur, 1.0)
 	add_minutes(pack_minutes())
 	if randf() < pack_waste():
 		S.stats.wasted = int(S.stats.wasted) + 1
-		# pierwszy rozsypany gram na kuchennej: podpowiedź, gdzie kupić lepszą wagę (raz)
-		if scale() == 0 and not flag("tip_waga"):
-			S.flags["tip_waga"] = true
-			notify("Gram poszedł na blat. Stara waga kuchenna tak ma — dokładniejszą sprzedaje Zenek w lombardzie przy Hutniczej.", "warn")
+		_spill_tip()
 		return 0
-	# porcja wraca tam, skąd wzięto towar (plecak albo skrytka)
+	take_item(room, "woreczki", 1)
 	add_pack(S.inv if from_inv >= 0.5 else S.stash[room], p, pur, 1)
 	S.stats.packed = int(S.stats.packed) + 1
 	add_xp(0.3)
@@ -3114,9 +3317,9 @@ func pack(room: String, p: String, pur: int, g: int, _mode := 1) -> Dictionary:
 
 func pack_report(good: int, lost: int) -> void:
 	if lost > 0:
-		notify("Zaporcjowano %d g, rozsypano %d g." % [good, lost], "warn")
+		notify("Zapakowano %d g, rozsypano %d g." % [good, lost], "warn")
 	elif good > 0:
-		notify("Zaporcjowano %d g bez strat." % good, "good")
+		notify("Zapakowano %d g bez strat." % good, "good")
 
 
 func filler_for(p: String) -> String:
@@ -3144,7 +3347,7 @@ func mix(room: String, p: String, pur: int, g: float, filler_g: int) -> int:
 	var share := from_inv / tot
 	take_item(room, fid, filler_g)
 	var inv_room := maxf(0.0, float(capacity()) - carry_total())
-	var to_inv: float = minf(snappedf((tot + filler_g) * share, 0.5), floorf(inv_room * 2.0) / 2.0)
+	var to_inv: float = minf(roundf((tot + filler_g) * share), floorf(inv_room))
 	add_bulk(S.inv, p, np, to_inv)
 	add_bulk(S.stash[room], p, np, tot + filler_g - to_inv)
 	notify("Mieszanka: %s → %s, czystość %d%%." % [grams(tot), grams(tot + filler_g), np], "warn" if np < 60 else "good")
@@ -3172,23 +3375,23 @@ func station_label(room: String, idx: int) -> String:
 
 
 # ================================================================ skrytki w kryjówkach
-func move_stack(room: String, to_stash: bool, kind: String, p: String, pur: int, amount: float) -> float:
+func move_stack(room: String, to_stash: bool, kind: String, p: String, pur: int, amount: float, g := 1) -> float:
 	var from: Dictionary = S.inv if to_stash else S.stash[room]
 	var to: Dictionary = S.stash[room] if to_stash else S.inv
-	var have := float(from[kind][p].get(str(pur), 0.0))
+	var key := pack_key(pur, g) if kind == "pack" else str(pur)
+	var have := float(from[kind][p].get(key, 0.0))
 	var n: float = minf(amount, have)
 	var space: float = (float(stash_cap(room)) - store_total(S.stash[room])) if to_stash else (float(capacity()) - carry_total())
-	n = minf(n, maxf(0.0, space))
-	if kind == "pack":
-		n = floor(n + 0.001)
-	else:
-		n = floorf(n * 2.0 + 0.001) / 2.0
+	# paczka zajmuje tyle miejsca, ile waży; luz — gram to jedno miejsce
+	var unit: float = (D.SIZE_PACK * g) if kind == "pack" else D.SIZE_BULK
+	n = minf(n, floorf(maxf(0.0, space) / maxf(0.001, unit) + 0.001))
+	n = floorf(n + 0.001)
 	if n <= 0.0:
 		notify("Brak miejsca w %s." % ("skrytce" if to_stash else "plecaku"), "warn")
 		return 0.0
 	if kind == "pack":
-		take_pack(from, p, pur, int(n))
-		add_pack(to, p, pur, int(n))
+		take_pack(from, p, pur, int(n), g)
+		add_pack(to, p, pur, int(n), g)
 	else:
 		take_bulk(from, p, pur, n)
 		add_bulk(to, p, pur, n)
@@ -3211,6 +3414,11 @@ func move_cash(room: String, deposit: bool, amount: float) -> void:
 func shop_buy(id: String) -> bool:
 	for it in D.SHOP:
 		if it.id == id:
+			if id == "woreczki" and S.cash < float(it.price) and item_at("safe", "woreczki") <= 0:
+				# bez woreczków nie ma jak zarobić — Staś nie zostawi Kuby z niczym
+				S.items[id] = item(id) + int(it.n)
+				notify("Staś: „Bierz, oddasz, jak się odkujesz.” (+%d woreczków)" % int(it.n), "good")
+				return true
 			if S.cash < float(it.price) or int(S.lvl) < int(it.lvl):
 				notify("Nie stać Cię albo to jeszcze nie ten poziom.", "warn")
 				return false
@@ -3624,7 +3832,7 @@ func _on_pack_done() -> void:
 		for p in src.pack:
 			var n := 0
 			for k in src.pack[p]:
-				n += int(src.pack[p][k])
+				n += int(src.pack[p][k]) * pack_g(String(k))
 			if n > best:
 				best = n
 				have = String(p)
@@ -3794,11 +4002,24 @@ func state_from_save(data: Dictionary) -> Dictionary:
 			base.flags[k] = true
 	base.wanted = false
 	base.stash["loot"] = new_store()
-	# woreczków do kupowania już nie ma, a „ulepszenie” wagi stało się po prostu lepszą wagą
-	base.items["woreczki"] = 0
+	# woreczki znów są potrzebne do pakowania: zapis sprzed tej zmiany dostaje pakiet na start
+	if not data.has("bagsv"):
+		base.items["woreczki"] = maxi(int(base.items.get("woreczki", 0)), D.START_BAGS)
+		base["bagsv"] = 1
+	# tylko całe gramy: stare połówki zaokrąglamy
+	var stores: Array = [base.inv]
 	for st0 in base.stash.values():
-		if st0 is Dictionary and st0.has("items") and st0.items is Dictionary:
-			st0.items.erase("woreczki")
+		if st0 is Dictionary and st0.has("bulk"):
+			stores.append(st0)
+	for st1 in stores:
+		for bp in st1.bulk:
+			for bk in st1.bulk[bp].keys():
+				var bv: float = roundf(float(st1.bulk[bp][bk]))
+				if bv < 0.5:
+					st1.bulk[bp].erase(bk)
+				else:
+					st1.bulk[bp][bk] = bv
+	# „ulepszenie” wagi stało się po prostu lepszą wagą
 	if bool(base.upg.get("waga", false)):
 		base["scale"] = maxi(int(base.get("scale", 0)), 1)
 	base.upg.erase("waga")

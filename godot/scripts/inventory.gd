@@ -584,7 +584,7 @@ func _list(parent: Node, st: Dictionary, side: String, empty: String) -> void:
 
 
 func _is_sel(e: Dictionary, side: String) -> bool:
-	return not sel.is_empty() and sel.side == side and sel.kind == e.kind and sel.p == e.p and int(sel.pur) == int(e.pur) and sel.id == e.id
+	return not sel.is_empty() and sel.side == side and sel.kind == e.kind and sel.p == e.p and int(sel.pur) == int(e.pur) and sel.id == e.id and int(sel.get("g", 1)) == int(e.get("g", 1))
 
 
 func _ecolor(e: Dictionary) -> Color:
@@ -649,7 +649,7 @@ func _row_input(ev: InputEvent, e: Dictionary, side: String) -> void:
 	if ev.double_click and has_stash():
 		ask_amount(e, side, "stash" if side == "bag" else "bag")
 		return
-	sel = {"side": side, "kind": e.kind, "p": e.p, "pur": int(e.pur), "id": e.id}
+	sel = {"side": side, "kind": e.kind, "p": e.p, "pur": int(e.pur), "id": e.id, "g": int(e.get("g", 1))}
 	render()
 
 
@@ -1046,7 +1046,7 @@ func _detail() -> Control:
 		v.add_child(K.lbl("CO MASZ PRZY SOBIE", 10, K.C_DIM))
 		var goods := G.carry_goods()
 		_stat(v, "banknote", "Wartość towaru na ulicy", "ok. " + G.money(G.carry_value()), K.C_ACC if goods > 0.0 else K.C_DIM)
-		_stat(v, "package", "Porcje gotowe do sprzedaży", str(G.packed_total(S.inv)))
+		_stat(v, "package", "Zapakowane do sprzedaży", "%d g w %d paczkach" % [G.packed_total(S.inv), G.packed_bags(S.inv)])
 		_stat(v, "weight", "Waga ładunku", G.weight_text(G.store_weight(S.inv)))
 		_stat(v, "shield_alert", "Przy kontroli stracisz", G.grams(goods) if goods > 0.0 else "nic", K.C_WARN if goods > 0.0 else K.C_ACC)
 		v.add_child(K.spacer())

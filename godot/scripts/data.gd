@@ -61,6 +61,7 @@ const PURITY_HIGH := 90
 
 ## sklep Wujka Stasia
 const SHOP := [
+	{"id": "woreczki", "name": "Woreczki strunowe (20 szt.)", "price": 12, "n": 20, "lvl": 1, "desc": "Bez woreczka nic nie zapakujesz: jedna paczka — mała porcja, kostka czy cegła — to jeden woreczek."},
 	{"id": "majeranek", "name": "Majeranek (20 g)", "price": 6, "n": 20, "lvl": 1, "desc": "Przyprawa z półki. Domieszany do marihuany podbija wagę, ale obniża czystość — powstaje mieszanka."},
 	{"id": "cukier", "name": "Cukier puder (20 g)", "price": 5, "n": 20, "lvl": 4, "desc": "Do rozrabiania proszków. Więcej gramów, gorszy towar."},
 	{"id": "doniczka", "name": "Doniczka z ziemią", "price": 40, "n": 1, "lvl": 4, "desc": "Stawiasz ją w kryjówce [B] i sadzisz w niej jeden krzak. Każdy krzak doglądasz osobno."},
@@ -152,7 +153,7 @@ const FILLER := {"dym": "majeranek", "szron": "cukier", "krysztal": "cukier", "s
 const FILLER_NAMES := {"majeranek": "Majeranek", "cukier": "Cukier puder"}
 ## przedmioty: ile miejsca zajmuje jedna sztuka / gram i ile waży (w gramach)
 const ITEMS := {
-	"woreczki": {"name": "Woreczki strunowe", "icon": "woreczki", "size": 0.05, "w": 0.6, "unit": "szt.", "desc": "Puste woreczki do porcjowania. 1 woreczek = 1 porcja."},
+	"woreczki": {"name": "Woreczki strunowe", "icon": "woreczki", "size": 0.05, "w": 0.6, "unit": "szt.", "desc": "Puste woreczki strunowe. Jedna paczka towaru — niezależnie od wagi — to jeden woreczek. Kupisz je u Stasia."},
 	"notes": {"name": "Notes z numerami", "icon": "notes", "size": 1.0, "w": 120.0, "unit": "szt.", "evidence": true,
 		"desc": "Numery klientów z osiedla — cała Twoja siatka. W szafie jest bezpieczny; znaleziony przy zatrzymaniu trafi do akt i przyspieszy śledztwo."},
 	"majeranek": {"name": "Majeranek", "icon": "majeranek", "size": 0.25, "w": 1.0, "unit": "g", "desc": "Przyprawa. Domieszana do marihuany podbija wagę i psuje jakość."},
@@ -601,6 +602,11 @@ const JOB_FROM_DAY := 3
 const LIVING_COST := 28
 ## klient czeka na umówionym miejscu około pięciu godzin i nie ma żalu, że musiał postać;
 ## cieszy się za to, gdy zjawisz się w ciągu godziny od umówionej pory
+## Paczki: do jednego woreczka wchodzi od 1 do 199 g; od 200 g to już prasowana kostka, od 500 g cała cegła (najwyżej kilo).
+const PACK_BLOCK := 200
+const PACK_BRICK := 500
+const PACK_MAX := 1000
+const START_BAGS := 20
 const CLIENT_WAIT := 300.0
 const CLIENT_EARLY := 60.0
 const MAX_ARRESTS := 5

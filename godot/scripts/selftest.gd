@@ -89,7 +89,8 @@ func run() -> void:
 	G.story_tick()
 	ok(G.flag("tut_save") and G.cur_step().id == "room_stash", "zapis przy laptopie zalicza pierwszy krok")
 	# na start w kieszeni leży notes z numerami: samouczek każe przenieść go do szafy (samo otwarcie nie wystarcza)
-	ok(G.item("notes") == 1 and absf(G.carry_total() - 1.0) < 0.01 and String(G.cur_step().text.call()).contains("notes"), "na start: notes z numerami w kieszeni, samouczek każe go schować")
+	var bag_sp: float = float(D.START_BAGS) * float(D.ITEMS.woreczki.size)
+	ok(G.item("notes") == 1 and G.item("woreczki") == D.START_BAGS and absf(G.carry_total() - (1.0 + bag_sp)) < 0.01 and String(G.cur_step().text.call()).contains("notes"), "na start: notes z numerami i %d woreczków w kieszeni; samouczek każe schować notes" % D.START_BAGS)
 	U.open_stash("safe")
 	await frames(2)
 	G.story_tick()
@@ -101,7 +102,7 @@ func run() -> void:
 	ok(not note_e.is_empty() and G.move_entry("safe", note_e, true, 1.0) == 1.0 and G.item("notes") == 0 and int(G.store_items(S.stash.safe).get("notes", 0)) == 1, "notes przeciągnięty do szafy")
 	U.close_all()
 	G.story_tick()
-	ok(G.cur_step().id == "room_bench" and G.carry_total() < 0.01, "krok ze skrytką zaliczony, kieszenie puste")
+	ok(G.cur_step().id == "room_bench" and absf(G.carry_total() - bag_sp) < 0.01, "krok ze skrytką zaliczony, w kieszeniach zostały tylko woreczki")
 	# cel w lewym górnym rogu zostaje na ekranie, dopóki zadanie nie jest wykonane (nie gaśnie po kilku sekundach)
 	U.obj_t = 0.0
 	U.update_hud()
@@ -178,12 +179,12 @@ func run() -> void:
 	for e in D.STARTER_PACK:
 		start_g += float(e[1])
 	ok(G.goods_total(S.inv) == start_g and float(S.credit) == 0.0 and float(S.inv.bulk["szron"].get("100", 0.0)) > 0.0, "na start czysta marihuana i amfetamina — pierwsza paczka jest za darmo (zeszyt %d zł)" % int(S.credit))
-	ok(absf(G.carry_total() - start_g) < 0.01 and G.carry_total() <= float(G.capacity()) and G.capacity() >= 30, "paczka mieści się w kieszeniach (%s / %d)" % [str(G.carry_total()), G.capacity()])
+	ok(absf(G.carry_total() - start_g - bag_sp) < 0.01 and G.carry_total() <= float(G.capacity()) and G.capacity() >= 30, "paczka mieści się w kieszeniach (%s / %d)" % [str(G.carry_total()), G.capacity()])
 	ok(G.credit_days() >= 7, "na początku Wiktor daje tydzień na spłatę zeszytu (%d dni)" % G.credit_days())
 	# dalej test idzie jak dawniej z 5 g marihuany przy sobie — reszta paczki ląduje w szafie
 	G.add_bulk(S.stash.safe, "szron", 100, G.take_bulk(S.inv, "szron", 100, 99.0))
 	G.add_bulk(S.stash.safe, "dym", 100, G.take_bulk(S.inv, "dym", 100, start_g - 10.0 if start_g > 15.0 else maxf(0.0, float(S.inv.bulk["dym"].get("100", 0.0)) - 5.0)))
-	ok(absf(G.carry_total() - 5.0) < 0.01, "zajęte miejsce: 5 g luzem = 5")
+	ok(absf(G.carry_total() - 5.0 - bag_sp) < 0.01, "zajęte miejsce: 5 g luzem i paczka woreczków")
 
 	# --- stół: porcjowanie
 	M.enter("safe")
@@ -261,7 +262,7 @@ func run() -> void:
 	while got[0] < 0 and bg < 400:
 		bg += 1
 		await frames(1)
-	ok(got[0] == 3 and got[1] == 0 and G.item("woreczki") == 0, "zaporcjowane 3 g — bez woreczków i bez wybierania trybu")
+	ok(got[0] == 3 and got[1] == 0 and G.item("woreczki") == D.START_BAGS - 3, "zaporcjowane 3 g w trzy woreczki — ubyło trzech pustych")
 	ok(S.t - t_before >= 3.5, "porcjowanie zabiera czas gry (%.0f min)" % (S.t - t_before))
 	ok(G.pack_one("safe", "dym", 35) == -1, "nie da się porcjować towaru, którego nie ma")
 	# wspólna pula: stół widzi luz i porcje z kieszeni i ze skrytki jako jedną pozycję
@@ -447,7 +448,14 @@ func run() -> void:
 	ok(G.flag("hurt_on"), "bez towaru i bez Hurtu Wiktor sam otwiera zamówienia")
 	G.S.cash = 0.0
 	G.add_bulk(G.S.inv, "dym", 80, 5.0)
-	ok(G.pack_limit("safe", "dym", 80) == 5 and G.pack_one("safe", "dym", 80) >= 0, "spłukany też porcjuje: do roboty wystarcza waga, niczego nie trzeba dokupować")
+	ok(G.pack_limit("safe", "dym", 80) == 5 and G.pack_one("safe", "dym", 80) >= 0, "spłukany też porcjuje, dopóki ma woreczki")
+	var bags_k: int = G.item("woreczki")
+	G.S.items["woreczki"] = 0
+	G.store_items(G.S.stash.safe)["woreczki"] = 0
+	ok(G.pack_one("safe", "dym", 80) == -1 and not G.pack_bag("safe", "dym", 80, 2).ok, "bez pustych woreczków nic się nie zapakuje")
+	ok(G.shop_buy("woreczki") and G.item("woreczki") == 20, "spłukany i bez woreczków: Staś daje paczkę na krechę")
+	ok(not G.shop_buy("woreczki"), "…ale tylko wtedy, gdy naprawdę nie ma w co pakować")
+	G.S.items["woreczki"] = bags_k
 	G.S = tut_S
 
 	# --- mieszanki nigdy nie układają się w jeden stos z czystym towarem
@@ -655,7 +663,23 @@ func run() -> void:
 	# --- ilości: gramy w połówkach, sztuki całe, miejsce w połówkach
 	var tmp: Dictionary = G.new_store()
 	G.add_bulk(tmp, "dym", 75, 3.7)
-	ok(absf(G.goods_total(tmp) - 3.5) < 0.001, "towar luzem zaokrągla się do połówek grama (3,7 → 3,5)")
+	ok(absf(G.goods_total(tmp) - 4.0) < 0.001, "towar liczymy tylko w całych gramach (3,7 → 4)")
+	# paczki o różnej wadze: woreczek, kostka, cegła; każda zajmuje tyle miejsca, ile waży
+	G.add_pack(tmp, "dym", 75, 3, 5)
+	G.add_pack(tmp, "dym", 75, 1, 250)
+	G.add_pack(tmp, "dym", 75, 1, 500)
+	G.add_pack(tmp, "dym", 75, 2)
+	var kinds_t := {}
+	for te in G.entries(tmp):
+		if String(te.kind) == "pack":
+			kinds_t[int(te.g)] = te
+	ok(G.packed_total(tmp) == 15 + 250 + 500 + 2 and G.packed_bags(tmp) == 7 and kinds_t.size() == 4, "paczki: 3×5 g, kostka 250 g, cegła 500 g i 2×1 g to %d g w %d sztukach" % [G.packed_total(tmp), G.packed_bags(tmp)])
+	ok(String(kinds_t[5].name).contains("woreczek 5 g") and String(kinds_t[250].name).contains("kostka 250 g") and String(kinds_t[500].name).contains("cegła 500 g") and String(kinds_t[250].icon) == "kostka_dym" and String(kinds_t[500].icon) == "brick_dym", "w ekwipunku każda paczka ma swoją wagę i nazwę: woreczek, kostka od 200 g, cegła od 500 g")
+	ok(absf(float(kinds_t[5].size) - 15.0) < 0.01 and absf(float(kinds_t[5].weight) - 15.0 * D.W_PACK) < 0.01 and G.take_pack(tmp, "dym", 75, 2, 5) == 2 and G.packed_total(tmp) == 5 + 250 + 500 + 2, "trzy woreczki po 5 g zajmują 15 miejsc; zabranie dwóch zostawia jeden")
+	var cb1: Dictionary = G.bag_combo([{"g": 5, "n": 1}, {"g": 2, "n": 2}, {"g": 1, "n": 3}], 8)
+	var cb2: Dictionary = G.bag_combo([{"g": 5, "n": 2}], 8)
+	var cb3: Dictionary = G.bag_combo([{"g": 13, "n": 4}], 8)
+	ok(int(cb1.sum) == 8 and int(cb2.sum) == 5 and int(cb3.sum) == 0 and G.bag_sums([{"g": 5, "n": 1}, {"g": 2, "n": 1}], 9) == [2, 5, 7], "dobór paczek: 8 g z 5+2+1, z samych piątek tylko 5 g, z trzynastek nic")
 	ok(G.grams(3.5) == "3,5 g" and G.grams(10.0) == "10 g" and G.units(1.7) == "2", "zapis ilości: 3,5 g, 10 g, miejsce 2")
 
 	# --- policjant widzi do przodu i trochę na boki, ale nie za plecami

@@ -1132,12 +1132,12 @@ func _bag() -> void:
 	_header("Plecak", "%s / %d g" % [G.grams(G.carry_total()), G.capacity()])
 	body.add_child(K.bar(G.carry_total(), float(G.capacity()), K.C_BLUE))
 	var c := K.card(body)
-	c.add_child(K.lbl("ZAPORCJOWANE (gotowe do sprzedaży)", 10, K.C_DIM))
+	c.add_child(K.lbl("ZAPAKOWANE (gotowe do sprzedaży)", 10, K.C_DIM))
 	var ps := G.stacks(S.inv, "pack")
 	if ps.is_empty():
-		c.add_child(K.lbl("Nic. Zaporcjuj towar na wadze.", 12, K.C_DIM))
+		c.add_child(K.lbl("Nic. Zapakuj towar w woreczki przy wadze.", 12, K.C_DIM))
 	for s in ps:
-		c.add_child(K.rich("%s  %s   ×[b]%d g[/b]" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), int(s.n)], 13))
+		c.add_child(K.rich("%s  %s   [b]%d × %d g[/b]" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), int(s.n), int(s.g)], 13))
 	var c2 := K.card(body)
 	c2.add_child(K.lbl("LUZEM (do porcjowania)", 10, K.C_DIM))
 	var bs := G.stacks(S.inv, "bulk")

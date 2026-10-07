@@ -90,7 +90,7 @@ var screen_box: VBoxContainer
 var dlg := {}
 var deal := {}
 var sk := {}
-var bench := {"room": "", "sel": {}, "g": 5, "mixing": false, "filler": 1}
+var bench := {"room": "", "sel": {}, "g": 1, "n": 9999, "mixing": false, "filler": 1}
 var station := {}
 var hud_t := 0.0
 var nav_info := {}
@@ -1461,10 +1461,9 @@ func _render_deal() -> void:
 
 
 func _deal_pick(s: Dictionary) -> void:
-	deal.sel = s
 	if deal.ctx.get("agreed") == null:
-		deal.base = round(G.market_price(s.p))
-	G.deal_qty(deal, clampi(int(deal.qty), 1, int(s.n)))
+		deal.base = round(G.market_price(String(s.p)))
+	G.deal_choose(deal, String(s.p), int(s.pur))
 	_render_deal()
 
 

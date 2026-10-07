@@ -105,7 +105,9 @@ static func run(T) -> void:
 		"stash": {"safe": {"bulk": {"dym": {"100": 12.0}}, "pack": {"dym": {"100": 4}}, "cash": 50.0, "items": {"woreczki": 20, "cukier": 3}}},
 		"hide": {"garage": {"items": [{"f": "stol", "x": -1.6, "z": -3.6, "r": 0}], "jobs": {}}}}
 	var mig: Dictionary = G.state_from_save(old_save)
-	T.ok(int(mig.items.woreczki) == 0 and not mig.stash.safe.items.has("woreczki") and int(mig.stash.safe.items.cukier) == 3 and int(mig.items.majeranek) == 5, "stary zapis: woreczki znikają, reszta rzeczy zostaje")
+	T.ok(int(mig.items.woreczki) == 37 and int(mig.stash.safe.items.cukier) == 3 and int(mig.items.majeranek) == 5, "stary zapis: woreczki i reszta rzeczy zostają")
+	var mig0: Dictionary = G.state_from_save({"items": {"majeranek": 1}, "inv": {"bulk": {"dym": {"100": 3.5, "80": 0.4}}, "pack": {"dym": {"100": 2}}, "cash": 0.0}})
+	T.ok(int(mig0.items.woreczki) == D.START_BAGS and float(mig0.inv.bulk.dym["100"]) == 4.0 and not mig0.inv.bulk.dym.has("80") and int(mig0.inv.pack.dym["100"]) == 2, "zapis bez woreczków dostaje pakiet %d sztuk; połówki gramów zaokrąglone" % D.START_BAGS)
 	T.ok(int(mig.scale) == 1 and not mig.upg.has("waga") and bool(mig.upg.get("plecak1", false)), "stary zapis: kupiona „waga jubilerska” staje się wagą drugiej klasy, plecak zostaje")
 	T.ok(mig.owned is Dictionary and mig.owned.is_empty() and mig.stash.has("loot") and G.goods_total(mig.stash.loot) == 0.0, "stary zapis: pusty stan sprzętu i pusty pojemnik podręczny")
 	T.ok(float(mig.cash) == 1234.0 and float(mig.stash.safe.bulk.dym["100"]) == 12.0 and int(mig.stash.safe.pack.dym["100"]) == 4 and mig.hide.garage.items.size() == 1, "stary zapis: gotówka, towar i ustawione meble bez zmian")

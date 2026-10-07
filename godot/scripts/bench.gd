@@ -8,7 +8,7 @@ const View = preload("res://scripts/bench_view.gd")
 
 
 static func _packed_here(room: String, p: String) -> int:
-	return G.packed_total(G.S.inv, p) + G.packed_total(G.S.stash[room], p)
+	return G.packed_bags(G.S.inv, p) + G.packed_bags(G.S.stash[room], p)
 
 
 static func _tile(U, s: Dictionary, on: bool) -> Control:
@@ -38,11 +38,11 @@ static func _tile(U, s: Dictionary, on: bool) -> Control:
 	var q := K.vbox(0)
 	q.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	q.alignment = BoxContainer.ALIGNMENT_CENTER
-	var big := K.head(G.grams(s.n) if float(s.n) > 0.0 or int(s.get("k", 0)) <= 0 else "%d porcji" % int(s.k), 18 if float(s.n) > 0.0 else 15, K.C_TXT)
+	var big := K.head(G.grams(s.n) if float(s.n) > 0.0 or int(s.get("k", 0)) <= 0 else "%d g w paczkach" % int(s.get("kg", 0)), 18 if float(s.n) > 0.0 else 14, K.C_TXT)
 	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	q.add_child(big)
 	if float(s.n) > 0.0 and int(s.get("k", 0)) > 0:
-		var small := K.lbl("+ %d porcji" % int(s.k), 11, K.C_ACC)
+		var small := K.lbl("+ %d g w %d paczkach" % [int(s.get("kg", 0)), int(s.k)], 11, K.C_ACC)
 		small.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		q.add_child(small)
 	elif float(s.n) > 0.0:
@@ -79,6 +79,8 @@ static func build(U) -> void:
 	sc_l.tooltip_text = String(sc.desc) + ("
 Lepszą wagę kupisz w lombardzie przy Hutniczej." if G.scale() < D.SCALES.size() - 1 else "")
 	top.add_child(sc_l)
+	var bags_n := G.bags_at(room)
+	top.add_child(K.icon_label("woreczki", "Woreczki: %d" % bags_n, 13, K.C_TXT if bags_n > 0 else K.C_BAD, 20))
 	top.add_child(K.icon_label("majeranek", "Majeranek: %d g" % G.item_at(room, "majeranek"), 13, K.C_TXT, 20))
 	if int(S.lvl) >= 4:
 		top.add_child(K.icon_label("cukier", "Cukier puder: %d g" % G.item_at(room, "cukier"), 13, K.C_TXT, 20))
@@ -128,99 +130,117 @@ Lepszą wagę kupisz w lombardzie przy Hutniczej." if G.scale() < D.SCALES.size(
 		_pack_ui(U, rv, view, sel)
 
 
+## pole z liczbą i przyciskami −/+ (gramy w paczce albo liczba paczek)
+static func _num_row(parent: Node, label: String, value: int, lo: int, hi: int, steps: Array, on_set: Callable, suffix: String) -> LineEdit:
+	var h := K.hbox(5)
+	parent.add_child(h)
+	var ll := K.lbl(label, 11, K.C_DIM)
+	ll.custom_minimum_size = Vector2(118, 0)
+	h.add_child(ll)
+	for st in steps:
+		var d1: int = -int(st)
+		var b1 := K.btn(str(d1), func(): on_set.call(clampi(value + d1, lo, hi)), "", true)
+		b1.disabled = value <= lo
+		b1.custom_minimum_size = Vector2(38, 32)
+		h.add_child(b1)
+	var ed := LineEdit.new()
+	ed.text = str(value)
+	ed.custom_minimum_size = Vector2(66, 32)
+	ed.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ed.max_length = 4
+	ed.select_all_on_focus = true
+	ed.add_theme_font_size_override("font_size", 17)
+	ed.add_theme_stylebox_override("normal", K.sb(Color(0.03, 0.04, 0.06), 8, Color(1, 1, 1, 0.18), 1, 8))
+	ed.add_theme_stylebox_override("focus", K.sb(Color(0.03, 0.04, 0.06), 8, K.C_ACC, 1, 8))
+	ed.text_submitted.connect(func(t: String): on_set.call(clampi(int(t), lo, hi)))
+	ed.focus_exited.connect(func():
+		if ed.text.strip_edges() != "" and int(ed.text) != value:
+			on_set.call(clampi(int(ed.text), lo, hi)))
+	h.add_child(ed)
+	var rs: Array = steps.duplicate()
+	rs.reverse()
+	for st2 in rs:
+		var d2: int = int(st2)
+		var b2 := K.btn("+%d" % d2, func(): on_set.call(clampi(value + d2, lo, hi)), "", true)
+		b2.disabled = value >= hi
+		b2.custom_minimum_size = Vector2(38, 32)
+		h.add_child(b2)
+	h.add_child(K.lbl(suffix, 12, K.C_DIM))
+	return ed
+
+
+## Pakowanie: sam decydujesz, ile gramów idzie do jednej paczki (1–199 g woreczek, od 200 g kostka, od 500 g cegła)
+## i ile takich paczek robisz. Każda paczka to jeden pusty woreczek.
 static func _pack_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 	var B: Dictionary = U.bench
 	var room: String = B.room
 	var maxg := G.pack_limit(room, sel.p, int(sel.pur))
-	rv.add_child(K.rich("[b]Porcjowanie:[/b] %s %s  →  gotowe porcje" % [D.PRODUCTS[sel.p].name, K.tier_bb(sel.pur)], 14))
+	var bags := G.bags_at(room)
+	rv.add_child(K.rich("[b]Pakowanie:[/b] %s %s" % [D.PRODUCTS[sel.p].name, K.tier_bb(sel.pur)], 14))
 	var kpacks := int(sel.get("k", 0))
-	# gotowe porcje można rozsypać z powrotem — pula towaru jest jedna, opakowanie niczego nie blokuje
+	var kgrams := int(sel.get("kg", 0))
+	# paczki można rozsypać z powrotem — towar wraca do luzu, woreczki przepadają
 	var unpack_btn := func() -> Button:
-		var ub := K.btn("Rozsyp porcje (%d)" % kpacks, func():
+		var ub := K.btn("Rozsyp paczki (%d g)" % kgrams, func():
 			Sfx.play("pack")
-			G.unpack(room, sel.p, int(sel.pur), kpacks)
+			G.unpack(room, sel.p, int(sel.pur), kgrams)
 			U._render_bench(), "", true)
-		ub.tooltip_text = "Gotowe porcje wracają do towaru luzem — możesz je domieszać albo zważyć od nowa."
+		ub.tooltip_text = "Paczki wracają do towaru luzem — możesz je domieszać albo zapakować inaczej. Woreczków nie odzyskasz."
 		return ub
-	if maxg <= 0:
-		if kpacks > 0:
-			rv.add_child(K.rich("Wszystko zważone: [b]%d porcji[/b] gotowych do sprzedaży." % kpacks, 13))
-		else:
+	if maxg <= 0 or bags <= 0:
+		if maxg <= 0 and kpacks > 0:
+			rv.add_child(K.rich("Wszystko zapakowane: [b]%d g[/b] w %d paczkach." % [kgrams, kpacks], 13))
+		elif maxg <= 0:
 			rv.add_child(K.lbl("Potrzebujesz co najmniej 1 g towaru.", 12, K.C_WARN))
+		else:
+			rv.add_child(K.wrap("Skończyły się puste woreczki. Kupisz je u Stasia w sklepie spożywczym (20 sztuk za 12 zł).", 12, K.C_WARN))
 		var a0 := K.hbox(8)
 		rv.add_child(a0)
 		var mx0 := K.btn("Domieszaj…", func(): B.mixing = true; B.filler = 1; U._render_bench(), "warn", true)
-		mx0.disabled = G.item_at(room, G.filler_for(sel.p)) <= 0 or float(sel.n) + kpacks < 1.0
+		mx0.disabled = G.item_at(room, G.filler_for(sel.p)) <= 0 or float(sel.n) + kgrams < 1.0
 		a0.add_child(mx0)
 		if kpacks > 0:
 			a0.add_child(unpack_btn.call())
 		return
-	B.g = clampi(int(B.g), 1, maxg)
-	var g := int(B.g)
-	# ile
-	var qh := K.hbox(6)
-	rv.add_child(qh)
-	qh.add_child(K.lbl("ILE:", 11, K.C_DIM))
-	for st in [-5, -1]:
-		var d1: int = st
-		var b1 := K.btn(str(st), func(): B.g = clampi(int(B.g) + d1, 1, maxg); U._render_bench(), "", true)
-		b1.disabled = g <= 1
-		qh.add_child(b1)
-	var ge := LineEdit.new()
-	ge.text = str(g)
-	ge.custom_minimum_size = Vector2(70, 34)
-	ge.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ge.max_length = 4
-	ge.select_all_on_focus = true
-	ge.tooltip_text = "Wpisz, ile gramów zaporcjować, i naciśnij Enter"
-	ge.add_theme_font_size_override("font_size", 18)
-	ge.add_theme_stylebox_override("normal", K.sb(Color(0.03, 0.04, 0.06), 8, Color(1, 1, 1, 0.18), 1, 8))
-	ge.add_theme_stylebox_override("focus", K.sb(Color(0.03, 0.04, 0.06), 8, K.C_ACC, 1, 8))
-	ge.text_submitted.connect(func(t: String): B.g = clampi(int(t), 1, maxg); U._render_bench())
-	qh.add_child(ge)
-	qh.add_child(K.lbl("g", 13, K.C_DIM))
-	for st in [1, 5]:
-		var d2: int = st
-		var b2 := K.btn("+%d" % st, func(): B.g = clampi(int(B.g) + d2, 1, maxg); U._render_bench(), "", true)
-		b2.disabled = g >= maxg
-		qh.add_child(b2)
-	var ball := K.btn("wszystko (%d)" % maxg, func(): B.g = maxg; U._render_bench(), "", true)
-	ball.disabled = g >= maxg
-	qh.add_child(ball)
+	# ile gramów do jednej paczki i ile paczek
+	var per: int = clampi(int(B.get("g", 1)), 1, mini(maxg, D.PACK_MAX))
+	var max_n: int = mini(int(maxg / float(per)), bags)
+	var cnt: int = clampi(int(B.get("n", 9999)), 1, max_n)
+	B.g = per
+	B.n = cnt
+	_num_row(rv, "DO JEDNEJ PACZKI:", per, 1, mini(maxg, D.PACK_MAX), [10, 1], func(v: int): B.g = v; B.n = 9999; U._render_bench(), "g  →  " + G.pack_kind(per))
+	_num_row(rv, "ILE PACZEK:", cnt, 1, max_n, [5, 1], func(v: int): B.n = v; U._render_bench(), "szt.  (najwyżej %d)" % max_n)
+	# szybkie wybory wagi
+	var chips := K.hbox(5)
+	rv.add_child(chips)
+	chips.add_child(K.lbl("SZYBKO:", 11, K.C_DIM))
+	for pg in [1, 2, 5, 10, 25, 50, 100, 200, 500]:
+		if pg > maxg:
+			continue
+		var pv: int = pg
+		chips.add_child(K.btn("%d g" % pv, func(): B.g = pv; B.n = 9999; U._render_bench(), "go" if per == pv else "", true))
+	chips.add_child(K.btn("wszystko w jedną", func(): B.g = mini(maxg, D.PACK_MAX); B.n = 1; U._render_bench(), "", true))
 	# szacunek
 	var waste := G.pack_waste()
-	var est_of := func(n: int) -> String:
-		var mins := G.pack_minutes() * n
-		var est := "Zajmie ok. [b]%s[/b] gry" % (("%d min" % int(ceil(mins))) if mins < 90.0 else ("%.1f godz." % (mins / 60.0)))
-		if waste <= 0.0:
-			return est + "  •  [color=#4ade80]bez strat[/color]"
-		return est + "  •  straty ok. [color=#fbbf24]%d%%[/color] (średnio %s g z tej partii)" % [int(round(waste * 100.0)), ("%.1f" % (waste * n)).replace(".", ",")]
-	var est_l := K.rich(est_of.call(g), 13)
-	rv.add_child(est_l)
+	var total := per * cnt
+	var mins := G.pack_minutes() * total
+	var est := "Razem [b]%d g[/b] w [b]%d[/b] %s  •  ok. [b]%s[/b] gry" % [total, cnt, "paczce" if cnt == 1 else "paczkach", (("%d min" % int(ceil(mins))) if mins < 90.0 else ("%.1f godz." % (mins / 60.0)))]
+	if waste <= 0.0:
+		est += "  •  [color=#4ade80]bez strat[/color]"
+	else:
+		est += "  •  straty ok. [color=#fbbf24]%d%%[/color]" % int(round(waste * 100.0))
+	if total < maxg:
+		est += "  •  luzem zostanie %d g" % (maxg - total)
+	rv.add_child(K.rich(est, 13))
 	# przyciski / pasek roboty
 	var acts := K.hbox(8)
 	rv.add_child(acts)
 	var status := K.rich("", 13)
 	status.visible = false
 	rv.add_child(status)
-	var go := K.btn("  Porcjuj %d g  " % g, func(): pass, "go")
+	var go := K.btn("  Zapakuj %d × %d g  " % [cnt, per], func(): pass, "go")
 	go.custom_minimum_size = Vector2(0, 40)
 	acts.add_child(go)
-	# wpisywana liczba od razu zmienia przycisk i szacunek (bez Entera)
-	ge.text_changed.connect(func(t: String):
-		var digits := ""
-		for ch in t:
-			if ch >= "0" and ch <= "9":
-				digits += ch
-		if digits != t:
-			var cc := ge.caret_column
-			ge.text = digits
-			ge.caret_column = mini(cc, digits.length())
-		if digits == "":
-			return
-		B.g = clampi(int(digits), 1, maxg)
-		go.text = "  Porcjuj %d g  " % int(B.g)
-		est_l.text = est_of.call(int(B.g)))
 	var mixb := K.btn("Domieszaj…", func(): B.mixing = true; B.filler = 1; U._render_bench(), "warn")
 	mixb.disabled = G.item_at(room, G.filler_for(sel.p)) <= 0
 	mixb.tooltip_text = "Rozrabianie towaru. Potrzebny dodatek ze sklepu: " + String(D.FILLER_NAMES[G.filler_for(sel.p)]).to_lower()
@@ -243,22 +263,26 @@ static func _pack_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 		status.visible = true
 		var done_n := [0, 0]
 		var upd := func():
-			status.text = "Gotowe [b]%d[/b] z %d%s   [color=#8f96a8]przytrzymaj SPACJĘ, żeby przyspieszyć[/color]" % [done_n[0], int(B.g), ("  •  [color=#fbbf24]rozsypano %d g[/color]" % done_n[1]) if done_n[1] > 0 else ""]
+			status.text = "Gotowe [b]%d[/b] z %d paczek%s   [color=#8f96a8]przytrzymaj SPACJĘ, żeby przyspieszyć[/color]" % [done_n[0], cnt, ("  •  [color=#fbbf24]rozsypano %d g[/color]" % done_n[1]) if done_n[1] > 0 else ""]
 		upd.call()
 		var step := func() -> int:
-			var r := G.pack_one(room, sel.p, int(sel.pur))
-			if r == 1:
-				done_n[0] += 1
-			elif r == 0:
-				done_n[1] += 1
+			var r: Dictionary = G.pack_bag(room, sel.p, int(sel.pur), per)
+			done_n[1] += int(r.lost)
+			if not r.ok:
+				if String(r.why) != "":
+					G.notify(String(r.why), "warn")
+				upd.call()
+				return -1
+			done_n[0] += 1
 			upd.call()
-			return r
-		var done := func(good: int, lost: int) -> void:
-			G.pack_report(good, lost)
+			return 1
+		var done := func(_good: int, _lost: int) -> void:
+			G.pack_report(done_n[0] * per, done_n[1])
 			if U.mode == "modal" and U.deal.is_empty():
 				U._render_bench()
-		# im gorsza waga, tym bardziej towar pryska na boki
-		view.start(int(B.g), 2 if waste > 0.04 else (1 if waste > 0.0 else 0), float(G.scale_def().sec), step, done))
+		# im gorsza waga, tym bardziej towar pryska na boki; większa paczka waży się dłużej
+		view.pack_g = per
+		view.start(cnt, 2 if waste > 0.04 else (1 if waste > 0.0 else 0), float(G.scale_def().sec) * clampf(sqrt(float(per)), 1.0, 3.0), step, done))
 
 
 static func _mix_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:

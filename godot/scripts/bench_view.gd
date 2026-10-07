@@ -11,6 +11,7 @@ var packs: Array = []      # porcje zrobione w tej sesji: {t} (t = postęp lotu 
 var packs_before := 0      # porcje, które leżały tu już wcześniej
 var spills: Array = []     # rozsypane okruchy: {p, r}
 var scale_name := "Waga kuchenna"
+var pack_g := 1            # ile gramów idzie do jednej paczki (wskazanie wagi i podpis gotowych paczek)
 var scale_tier := 0        # klasa wagi (D.SCALES): od niej zależy wygląd korpusu, dokładność wyświetlacza, osłona i lejek
 ## wygląd wag: kuchenna z pożółkłego plastiku i szarym ekranikiem, czarna jubilerska, jasna analityczna, ciemny półautomat
 const SCALE_LOOK := [
@@ -68,7 +69,7 @@ func mix(amount: float, cb: Callable) -> void:
 
 func _next_target() -> void:
 	var spread: float = [0.0, 0.035, 0.11][clampi(int(job.mode), 0, 2)]
-	job.tgt = 1.0 + randf_range(-spread * 0.6, spread)
+	job.tgt = float(pack_g) * (1.0 + randf_range(-spread * 0.6, spread) / maxf(1.0, sqrt(float(pack_g))))
 	job.t = 0.0
 	job.stepped = false
 
@@ -222,7 +223,7 @@ func _draw() -> void:
 		_box(Rect2(sp + Vector2(-11, -86), Vector2(22, 14)), Color(0.14, 0.38, 0.66), 3)
 	_box(Rect2(sp + Vector2(-94, -24), Vector2(188, 80)), look.body, 12, look.edge, 2)
 	_box(Rect2(sp + Vector2(-70, 14), Vector2(140, 34)), look.lcd, 5, Color(look.lcd.r + 0.12, look.lcd.g + 0.16, look.lcd.b + 0.12), 1)
-	var lcd := Color(0.45, 1.0, 0.62) if absf(reading - 1.0) < 0.045 or reading < 0.02 else Color(1.0, 0.82, 0.3)
+	var lcd := Color(0.45, 1.0, 0.62) if absf(reading - float(pack_g)) < 0.045 * float(pack_g) or reading < 0.02 else Color(1.0, 0.82, 0.3)
 	if float(look.ink.a) > 0.0:
 		lcd = look.ink
 	_text(sp + Vector2(0, 40), String(look.fmt) % maxf(0.0, reading), 24, lcd, 136.0)
@@ -281,7 +282,7 @@ func _draw() -> void:
 	# --- gotowe porcje
 	var x0 := w * 0.635
 	_box(Rect2(x0, h * 0.12, w - x0 - 12.0, h * 0.8), Color(0, 0, 0, 0.2), 10, Color(1, 1, 1, 0.05), 1)
-	_text(Vector2(x0 + 12, h * 0.12 + 20), "GOTOWE PORCJE", 12, K.C_DIM, 200.0, HORIZONTAL_ALIGNMENT_LEFT)
+	_text(Vector2(x0 + 12, h * 0.12 + 20), "GOTOWE PACZKI", 12, K.C_DIM, 200.0, HORIZONTAL_ALIGNMENT_LEFT)
 	var total := packs_before + packs.size()
 	_text(Vector2(w - 24 - 100, h * 0.12 + 22), "×%d" % total, 18, K.C_ACC if total > 0 else K.C_DIM, 100.0, HORIZONTAL_ALIGNMENT_RIGHT)
 	var mx := _slots_max()

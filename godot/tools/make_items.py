@@ -220,8 +220,8 @@ def sack(name, kind, seed):
     save(im, name)
 
 
-def brick(name, kind, seed):
-    """sprasowana kostka owinięta folią i taśmą"""
+def brick(name, kind, seed, small=False):
+    """sprasowana cegła owinięta folią i taśmą; small = mniejsza kostka (200–499 g) z jednym pasem taśmy"""
     rnd = random.Random(seed)
     im = canvas()
     d = ImageDraw.Draw(im)
@@ -247,7 +247,7 @@ def brick(name, kind, seed):
     im.putalpha(Image.composite(im.split()[3], Image.new('L', (W, W), 0), mask))
     d = ImageDraw.Draw(im)
     # taśma: dwa pasy w poprzek i jeden wzdłuż
-    for t in (0.3, 0.7):
+    for t in ((0.5,) if small else (0.3, 0.7)):
         a = (top[0][0] + (top[1][0] - top[0][0]) * t, top[0][1] + (top[1][1] - top[0][1]) * t)
         b = (top[3][0] + (top[2][0] - top[3][0]) * t, top[3][1] + (top[2][1] - top[3][1]) * t)
         w = P(7)
@@ -265,6 +265,12 @@ def brick(name, kind, seed):
         d.line([(cx - P(7), cy), (cx + P(7), cy)], fill=(170, 30, 30, 255), width=P(2))
     for poly in (top, front, side):
         d.line(poly + [poly[0]], fill=(20, 20, 22, 200), width=P(1))
+    if small:
+        # kostka: ta sama bryła, ale wyraźnie mniejsza niż cegła
+        k = 0.7
+        sm = im.resize((int(W * k), int(W * k)), Image.LANCZOS)
+        im = canvas()
+        im.alpha_composite(sm, (int(W * (1 - k) / 2), int(W * (1 - k) / 2) + P(8)))
     save(im, name)
 
 
@@ -620,6 +626,7 @@ shoe_icon('ub_buty_robocze', (120, 86, 50), 'work')
 for i, k in enumerate(['dym', 'szron', 'krysztal', 'snieg']):
     baggie('pack_' + k, k, 10 + i)
     brick('brick_' + k, k, 30 + i)
+    brick('kostka_' + k, k, 50 + i, True)
     if k == 'dym':
         jar('bulk_' + k, 20)
     else:
