@@ -1032,7 +1032,7 @@ func door_package() -> void:
 	var cx := float(R.cx)
 	var ez := float(R.d) * 0.5
 	world.starter_rest(0.0, 0.0)
-	Sfx.knock()
+	Sfx.play("pukanie")
 	await get_tree().create_timer(0.9).timeout
 	ui.cut_begin()
 	var c0 := door_cam(0.0)

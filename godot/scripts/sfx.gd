@@ -11,10 +11,13 @@ const FILES := {
 	"hit": ["select_002"], "miss": ["error_001"], "pickup": ["handlesmallleather", "cloth1"], "place": ["impactsoft_medium_000", "impactsoft_medium_001"],
 	"pack": ["cloth2", "cloth3", "bookflip1"], "sms": ["pluck_001"], "drop": ["drop_001"],
 	"punch": ["impactpunch_medium_000", "impactpunch_medium_001"], "thud": ["impactsoft_medium_002", "impactsoft_medium_001"],
+	# nagrania z Freesound (CC0): łomot pięścią w drzwi, seria uderzeń, zwykłe pukanie, bieg kilku osób korytarzem
+	"lomot": ["lomot_1", "lomot_2", "lomot_3", "lomot_4"], "lomot_seria": ["lomot_seria"], "pukanie": ["pukanie"], "bieg_korytarz": ["bieg_korytarz"],
 }
 ## głośność w dB dla poszczególnych efektów (wszystko celowo ciche)
 const VOL := {"click": -16.0, "open": -14.0, "close": -14.0, "back": -14.0, "select": -14.0, "toggle": -14.0, "tick": -18.0, "good": -12.0, "level": -8.0,
-	"bad": -12.0, "error": -14.0, "alert": -9.0, "cash": -9.0, "door": -9.0, "door_close": -9.0, "hit": -12.0, "miss": -14.0, "pickup": -8.0, "place": -8.0, "pack": -9.0, "sms": -11.0, "drop": -12.0}
+	"bad": -12.0, "error": -14.0, "alert": -9.0, "cash": -9.0, "door": -9.0, "door_close": -9.0, "hit": -12.0, "miss": -14.0, "pickup": -8.0, "place": -8.0, "pack": -9.0, "sms": -11.0, "drop": -12.0,
+	"lomot": -3.0, "lomot_seria": -2.0, "pukanie": -7.0, "bieg_korytarz": -6.0, "thud": -12.0, "punch": -12.0}
 
 var muted := false
 var sounds := {}
@@ -23,6 +26,8 @@ var pool: Array = []
 var pool_i := 0
 var step_player: AudioStreamPlayer
 var siren_player: AudioStreamPlayer
+var siren_near: AudioStreamPlayer      # szybki sygnał „yelp”, gdy radiowóz albo patrol jest tuż za plecami
+var _siren_yelp: AudioStream = null
 var amb_player: AudioStreamPlayer
 var rain_player: AudioStreamPlayer
 var club_stream: AudioStream = null
@@ -58,6 +63,10 @@ func _ready() -> void:
 	siren_player.volume_db = -30.0
 	siren_player.bus = "Efekty"
 	add_child(siren_player)
+	siren_near = AudioStreamPlayer.new()
+	siren_near.volume_db = -60.0
+	siren_near.bus = "Efekty"
+	add_child(siren_near)
 	amb_player = AudioStreamPlayer.new()
 	amb_player.volume_db = -60.0
 	amb_player.bus = "Otoczenie"
@@ -77,9 +86,11 @@ func _ready() -> void:
 	for k in FILES:
 		sounds[k] = []
 		for f in FILES[k]:
-			var path := "res://assets/sfx/%s.ogg" % f
-			if ResourceLoader.exists(path):
-				sounds[k].append(load(path))
+			for ext in ["ogg", "wav"]:
+				var path := "res://assets/sfx/%s.%s" % [f, ext]
+				if ResourceLoader.exists(path):
+					sounds[k].append(load(path))
+					break
 	for surf in ["concrete", "grass", "wood", "carpet"]:
 		steps[surf] = []
 		for i in range(5):
@@ -185,14 +196,20 @@ func siren(on: bool) -> void:
 	if on and not siren_player.playing and not muted and _siren != null:
 		siren_player.stream = _siren
 		siren_player.play()
+		if _siren_yelp != null:
+			siren_near.stream = _siren_yelp
+			siren_near.volume_db = -60.0
+			siren_near.play()
 	elif not on and siren_player.playing:
 		siren_player.stop()
+		siren_near.stop()
 
 
 ## Ogłuszenie: cały dźwięk gry na chwilę głuchnie (filtr dolnoprzepustowy na szynie głównej) i powoli wraca.
 var _stun_fx: AudioEffectLowPassFilter = null
 
-func stun(secs := 6.0) -> void:
+## `delay`: ile sekund po ciosie świat zaczyna głuchnąć — przez ten czas słychać jeszcze samo uderzenie i pisk w uszach.
+func stun(secs := 6.0, delay := 0.0) -> void:
 	var bi := AudioServer.get_bus_index("Master")
 	if _stun_fx == null:
 		_stun_fx = AudioEffectLowPassFilter.new()
@@ -203,9 +220,12 @@ func stun(secs := 6.0) -> void:
 		if AudioServer.get_bus_effect(bi, i) == _stun_fx:
 			idx = i
 	AudioServer.set_bus_effect_enabled(bi, idx, true)
-	_stun_fx.cutoff_hz = 380.0
+	_stun_fx.cutoff_hz = 380.0 if delay <= 0.0 else 16000.0
 	var tw := create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	if delay > 0.0:
+		tw.tween_interval(delay)
+		tw.tween_property(_stun_fx, "cutoff_hz", 380.0, 0.7).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(secs * 0.45)
 	tw.tween_property(_stun_fx, "cutoff_hz", 16000.0, secs * 0.55).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func(): AudioServer.set_bus_effect_enabled(bi, idx, false))
@@ -221,8 +241,11 @@ func stun_off() -> void:
 
 
 ## syrenę słychać tym głośniej, im bliżej jest najbliższy ścigający patrol (metry)
+## Z daleka niesie się zawodzenie; kiedy pościg jest o kilkanaście metrów, policja przełącza na szybki sygnał.
 func siren_dist(d: float) -> void:
-	siren_player.volume_db = lerpf(-14.0, -31.0, clampf(d / 70.0, 0.0, 1.0))
+	var near := clampf((24.0 - d) / 10.0, 0.0, 1.0) if _siren_yelp != null else 0.0
+	siren_player.volume_db = lerpf(-13.0, -31.0, clampf(d / 70.0, 0.0, 1.0)) - near * 30.0
+	siren_near.volume_db = lerpf(-60.0, -12.0, near)
 
 
 ## podkład wstępu fabularnego (groza + syreny); gotowy chwilę po starcie gry
@@ -451,7 +474,7 @@ func party_prepare() -> void:
 		p.bus = "Impreza"
 		add_child(p)
 		party_fx.append(p)
-	for n in ["okrzyki_1", "okrzyki_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wciagniecie", "euforia_1", "euforia_2", "euforia_3", "euforia_4", "wymioty_1", "wymioty_2", "wibracja"]:
+	for n in ["okrzyki_1", "okrzyki_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wciagniecie", "wiwat_1", "wiwat_2", "wiwat_3", "wiwat_4", "wiwat_5", "tlum", "wymioty_1", "wymioty_2", "wibracja"]:
 		for ext in ["ogg", "wav"]:
 			var path := "res://assets/sfx/party/%s.%s" % [n, ext]
 			if ResourceLoader.exists(path):
@@ -816,14 +839,27 @@ func _generate() -> void:
 
 func _set_loops(s1: AudioStreamWAV, s2: AudioStreamWAV, s3: AudioStreamWAV) -> void:
 	_siren = s1
-	# prawdziwa syrena dwutonowa (nagranie) zamiast syntezy — gra w pętli podczas pościgu
-	if ResourceLoader.exists("res://assets/sfx/syrena.ogg"):
-		var rec: AudioStream = load("res://assets/sfx/syrena.ogg")
-		if rec is AudioStreamOggVorbis:
-			(rec as AudioStreamOggVorbis).loop = true
+	# nagrana syrena elektroniczna (Freesound, CC0) zamiast syntezy: zawodzenie w pętli, a z bliska szybki „yelp”
+	var rec := _loop_wav("res://assets/sfx/syrena_wail.wav")
+	if rec != null:
 		_siren = rec
+	_siren_yelp = _loop_wav("res://assets/sfx/syrena_yelp.wav")
 	_amb = s2
 	_rain = s3
+
+
+## nagranie WAV ustawione do grania w kółko (cały plik); null, gdy pliku nie ma
+func _loop_wav(path: String) -> AudioStream:
+	if not ResourceLoader.exists(path):
+		return null
+	var st: AudioStream = load(path)
+	if st is AudioStreamWAV:
+		var w := (st as AudioStreamWAV).duplicate() as AudioStreamWAV
+		w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		w.loop_begin = 0
+		w.loop_end = int(w.get_length() * w.mix_rate)
+		return w
+	return st
 
 
 func _set_voice(tr: AudioStreamWAV, syl: Array) -> void:

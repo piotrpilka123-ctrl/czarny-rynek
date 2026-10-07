@@ -2,13 +2,13 @@
 
 importer="wav"
 type="AudioStreamWAV"
-uid="uid://b0ohb36u042fc"
-path="res://.godot/imported/euforia_1.wav-d8eae2823597a7cb4c86b0c954263f8c.sample"
+uid="uid://xc68uk63cttd"
+path="res://.godot/imported/lomot_seria.wav-efbc87c5ff6916397803572faa76387a.sample"
 
 [deps]
 
-source_file="res://assets/sfx/party/euforia_1.wav"
-dest_files=["res://.godot/imported/euforia_1.wav-d8eae2823597a7cb4c86b0c954263f8c.sample"]
+source_file="res://assets/sfx/lomot_seria.wav"
+dest_files=["res://.godot/imported/lomot_seria.wav-efbc87c5ff6916397803572faa76387a.sample"]
 
 [params]
 

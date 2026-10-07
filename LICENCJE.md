@@ -16,8 +16,10 @@ Kod gry i scenariusz: Piotr Piłka (z pomocą Claude). Poniższe zasoby pochodz�
 | Muzyka w radiu: „Funky Disco Beats to Boogie/Woogie to” | Fupi — opengameart.org | CC0 1.0 |
 | Muzyka w prologu: „Technomania101”; w zapasie „Party Sector” | Fupi; Joth — opengameart.org | CC0 1.0 |
 | Odgłosy imprezy w prologu i wibracja telefonu (okrzyki, gwar, śpiew, wciąganie, torsje) | Joseph Sardin i inni — bigsoundbank.com | CC0 1.0 |
-| Okrzyki euforii w prologu (`sfx/party/euforia_*.wav`, z paczki „Voice Clip Pack – Male Adventurer RPG”) | wolfwoot (Brandon Song) — https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg | CC0 1.0 |
-| Syrena policyjna (`sfx/syrena.ogg`, „Gendarmerie, Outdoor Siren”) | Joseph Sardin — https://bigsoundbank.com/siren-french-gendarmerie-s0886.html | CC0 1.0 |
+| Okrzyki i wiwaty bawiącej się grupy w prologu (`sfx/party/wiwat_*.wav`, `tlum.wav`; wycinki z „crowd partying cheering applause all around”, „Short Crowd Cheer”, „Woo Hoo”) | kyles, qubodup, Rocotilos — freesound.org/s/637468, /s/182571, /s/341488 | CC0 1.0 |
+| Syrena policyjna: zawodzenie i szybki sygnał (`sfx/syrena_wail.wav`, `syrena_yelp.wav`; z „MISC_Police_Siren_Wailer_Static_001” i „Wail and Yelp”) | conleec, WBJB1 — freesound.org/s/159753, /s/223824 | CC0 1.0 |
+| Łomot w drzwi i pukanie (`sfx/lomot_*.wav`, `pukanie.wav`; z „Door pounding – increasing intensity” i „Heavy Door Pounding”) | jhumbucker, mrh4hn — freesound.org/s/250539, /s/426618 | CC0 1.0 |
+| Bieg kilku osób korytarzem (`sfx/bieg_korytarz.wav`; z „multiple people running” i „run in corridor”) | leoanderson67, cupido-1 — freesound.org/s/710765, /s/519640 | CC0 1.0 |
 | Długie wciągnięcie nosem w prologu (`sfx/party/wciagniecie.wav`, przerobione z „Sniffing”) | spookymodem — https://opengameart.org/content/sniffing | CC-BY 3.0 |
 | Ikony interfejsu | Lucide — lucide.dev | ISC |
 | Czcionki: Barlow, Barlow Condensed, Bebas Neue, Oswald, Sedgwick Ave Display, Rubik Spray Paint | Google Fonts | SIL Open Font License 1.1 |

@@ -28,6 +28,7 @@ const SWAT_VANS := [[201.0, -133.0, 1.2], [158.0, -145.0, 0.25], [149.5, -57.0, 
 const CORDON_R := 8.5
 var siwy = null
 var _bang := 0.0
+var _steps_heard := false     # bieg antyterrorystów po korytarzu zagrał już w trakcie rozmowy
 var _shout := 0.0
 var _hinted := {}
 var _nav_was := true
@@ -187,34 +188,39 @@ func _party() -> void:
 	Sfx.party_play()
 	Sfx.party_sfx("gwar_baru", -6.0)
 	# [czas, co, …] — "T:tekst" = napis; "P" = wycinek nagrania [nazwa, od, długość, dB, wysokość]; reszta to zdarzenia.
-	# Zamiast śmiechów — krótkie okrzyki faceta w euforii; każdy kawałek śpiewu pada tylko raz.
+	# Okrzyki i wiwaty rozbawionej grupy (jak w czołówce „Far Cry 3”), pod spodem gwar bawiącego się tłumu;
+	# każdy kawałek śpiewu pada tylko raz.
 	var ev := [
 		[2.6, "T:— Kuba! Kuba, chodź tu! Polej mu!"],
+		[3.2, "P", "tlum", 0.0, 7.8, -9.0, 1.0],
 		[4.6, "P", "okrzyki_1", 0.0, 3.0, -1.0, 1.0],
-		[6.4, "P", "euforia_1", 0.0, 1.2, 3.0, 1.0],
+		[6.4, "P", "wiwat_1", 0.0, 0.0, 1.0, 1.0],
 		[7.2, "T:— Jeszcze jedną. Ostatnią. Słowo."],
 		[8.7, "P", "spiew", 3.7, 1.3, -7.0, 1.0],
-		[9.9, "P", "euforia_3", 0.0, 0.7, 3.0, 1.05],
+		[9.9, "P", "wiwat_3", 0.0, 0.0, -1.0, 1.0],
+		[10.9, "P", "tlum", 0.0, 7.8, -7.0, 1.0],
 		[11.4, "P", "brawa_bar", 0.0, 5.4, -1.0, 1.0], [12.0, "DROP"], [12.1, "P", "okrzyki_2", 0.0, 3.8, -1.0, 1.0],
+		[12.2, "P", "wiwat_4", 0.0, 0.0, 1.5, 1.0],
 		[13.4, "T:(ktoś sypie kreskę na blat)"],
 		[14.4, "LINE"],
 		[14.2, "P", "spiew", 0.25, 2.9, -8.0, 1.0],
 		[18.3, "T:— O kurwa. O, tak. Podgłośnij to!"],
 		[19.0, "P", "spiew", 7.1, 3.55, -4.0, 1.04],
-		[20.6, "P", "euforia_2", 0.0, 1.0, 3.0, 0.97],
+		[18.6, "P", "tlum", 0.0, 7.8, -7.0, 1.0],
+		[20.6, "P", "wiwat_2", 0.0, 0.0, 0.0, 1.0],
 		[22.3, "T:— Która to doba? Trzecia? Czwarta?"],
 		[23.2, "P", "spiew", 11.05, 3.6, -5.0, 1.0],
-		[24.6, "P", "euforia_4", 0.0, 0.6, 3.0, 1.0],
+		[24.6, "P", "wiwat_1", 0.0, 0.0, 1.0, 1.07],
 		[26.0, "T:— Kuba, telefon. To znowu Siwy. Odbierzesz w końcu?"],
 		[26.2, "wibracja"],
 		[27.4, "SICK"],
 		# w drodze do łazienki impreza zostaje za plecami: okrzyki i śpiew cichną i robią się coraz niższe
-		[27.6, "P", "euforia_1", 0.0, 1.2, 3.0, 0.94],
+		[27.6, "P", "wiwat_5", 0.0, 0.0, 0.0, 0.96],
 		[28.2, "T:— Zaraz. Zaraz, tylko —"],
 		[28.6, "STEPS"],
 		[29.1, "P", "spiew", 5.4, 1.2, -3.0, 1.0],
 		[29.8, "DOOR"],
-		[30.1, "P", "euforia_2", 0.0, 1.0, 4.0, 0.9],
+		[30.1, "P", "wiwat_2", 0.0, 0.0, 2.0, 0.92],
 		[30.5, "wymioty_1"],
 		[32.7, "wymioty_2"],
 		[34.4, "T:— Stary, ty w ogóle jeszcze żyjesz? Siwy mówi, że partia czeka."],
@@ -478,13 +484,14 @@ func _on_packed(instant := false) -> void:
 func _begin_raid() -> void:
 	stage = "raid"
 	t = 0.0
-	_bang = 0.4
 	_shout = 5.5
 	M.nav_force = true
 	Sfx.score("akcja", 1.6, 0.4, 1.2)
 	Sfx.siren(true)
 	Sfx.megaphone()
 	Sfx.play("alert")
+	Sfx.play("lomot_seria", 2.0)
+	_bang = 2.6
 	M.ui.shout("POLICJA! BUDYNEK JEST OTOCZONY!")
 	M.player.shake = 0.7
 	if siwy != null:
@@ -547,6 +554,11 @@ func _process(dt: float) -> void:
 			return
 	else:
 		M.skip_hold = 0.0
+	# rozmowa z Wiktorem: w połowie słychać zza ściany, jak korytarzem biegnie kilku ludzi w ciężkich butach —
+	# dopiero gdy dobiegną, zaczyna się łomot w bramę
+	if not _steps_heard and not M.ui.call.is_empty() and String(M.ui.call.get("state", "")) == "talk" and String(M.ui.call.get("name", "")) == "Wiktor" and int(M.ui.call.get("i", 0)) >= 2:
+		_steps_heard = true
+		Sfx.play("bieg_korytarz")
 	match stage:
 		"lab":
 			if not _packed and M.ui.mode == "" and not G.busy and G.goods_total(G.S.stash.get("lab", {"bulk": {}, "pack": {}})) < 0.5:
@@ -561,8 +573,9 @@ func _process(dt: float) -> void:
 				fl[i].light_energy = 7.0 if (k + i) % 2 == 0 else 0.2
 			_bang -= dt
 			if _bang <= 0.0:
-				_bang = randf_range(0.9, 1.6)
-				Sfx.play("door", 4.0)
+				_bang = randf_range(1.4, 2.6)
+				# pięść i taran w stalową bramę (nagranie), raz na jakiś czas cała seria
+				Sfx.play("lomot_seria" if randf() < 0.25 else "lomot")
 				pl.shake = maxf(pl.shake, 0.35)
 			_shout -= dt
 			if _shout <= 0.0:
@@ -889,8 +902,9 @@ func _boom() -> void:
 				arig.root.position = lunge_from + toward.normalized() * minf(0.55, toward.length() - 0.85) * lk * lk
 		if not hit and tm >= hit_at:
 			hit = true
-			Sfx.play("punch", 12.0)
-			Sfx.stun(7.0)
+			# głuche uderzenie w głowę i pisk w uszach (ten sam dźwięk co dawniej); świat głuchnie dopiero po chwili
+			Sfx.knock()
+			Sfx.stun(7.0, 1.4)
 			M.ui.flash(0.7)
 			M.ui.cut_line("")
 			shake = 2.4
@@ -937,7 +951,7 @@ func _boom() -> void:
 			_stun_fx(clampf(1.0 - ht / 9.0, 0.35, 1.0) * (0.85 + 0.15 * sin(ht * 3.1)))
 			if not thud and ht >= 0.42:
 				thud = true
-				Sfx.play("thud", 8.0)
+				Sfx.play("thud", 4.0)
 			if grabbed == 0 and ht >= 0.6:
 				grabbed = 1
 				# w ciemności bandyta staje nad torbą, twarzą do leżącego

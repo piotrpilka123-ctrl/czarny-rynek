@@ -2,13 +2,13 @@
 
 importer="wav"
 type="AudioStreamWAV"
-uid="uid://cftogd0m4np41"
-path="res://.godot/imported/euforia_4.wav-28dcd299d6b09fba61aef2649da6f484.sample"
+uid="uid://bhyb1ttmmf1y0"
+path="res://.godot/imported/syrena_wail.wav-3276e411af5fbf51a49d93319b5ab315.sample"
 
 [deps]
 
-source_file="res://assets/sfx/party/euforia_4.wav"
-dest_files=["res://.godot/imported/euforia_4.wav-28dcd299d6b09fba61aef2649da6f484.sample"]
+source_file="res://assets/sfx/syrena_wail.wav"
+dest_files=["res://.godot/imported/syrena_wail.wav-3276e411af5fbf51a49d93319b5ab315.sample"]
 
 [params]
 
