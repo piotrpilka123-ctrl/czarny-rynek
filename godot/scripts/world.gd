@@ -2028,7 +2028,7 @@ func _buildings() -> void:
 	_shopfront(-75.0, 10.0, "PAWN SHOP", Color(0.95, 0.8, 0.2), "rusted_shutter", false)
 	_sign("WE BUY ANYTHING", Vector3(-75.0, hd(-75.0, 11.0) + 1.9, 10.2), Color(0.95, 0.8, 0.2), 34, 0.0, 0.006, 6)
 	inter.append({"loc": "out", "x": -75.0 * SC, "z": 10.6 * SC, "y0": 0.0, "y1": 2.4, "r": 1.6, "reach": 3.0, "id": "lombard",
-		"label": func(): return "Lombard — sprzedaj znaleziska" if G.pawn_open() else "Lombard — otwarte %d:00–%d:00" % [int(D.PAWN_OPEN[0]), int(D.PAWN_OPEN[1])],
+		"label": func(): return "Lombard — skup znalezisk, wagi" if G.pawn_open() else "Lombard — otwarte %d:00–%d:00" % [int(D.PAWN_OPEN[0]), int(D.PAWN_OPEN[1])],
 		"act": func(): G.main.pawn_talk()})
 	_shopfront(-43.0, 10.0, "KEBAB", Color(0.95, 0.35, 0.2), "painted_metal_shutter", true)
 	_shopfront(31.0, 10.0, "LIQUOR 24H", Color(0.4, 0.9, 0.5), "rusted_shutter", false)
@@ -2052,6 +2052,38 @@ func _shopfront(x: float, zw: float, title: String, color: Color, shutter: Strin
 		li.light_energy = 1.1
 		li.omni_range = 6.0
 		city.add_child(li)
+
+
+## Hurtownia budowlana przy Hutniczej: otwarta witryna, towar wystawiony na chodnik i okienko, przy którym kupuje się
+## sprzęt do produkcji i meble do kryjówek. (Witryna patrzy na północ, na ulicę.)
+func _supply_store() -> void:
+	var x := 104.0
+	var zw := 32.0
+	_shopfront(x, zw, "BUILDING SUPPLIES", Color(0.95, 0.82, 0.45), "painted_metal_shutter", false, -1.0)
+	# witryna z modelu: wystawa z regałem po lewej (od ulicy), okienko z ladą po prawej; tył przy ścianie
+	var hx := x
+	var wm := Stations.model("hurtownia_witryna")
+	if wm != null:
+		Props.set_range(_place(wm, x, zw - 0.3 * INV, PI, 2.2, 0.3, 2.65), 80.0)
+		# model stoi tyłem do ściany, więc jego okienko (x = +1,41 m) wypada po zachodniej stronie
+		hx = x - 1.41 * INV
+	var keep: int = rng.state
+	# towar na chodniku: paleta z workami cementu, pustaki, wiązka rur, wózek magazynowy, butla, skrzynka
+	_prop("pallet", x - 6.6, zw - 1.5, 0.05, 0.16, 0.0, false)
+	_prop("cement_bag", x - 6.85, zw - 1.6, 0.1, 0.18, 0.0, false, 0.16)
+	_prop("cement_bag", x - 6.3, zw - 1.45, 1.5, 0.18, 0.0, false, 0.16)
+	_prop("cement_bag", x - 6.6, zw - 1.5, 0.6, 0.18, 0.0, false, 0.34)
+	_prop("plastic_crate_01", x - 7.9, zw - 0.9, 0.3, 0.32, 0.0)
+	_prop("cinderblock", x + 5.4, zw - 0.8, 0.0, 0.3)
+	_prop("cinderblock", x + 6.0, zw - 0.8, 0.05, 0.3)
+	_prop("cinderblock", x + 5.7, zw - 0.8, 0.0, 0.3, 0.0, true, 0.3)
+	_prop("hand_truck", x + 7.4, zw - 0.9, 2.6, 1.25, 0.0)
+	_prop("propane_tank", x + 8.5, zw - 0.75, 0.4, 1.1, 0.0)
+	_prop("pipes", x + 12.5, zw - 0.9, PI / 2.0, 0.45, 1.0)
+	rng.state = keep
+	inter.append({"loc": "out", "x": hx * SC, "z": (zw - 1.3) * SC, "y0": 0.0, "y1": 2.4, "r": 1.3, "reach": 3.0, "id": "hurtownia",
+		"label": func(): return "Hurtownia budowlana — sprzęt i meble" if G.supply_open() else "Hurtownia — otwarte %d:00–%d:00" % [int(D.SUPPLY_OPEN[0]), int(D.SUPPLY_OPEN[1])],
+		"act": func(): G.main.supply_talk()})
 
 
 func _pavilion() -> void:
@@ -2931,7 +2963,7 @@ func _dense() -> void:
 	Models.cyl(city, 0.9, 1.4, 24.0, Vector3(84.0, chy + 12.0, -106.0), Props.pbr("factory_brick", 0.3, Color(0.8, 0.74, 0.7)), Vector3.ZERO, 12)
 	add_col(82.4, 85.6, -107.6, -104.4, 24.0)
 	_shopfront(104.0, 10.0, "BAKERY", Color(0.95, 0.75, 0.35), "rusted_shutter", true)
-	_shopfront(104.0, 32.0, "BUILDING SUPPLIES", Color(0.85, 0.85, 0.8), "painted_metal_shutter", true, -1.0)
+	_supply_store()
 	_shopfront(-131.0, 10.0, "SECOND HAND", Color(0.9, 0.5, 0.6), "painted_metal_shutter", true)
 	_wall(Signs.shop("BAR JAGODA", Color(0.95, 0.4, 0.5), 3.0, true), -8.86, 3.2, 91.0, PI / 2.0)
 	Models.box(city, Vector3(0.14, 2.3, 1.6), Vector3(-8.95, hd(-8.0, 91.0) + 1.15, 91.0), Models.mat("1a120e", 0.6))

@@ -625,10 +625,33 @@ func run() -> void:
 	await wait_busy()
 	ok(G.player.loc == "garage", "wejście do garażu")
 	ok(G.stash_cap("garage") == 0, "pusty garaż nie ma skrytki")
-	var placed := 0
-	for fd in [["stol", -1.6, -3.6], ["regal", 2.3, -3.9], ["lampa_led", 2.0, -1.2], ["kanapa", -2.4, 0.6, 1]]:
+	# sprzęt: najpierw hurtownia (rzecz trafia na stan), potem ustawienie w kryjówce, dopiero potem działa
+	var sup_i = null
+	for it_h in G.world.inter:
+		if String(it_h.get("id", "")) == "hurtownia":
+			sup_i = it_h
+	ok(sup_i != null and absf(float(sup_i.x) - float(D.SUPPLY_AT.x)) < 0.5 and absf(float(sup_i.z) - float(D.SUPPLY_AT.z)) < 0.5, "hurtownia budowlana stoi przy Hutniczej i ma swoje okienko")
+	var cash_f: float = S.cash
+	var lvl_f: int = S.lvl
+	S.cash = 100.0
+	ok(not G.furn_place("garage", "stol", -1.6, -3.6, 0), "mebla, którego nie masz na stanie, nie ustawisz")
+	ok(G.furn_block("stol") != "" and not G.furn_buy("stol"), "bez pieniędzy hurtownia nie sprzeda")
+	S.cash = 9000.0
+	S.lvl = 1
+	ok(G.furn_block("lab").contains("poziom") and not G.furn_buy("lab"), "stół laboratoryjny dopiero od wyższego poziomu")
+	ok(G.furn_buy("stol") and G.owned("stol") == 1 and absf(S.cash - (9000.0 - float(G.furn_def("stol").price))) < 0.01 and not G._has_furn("garage", "pack"), "kupiony stół czeka na stanie — jeszcze nie działa")
+	var cash_p: float = S.cash
+	ok(G.furn_place("garage", "stol", -1.6, -3.6, 0) and G.owned("stol") == 0 and S.cash == cash_p and G._has_furn("garage", "pack"), "ustawienie nic nie kosztuje, a stół zaczyna działać")
+	U.open_supply()
+	await frames(3)
+	ok(U.mode == "modal", "okno hurtowni się rysuje")
+	U.close_all()
+	S.cash = cash_f + float(G.furn_def("stol").price)
+	S.lvl = lvl_f
+	var placed := 1
+	for fd in [["regal", 2.3, -3.9], ["lampa_led", 2.0, -1.2], ["kanapa", -2.4, 0.6, 1]]:
 		var rot: int = fd[3] if fd.size() > 3 else 0
-		if G.furn_place("garage", fd[0], fd[1], fd[2], rot):
+		if G.furn_buy_place("garage", fd[0], fd[1], fd[2], rot):
 			placed += 1
 	G.world.refresh_furniture("garage")
 	await frames(5)
@@ -637,9 +660,11 @@ func run() -> void:
 	U.open_build("garage")
 	await frames(3)
 	U.close_all()
+	S.owned["krzeslo"] = 1
 	M.build_begin("krzeslo")
 	await frames(10)
 	ok(M.build_active(), "tryb meblowania aktywny")
+	S.owned.erase("krzeslo")
 	M.build_cancel()
 	G.story_tick()
 	G.story_tick()
@@ -1034,7 +1059,7 @@ func _sim_production(skill: float) -> void:
 		if int(have.get(fid, 0)) >= int(seen[fid]) or int(S.lvl) < int(e[4]):
 			continue
 		if S.cash > float(G.furn_def(fid).price) + float(e[5]):
-			if G.furn_place(room, fid, float(e[1]), float(e[2]), int(e[3])):
+			if G.furn_buy_place(room, fid, float(e[1]), float(e[2]), int(e[3])):
 				have[fid] = int(have.get(fid, 0)) + 1
 	# doniczki pod lampami: bot dokupuje je po trochu, sadzi, podlewa, a staranny także nawozi i przycina
 	var spots: Array = []

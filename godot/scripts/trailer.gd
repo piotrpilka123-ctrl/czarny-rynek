@@ -816,6 +816,7 @@ func s17_setup() -> void:
 	S.hide.garage.items = [{"f": "stol", "x": -1.6, "z": -3.6, "r": 0}, {"f": "namiot", "x": 2.2, "z": -1.2, "r": 0}, {"f": "kanapa", "x": -2.4, "z": 0.6, "r": 1}, {"f": "lampa", "x": 0.2, "z": -4.1, "r": 0}]
 	W.refresh_furniture("garage")
 	first_person("garage", float(D.ROOMS.garage.cx) + 0.4, 2.6, 8.0, -14.0)
+	S["owned"] = {"regal": 1}
 	M.build_begin("regal")
 
 

@@ -3004,7 +3004,7 @@ func buy_property(id: String) -> bool:
 	S.stats.spent = float(S.stats.spent) + float(p.price)
 	S.props[id] = true
 	Sfx.play("level")
-	notify("Kupiono: %s. Wejdź i urządź się — w środku naciśnij [B]." % p.name, "level")
+	notify("Kupiono: %s. Sprzęt i meble kupisz w hurtowni budowlanej przy Hutniczej, a w środku ustawisz je klawiszem [B]." % p.name, "level")
 	add_xp(40.0)
 	nav_dirty.emit()
 	return true
@@ -3069,17 +3069,94 @@ func furn_valid(room: String, fid: String, x: float, z: float, r: int, ignore :=
 	return true
 
 
-func furn_place(room: String, fid: String, x: float, z: float, r: int) -> bool:
+## --- Sprzęt i meble: najpierw kupujesz w hurtowni budowlanej (trafiają „na stan”), potem ustawiasz w kryjówce [B],
+## a dopiero ustawione działają. Zdjęty mebel wraca na stan; odsprzedać go można w hurtowni za połowę ceny.
+func supply_open() -> bool:
+	var h := hour()
+	return h >= float(D.SUPPLY_OPEN[0]) and h < float(D.SUPPLY_OPEN[1])
+
+
+func owned(fid: String) -> int:
+	return int(S.get("owned", {}).get(fid, 0))
+
+
+func owned_total() -> int:
+	var n := 0
+	for k in S.get("owned", {}):
+		n += int(S.owned[k])
+	return n
+
+
+## ile sztuk tego mebla stoi już w kryjówkach
+func furn_count(fid: String) -> int:
+	var n := 0
+	for r in S.hide:
+		for it in S.hide[r].get("items", []):
+			if String(it.f) == fid:
+				n += 1
+	return n
+
+
+## dlaczego nie da się kupić ("" = można)
+func furn_block(fid: String) -> String:
 	var f := furn_def(fid)
-	if f.is_empty() or not room_owned(room) or int(S.lvl) < int(f.lvl) or S.cash < float(f.price) or not furn_valid(room, fid, x, z, r):
+	if f.is_empty():
+		return "Nie ma takiego towaru."
+	if int(S.lvl) < int(f.lvl):
+		return "Od poziomu %d." % int(f.lvl)
+	if S.cash < float(f.price):
+		return "Brakuje %s." % money(float(f.price) - S.cash)
+	return ""
+
+
+func furn_buy(fid: String) -> bool:
+	if furn_block(fid) != "":
 		return false
+	var f := furn_def(fid)
 	S.cash -= float(f.price)
 	S.stats.spent = float(S.stats.spent) + float(f.price)
+	if not S.has("owned"):
+		S["owned"] = {}
+	S.owned[fid] = owned(fid) + 1
+	Sfx.play("cash")
+	return true
+
+
+## odsprzedaż rzeczy ze stanu (nieustawionej) za połowę ceny
+func furn_sell(fid: String) -> bool:
+	if owned(fid) <= 0:
+		return false
+	var f := furn_def(fid)
+	S.owned[fid] = owned(fid) - 1
+	if int(S.owned[fid]) <= 0:
+		S.owned.erase(fid)
+	S.cash += round(float(f.price) * 0.5)
+	Sfx.play("cash")
+	return true
+
+
+## ustawia w kryjówce rzecz, którą masz na stanie
+func furn_place(room: String, fid: String, x: float, z: float, r: int) -> bool:
+	var f := furn_def(fid)
+	if f.is_empty() or not room_owned(room) or owned(fid) <= 0 or not furn_valid(room, fid, x, z, r):
+		return false
+	S.owned[fid] = owned(fid) - 1
+	if int(S.owned[fid]) <= 0:
+		S.owned.erase(fid)
 	S.hide[room].items.append({"f": fid, "x": snappedf(x, 0.05), "z": snappedf(z, 0.05), "r": r})
 	Sfx.play("place")
 	if world != null:
 		world.refresh_furniture(room)
 	return true
+
+
+## zakup z dowozem i od razu ustawienie (testy, bot symulacji): nic nie kupuje, jeśli miejsce jest złe
+func furn_buy_place(room: String, fid: String, x: float, z: float, r: int) -> bool:
+	if not room_owned(room) or not furn_valid(room, fid, x, z, r):
+		return false
+	if owned(fid) <= 0 and not furn_buy(fid):
+		return false
+	return furn_place(room, fid, x, z, r)
 
 
 func furn_remove(room: String, idx: int) -> bool:
@@ -3091,7 +3168,7 @@ func furn_remove(room: String, idx: int) -> bool:
 		notify("Najpierw opróżnij to stanowisko.", "warn")
 		return false
 	if f["func"] == "stash" and store_total(S.stash[room]) > float(stash_cap(room) - int(f.cap)):
-		notify("Skrytka jest zbyt pełna, by usunąć ten mebel.", "warn")
+		notify("Skrytka jest zbyt pełna, by zdjąć ten mebel.", "warn")
 		return false
 	items.remove_at(idx)
 	var nj := {}
@@ -3100,8 +3177,12 @@ func furn_remove(room: String, idx: int) -> bool:
 		var ki := int(k)
 		nj[str(ki - 1 if ki > idx else ki)] = jobs[k]
 	S.hide[room].jobs = nj
-	S.cash += round(float(f.price) * 0.5)
-	notify("Sprzedano mebel za %s." % money(round(float(f.price) * 0.5)))
+	# zdjęty mebel wraca na stan: można go postawić gdzie indziej albo odsprzedać w hurtowni
+	if not S.has("owned"):
+		S["owned"] = {}
+	var fid := String(f.id)
+	S.owned[fid] = owned(fid) + 1
+	notify("Zdjęto: %s. Czeka na stanie — ustawisz go ponownie [%s] albo odsprzedasz w hurtowni." % [String(f.name), kn("build")])
 	if world != null:
 		world.refresh_furniture(room)
 	return true
@@ -3164,11 +3245,11 @@ func _build_story() -> void:
 			"done": func(): return not S.get("outfits", {}).is_empty(), "marker": func(): return {"loc": "out", "x": D.DOORS.ciuchy.x, "z": D.DOORS.ciuchy.z}},
 		{"ch": "Rozdział 3: Kryjówka", "id": "garaz", "text": func(): return "Kup Garaż nr 14 (%s, poziom %d) — pierwszą własną kryjówkę." % [money(prop_def("garaz").price), int(prop_def("garaz").lvl)],
 			"done": func(): return owns("garaz"), "marker": _garage_marker},
-		{"id": "meble", "text": func(): return "Urządź garaż: w środku naciśnij [B] i wstaw stół roboczy oraz regał.",
-			"done": func(): return _has_furn("garage", "pack") and _has_furn("garage", "stash")},
+		{"id": "meble", "text": func(): return "Urządź garaż: kup w hurtowni budowlanej przy Hutniczej stół roboczy i regał, a potem w garażu naciśnij [B] i je ustaw.",
+			"done": func(): return _has_furn("garage", "pack") and _has_furn("garage", "stash"), "marker": _furnish_marker},
 		{"id": "uprawa1", "text": func(): return "Czas znów produkować. Kup u Stasia doniczki i nasiona, postaw doniczki w kryjówce [B] (najlepiej pod lampą LED) i posadź pierwszy krzak — celujesz w doniczkę i wybierasz czynność.",
 			"done": func(): return _any_job() or Prod.plant_count("garage") + Prod.plant_count("basement") > 0 or int(S.stats.grown) > 0, "marker": _garage_marker},
-		{"id": "zbior1", "text": func(): return "Doglądaj krzaków: podlewaj, nawoź, przytnij liście. Dojrzałe zetnij, wysusz w suszarce [B] i zważ. Nadwyżki sprzedasz hurtem na Giełdzie. (%d g)" % int(S.stats.grown),
+		{"id": "zbior1", "text": func(): return "Doglądaj krzaków: podlewaj, nawoź, przytnij liście. Dojrzałe zetnij, wysusz w suszarce (kupisz ją w hurtowni) i zważ. Nadwyżki sprzedasz hurtem na Giełdzie. (%d g)" % int(S.stats.grown),
 			"done": func(): return int(S.stats.grown) > 0, "marker": _garage_marker},
 		{"ch": "Wolna gra", "id": "free", "text": func(): return "Rozwijaj interes i spłacaj raty. Dług: %s" % money(S.debt), "done": func(): return false},
 	]
@@ -3270,6 +3351,15 @@ func _on_repay_done() -> void:
 	chat("wiktor", "I jeszcze jedno. Puściłem twój numer dwóm detalistom, którzy brali od twoich chłopaków: Sebie spod bloku 9 i staremu Zenonowi. Drobnica, ale od czegoś trzeba zacząć.", false, true)
 	unlock_client("seba", "Ty jesteś ten od Wiktora? Dobra. Odezwę się, jak będę coś potrzebował.")
 	unlock_client("zenon", "Dzień dobry, panie kolego. Podobno teraz u pana się zaopatrujemy. Będę pisał.")
+
+
+## urządzanie garażu: najpierw do hurtowni po stół i regał, potem z nimi do garażu
+func _furnish_marker() -> Variant:
+	var need_table: bool = not _has_furn("garage", "pack") and owned("stol") <= 0
+	var need_shelf: bool = not _has_furn("garage", "stash") and owned("regal") + owned("skrzynia") <= 0
+	if need_table or need_shelf:
+		return {"loc": "out", "x": float(D.SUPPLY_AT.x), "z": float(D.SUPPLY_AT.z)}
+	return _garage_marker()
 
 
 func _garage_marker() -> Variant:

@@ -394,6 +394,12 @@ const BIN_ROLLS := {"bin": 1, "dumpster": 3}
 const LOOT_DAILY := [5, 8]
 ## lombard: godziny otwarcia i dzienne wahanie cen skupu
 const PAWN_OPEN := [9.0, 19.0]
+## hurtownia budowlana przy Hutniczej: sprzęt do produkcji i meble do kryjówek
+const SUPPLY_OPEN := [7.0, 18.0]
+const SUPPLY_GEAR := ["pack", "growlight", "dry", "tank", "filter", "lab"]
+## gdzie stoją oba „specjalne” sklepy (współrzędne świata) — do znaczników na mapie
+const PAWN_AT := {"x": -42.0, "z": 5.94}
+const SUPPLY_AT := {"x": 56.83, "z": 17.19}
 const PAWN_SWING := 0.12
 
 # ---------------------------------------------------------------- rozmowy telefoniczne

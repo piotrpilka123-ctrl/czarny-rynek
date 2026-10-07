@@ -757,6 +757,26 @@ func search_bin(id: String, source: String) -> void:
 		G.notify("Znalezione: %s. Lombard przy Hutniczej to kupi." % ", ".join(got), "good")
 
 
+## hurtownia budowlana: sprzęt do produkcji i meble (kupione czekają na stanie, ustawia się je w kryjówce)
+func supply_talk() -> void:
+	if G.busy or ui.mode != "":
+		return
+	if not G.supply_open():
+		G.notify("Hurtownia otwarta od %d:00 do %d:00." % [int(D.SUPPLY_OPEN[0]), int(D.SUPPLY_OPEN[1])], "warn")
+		return
+	if not G.flag("met_rysiek"):
+		G.S.flags["met_rysiek"] = true
+		ui.dialog({"name": "Pan Rysiek", "lines": [
+			"Dzień dobry. Regały, stoły, lampy, a jak trzeba — to i szkło laboratoryjne się znajdzie. Do szkoły, ma się rozumieć.",
+			"Pan płaci, ja ładuję na pakę i chłopaki dowożą pod adres. Potem pan sobie ustawia, jak panu wygodnie.",
+		], "on_end": func(): ui.open_supply()})
+		return
+	ui.dialog({"name": "Pan Rysiek", "lines": [["Co dziś ładujemy?", "Mam świeżą dostawę regałów. Stal, nie żadna płyta.", "Lampy LED schodzą jak ciepłe bułki. Ciekawe, co ludzie tak hodują."].pick_random()], "choices": [
+		{"label": "Pokaż cennik", "kind": "go", "act": func(): ui.open_supply()},
+		{"label": "Na razie nic."},
+	]})
+
+
 func pawn_talk() -> void:
 	if G.busy or ui.mode != "":
 		return
@@ -1238,6 +1258,10 @@ func _order_target(o: Dictionary) -> Dictionary:
 func _place_target(id: String) -> Dictionary:
 	if id == "box":
 		return {"id": id, "label": "Skrzynka Wiktora", "loc": "out", "x": float(D.WIKTOR_BOX.x), "z": float(D.WIKTOR_BOX.z), "color": C_PLACE}
+	if id == "pawn":
+		return {"id": id, "label": "Lombard (skup, wagi)", "loc": "out", "x": float(D.PAWN_AT.x), "z": float(D.PAWN_AT.z), "color": C_PLACE}
+	if id == "supply":
+		return {"id": id, "label": "Hurtownia budowlana", "loc": "out", "x": float(D.SUPPLY_AT.x), "z": float(D.SUPPLY_AT.z), "color": C_PLACE}
 	if id == "home" or id == "shop":
 		var room := "safe" if id == "home" else "shop"
 		return {"id": id, "label": "Kawalerka" if id == "home" else "Sklep u Stasia", "loc": room, "x": float(D.ROOMS[room].cx), "z": 0.0, "color": C_PLACE}
@@ -1284,7 +1308,7 @@ func cur_target() -> Dictionary:
 			if not dt.is_empty():
 				return dt
 			S.track = null
-		elif t == "home" or t == "shop" or t == "box" or String(t).begins_with("prop:"):
+		elif t == "home" or t == "shop" or t == "box" or t == "pawn" or t == "supply" or String(t).begins_with("prop:"):
 			var pt := _place_target(t)
 			if not pt.is_empty():
 				return pt
@@ -1313,6 +1337,8 @@ func nav_targets() -> Array:
 	out.append({"id": "home", "label": "Kawalerka"})
 	out.append({"id": "box", "label": "Skrzynka Wiktora"})
 	out.append({"id": "shop", "label": "Sklep u Stasia"})
+	out.append({"id": "pawn", "label": "Lombard (skup, wagi)"})
+	out.append({"id": "supply", "label": "Hurtownia budowlana"})
 	for p in D.PROPERTIES:
 		if G.owns(p.id):
 			out.append({"id": "prop:" + String(p.id), "label": String(p.name)})
@@ -1499,7 +1525,11 @@ func build_confirm() -> void:
 		build_cancel()
 		return
 	if G.furn_place(room, fid, float(build.x), float(build.z), int(build.r)):
-		G.notify("Ustawiono: " + String(G.furn_def(fid).name), "good")
+		var more: int = G.owned(fid)
+		G.notify("Ustawiono: %s.%s" % [String(G.furn_def(fid).name), (" Na stanie jeszcze %d." % more) if more > 0 else ""], "good")
+		# kolejna sztuka tego samego od razu pod ręką
+		if more > 0:
+			return
 	build_cancel()
 
 
@@ -2718,6 +2748,9 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "org")
 		"shop": ui.open_shop()
 		"wagi": ui.open_scales()
+		"hurtownia":
+			G.S.owned = {"regal": 1}
+			ui.open_supply()
 		"paczka":
 			G.S.flags["got_first"] = false
 			ui.open_loot({"kind": "starter"})
@@ -2726,8 +2759,12 @@ func _test_ui(what: String) -> void:
 			G.ground_add("out", player.global_position.x, player.global_position.z + 0.5, {"kind": "item", "p": "", "pur": 0, "id": "zegarek", "n": 1.0, "name": "Zegarek"})
 			G.ground_add("out", player.global_position.x + 0.3, player.global_position.z + 0.5, {"kind": "bulk", "p": "dym", "pur": 100, "id": "", "n": 6.0, "name": "Marihuana"})
 			ui.open_loot({"kind": "ground", "rec": G.S.ground[0]})
-		"build": ui.open_build("garage")
-		"ghost": build_begin("regal")
+		"build":
+			G.S["owned"] = {"regal": 2, "lampa_led": 1}
+			ui.open_build("garage")
+		"ghost":
+			G.S["owned"] = {"regal": 1}
+			build_begin("regal")
 		"pause": ui.show_pause()
 		"skill": ui.skill_check("Ważenie: 5 g marihuany", 1.0, func(_h): pass)
 		"dialog": talk_stasiu()

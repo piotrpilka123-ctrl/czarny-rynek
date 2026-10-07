@@ -1239,10 +1239,13 @@ func open_property(pid: String) -> void:
 	c.add_child(K.wrap("Kryjówkę urządzasz samodzielnie: stół roboczy, regały na towar, łóżko, a z czasem namiot uprawowy.", 12, K.C_DIM))
 
 
+const FURN_KINDS := {"pack": "stanowisko", "stash": "skrytka", "growlight": "światło do uprawy", "dry": "suszenie", "lab": "synteza", "tank": "podlewanie", "filter": "zapach", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
+
+
+## Meblowanie [B]: ustawiasz to, co masz „na stanie” — kupione wcześniej w hurtowni budowlanej. Tu nic nie kosztuje.
 func open_build(room: String) -> void:
-	_open_modal("Meble — " + String(D.ROOMS[room].name), "Wybierz mebel, a potem ustaw go w pomieszczeniu.")
+	_open_modal("Urządzanie — " + String(D.ROOMS[room].name), "Ustawiasz sprzęt i meble kupione w hurtowni budowlanej.")
 	var S: Dictionary = G.S
-	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
 	# doniczki to przedmioty ze sklepu: stawiasz te, które masz przy sobie albo w skrytce
 	var cp := K.card(modal_body)
 	cp.add_child(K.lbl("UPRAWA", 10, K.C_DIM))
@@ -1254,26 +1257,63 @@ func open_build(room: String) -> void:
 	_row(cp, "[b]Doniczka z ziemią[/b]  %s\n%s" % [K.col("[masz %d • stoi %d/%d]" % [have, placed, pmax], K.C_BLUE),
 		K.col("Kupujesz u Stasia razem z nasionami i nawozem. Każdy krzak doglądasz osobno: celujesz w niego i wybierasz czynność. Najlepiej rośnie pod lampą LED.", K.C_DIM)], [pb], 13)
 	var c := K.card(modal_body)
-	c.add_child(K.lbl("KATALOG", 10, K.C_DIM))
-	var names := {"pack": "stanowisko", "stash": "skrytka", "growlight": "światło do uprawy", "dry": "suszenie", "lab": "synteza", "tank": "podlewanie", "filter": "zapach", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
+	c.add_child(K.lbl("NA STANIE — DO USTAWIENIA", 10, K.C_DIM))
+	var any := false
 	for f in D.FURNITURE:
 		var fid: String = f.id
-		var why := ""
-		if int(S.lvl) < int(f.lvl):
-			why = "poziom %d" % int(f.lvl)
-		elif S.cash < float(f.price):
-			why = "za drogie"
-		var b := K.btn(("Ustaw — %s" % G.money(f.price)) if why == "" else why, func(): close_all(); G.main.build_begin(fid), "go", true)
-		b.disabled = why != ""
-		_row(c, "[b]%s[/b]  %s\n%s" % [f.name, K.col("[%s]" % names.get(f["func"], ""), K.C_BLUE), K.col(f.desc, K.C_DIM)], [b], 13)
+		var n: int = G.owned(fid)
+		if n <= 0:
+			continue
+		any = true
+		var b := K.btn("Ustaw", func(): close_all(); G.main.build_begin(fid), "go", true)
+		_row(c, "[b]%s[/b]  %s  %s\n%s" % [f.name, K.col("× %d" % n, K.C_ACC), K.col("[%s]" % FURN_KINDS.get(f["func"], ""), K.C_BLUE), K.col(f.desc, K.C_DIM)], [b], 13)
+	if not any:
+		c.add_child(K.wrap("Nie masz nic do ustawienia. Sprzęt do produkcji i meble kupisz w hurtowni budowlanej przy Hutniczej (szyld BUILDING SUPPLIES, otwarte %d:00–%d:00) — zaznaczysz ją w telefonie: Mapa → Hurtownia budowlana." % [int(D.SUPPLY_OPEN[0]), int(D.SUPPLY_OPEN[1])], 13, K.C_WARN))
 	var items: Array = S.hide[room].items
 	if not items.is_empty():
 		var c2 := K.card(modal_body)
-		c2.add_child(K.lbl("USTAWIONE (sprzedaż za połowę ceny)", 10, K.C_DIM))
+		c2.add_child(K.lbl("USTAWIONE (zdjęte wraca na stan)", 10, K.C_DIM))
 		for i in range(items.size()):
 			var idx := i
 			var f := G.furn_def(items[i].f)
-			_row(c2, String(f.name), [K.btn("Sprzedaj (+%s)" % G.money(round(float(f.price) * 0.5)), func(): G.furn_remove(room, idx); open_build(room), "bad", true)], 13)
+			_row(c2, String(f.name), [K.btn("Zdejmij", func(): G.furn_remove(room, idx); open_build(room), "", true)], 13)
+
+
+## Hurtownia budowlana: sprzęt do produkcji i meble. Kupione rzeczy czekają „na stanie”, aż ustawisz je w kryjówce [B].
+func open_supply() -> void:
+	_open_modal("Hurtownia budowlana", "„Dowozimy pod wskazany adres. Faktury nie wystawiamy, jak pan nie chce.”")
+	var S: Dictionary = G.S
+	var top := K.hbox(18)
+	modal_body.add_child(top)
+	top.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
+	top.add_child(K.icon_label("warehouse", "Na stanie: %d szt." % G.owned_total(), 13, K.C_DIM))
+	var hide_n := 0
+	for pr in D.PROPERTIES:
+		if String(pr.room) != "" and G.owns(pr.id):
+			hide_n += 1
+	if hide_n <= 0:
+		modal_body.add_child(K.wrap("Nie masz jeszcze własnej kryjówki — kupione rzeczy poczekają na stanie, aż będzie gdzie je postawić (telefon → Lokale).", 12, K.C_WARN))
+	for grp in [["SPRZĘT DO PRODUKCJI", true], ["MEBLE DO KRYJÓWKI", false]]:
+		var c := K.card(modal_body)
+		c.add_child(K.lbl(String(grp[0]), 10, K.C_DIM))
+		for f in D.FURNITURE:
+			if (String(f["func"]) in D.SUPPLY_GEAR) != bool(grp[1]):
+				continue
+			var fid: String = f.id
+			var why := ""
+			if int(S.lvl) < int(f.lvl):
+				why = "poziom %d" % int(f.lvl)
+			var b := K.btn(("Kup — %s" % G.money(f.price)) if why == "" else why, func(): G.furn_buy(fid); open_supply(), "go", true)
+			b.disabled = G.furn_block(fid) != ""
+			var btns: Array = [b]
+			var own: int = G.owned(fid)
+			if own > 0:
+				btns.append(K.btn("Odsprzedaj (+%s)" % G.money(round(float(f.price) * 0.5)), func(): G.furn_sell(fid); open_supply(), "bad", true))
+			var state := ""
+			if own > 0 or G.furn_count(fid) > 0:
+				state = "  " + K.col("na stanie: %d • ustawione: %d" % [own, G.furn_count(fid)], K.C_ACC if own > 0 else K.C_DIM)
+			_row(c, "[b]%s[/b]  %s%s\n%s" % [f.name, K.col("[%s]" % FURN_KINDS.get(f["func"], ""), K.C_BLUE), state, K.col(f.desc, K.C_DIM)], btns, 13)
+	modal_body.add_child(K.wrap("Kupione rzeczy ustawisz w swojej kryjówce klawiszem [%s]. Dopiero ustawione działają." % G.kn("build"), 12, K.C_DIM))
 
 
 # ---------------------------------------------------------------- NEGOCJACJE

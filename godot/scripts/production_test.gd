@@ -101,7 +101,7 @@ static func run(T) -> void:
 	var res: Dictionary = P.plant_cut(room, 0)
 	T.ok(String(res.kind) == "harvest" and absf(P.wet_total(room) - float(fc.g)) < 0.01 and P.plant_of(room, 0) == null, "zbiór: %d g świeżego suszu czeka na suszarkę" % int(fc.g))
 	T.ok(G.goods_total(S.stash[room]) < 0.01, "niewysuszony zbiór nie jest jeszcze towarem")
-	T.ok(G.furn_place(room, "suszarka", -2.3, -1.6, 0) and G.furn_place(room, "filtr", -2.4, 3.2, 0), "wstawiona suszarka i filtr węglowy")
+	T.ok(G.furn_buy_place(room, "suszarka", -2.3, -1.6, 0) and G.furn_buy_place(room, "filtr", -2.4, 3.2, 0), "wstawiona suszarka i filtr węglowy")
 	var dryer: int = S.hide[room].items.size() - 2
 	T.ok(P.kind(room, dryer) == "dry" and P.dry_start(room, dryer) and P.wet_total(room) < 0.01, "suszarka przyjmuje cały zbiór")
 	T.ok(not P.dry_start(room, dryer), "zajęta suszarka nie przyjmie drugiej partii")
@@ -125,7 +125,7 @@ static func run(T) -> void:
 	T.ok(float(st_b.power) > float(st_a.power) * 1.5 and float(st_b.smell) > float(st_a.smell), "lampy 24/0: więcej prądu (%d → %d zł) i zapachu" % [int(st_a.power), int(st_b.power)])
 	var t_slow: float = 30.0 * 60.0
 	T.ok(P.plant_minutes_left(room, 0) < t_slow * 0.8, "lampy 24/0 skracają cykl do %d h" % int(P.plant_minutes_left(room, 0) / 60.0))
-	T.ok(G.furn_place(room, "zbiornik", -2.4, 2.2, 0), "wstawiony zbiornik z pompą")
+	T.ok(G.furn_buy_place(room, "zbiornik", -2.4, 2.2, 0), "wstawiony zbiornik z pompą")
 	_run(P, 23.0 * 60.0)
 	T.ok(float(j.water) >= 70.0 and float(j.prog) >= 1.0 and float(j.health) > 95.0, "z pompą krzak sam dochodzi do końca w dobrej kondycji")
 	T.ok(int(P.plant_forecast(room, 0).pur) < int(fc.pur) + 20, "mocne lampy dają trochę słabszy towar")
@@ -148,7 +148,7 @@ static func run(T) -> void:
 	T.ok(float(idle.risk) == 0.0 and float(idle.smell) == 0.0, "pusta kryjówka nie ściąga uwagi")
 
 	# ---------------------------------------------------------------- stół laboratoryjny
-	T.ok(G.furn_place(room, "lab", 2.5, 2.9, 1), "wstawiony stół laboratoryjny")
+	T.ok(G.furn_buy_place(room, "lab", 2.5, 2.9, 1), "wstawiony stół laboratoryjny")
 	var lab: int = S.hide[room].items.size() - 1
 	var names: Array = []
 	for e in P.recipes_for(room, lab):
@@ -196,13 +196,15 @@ static func run(T) -> void:
 	T.ok(burnt >= 3 and burnt <= 25, "wysoka temperatura: przypalona mniej więcej co szósta partia (%d/60)" % burnt)
 
 	# ---------------------------------------------------------------- meble ze stanowiskami
-	T.ok(not G.furn_remove(room, lab), "stanowiska z wsadem nie da się sprzedać")
+	T.ok(not G.furn_remove(room, lab), "stanowiska z wsadem nie da się zdjąć")
 	var lab_job: Dictionary = P.job(room, lab)
 	var chair := -1
 	for i in range(S.hide[room].items.size()):
 		if String(S.hide[room].items[i].f) == "kanapa":
 			chair = i
-	T.ok(chair >= 0 and chair < lab and G.furn_remove(room, chair), "sprzedaż wcześniejszego mebla")
+	var cash_rm: float = S.cash
+	T.ok(chair >= 0 and chair < lab and G.furn_remove(room, chair) and G.owned("kanapa") == 1 and S.cash == cash_rm, "zdjęty mebel wraca na stan (bez pieniędzy)")
+	T.ok(G.furn_sell("kanapa") and G.owned("kanapa") == 0 and S.cash == cash_rm + round(float(G.furn_def("kanapa").price) * 0.5) and not G.furn_sell("kanapa"), "ze stanu można go odsprzedać w hurtowni za połowę ceny")
 	T.ok(is_same(P.job(room, lab - 1), lab_job) and P.kind(room, lab - 1) == "lab" and P.job(room, lab) == null, "zadania przesuwają się razem z numeracją mebli")
 	lab -= 1
 	G.world.refresh_furniture(room)
