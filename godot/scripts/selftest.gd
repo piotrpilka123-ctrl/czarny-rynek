@@ -235,6 +235,16 @@ func run() -> void:
 	ok(got[0] == 3 and got[1] == 0 and G.item("woreczki") == 0, "zaporcjowane 3 g — bez woreczków i bez wybierania trybu")
 	ok(S.t - t_before >= 3.5, "porcjowanie zabiera czas gry (%.0f min)" % (S.t - t_before))
 	ok(G.pack_one("safe", "dym", 35) == -1, "nie da się porcjować towaru, którego nie ma")
+	# wspólna pula: stół widzi luz i porcje z kieszeni i ze skrytki jako jedną pozycję
+	var pool_e := {}
+	for pe in G.bench_pool("safe"):
+		if String(pe.p) == "dym" and int(pe.pur) == 100:
+			pool_e = pe
+	var loose0: float = float(S.inv.bulk.dym.get("100", 0.0)) + float(S.stash.safe.bulk.dym.get("100", 0.0))
+	ok(not pool_e.is_empty() and int(pool_e.k) == 3 and absf(float(pool_e.n) - loose0) < 0.01, "pula przy stole: %s g luzem + %d porcje w jednym wierszu" % [str(pool_e.get("n", 0)), int(pool_e.get("k", 0))])
+	ok(G.unpack("safe", "dym", 100, 2) == 2 and G.packed_total(S.inv, "dym") + G.packed_total(S.stash.safe, "dym") == 1, "porcje da się rozsypać z powrotem (2 z 3)")
+	ok(absf(float(S.inv.bulk.dym.get("100", 0.0)) + float(S.stash.safe.bulk.dym.get("100", 0.0)) - (loose0 + 2.0)) < 0.01, "…i wracają do towaru luzem")
+	G.pack("safe", "dym", 100, 2)
 	U.close_all()
 	G.story_tick()
 	G.story_tick()

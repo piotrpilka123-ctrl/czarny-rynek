@@ -2718,6 +2718,36 @@ func bench_bulk(room: String) -> Array:
 	return m.values()
 
 
+## Cały towar przy stole jako jedna pula — luzem i w porcjach, z plecaka i ze skrytki razem.
+## Nie ma znaczenia, jak jest popakowany ani gdzie leży: stół widzi {p, pur, n = gramy luzem, k = gotowe porcje}.
+func bench_pool(room: String) -> Array:
+	var m := {}
+	for src in [S.inv, S.stash[room]]:
+		for kind in ["bulk", "pack"]:
+			for sx in stacks(src, kind):
+				var key := "%s:%d" % [sx.p, int(sx.pur)]
+				if not m.has(key):
+					m[key] = {"p": sx.p, "pur": int(sx.pur), "n": 0.0, "k": 0}
+				if kind == "bulk":
+					m[key].n = float(m[key].n) + float(sx.n)
+				else:
+					m[key].k = int(m[key].k) + int(sx.n)
+	return m.values()
+
+
+## rozsypuje gotowe porcje z powrotem do luzu (żeby je domieszać albo zważyć od nowa); zwraca, ile porcji poszło
+func unpack(room: String, p: String, pur: int, n: int) -> int:
+	var done := 0
+	for src in [S.inv, S.stash[room]]:
+		var t: int = take_pack(src, p, pur, n - done)
+		if t > 0:
+			add_bulk(src, p, pur, float(t))
+			done += t
+	if done > 0:
+		add_minutes(0.1 * done)
+	return done
+
+
 ## Porcjowanie zależy tylko od wagi, którą masz (D.SCALES): im lepsza, tym szybciej i z mniejszą stratą.
 ## Nie ma trybów pracy ani woreczków do kupowania — towar po zważeniu jest po prostu gotowy do sprzedaży.
 func scale() -> int:
@@ -2823,6 +2853,12 @@ func mix(room: String, p: String, pur: int, g: float, filler_g: int) -> int:
 	var fid := filler_for(p)
 	if filler_g <= 0 or item_at(room, fid) < filler_g:
 		return pur
+	# pula jest wspólna: jeśli luzem jest za mało, do mieszanki idą też gotowe porcje
+	var loose := 0.0
+	for src in [S.inv, S.stash[room]]:
+		loose += float(src.bulk[p].get(str(pur), 0.0))
+	if loose < g - 0.001:
+		unpack(room, p, pur, int(ceil(g - loose - 0.001)))
 	var from_inv: float = take_bulk(S.inv, p, pur, g)
 	var from_stash: float = take_bulk(S.stash[room], p, pur, g - from_inv)
 	var tot := from_inv + from_stash

@@ -79,9 +79,10 @@ static func run(T) -> void:
 	T.ok(not info.is_empty() and String(info.notes[0][1]) == "bad" and bool(info.fert) and bool(info.trim), "karta „Sprawdź” pokazuje stan krzaka i ostrzega o suszy")
 	var dry_fc: Dictionary = P.plant_forecast(room, 0)
 	T.ok(P.plant_water(room, 0) and float(j.water) == 100.0, "podlanie napełnia do pełna")
-	_run(P, 9.0 * 60.0)
+	# 8 godzin, nie 9: postęp po suszy stoi na 69–70% i przy dziewięciu krzak potrafił dojrzeć co do minuty
+	_run(P, 8.0 * 60.0)
 	T.ok(float(j.prog) > stuck + 0.2, "po podlaniu znowu rośnie")
-	T.ok(P.plant_stage(j) == "Kwitnienie" and not P.plant_can_fert(room, 0), "kwitnienie: na nawóz już za późno")
+	T.ok(P.plant_stage(j) == "Kwitnienie" and not P.plant_can_fert(room, 0), "kwitnienie: na nawóz już za późno (%s, %d%%)" % [P.plant_stage(j), int(float(j.prog) * 100.0)])
 	P.plant_water(room, 0)
 	_run(P, 12.0 * 60.0)
 	T.ok(float(j.prog) >= 1.0 and P.plant_stage(j) == "Dojrzała" and P.plant_cut_kind(room, 0) == "harvest", "krzak dojrzały: sekator robi zbiór")

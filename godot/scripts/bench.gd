@@ -34,7 +34,22 @@ static func _tile(U, s: Dictionary, on: bool) -> Control:
 	v.add_child(K.lbl(String(D.PRODUCTS[s.p].name), 14, K.C_TXT))
 	v.add_child(K.rich(K.tier_bb(s.pur), 12))
 	h.add_child(v)
-	h.add_child(K.head(G.grams(s.n), 18, K.C_TXT))
+	# po prawej: ile luzem, a pod spodem ile już zaporcjowane
+	var q := K.vbox(0)
+	q.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	q.alignment = BoxContainer.ALIGNMENT_CENTER
+	var big := K.head(G.grams(s.n) if float(s.n) > 0.0 or int(s.get("k", 0)) <= 0 else "%d porcji" % int(s.k), 18 if float(s.n) > 0.0 else 15, K.C_TXT)
+	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	q.add_child(big)
+	if float(s.n) > 0.0 and int(s.get("k", 0)) > 0:
+		var small := K.lbl("+ %d porcji" % int(s.k), 11, K.C_ACC)
+		small.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		q.add_child(small)
+	elif float(s.n) > 0.0:
+		var small2 := K.lbl("luzem", 11, K.C_DIM)
+		small2.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		q.add_child(small2)
+	h.add_child(q)
 	return b
 
 
@@ -44,7 +59,7 @@ static func build(U) -> void:
 	var S: Dictionary = G.S
 	U._open_modal("Stół roboczy", "Waga i towar. Luzem nikt nie kupi — najpierw porcjuj.", "center", 1000.0)
 	var body: VBoxContainer = U.modal_body
-	var stacks := G.bench_bulk(room)
+	var stacks := G.bench_pool(room)
 	# zaznaczony stos: odśwież ilość albo wybierz pierwszy z brzegu
 	var sel := {}
 	for s in stacks:
@@ -92,9 +107,9 @@ Lepszą wagę kupisz w lombardzie przy Hutniczej." if G.scale() < D.SCALES.size(
 	cols.add_child(left)
 	var lv := K.vbox(6)
 	left.add_child(lv)
-	lv.add_child(K.lbl("TOWAR LUZEM (plecak + skrytka)", 10, K.C_DIM))
+	lv.add_child(K.lbl("TOWAR NA STOLE (plecak i skrytka razem)", 10, K.C_DIM))
 	if stacks.is_empty():
-		lv.add_child(K.wrap("Nie masz towaru luzem. Zamów przez telefon i odbierz paczkę.", 13, K.C_DIM))
+		lv.add_child(K.wrap("Nie masz towaru. Zamów przez telefon i odbierz paczkę.", 13, K.C_DIM))
 	for s in stacks:
 		lv.add_child(_tile(U, s, not sel.is_empty() and s.p == sel.p and int(s.pur) == int(sel.pur)))
 
@@ -117,11 +132,27 @@ static func _pack_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 	var room: String = B.room
 	var maxg := G.pack_limit(room, sel.p, int(sel.pur))
 	rv.add_child(K.rich("[b]Porcjowanie:[/b] %s %s  →  gotowe porcje" % [D.PRODUCTS[sel.p].name, K.tier_bb(sel.pur)], 14))
+	var kpacks := int(sel.get("k", 0))
+	# gotowe porcje można rozsypać z powrotem — pula towaru jest jedna, opakowanie niczego nie blokuje
+	var unpack_btn := func() -> Button:
+		var ub := K.btn("Rozsyp porcje (%d)" % kpacks, func():
+			Sfx.play("pack")
+			G.unpack(room, sel.p, int(sel.pur), kpacks)
+			U._render_bench(), "", true)
+		ub.tooltip_text = "Gotowe porcje wracają do towaru luzem — możesz je domieszać albo zważyć od nowa."
+		return ub
 	if maxg <= 0:
-		rv.add_child(K.lbl("Potrzebujesz co najmniej 1 g towaru luzem.", 12, K.C_WARN))
+		if kpacks > 0:
+			rv.add_child(K.rich("Wszystko zważone: [b]%d porcji[/b] gotowych do sprzedaży." % kpacks, 13))
+		else:
+			rv.add_child(K.lbl("Potrzebujesz co najmniej 1 g towaru.", 12, K.C_WARN))
+		var a0 := K.hbox(8)
+		rv.add_child(a0)
 		var mx0 := K.btn("Domieszaj…", func(): B.mixing = true; B.filler = 1; U._render_bench(), "warn", true)
-		mx0.disabled = G.item_at(room, G.filler_for(sel.p)) <= 0 or float(sel.n) < 1.0
-		rv.add_child(mx0)
+		mx0.disabled = G.item_at(room, G.filler_for(sel.p)) <= 0 or float(sel.n) + kpacks < 1.0
+		a0.add_child(mx0)
+		if kpacks > 0:
+			a0.add_child(unpack_btn.call())
 		return
 	B.g = clampi(int(B.g), 1, maxg)
 	var g := int(B.g)
@@ -193,6 +224,10 @@ static func _pack_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 	mixb.disabled = G.item_at(room, G.filler_for(sel.p)) <= 0
 	mixb.tooltip_text = "Rozrabianie towaru. Potrzebny dodatek ze sklepu: " + String(D.FILLER_NAMES[G.filler_for(sel.p)]).to_lower()
 	acts.add_child(mixb)
+	var unb: Button = null
+	if kpacks > 0:
+		unb = unpack_btn.call()
+		acts.add_child(unb)
 	var stopb := K.btn("Przerwij", func(): view.stop(), "bad")
 	stopb.visible = false
 	acts.add_child(stopb)
@@ -201,6 +236,8 @@ static func _pack_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 			return
 		go.visible = false
 		mixb.visible = false
+		if unb != null:
+			unb.visible = false
 		stopb.visible = true
 		status.visible = true
 		var done_n := [0, 0]
@@ -226,7 +263,8 @@ static func _pack_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 static func _mix_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 	var B: Dictionary = U.bench
 	var room: String = B.room
-	var have := float(sel.n)
+	# do mieszanki idzie cała pula tego towaru: luzem i w porcjach
+	var have := float(sel.n) + float(int(sel.get("k", 0)))
 	var fid: String = G.filler_for(sel.p)
 	var fname: String = D.FILLER_NAMES[fid]
 	view.filler = fid
@@ -275,7 +313,7 @@ static func _mix_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 			G.add_minutes(4.0)
 			var np := G.mix(room, sel.p, int(sel.pur), have, f)
 			B.mixing = false
-			B.sel = {"p": sel.p, "pur": np, "n": have + f}
+			B.sel = {"p": sel.p, "pur": np, "n": have + f, "k": 0}
 			if U.mode == "modal" and U.deal.is_empty():
 				U._render_bench()
 		view.mix(float(f), after))
