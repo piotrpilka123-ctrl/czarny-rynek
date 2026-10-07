@@ -486,7 +486,7 @@ func ending(kind: String) -> void:
 	ui.set_prompt("")
 	match kind:
 		"wolnosc":
-			ui.show_ending("WSPÓLNIK", "Dwadzieścia pięć tysięcy wkładu. Wiktor przysłał jedno słowo: „Wspólnik”. Zaczynałeś jako chłopak od wszystkiego — teraz dzielnica jest tak samo Twoja, jak jego. Co z nią zrobisz?", stats, true)
+			ui.show_ending("WSPÓLNIK", "Dwadzieścia pięć tysięcy wkładu. Wiktor przysłał jedno słowo: „Wspólnik”. Zaczynałeś jako chłopak od wszystkiego — teraz dzielnica jest tak samo Twoja, jak jego. W skrzynce zamiast pieniędzy leżała koperta. W środku jedno nazwisko. Znasz je. Co z tym zrobisz?", stats, true)
 		"wyrok":
 			ui.show_ending("WYROK", "Piąte zatrzymanie. Tym razem prokurator nie miał litości — a Wiktor znalazł sobie nowego chłopaka od wszystkiego.", stats)
 		_:

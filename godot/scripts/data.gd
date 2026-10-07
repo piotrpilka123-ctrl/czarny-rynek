@@ -442,10 +442,31 @@ const CALLS := [
 		"Leżący człowiek nie zarabia, a dzielnica nie czeka. Jak cię nie ma, ktoś inny sprzedaje twoim klientom.",
 		{"n": "Ty", "t": "Ktoś mi wyczyścił kieszenie, zanim trafiłem na salę."},
 		"Bo nosisz przy sobie za dużo. Na mieście masz mieć tyle, żeby nie było żal. Wracaj do pracy, Kuba."]},
+	# --- awanse w ekipie: przy każdym szczeblu Wiktor dzwoni i dokłada kawałek sprawy „kto nas sprzedał”
+	{"id": "awans1", "who": "Wiktor", "paid": 300.0, "hour": [8.0, 23.0], "lines": [
+		"No i proszę. Pierwsze pieniądze w skrzynce, zanim zdążyłem o nie zapytać. Od dziś nie jesteś przydupas, tylko goniec.",
+		"Plecak — albo to, co za niego dałem — już masz. Noś przy sobie tyle, ile sprzedasz, nie więcej.",
+		{"n": "Ty", "t": "A ten, kto czekał na mnie za garażami?"},
+		"Pytam. Cicho, bo jak się spłoszy, to zniknie razem z torbą. Ty rób swoje, ja swoje."]},
+	{"id": "awans3", "who": "Wiktor", "paid": 3500.0, "hour": [8.0, 23.0], "lines": [
+		"Dealer. Dzielnica już wie, od kogo się bierze. Hurt masz ode mnie taniej — zasłużyłeś.",
+		"I mam coś dla ciebie. Ktoś na Robotniczej sprzedaje śnieg po działce. Dobry, czysty, w twoim cięciu.",
+		{"n": "Ty", "t": "Mój."},
+		"Twój. Jeszcze nie wiem, czyje ręce go podają, ale już wiem, że to nikt z ulicy. Za dobrze się chowa."]},
+	{"id": "awans4", "who": "Wiktor", "paid": 8000.0, "hour": [8.0, 23.0], "lines": [
+		"Zaufany. Garaż czternaście — pogadałem z właścicielem, bierzesz go za pół ceny. Czas, żebyś znowu sam robił towar.",
+		"Teraz słuchaj uważnie. O tym, którędy wyjdziesz z huty, wiedziały trzy osoby. Ty. Siwy. I ten, kto wam tę trasę pokazał.",
+		{"n": "Ty", "t": "Trasę przez siatkę i garaże znał każdy, kto u nas pracował."},
+		"Nie każdy wiedział, że tej nocy będziesz szedł nią sam, z torbą. Pomyśl, komu to powiedziałeś."]},
 	{"id": "polowa", "who": "Wiktor", "paid": 12500.0, "hour": [9.0, 22.0], "lines": [
-		"Połowa. Przyznam, że stawiałem, że znikniesz po pierwszym tygodniu — przegrałem flaszkę.",
+		"Połowa wkładu. Przyznam, że stawiałem, że znikniesz po pierwszym tygodniu — przegrałem flaszkę.",
 		"Teraz będzie trudniej, bo zaczynają cię znać. Policja, konkurencja, ci, którzy pamiętają, kim byłeś przed wybuchem.",
-		"Rób swoje i nie wychylaj się bardziej, niż musisz. Jak spłacisz resztę, pogadamy o tym, kto ci tę hutę podpalił. Bo ja już chyba wiem."]},
+		"Rób swoje i nie wychylaj się bardziej, niż musisz. Jak dobijesz do końca, pogadamy o tym, kto ci tę hutę podpalił. Bo ja już chyba wiem."]},
+	{"id": "awans5", "who": "Wiktor", "paid": 15000.0, "hour": [8.0, 23.0], "lines": [
+		"Prawa ręka. Mówię to drugi raz w życiu, a pierwszy leży na Powązkach.",
+		"Mam nazwisko, Kuba. Sprawdzone z dwóch stron.",
+		{"n": "Ty", "t": "Mów."},
+		"Nie przez telefon i nie teraz. Jak zostaniesz wspólnikiem, dostaniesz je ode mnie w kopercie — i sam zdecydujesz, co z nim zrobić. Do tego czasu nie rób niczego głupiego."]},
 	{"id": "nieznany", "who": "Nieznany numer", "lvl": 6, "hour": [20.0, 23.0], "lines": [
 		"…",
 		"Dobrze ci idzie, Kuba. Lepiej, niż myślałem, kiedy leżałeś za garażami z twarzą w żwirze.",

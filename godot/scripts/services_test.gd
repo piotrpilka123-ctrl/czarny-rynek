@@ -295,6 +295,23 @@ static func run(T) -> void:
 		for ln in cdef.lines:
 			long_line = maxi(long_line, String(ln if ln is String else ln.t).length())
 	T.ok(D.CALLS.size() >= 6 and long_line < 260, "rozmowy są krótkimi monologami (najdłuższa kwestia: %d znaków)" % long_line)
+	# awanse w ekipie mają swoje telefony od Wiktora: dzwoni dopiero, gdy wkład przekroczy próg szczebla
+	var rank_calls := {}
+	for cdef2 in D.CALLS:
+		if String(cdef2.who) == "Wiktor" and cdef2.has("paid"):
+			rank_calls[int(cdef2.paid)] = cdef2
+	var have_all := true
+	for ri in [1, 3, 4, 5]:
+		if not rank_calls.has(int(D.RANKS[ri].at)):
+			have_all = false
+	var paid_c: float = S.paid
+	var aw1: Dictionary = rank_calls.get(int(D.RANKS[1].at), {})
+	S.t = floorf(S.t / 1440.0) * 1440.0 + 12.0 * 60.0
+	S.paid = 0.0
+	var early_call: bool = not aw1.is_empty() and G.call_ready(aw1)
+	S.paid = float(D.RANKS[1].at)
+	T.ok(have_all and not early_call and G.call_ready(aw1), "Wiktor dzwoni po awansie (Goniec, Dealer, Zaufany, Prawa ręka) — nie wcześniej, niż wkład przekroczy próg")
+	S.paid = paid_c
 	# --- ubrania widać na postaci w ekwipunku
 	for gid in ["czapka_daszek", "lancuch", "bluza_kaptur", "bojowki"]:
 		S.items[gid] = 1
