@@ -217,7 +217,13 @@ func run() -> void:
 		prev_w = float(sc.waste)
 		prev_m = float(sc.min)
 	ok(mono, "każda następna waga jest szybsza i nie gubi więcej niż poprzednia")
+	var top_scale: Node3D = null
+	for sp in G.world.scale_spots:
+		if is_instance_valid(sp.node):
+			top_scale = sp.node
+	ok(top_scale != null and top_scale.get_child_count() > 0 and G.world.scale_spots.size() >= 1, "po zakupie na stole staje model nowej wagi (%d stołów)" % G.world.scale_spots.size())
 	S["scale"] = 0
+	G.world.refresh_scales()
 	S.cash = cash_keep
 	S.lvl = lvl_keep
 	S.stats.packed = packed_keep

@@ -2779,6 +2779,8 @@ func scale_buy(i: int) -> bool:
 	S.cash -= float(sc.price)
 	S.stats.spent = float(S.stats.spent) + float(sc.price)
 	S["scale"] = i
+	if world != null:
+		world.refresh_scales()
 	Sfx.play("good")
 	notify("Kupiono: %s. Stoi już na Twoim stole." % String(sc.name), "good")
 	return true

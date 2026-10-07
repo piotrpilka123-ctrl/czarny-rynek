@@ -4477,7 +4477,7 @@ func _interiors() -> void:
 		Models.box(g2, Vector3(1.3, 0.32, 0.5), Vector3(sx2 - 1.4, 1.21, -1.2), Models.mat("cfe6ee", 0.08, 0.0, 0.0, 0.25), Vector3.ZERO, false)
 		for k in range(9):
 			Models.box(g2, Vector3(0.1, 0.05 + (k % 3) * 0.03, 0.14), Vector3(sx2 - 1.92 + k * 0.13, 1.08 + (k % 3) * 0.015, -1.2), Models.mat(["c8322a", "e8c22a", "2a6ac8", "3a8a4a"][k % 4], 0.6), Vector3(0, k * 0.2, 0), false)
-	_scale_set(g2, Vector3(sx2 + 0.35, 1.045, -1.15))
+	_scale_set(g2, Vector3(sx2 + 0.35, 1.045, -1.15), 0)
 	Interior.papers(g2, Vector3(sx2 - 0.3, 1.045, -1.05), 0.2, 3)
 	Interior.mug(g2, Vector3(sx2 + 2.1, 1.045, -1.3), "3a5a8a")
 	# regały za ladą: towar stoi rzędami w przegródkach
@@ -5091,7 +5091,7 @@ func _lab_room() -> void:
 			var gl := _room_light(g, cx + 6.1, float(bz[k]), 1.35, 0.35, Color(1.0, 0.72, 0.35) if k == 0 else Color(0.6, 1.0, 0.6), 2.4)
 			gl.shadow_enabled = false
 	# trzeci stół: waga, tace z proszkiem, zgrzewarka
-	_scale_set(g, Vector3(cx + 6.45, 0.9, 0.5))
+	_scale_set(g, Vector3(cx + 6.45, 0.9, 0.5), 3)
 	for e in [[0.9, 0.0], [1.35, 0.4]]:
 		Models.box(g, Vector3(0.34, 0.02, 0.26), Vector3(cx + 6.45, 0.91, e[0]), Models.mat("9aa0a6", 0.35, 0.8), Vector3(0, e[1], 0), false)
 		Models.box(g, Vector3(0.3, 0.025, 0.22), Vector3(cx + 6.45, 0.925, e[0]), Models.mat("f4f4f0", 0.95), Vector3(0, e[1], 0), false)
@@ -5171,7 +5171,7 @@ func _lab_room() -> void:
 	var tx := cx + 1.6
 	var tz := 2.4
 	_lm(g, "lab_stol", tx, tz, PI, 0.0, Vector2(1.02, 0.45))
-	_scale_set(g, Vector3(tx - 0.62, 0.9, tz))
+	_scale_set(g, Vector3(tx - 0.62, 0.9, tz), 2)
 	var st1 := Stations.brick_stack("snieg", 6)
 	st1.position = Vector3(tx + 0.0, 0.9, tz - 0.1)
 	g.add_child(st1)
@@ -5248,10 +5248,24 @@ func _lab_room() -> void:
 
 
 ## waga kuchenna, woreczki i towar na stole
-func _scale_set(g: Node3D, at: Vector3) -> void:
-	var wm: Node3D = Stations.model("dom_waga")
+## modele wag według klasy (D.SCALES): kuchenna, jubilerska, analityczna z osłoną, półautomat z lejkiem
+const SCALE_MODELS := ["waga_kuchenna", "waga_jubilerska", "waga_lab", "waga_dozownik"]
+var scale_spots: Array = []      # [{g, at, node}] — stoły, na których stoi waga (do podmiany po zakupie lepszej)
+
+
+## fixed >= 0: zawsze ta klasa wagi (laboratorium w hucie ma swoją, niezależnie od tego, co kupił gracz)
+func _scale_set(g: Node3D, at: Vector3, fixed := -1) -> void:
+	var tier: int = clampi(G.scale() if fixed < 0 else fixed, 0, SCALE_MODELS.size() - 1)
+	var wm: Node3D = Stations.model(SCALE_MODELS[tier])
 	if wm != null:
-		# waga z wyświetlaczem, woreczki, pojemnik i łyżeczka z modelu; na szalce porcja towaru
+		wm.position = at
+		g.add_child(wm)
+		if fixed < 0:
+			scale_spots.append({"g": g, "at": at, "node": wm})
+		return
+	wm = Stations.model("dom_waga")
+	if wm != null:
+		# starszy model: waga z wyświetlaczem, pojemnik i łyżeczka; na szalce porcja towaru
 		wm.position = at
 		g.add_child(wm)
 		Models.sphere(wm, 0.03, Vector3(0, 0.046, -0.03), Models.mat("3f7a3a", 0.95), Vector3(1.3, 0.55, 1.1), false, 8)
@@ -5266,6 +5280,18 @@ func _scale_set(g: Node3D, at: Vector3) -> void:
 		Models.box(s, Vector3(0.07, 0.006, 0.1), Vector3(0.26 + (k % 2) * 0.02, 0.004 + k * 0.006, -0.05 + k * 0.012), Models.mat("dfe6ea", 0.3, 0.0, 0.0, 0.55), Vector3(0, k * 0.2, 0), false)
 	Models.sphere(s, 0.035, Vector3(0, 0.06, -0.03), Models.mat("3f7a3a", 0.95), Vector3(1.2, 0.6, 1.1), false, 8)
 	Models.box(s, Vector3(0.12, 0.05, 0.18), Vector3(-0.3, 0.025, 0.02), Models.mat("14161a", 0.6), Vector3(0, 0.3, 0), false)
+
+
+## po zakupie lepszej wagi: na każdym stole staje nowy model
+func refresh_scales() -> void:
+	var old: Array = scale_spots
+	scale_spots = []
+	for sp in old:
+		if not is_instance_valid(sp.g):
+			continue
+		if is_instance_valid(sp.node):
+			sp.node.queue_free()
+		_scale_set(sp.g, sp.at)
 
 
 # ================================================================ meble w kryjówkach
