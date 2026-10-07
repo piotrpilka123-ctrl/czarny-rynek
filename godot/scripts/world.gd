@@ -773,6 +773,18 @@ func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
 			elif mi.visible:
 				root.add_child(mi.duplicate())
 			n_out += 1
+	for n in get_children():
+		# grupy stojące wprost w świecie (drzwi wejściowe z daszkiem, ognisko…) — też idą do pliku
+		if n == city or n == body or not (n is Node3D) or n is VisualInstance3D or n is AudioStreamPlayer3D or n is GPUParticles3D:
+			continue
+		var gp: Vector3 = (n as Node3D).position
+		if n.get_child_count() == 0 or Vector2(gp.x, gp.z).distance_to(wc) > wr:
+			continue
+		var gd0 := n.duplicate()
+		(gd0 as Node3D).visible = true
+		_glb_fix(gd0)
+		root.add_child(gd0)
+		n_out += 1
 	for it in litter_items:
 		var lt: Transform3D = it[1]
 		if Vector2(lt.origin.x, lt.origin.z).distance_to(wc) < wr:
@@ -2075,8 +2087,23 @@ func _garages() -> void:
 			if row == 0 and (i == 4 or i == 5):
 				continue
 			var c := Models.col(cols[(i + row * 3) % 10])
-			Models.box(city, Vector3(2.9, 2.2, 0.08), Vector3(x, by + 1.1, fz), Props.pbr("painted_metal_shutter" if (i + row) % 3 != 0 else "rusted_shutter", 0.5, c * 1.5))
-			_sign(str(i + 1 + row * 11), Vector3(x + 1.0, by + 2.3, fz + (0.06 if row == 0 else -0.06)), Color(0.9, 0.9, 0.85), 40, 0.0 if row == 0 else PI, 0.006, 6)
+			if not _garage_door(x, by, z0 + 6.0 if row == 0 else z0, 0.0 if row == 0 else PI, c * 1.5):
+				Models.box(city, Vector3(2.9, 2.2, 0.08), Vector3(x, by + 1.1, fz), Props.pbr("painted_metal_shutter" if (i + row) % 3 != 0 else "rusted_shutter", 0.5, c * 1.5))
+			_sign(str(i + 1 + row * 11), Vector3(x, by + 2.44, fz + (0.06 if row == 0 else -0.06)), Color(0.9, 0.9, 0.85), 36, 0.0 if row == 0 else PI, 0.006, 6)
+
+
+## dwuskrzydłowa brama garażu z modelu (rama, zawiasy, rygiel z kłódką) w kolorze farby; false, gdy modelu brak
+func _garage_door(x: float, y: float, z: float, ry: float, paint: Color) -> bool:
+	var gd := Stations.model("garaz_brama")
+	if gd == null:
+		return false
+	Interior._tint(gd, Color(minf(paint.r, 1.0), minf(paint.g, 1.0), minf(paint.b, 1.0)))
+	gd.position = Vector3(x, y, z)
+	gd.rotation.y = ry
+	gd.scale = Vector3(INV, 1.0, INV)
+	city.add_child(gd)
+	Props.set_range(gd, 120.0)
+	return true
 
 
 func _stairs(sx: float) -> void:
@@ -2615,8 +2642,9 @@ func _garage_row_ns(x0: float, z0: float, z1: float, west: bool, first_no: int) 
 	var cols := ["8a8f94", "6a7a6a", "7a6a5a", "5a6a7a", "8a7a5a", "767676"]
 	for i in range(n):
 		var z := z0 + 3.0 + i * 6.0
-		Models.box(city, Vector3(0.08, 2.2, 4.2), Vector3(fx, by + 1.1, z), Props.pbr("painted_metal_shutter" if i % 3 != 0 else "rusted_shutter", 0.5, Models.col(cols[i % 6]) * 1.5))
-		_sign(str(first_no + i), Vector3(fx + (-0.06 if west else 0.06), by + 2.3, z + 1.4), Color(0.9, 0.9, 0.85), 40, -PI / 2.0 if west else PI / 2.0, 0.006, 6)
+		if not _garage_door(x0 if west else x0 + 6.0, by, z, -PI / 2.0 if west else PI / 2.0, Models.col(cols[i % 6]) * 1.5):
+			Models.box(city, Vector3(0.08, 2.2, 4.2), Vector3(fx, by + 1.1, z), Props.pbr("painted_metal_shutter" if i % 3 != 0 else "rusted_shutter", 0.5, Models.col(cols[i % 6]) * 1.5))
+		_sign(str(first_no + i), Vector3(fx + (-0.06 if west else 0.06), by + 2.44, z), Color(0.9, 0.9, 0.85), 36, -PI / 2.0 if west else PI / 2.0, 0.006, 6)
 
 
 func _garage_row_ew(x0: float, x1: float, z0: float, north: bool, first_no: int) -> void:
@@ -2629,8 +2657,9 @@ func _garage_row_ew(x0: float, x1: float, z0: float, north: bool, first_no: int)
 	var cols := ["8a8f94", "6a7a6a", "7a6a5a", "5a6a7a", "8a7a5a", "767676"]
 	for i in range(int((x1 - x0) / 6.0)):
 		var x := x0 + 3.0 + i * 6.0
-		Models.box(city, Vector3(4.2, 2.2, 0.08), Vector3(x, by + 1.1, fz), Props.pbr("painted_metal_shutter" if i % 3 != 1 else "rusted_shutter", 0.5, Models.col(cols[(i + 2) % 6]) * 1.5))
-		_sign(str(first_no + i), Vector3(x + 1.4, by + 2.3, fz + (-0.06 if north else 0.06)), Color(0.9, 0.9, 0.85), 40, PI if north else 0.0, 0.006, 6)
+		if not _garage_door(x, by, z0 if north else z0 + 6.0, PI if north else 0.0, Models.col(cols[(i + 2) % 6]) * 1.5):
+			Models.box(city, Vector3(4.2, 2.2, 0.08), Vector3(x, by + 1.1, fz), Props.pbr("painted_metal_shutter" if i % 3 != 1 else "rusted_shutter", 0.5, Models.col(cols[(i + 2) % 6]) * 1.5))
+		_sign(str(first_no + i), Vector3(x, by + 2.44, fz + (-0.06 if north else 0.06)), Color(0.9, 0.9, 0.85), 36, PI if north else 0.0, 0.006, 6)
 
 
 ## mur lub płot z kolizją; kind: "mur" | "siatka" | "blacha"
