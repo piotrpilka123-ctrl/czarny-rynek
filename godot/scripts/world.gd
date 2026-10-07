@@ -1880,17 +1880,18 @@ func _bush(x: float, z: float, s := 1.0) -> void:
 ## Dym z komina: wolna smuga, która rośnie i rzednie, znoszona wiatrem na wschód. `top` = wylot komina w metrach
 ## świata, s = skala (1 = komin kotłowni, 2+ = kominy huty za murem), tone = jasność dymu (ciemniejszy = przemysłowy).
 func _chimney_smoke(top: Vector3, s := 1.0, tone := 0.62) -> void:
-	var p: GPUParticles3D = Props._particles(int(24 + 10 * s), 16.0, 2.4 * s, false,
-		[Color(tone, tone, tone, 0.0), Color(tone, tone, tone, 0.5), Color(tone * 1.08, tone * 1.08, tone * 1.1, 0.26), Color(tone * 1.15, tone * 1.15, tone * 1.18, 0.0)],
+	var p: GPUParticles3D = Props._particles(int(46 + 16 * s), 20.0, 5.0 * s, false,
+		[Color(tone, tone, tone, 0.0), Color(tone, tone, tone, 0.62), Color(tone * 1.08, tone * 1.08, tone * 1.1, 0.36), Color(tone * 1.15, tone * 1.15, tone * 1.18, 0.0)],
 		Vector2(1.5, 2.4) * sqrt(s), 0.4 * s, true)
 	var pm: ParticleProcessMaterial = p.process_material
 	pm.spread = 8.0
-	pm.gravity = Vector3(0.5, 0.1, 0.16)
+	pm.gravity = Vector3(0.14, 0.02, 0.05)
 	pm.damping_min = 0.1
 	pm.damping_max = 0.22
 	pm.scale_min = 0.7
 	pm.scale_max = 1.3
 	var sc := Curve.new()
+	sc.max_value = 5.0
 	sc.add_point(Vector2(0.0, 0.45))
 	sc.add_point(Vector2(0.25, 1.6))
 	sc.add_point(Vector2(1.0, 4.2))
