@@ -88,10 +88,20 @@ func run() -> void:
 		lap.act.call()
 	G.story_tick()
 	ok(G.flag("tut_save") and G.cur_step().id == "room_stash", "zapis przy laptopie zalicza pierwszy krok")
+	# na start w kieszeni leży notes z numerami: samouczek każe przenieść go do szafy (samo otwarcie nie wystarcza)
+	ok(G.item("notes") == 1 and absf(G.carry_total() - 1.0) < 0.01 and String(G.cur_step().text.call()).contains("notes"), "na start: notes z numerami w kieszeni, samouczek każe go schować")
 	U.open_stash("safe")
 	await frames(2)
+	G.story_tick()
+	ok(G.cur_step().id == "room_stash" and U.inv.room == "safe", "samo otwarcie szafy nie zalicza kroku")
+	var note_e := {}
+	for en0 in G.entries(S.inv):
+		if String(en0.id) == "notes":
+			note_e = en0
+	ok(not note_e.is_empty() and G.move_entry("safe", note_e, true, 1.0) == 1.0 and G.item("notes") == 0 and int(G.store_items(S.stash.safe).get("notes", 0)) == 1, "notes przeciągnięty do szafy")
 	U.close_all()
 	G.story_tick()
+	ok(G.cur_step().id == "room_bench" and G.carry_total() < 0.01, "krok ze skrytką zaliczony, kieszenie puste")
 	U.open_pack("safe")
 	await frames(2)
 	U.close_all()
@@ -833,8 +843,8 @@ func _sim_one(days: int, run_i: int) -> String:
 	var S: Dictionary = G.S
 	var skill: float = [0.5, 0.7, 0.9][run_i % 3]      # jak dobrze gracz się targuje i waży
 	var invest: bool = M.args.has("invest")
-	for fk in ["tut_save", "tut_stash", "tut_bench", "wiktor_sms"]:
-		S.flags[fk] = true
+	G.tour_skip()
+	S.flags["wiktor_sms"] = true
 	S.flags["read_wiktor"] = true
 	var lazy := float(M.args.get("lazy", "0"))  # jaka część zamówień przepada (gracz nie zdąża)
 	var free: bool = M.args.has("free")       # bez wkładu do zebrania: mierzymy sam zysk

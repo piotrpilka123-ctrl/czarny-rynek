@@ -83,6 +83,22 @@ static func run(T) -> void:
 	var bags := int(S.items.woreczki)
 	var ares: Dictionary = G.arrest_apply()
 	T.ok(G.carry_goods() < 0.01 and int(S.items.chemia) == 0 and int(S.items.kastet) == 0 and int(S.items.woreczki) == bags, "zatrzymanie: towar, chemia i kastet przepadają, woreczki zostają")
+	# notes z numerami przy sobie w chwili zatrzymania: trafia do akt i przyspiesza śledztwo
+	var inv_keep_n: float = S.invest
+	var cash_keep_n: float = S.cash
+	var t_keep_n: float = S.t
+	S.items["notes"] = 1
+	var inv_n: float = S.invest
+	var ares_n: Dictionary = G.arrest_apply()
+	var with_notes: float = S.invest - inv_n
+	S.arrests = int(S.arrests) - 1
+	inv_n = S.invest
+	G.arrest_apply()
+	S.arrests = int(S.arrests) - 1
+	T.ok(bool(ares_n.notes) and G.item("notes") == 0 and G.loot_text(ares_n).contains("notes") and with_notes > S.invest - inv_n + 5.0, "notes znaleziony przy zatrzymaniu: przepada i śledztwo rusza szybciej (+%d wobec +%d)" % [int(with_notes), int(S.invest - inv_n)])
+	S.invest = inv_keep_n
+	S.cash = cash_keep_n
+	S.t = t_keep_n
 	T.ok(float(ares.fine) > 0.0 and not ares.big and not G.watched() and ares.weapon, "mała gotówka: grzywna, zarzut za broń, bez węszenia")
 	var inv_small: float = S.invest
 	S.invest = 0.0

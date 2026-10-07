@@ -107,7 +107,7 @@ func new_state() -> Dictionary:
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "rank": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store(), "loot": new_store()},
-		"items": {"woreczki": 0, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
+		"items": {"notes": 1, "woreczki": 0, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
@@ -1479,7 +1479,7 @@ func arrest_apply() -> Dictionary:
 	Sfx.siren(false)
 	if npcs != null:
 		npcs.end_chase()
-	add_invest(10.0 + (5.0 if res.weapon else 0.0))
+	add_invest(10.0 + (5.0 if res.weapon else 0.0) + (12.0 if res.get("notes", false) else 0.0))
 	if res.big:
 		add_invest(D.CASH_SUSPECT_INVEST)
 		S.flags["watch_until"] = S.t + D.WATCH_DAYS * 1440.0
@@ -1556,6 +1556,10 @@ func confiscate() -> Dictionary:
 		if D.ITEMS[id].get("illegal", false) and int(S.items.get(id, 0)) > 0:
 			res.items = int(res.items) + int(S.items[id])
 			S.items[id] = 0
+	# notes z numerami to nie kontrabanda, ale dowód: trafia do akt
+	res["notes"] = item("notes") > 0
+	if res.notes:
+		S.items["notes"] = 0
 	return res
 
 
@@ -1565,6 +1569,8 @@ func loot_text(res: Dictionary) -> String:
 		parts.append(grams(res.goods) + " towaru")
 	if int(res.items) > 0:
 		parts.append("%d szt. nielegalnych rzeczy" % int(res.items))
+	if res.get("notes", false):
+		parts.append("notes z numerami (trafił do akt)")
 	return ", ".join(parts) if not parts.is_empty() else "nic"
 
 
@@ -3255,8 +3261,8 @@ func _build_story() -> void:
 		# najpierw oprowadzenie po kawalerce: zapis gry, skrytka, waga — dopiero potem pierwsza paczka
 		{"ch": "Rozdział 1: Po nalocie", "id": "room_save", "text": func(): return "Rozejrzyj się po wynajętej kawalerce. Podejdź do laptopa na stole, naceluj na niego i naciśnij [E] — tylko tak zapisujesz grę.",
 			"done": func(): return flag("tut_save"), "marker": _laptop_marker},
-		{"id": "room_stash", "text": func(): return "Szafa pod ścianą to Twoja skrytka — towar i gotówka są w niej bezpieczne. Otwórz ją [E].",
-			"done": func(): return flag("tut_stash"), "marker": _stash_marker},
+		{"id": "room_stash", "text": func(): return "W kieszeni masz notes z numerami klientów. Przy sobie to dowód, w szafie jest bezpieczny. Otwórz szafę pod ścianą [E] i przeciągnij notes na jej stronę." if item("notes") > 0 else "Szafa pod ścianą to Twoja skrytka — towar i gotówka są w niej bezpieczne. Otwórz ją [E].",
+			"done": func(): return int(store_items(S.stash.safe).get("notes", 0)) >= 1 or (flag("tut_stash") and item("notes") <= 0), "marker": _stash_marker},
 		{"id": "room_bench", "text": func(): return "Na stole stoi waga kuchenna. Kiedyś robili to za Ciebie inni — teraz porcjujesz sam. Obejrzyj ją [E].",
 			"done": func(): return flag("tut_bench"), "marker": _bench_marker, "on_done": _on_tour_done},
 		{"id": "phone", "text": func(): return "Ktoś wsunął paczkę pod drzwi. Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
@@ -3317,6 +3323,15 @@ func _has_furn(room: String, fn: String) -> bool:
 		if furn_def(it.f)["func"] == fn:
 			return true
 	return false
+
+
+## pominięcie oprowadzenia (testy, zwiastun, szybki start): flagi jak po obejrzeniu kawalerki, notes leży już w szafie
+func tour_skip() -> void:
+	for fk in ["tut_save", "tut_stash", "tut_bench"]:
+		S.flags[fk] = true
+	if item("notes") > 0:
+		S.items["notes"] = 0
+		store_items(S.stash.safe)["notes"] = 1
 
 
 ## liczba kroków oprowadzenia przed krokiem „phone” (do przeliczania starych numerów kroków)
@@ -3559,6 +3574,9 @@ func state_from_save(data: Dictionary) -> Dictionary:
 			base.skills[pair[1]] = true
 	if not (base.get("owned") is Dictionary):
 		base["owned"] = {}
+	# w starszych zapisach notesu nie było — nie pojawia się nagle w kieszeni
+	if not (data.get("items") is Dictionary and data.items.has("notes")):
+		base.items["notes"] = 0
 	# zapis sprzed „ekipy Wiktora”: ranga wynika z tego, co już oddano; plecak za pierwszy awans dostaje się od razu
 	if not data.has("rank"):
 		var r0 := 0

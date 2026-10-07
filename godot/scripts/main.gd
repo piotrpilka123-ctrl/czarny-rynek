@@ -1983,8 +1983,8 @@ func _apply_test_args() -> void:
 		S.sp = int(args.lvl) - 1
 	if args.has("step"):
 		S.step = int(args.step) + G.TOUR_STEPS
-		for fk in ["tut_save", "tut_stash", "tut_bench", "wiktor_sms"]:
-			S.flags[fk] = true
+		G.tour_skip()
+		S.flags["wiktor_sms"] = true
 		S.flags["read_wiktor"] = true
 		S.flags["got_first"] = true
 		S.flags["hurt_on"] = true

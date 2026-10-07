@@ -318,6 +318,45 @@ def phone(name):
     save(im, name)
 
 
+def notebook_icon(name):
+    """czarny notes z gumką, pożółkłe kartki, zakładka i ołówek — notes z numerami klientów"""
+    im = canvas()
+    d = ImageDraw.Draw(im)
+    lay = Image.new('RGBA', (W, W), (0, 0, 0, 0))
+    dl = ImageDraw.Draw(lay)
+    # kartki wystające spod okładki (prawy i dolny brzeg)
+    dl.rounded_rectangle([P(50), P(26), P(144), P(168)], P(7), fill=(226, 216, 190, 255))
+    for i in range(6):
+        y = P(34) + i * P(22)
+        dl.line([P(141), y, P(141), y + P(14)], fill=(190, 178, 150, 255), width=P(1))
+    # okładka
+    dl.rounded_rectangle([P(44), P(22), P(138), P(164)], P(8), fill=(30, 32, 38, 255), outline=(70, 74, 84, 255), width=P(2))
+    dl.rounded_rectangle([P(44), P(22), P(58), P(164)], P(6), fill=(22, 23, 28, 255))
+    # faktura okładki: delikatne przeszycia
+    for i in range(9):
+        y = P(34) + i * P(14)
+        dl.line([P(62), y, P(132), y], fill=(36, 38, 46, 255), width=P(1))
+    # gumka zamykająca i zakładka
+    dl.rectangle([P(118), P(22), P(124), P(164)], fill=(150, 40, 34, 255))
+    dl.polygon([P(84), P(164), P(96), P(164), P(96), P(182), P(90), P(176), P(84), P(182)], fill=(196, 150, 40, 255))
+    # naklejka z odręcznym napisem
+    dl.rounded_rectangle([P(66), P(52), P(112), P(82)], P(3), fill=(236, 232, 220, 255))
+    dl.line([P(72), P(62), P(104), P(62)], fill=(60, 60, 70, 255), width=P(2))
+    dl.line([P(72), P(72), P(94), P(72)], fill=(60, 60, 70, 255), width=P(2))
+    im.alpha_composite(lay.rotate(-9, resample=Image.BICUBIC, center=(W // 2, W // 2)))
+    # ołówek oparty o notes
+    pen = Image.new('RGBA', (W, W), (0, 0, 0, 0))
+    dp = ImageDraw.Draw(pen)
+    dp.rectangle([P(92), P(20), P(102), P(150)], fill=(214, 168, 40, 255))
+    dp.rectangle([P(92), P(20), P(95), P(150)], fill=(236, 196, 70, 255))
+    dp.rectangle([P(92), P(12), P(102), P(22)], fill=(196, 96, 96, 255))
+    dp.rectangle([P(92), P(20), P(102), P(26)], fill=(170, 174, 180, 255))
+    dp.polygon([P(92), P(150), P(102), P(150), P(97), P(168)], fill=(222, 196, 150, 255))
+    dp.polygon([P(95), P(160), P(99), P(160), P(97), P(168)], fill=(40, 40, 44, 255))
+    im.alpha_composite(pen.rotate(38, resample=Image.BICUBIC, center=(W // 2, W // 2)))
+    save(im, name)
+
+
 def bottle(name, col, label):
     im = canvas()
     d = ImageDraw.Draw(im)
@@ -593,6 +632,7 @@ seeds('nasiona')
 pot('doniczka')
 phone('burner')
 knuckles_icon('kastet')
+notebook_icon('notes')
 balaclava_icon('ub_kominiarka')
 bottle('nawoz', (70, 130, 80), 'NAWÓZ')
 canister('chemia', (60, 90, 150), 'ODCZYNNIK')

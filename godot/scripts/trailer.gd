@@ -377,8 +377,7 @@ func run() -> void:
 	await frames(30)
 	if U.mode == "dialog":
 		U.close_all()
-	for fk in ["tut_save", "tut_stash", "tut_bench"]:
-		G.S.flags[fk] = true
+	G.tour_skip()
 	G._on_tour_done()
 	G.mods["sleeping"] = true          # żadnych losowych SMS-ów w trakcie nagrania
 	U.sms_banner.visible = false

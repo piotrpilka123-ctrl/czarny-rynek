@@ -152,6 +152,8 @@ const FILLER_NAMES := {"majeranek": "Majeranek", "cukier": "Cukier puder"}
 ## przedmioty: ile miejsca zajmuje jedna sztuka / gram i ile waży (w gramach)
 const ITEMS := {
 	"woreczki": {"name": "Woreczki strunowe", "icon": "woreczki", "size": 0.05, "w": 0.6, "unit": "szt.", "desc": "Puste woreczki do porcjowania. 1 woreczek = 1 porcja."},
+	"notes": {"name": "Notes z numerami", "icon": "notes", "size": 1.0, "w": 120.0, "unit": "szt.", "evidence": true,
+		"desc": "Numery klientów z osiedla — cała Twoja siatka. W szafie jest bezpieczny; znaleziony przy zatrzymaniu trafi do akt i przyspieszy śledztwo."},
 	"majeranek": {"name": "Majeranek", "icon": "majeranek", "size": 0.25, "w": 1.0, "unit": "g", "desc": "Przyprawa. Domieszana do marihuany podbija wagę i psuje jakość."},
 	"cukier": {"name": "Cukier puder", "icon": "cukier", "size": 0.2, "w": 1.0, "unit": "g", "desc": "Wypełniacz do proszków. Więcej gramów, gorszy towar."},
 	"doniczka": {"name": "Doniczka z ziemią", "icon": "doniczka", "size": 3.0, "w": 2200.0, "unit": "szt.", "desc": "Postaw w kryjówce [B], a potem posadź w niej nasiono."},
