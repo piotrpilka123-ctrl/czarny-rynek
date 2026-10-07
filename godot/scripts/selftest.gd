@@ -69,7 +69,7 @@ func run() -> void:
 	await frames(20)
 	var S: Dictionary = G.S
 	ok(G.running, "gra wystartowała")
-	ok(S.cash == float(D.START_CASH) and S.debt == float(D.START_DEBT), "stan początkowy: gotówka i dług")
+	ok(S.cash == float(D.START_CASH) and S.debt == float(D.START_DEBT), "stan początkowy: gotówka i pełny wkład do zebrania")
 	ok(G.client_count() == 0, "na starcie nie ma żadnego klienta")
 	ok(G.world.wp.size() > 40, "graf ścieżek zbudowany (%d węzłów)" % G.world.wp.size())
 	if U.mode == "dialog":
@@ -347,11 +347,11 @@ func run() -> void:
 	ok(U.mode == "inv" and U.inv.room == "wiktor" and G.move_limit("wiktor", {"kind": "bulk", "p": "dym", "pur": 100, "n": 2.0, "usize": 1.0}, true) == 0.0, "skrzynka Wiktora otwiera się jak skrytka, ale przyjmuje tylko gotówkę")
 	S.cash += 200.0
 	cash1 = S.cash
-	var rate0: float = float(D.DEBT_SCHEDULE[0].due)
+	var rate0: float = 100.0
 	G.move_cash("wiktor", true, owed0 + rate0 + 20.0)
 	U.close_all()
 	await frames(2)
-	ok(float(S.credit) <= 0.0 and absf(S.debt - (debt0 - rate0 - 20.0)) < 0.01 and absf(S.cash - (cash1 - owed0 - rate0 - 20.0)) < 0.01 and float(S.stash.wiktor.cash) < 0.01, "pieniądze ze skrzynki: rata i zeszyt według terminów, nadwyżka na dług")
+	ok(float(S.credit) <= 0.0 and absf(S.debt - (debt0 - rate0 - 20.0)) < 0.01 and absf(S.cash - (cash1 - owed0 - rate0 - 20.0)) < 0.01 and float(S.stash.wiktor.cash) < 0.01, "pieniądze ze skrzynki: najpierw zeszyt, cała nadwyżka na wkład")
 	G.story_tick()
 	G.story_tick()
 	ok(float(S.credit) <= 0.0 and G.flag("hurt_on"), "zeszyt spłacony, zamówienia odblokowane")
@@ -787,10 +787,10 @@ func run() -> void:
 	S = G.S
 	S.cash = 30000.0
 	G.pay_debt(1e9)
-	ok(S.debt <= 0.0, "spłata całego długu")
+	ok(S.debt <= 0.0 and int(S.rank) == D.RANKS.size() - 1 and G.rank_next().is_empty() and G.has_perk("wolny"), "pełny wkład: Kuba zostaje wspólnikiem (%s)" % String(G.rank_def().name))
 	await get_tree().create_timer(1.0).timeout
 	await frames(5)
-	ok(U.mode == "end" or not G.running, "zakończenie po spłacie długu")
+	ok(U.mode == "end" or not G.running, "zakończenie po zebraniu pełnego wkładu")
 	print("TEST PODSUMOWANIE: %s (%d błędów)" % ["WSZYSTKO OK" if fails == 0 else "SĄ BŁĘDY", fails])
 	get_tree().quit(1 if fails > 0 else 0)
 
@@ -837,7 +837,7 @@ func _sim_one(days: int, run_i: int) -> String:
 		S.flags[fk] = true
 	S.flags["read_wiktor"] = true
 	var lazy := float(M.args.get("lazy", "0"))  # jaka część zamówień przepada (gracz nie zdąża)
-	var free: bool = M.args.has("free")       # bez długu: mierzymy sam zysk
+	var free: bool = M.args.has("free")       # bez wkładu do zebrania: mierzymy sam zysk
 	if free:
 		S.debt = 0.0
 	var last_day := 0
@@ -1037,19 +1037,16 @@ func _sim_one(days: int, run_i: int) -> String:
 				print("ZYSK %d d%02d | poz %2d | majątek %6d | klienci %2d | transakcje %3d | przychód %6d" % [run_i + 1, last_day, int(S.lvl), int(S.cash + stash_cash + stock_v - float(S.credit) - 60.0), G.client_count(), int(S.stats.deals), int(S.stats.earned)])
 			if M.args.has("simdbg"):
 				print("SIMDBG %d d%02d krok=%s packed=%d sold=%d woreczki=%d bulk=%s drops=%d zam=%d flagi=%s" % [run_i + 1, last_day, String(G.cur_step().get("id", "?")), int(S.stats.packed), int(S.stats.sold), G.item_at("safe", "woreczki"), str(G.bench_bulk("safe")), S.drops.size(), S.orders.size(), str(S.flags.keys())])
-			print("SIM %d d%02d | poz %2d | gotówka %5d | spłacono %5d | dług %5d | zeszyt %4d | klienci %2d | transakcje %3d | zarobione %6d | wpadki %d | przegapione %d | uprawa %4d g | synteza %4d g | naloty %d" % [
+			print("SIM %d d%02d | poz %2d | gotówka %5d | wkład %5d | brakuje %5d | zeszyt %4d | klienci %2d | transakcje %3d | zarobione %6d | wpadki %d | przegapione %d | uprawa %4d g | synteza %4d g | naloty %d" % [
 				run_i + 1, last_day, int(S.lvl), int(S.cash + stash_cash), int(S.paid), int(S.debt), int(S.credit), G.client_count(), int(S.stats.deals), int(S.stats.earned), int(S.strikes), missed,
 				int(S.stats.get("grown", 0)), int(S.stats.get("cooked", 0)), int(S.stats.get("raids", 0))] + " | skup %4d g" % int(S.stats.get("bulk_sold", 0)))
-		if int(S.strikes) >= D.MAX_STRIKES:
-			lost = "PRZEGRANA (dług) w dniu %d" % G.day()
-			break
 		if S.debt <= 0.0 and not free:
-			lost = "DŁUG SPŁACONY w dniu %d" % G.day()
+			lost = "WSPÓLNIK w dniu %d" % G.day()
 			break
 		if guard % 400 == 0:
 			await get_tree().process_frame
 	if lost == "":
-		lost = "koniec symulacji: dzień %d, dług %d, spłacono %d" % [G.day(), int(S.debt), int(S.paid)]
+		lost = "koniec symulacji: dzień %d, ranga %s, wkład %d z %d" % [G.day(), String(G.rank_def().name), int(S.paid), int(D.START_DEBT)]
 	return "umiejętność gracza %.2f → %s, poziom %d, klienci %d, transakcje %d, zarobione %d" % [skill, lost, int(S.lvl), G.client_count(), int(S.stats.deals), int(S.stats.earned)]
 
 

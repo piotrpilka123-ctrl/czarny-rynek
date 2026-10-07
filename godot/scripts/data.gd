@@ -436,7 +436,7 @@ const CALLS := [
 		"I niech pan nie ucieka przed patrolem na ich oczach. Najpierw krzyczą, potem strzelają w powietrze, a potem już nie w powietrze. Do widzenia."]},
 	{"id": "szpital", "who": "Wiktor", "hospital": 1, "hour": [9.0, 22.0], "lines": [
 		"Słyszałem, że leżałeś na Emergency. Kwiatów nie wysłałem, nie obrażaj się.",
-		"Leżący człowiek nie zarabia, a odsetki chodzą dalej, czy stoisz, czy leżysz. To nie złośliwość, to matematyka.",
+		"Leżący człowiek nie zarabia, a dzielnica nie czeka. Jak cię nie ma, ktoś inny sprzedaje twoim klientom.",
 		{"n": "Ty", "t": "Ktoś mi wyczyścił kieszenie, zanim trafiłem na salę."},
 		"Bo nosisz przy sobie za dużo. Na mieście masz mieć tyle, żeby nie było żal. Wracaj do pracy, Kuba."]},
 	{"id": "polowa", "who": "Wiktor", "paid": 12500.0, "hour": [9.0, 22.0], "lines": [
@@ -546,18 +546,24 @@ const SKILLS := [
 ]
 const BRANCHES := ["Handel", "Ulica", "Towar", "Kontakty"]
 
-# ---------------------------------------------------------------- dług i ryzyko
+# ---------------------------------------------------------------- ekipa Wiktora i ryzyko
 const START_CASH := 200
-const START_DEBT := 25000
-const DEBT_SCHEDULE := [
-	# początek jest łagodny (Wiktor wie, że startujesz od zera), raty rosną razem z interesem
-	{"day": 5, "due": 100}, {"day": 9, "due": 200}, {"day": 13, "due": 450}, {"day": 17, "due": 900}, {"day": 21, "due": 1800}, {"day": 25, "due": 3400},
-	{"day": 29, "due": 5800}, {"day": 33, "due": 9000}, {"day": 37, "due": 13000}, {"day": 41, "due": 18500}, {"day": 46, "due": 25000},
+## Nie zaczynasz z długiem: po wpadce w hucie Wiktor nie ma żalu, tylko bierze Cię do ekipy na najniższy szczebel.
+## To, co odnosisz do skrzynki ponad zeszyt za towar, jest Twoim WKŁADEM do interesu; kolejne progi wkładu („at”)
+## to awanse z konkretną nagrodą („perk”). „day” to tempo, na które liczy Wiktor: kto zdąży, dostaje premię
+## („bonus”) — kto nie zdąży, niczego nie traci. Nie ma odsetek, kar ani końca gry za spóźnienie.
+const START_DEBT := 25000     # pełny wkład: po nim jesteś wspólnikiem (w zapisie zostaje pod dawną nazwą „debt”)
+const RANKS := [
+	{"at": 0, "name": "Przydupas", "perk": "", "day": 0, "bonus": 0, "desc": "Chłopak od wszystkiego. Towar dostajesz na zeszyt."},
+	{"at": 300, "name": "Goniec", "perk": "plecak", "day": 6, "bonus": 60, "desc": "Wiktor daje Ci plecak szkolny — koniec z upychaniem towaru po kieszeniach."},
+	{"at": 1200, "name": "Detalista", "perk": "limit", "day": 14, "bonus": 150, "desc": "Zeszyt większy o połowę: bierzesz naraz więcej towaru."},
+	{"at": 3500, "name": "Dealer", "perk": "rabat1", "day": 22, "bonus": 350, "desc": "Hurt tańszy o 5%."},
+	{"at": 8000, "name": "Zaufany", "perk": "garaz", "day": 30, "bonus": 700, "desc": "Garaż 14 za pół ceny — Wiktor dogadał się z właścicielem."},
+	{"at": 15000, "name": "Prawa ręka", "perk": "rabat2", "day": 38, "bonus": 1200, "desc": "Hurt tańszy o kolejne 5% i dwa dni dłużej na spłatę zeszytu."},
+	{"at": 25000, "name": "Wspólnik", "perk": "wolny", "day": 46, "bonus": 0, "desc": "Dzielnica jest Twoja. Wiktor bierze już tylko za towar."},
 ]
-const DEBT_INTEREST := 0.01
 const LIVING_COST := 28
 const MAX_ARRESTS := 5
-const MAX_STRIKES := 3
 ## zeszyt u Wiktora: najmniejszy limit, termin spłaty (dni) i dłuższy termin na początku gry, gdy Wiktor jest wyrozumiały
 const CREDIT_BASE := 700
 const CREDIT_DAYS := 4

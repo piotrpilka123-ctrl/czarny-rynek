@@ -447,11 +447,12 @@ func prologue_act(what: String) -> void:
 
 func _intro() -> void:
 	ui.call_start("Nieznany numer", [
-		"Kuba. Żyjesz. To dobrze — bo mamy do pogadania. Tu Wiktor.",
-		"Partia, za którą zapłaciłem z góry, wyparowała. Czy spłonęła z twoją hutą, czy ktoś ci ją zabrał zza garaży — mało mnie to obchodzi. Dwadzieścia pięć tysięcy. Wisisz mi je.",
-		{"n": "Ty", "t": "Ktoś mnie tam czekał, Wiktor. Wiedział, którędy pójdę. Nie mam laboratorium, nie mam ludzi, nie mam nic. Siwy siedzi."},
-		"Masz głowę i parę numerów do detalistów z osiedla, którzy brali od twoich chłopaków. Zaczniesz od nich — sam, na ulicy, jak wszyscy.",
-		"Pierwszą paczkę dostaniesz ode mnie za darmo, na rozruch. Następne idą na zeszyt. Pierwsza rata za pięć dni. Zaraz wyślę ci SMS-em, co dalej. I Kuba — tym razem się wychylisz.",
+		"Kuba. Żyjesz. To dobrze. Tu Wiktor.",
+		"Wiem, co się stało w hucie i za garażami. Ktoś nas sprzedał — i to nie byłeś ty. Partia przepadła, trudno. Żalu do ciebie nie mam.",
+		{"n": "Ty", "t": "Nie mam laboratorium, nie mam ludzi, nie mam nic, Wiktor. Siwy siedzi."},
+		"Masz głowę i nie sypnąłeś. Takich ludzi mi trzeba. Biorę cię do siebie — zaczynasz od dołu, jako chłopak od wszystkiego. Dostajesz Hutniczą i osiedle.",
+		"Pierwszą paczkę masz ode mnie za darmo, na rozruch. Następne idą na zeszyt. Co zarobisz ponad towar, odnoś do skrzynki — to twój wkład. Im większy, tym wyżej u mnie stoisz: plecak, większy zeszyt, tańszy hurt, garaż. A jak dobijesz do dwudziestu pięciu tysięcy, robimy to razem, jako wspólnicy.",
+		"Zaraz wyślę ci SMS-em, co dalej. I Kuba — tego, kto nas sprzedał, znajdziemy. Powoli.",
 	], _intro_sms)
 
 
@@ -485,18 +486,18 @@ func ending(kind: String) -> void:
 	ui.set_prompt("")
 	match kind:
 		"wolnosc":
-			ui.show_ending("KWITA", "Ostatnia rata wpłacona. Wiktor przysłał jedno słowo: „Kwita”. Dług zniknął — ale interes, który odbudowałeś od zera, został. Co z nim zrobisz?", stats, true)
+			ui.show_ending("WSPÓLNIK", "Dwadzieścia pięć tysięcy wkładu. Wiktor przysłał jedno słowo: „Wspólnik”. Zaczynałeś jako chłopak od wszystkiego — teraz dzielnica jest tak samo Twoja, jak jego. Co z nią zrobisz?", stats, true)
 		"wyrok":
-			ui.show_ending("WYROK", "Piąte zatrzymanie. Tym razem prokurator nie miał litości — a dług nie zniknął, tylko czeka pod bramą.", stats)
+			ui.show_ending("WYROK", "Piąte zatrzymanie. Tym razem prokurator nie miał litości — a Wiktor znalazł sobie nowego chłopaka od wszystkiego.", stats)
 		_:
-			ui.show_ending("DŁUG WYGRAŁ", "Trzy razy zawiodłeś Wiktora. Jego ludzie nie mają poczucia humoru.", stats)
+			ui.show_ending("KONIEC", "Tym razem się nie udało. Dzielnica ma już nowego chłopaka od wszystkiego.", stats)
 
 
 func resume_free() -> void:
 	G.running = true
 	ui.close_all()
 	ui.hud.visible = true
-	G.notify("Jesteś wolny. Gra toczy się dalej — bez długu.", "level")
+	G.notify("Jesteś wspólnikiem. Gra toczy się dalej — na Twoich warunkach.", "level")
 
 
 # ================================================================ lokacje
@@ -2708,7 +2709,7 @@ func _test_ui(what: String) -> void:
 				bv.reading = 0.0
 		"stash": ui.open_stash("safe")
 		"skrzynka":
-			# skrzynka Wiktora: gotówka w kieszeni, dług na zeszycie
+			# skrzynka Wiktora: gotówka w kieszeni, towar na zeszycie
 			G.S.cash = 640.0
 			G.S.credit = 420.0
 			open_box()

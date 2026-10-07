@@ -273,7 +273,7 @@ func _first_time() -> void:
 		if shown:
 			drag_demo(false)
 	elif room == "wiktor":
-		shown = G.tip("skrzynka", "Skrzynka Wiktora", "Przeciągnij gotówkę z plecaka (po lewej) do skrzynki (po prawej) i wybierz kwotę. Gdy zamkniesz okno, Wiktor zabierze to, co ma bliższy termin — zeszyt za towar albo ratę długu — a nadwyżkę zaliczy na dług.")
+		shown = G.tip("skrzynka", "Skrzynka Wiktora", "Przeciągnij gotówkę z plecaka (po lewej) do skrzynki (po prawej) i wybierz kwotę. Gdy zamkniesz okno, Wiktor zabierze najpierw to, co wisisz za towar (zeszyt), a całą resztę zaliczy na Twój wkład — z wkładu biorą się awanse w jego ekipie.")
 		if shown:
 			drag_demo(true)
 	elif has_stash():
@@ -420,11 +420,13 @@ func _tab_inv() -> void:
 		var rv := K.vbox(8)
 		right.add_child(rv)
 		if room == "wiktor":
-			# skrzynka Wiktora: tylko gotówka; po zamknięciu schodzi z zeszytu, a nadwyżka z długu
+			# skrzynka Wiktora: tylko gotówka; po zamknięciu schodzi z zeszytu, a nadwyżka idzie na wkład
 			_title(rv, "banknote", "SKRZYNKA WIKTORA", "tylko gotówka")
 			var due := ("PO TERMINIE" if G.credit_overdue() else "do dnia %d" % (int(float(S.credit_due) / 1440.0) + 1)) if float(S.credit) > 0.0 else "nic nie wisisz"
-			rv.add_child(K.rich("Zeszyt za towar: [b]%s[/b]  %s\nDług brata: [b]%s[/b]" % [K.col(G.money(S.credit), K.C_WARN if float(S.credit) > 0.0 else K.C_ACC), K.col(due, K.C_DIM), K.col(G.money(S.debt), K.C_BAD)], 13))
-			_list(rv, st, "stash", "Przeciągnij tu gotówkę z plecaka. Gdy zamkniesz skrzynkę, Wiktor zabierze najpierw to, co wisisz za towar, a resztę zaliczy na dług.")
+			var nxr: Dictionary = G.rank_next()
+			rv.add_child(K.rich("Zeszyt za towar: [b]%s[/b]  %s\nTwój wkład: [b]%s[/b]  %s" % [K.col(G.money(S.credit), K.C_WARN if float(S.credit) > 0.0 else K.C_ACC), K.col(due, K.C_DIM), K.col(G.money(S.paid), K.C_ACC),
+				K.col(("do awansu na %s brakuje %s" % [String(nxr.name), G.money(maxf(0.0, float(nxr.at) - S.paid))]) if not nxr.is_empty() else "wspólnik", K.C_DIM)], 13))
+			_list(rv, st, "stash", "Przeciągnij tu gotówkę z plecaka. Gdy zamkniesz skrzynkę, Wiktor zabierze najpierw to, co wisisz za towar, a resztę zaliczy na Twój wkład.")
 		elif room == "loot":
 			# paczka / skrytka Wiktora / rzeczy na ziemi: bierzesz stąd do plecaka (na ziemię można też odkładać)
 			var L: Dictionary = G.loot
@@ -1139,7 +1141,8 @@ func _tab_char() -> void:
 	_title(mv, "siren", "POLICJA")
 	_stat(mv, "flame", "Gorąco", "%d%%" % int(S.heat), K.C_BAD if float(S.heat) > 60.0 else K.C_TXT)
 	_stat(mv, "search", "Śledztwo", "%d%%" % int(S.invest), K.C_BAD if float(S.invest) > 60.0 else K.C_TXT)
-	_stat(mv, "shield_alert", "Zatrzymania", "%d / %d" % [int(S.strikes), D.MAX_STRIKES], K.C_WARN if int(S.strikes) > 0 else K.C_TXT)
+	_stat(mv, "shield_alert", "Zatrzymania", "%d / %d" % [int(S.arrests), D.MAX_ARRESTS], K.C_WARN if int(S.arrests) > 0 else K.C_TXT)
+	_stat(mv, "users", "U Wiktora", String(G.rank_def().name), K.C_ACC)
 	_stat(mv, "wind", "Udane ucieczki", str(int(S.stats.escapes)))
 	# prawa: umiejętności i wyposażenie
 	var right := _frame(W_SIDE - 30.0, H_BODY)
@@ -1339,15 +1342,15 @@ func _tab_org() -> void:
 	var bv := K.vbox(7)
 	b.add_child(bv)
 	_title(bv, "notebook_pen", "ZESZYT")
-	var ni := G.next_installment()
-	if float(S.debt) > 0.0:
-		var txt := "Spłacono %s." % G.money(S.paid)
-		if not ni.is_empty():
-			var dl := int(ni.day) - G.day()
-			txt = "Rata: łącznie %s do końca dnia %d (%s)." % [G.money(ni.due), int(ni.day), "za %d dni" % dl if dl > 0 else ("DZIŚ" if dl == 0 else "PO TERMINIE")]
-		_note(bv, "skull", K.C_BAD, "Dług u Wiktora", txt, G.money(S.debt))
+	var nxo: Dictionary = G.rank_next()
+	if not nxo.is_empty():
+		var txt := "Do awansu na %s brakuje %s. Nagroda: %s" % [String(nxo.name), G.money(maxf(0.0, float(nxo.at) - S.paid)), String(nxo.desc)]
+		var dl := int(nxo.day) - G.day()
+		if int(nxo.bonus) > 0 and dl >= 0:
+			txt += " Premia za tempo %s — %s." % [G.money(nxo.bonus), "za %d dni" % dl if dl > 0 else "DZIŚ"]
+		_note(bv, "users", K.C_ACC, "Ekipa Wiktora: " + String(G.rank_def().name), txt, G.money(S.paid))
 	else:
-		_note(bv, "circle_check", K.C_ACC, "Dług u Wiktora", "Spłacony co do złotówki.", "0 zł")
+		_note(bv, "circle_check", K.C_ACC, "Ekipa Wiktora", "Jesteś wspólnikiem.", G.money(S.paid))
 	if float(S.credit) > 0.0:
 		_note(bv, "truck", K.C_WARN, "Towar na zeszyt u Wiktora", "Oddaj do końca dnia %d. Limit: %s." % [int(float(S.credit_due) / 1440.0) + 1, G.money(G.credit_limit())], G.money(S.credit))
 	else:
@@ -1397,7 +1400,7 @@ func _tab_org() -> void:
 		_note(list, "user", K.C_BLUE, "%s  •  %d transakcji" % [cdef.name, int(cs.get("deals", 0))], ", ".join(bits))
 	if not anyc:
 		list.add_child(K.wrap("Nie masz jeszcze żadnego klienta.", 13, K.C_DIM))
-	hint.text = "Organizer zbiera to, co łatwo przegapić: godziny spotkań, długi i paczki do odbioru"
+	hint.text = "Organizer zbiera to, co łatwo przegapić: godziny spotkań, zeszyt, awanse i paczki do odbioru"
 
 
 ## kosz: przerywana ramka, na którą upuszcza się rzeczy do wyrzucenia

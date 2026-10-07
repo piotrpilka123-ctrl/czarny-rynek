@@ -1018,7 +1018,7 @@ func _boom() -> void:
 				arig.root.position.y = W.height(arig.root.position.x, arig.root.position.z)
 			if li == 3 and ht >= 7.0:
 				li = 4
-				M.ui.cut_line("Kiedy się ocknąłem, nie było torby, Siwego ani laboratorium. Został dług.")
+				M.ui.cut_line("Kiedy się ocknąłem, nie było torby, Siwego ani laboratorium. Został mi telefon — i Wiktor.")
 		await get_tree().process_frame
 	M.ui.fade_rect.color.a = 1.0
 	_lids(-1.0)

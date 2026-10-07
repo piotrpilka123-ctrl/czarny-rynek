@@ -162,7 +162,7 @@ static func run(T) -> void:
 		if c.get("beat") != null or float(c.idle) > 100.0:
 			clean = false
 	T.ok(clean and pr.nodes.is_empty() if is_instance_valid(pr) else clean, "patrole wracają do zwykłej służby, rekwizyty posprzątane")
-	T.ok(U.mode == "dialog" and String(U.dlg.lines[0].t).contains("Wiktor"), "dzwoni Wiktor: dług za spaloną partię")
+	T.ok(U.mode == "dialog" and String(U.dlg.lines[0].t).contains("Wiktor"), "dzwoni Wiktor: bez żalu, bierze Kubę do ekipy")
 	await T.skip_dialog()
 	U.close_all()
 	T.ok(G.chapter().contains("Po nalocie") and String(G.cur_step().text.call()).contains("laptopa"), "rozdział 1 „Po nalocie”: samouczek w kawalerce")

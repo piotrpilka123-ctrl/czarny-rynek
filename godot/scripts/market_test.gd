@@ -66,18 +66,54 @@ static func run(T) -> void:
 	T.ok(float(S.inv.bulk.dym.get("100", 0.0)) == 10.0 and float(S.inv.bulk.szron.get("100", 0.0)) == 10.0, "w plecaku czysty towar: 10 g + 10 g")
 	T.ok(absf(float(S.credit_due) - (t_pick + D.CREDIT_DAYS_EARLY * 1440.0)) < 1.0 and G.credit_days() == D.CREDIT_DAYS_EARLY, "na początku Wiktor jest wyrozumiały: %d dni na spłatę" % G.credit_days())
 	T.ok(M.trust("wiktor") > 0.0, "po odbiorze rośnie zaufanie (%d)" % int(M.trust("wiktor")))
-	# skrzynka Wiktora: najpierw zeszyt, potem dług
+	# skrzynka Wiktora: najpierw zeszyt, reszta na wkład i awanse
 	var debt0: float = S.debt
-	var rate1: float = float(D.DEBT_SCHEDULE[0].due)
-	T.ok(float(D.DEBT_SCHEDULE[0].day) * 1440.0 < float(S.credit_due), "pierwsza rata długu wypada wcześniej niż termin zeszytu")
 	G.move_cash("wiktor", true, 300.0)
-	T.ok(G.box_settle() == 300.0 and S.paid == rate1 and float(S.credit) == 580.0 - (300.0 - rate1) and S.debt == debt0 - rate1 and float(S.stash.wiktor.cash) == 0.0,
-		"300 zł w skrzynce: najpierw rata z bliższym terminem (%d zł), reszta na zeszyt" % int(rate1))
-	S.credit_due = S.t + 60.0
+	T.ok(G.box_settle() == 300.0 and S.paid == 0.0 and float(S.credit) == 280.0 and S.debt == debt0 and float(S.stash.wiktor.cash) == 0.0,
+		"300 zł w skrzynce: najpierw schodzi zeszyt za towar (zostaje %d zł)" % int(S.credit))
 	var owed1: float = S.credit
 	G.move_cash("wiktor", true, 500.0)
-	T.ok(G.box_settle() == 500.0 and float(S.credit) == 0.0 and absf(S.debt - (debt0 - rate1 - (500.0 - owed1))) < 0.01, "kolejne 500 zł: reszta zeszytu, nadwyżka na dług brata")
-	T.ok(G.box_settle() == 0.0 and float(S.stats.box_paid) == 800.0, "pusta skrzynka nic nie zmienia")
+	T.ok(G.box_settle() == 500.0 and float(S.credit) == 0.0 and absf(S.paid - (500.0 - owed1)) < 0.01 and absf(S.debt - (debt0 - (500.0 - owed1))) < 0.01 and G.rank() == 0,
+		"kolejne 500 zł: reszta zeszytu, nadwyżka (%d zł) na wkład — jeszcze bez awansu" % int(S.paid))
+	# awans: próg 300 zł wkładu = Goniec; plecak już jest, więc Wiktor oddaje jego równowartość, a za tempo dokłada premię
+	var cash_r: float = S.cash
+	var lim_r: float = G.credit_limit()
+	G.move_cash("wiktor", true, 100.0)
+	G.box_settle()
+	var bonus_r: float = float(D.RANKS[1].bonus) if G.day() <= int(D.RANKS[1].day) else 0.0
+	T.ok(int(S.rank) == 1 and G.rank_def().name == "Goniec" and G.has_perk("plecak") and not G.has_perk("limit") and absf(S.cash - (cash_r - 100.0 + 380.0 + bonus_r)) < 0.01,
+		"300 zł wkładu: awans na Gońca, plecak (albo jego równowartość) i premia za tempo %d zł" % int(bonus_r))
+	T.ok((S.chats.wiktor as Array).back().text.contains("Awans"), "Wiktor pisze o awansie")
+	var unit_r: float = G.wholesale_unit("dym")
+	var gar_r: float = float(G.prop_def("garaz").price)
+	var paid_keep: float = S.paid
+	var debt_keep: float = S.debt
+	var rank_keep: int = S.rank
+	var cash_keep2: float = S.cash
+	S.cash = 30000.0
+	G.pay_debt(8000.0 - S.paid)
+	T.ok(int(S.rank) == 4 and G.has_perk("limit") and G.credit_limit() > lim_r * 1.3 and absf(G.wholesale_unit("dym") - unit_r * 0.95) < 0.001 and absf(float(G.prop_def("garaz").price) - gar_r * 0.5) < 0.01,
+		"Zaufany: zeszyt większy o połowę, hurt −5%%, garaż za pół ceny (%d zł)" % int(G.prop_def("garaz").price))
+	T.ok(G.next_installment().due == 15000.0 and String(G.rank_next().name) == "Prawa ręka", "następny szczebel: Prawa ręka przy 15 000 zł")
+	S.paid = paid_keep
+	S.debt = debt_keep
+	S["rank"] = rank_keep
+	S.cash = cash_keep2
+	# zeszyt po terminie: żadnych „wpadek” ani końca gry — ludzie Wiktora biorą gotówkę na poczet towaru
+	var cr_keep: float = S.credit
+	var due_keep: float = S.credit_due
+	S.credit = 400.0
+	S.cash = 500.0
+	var safe_keep: float = S.stash.safe.cash
+	S.stash.safe.cash = 0.0
+	G.collectors()
+	T.ok(S.cash == 300.0 and float(S.credit) == 200.0 and int(S.strikes) == 0, "zeszyt po terminie: 40%% gotówki idzie na poczet towaru, bez kar i liczenia wpadek")
+	S.credit = cr_keep
+	S.credit_due = due_keep
+	S.cash = cash_keep2
+	S.stash.safe.cash = safe_keep
+	M.add_trust("wiktor", 8.0)
+	T.ok(G.box_settle() == 0.0 and float(S.stats.box_paid) == 900.0, "pusta skrzynka nic nie zmienia")
 	# po terminie: blokada zamówień, a bez towaru — deska ratunku
 	S.inv = G.new_store()
 	S.credit = 400.0

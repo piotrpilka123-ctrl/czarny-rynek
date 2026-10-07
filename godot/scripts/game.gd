@@ -105,7 +105,7 @@ func new_state() -> Dictionary:
 	return {
 		"v": 3, "t": 9.0 * 60.0, "cash": float(D.START_CASH), "debt": float(D.START_DEBT), "paid": 0.0,
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
-		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
+		"heat": 0.0, "invest": 0.0, "strikes": 0, "rank": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store(), "loot": new_store()},
 		"items": {"woreczki": 0, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
@@ -1803,31 +1803,20 @@ func on_day() -> void:
 	if randf() < 0.34:
 		var st: float = S.t + randf_range(2.0, 14.0) * 60.0
 		S.weather = {"start": st, "end": st + randf_range(2.0, 7.0) * 60.0, "power": randf_range(0.5, 1.0)}
-	# odsetki i raty
-	if S.debt > 0.0 and d > 1 and (d - 1) % 7 == 0:
-		var add: float = round(S.debt * D.DEBT_INTEREST)
-		S.debt += add
-		chat("wiktor", "Tygodniowe odsetki od długu: %s. Zostało %s." % [money(add), money(S.debt)], false, true)
-	for r in D.DEBT_SCHEDULE:
-		if S.debt <= 0.0:
-			break
-		if d == int(r.day):
-			notify("Dziś mija termin raty: łącznie %s spłaconych (masz %s)." % [money(r.due), money(S.paid)], "warn")
-		if d == int(r.day) + 1:
-			if S.paid >= float(r.due):
-				chat("wiktor", "Rata zaliczona. Tak trzymaj.")
-			else:
-				missed_payment(float(r.due) - S.paid, "Rata nie wpłynęła.")
-	# zeszyt u Wiktora
+	# ekipa Wiktora: przypomnienie o premii za tempo (nic się nie traci, gdy się nie zdąży)
+	var goal := rank_next()
+	if not goal.is_empty() and int(goal.bonus) > 0 and d == int(goal.day) - 1 and S.paid < float(goal.at):
+		chat("wiktor", "Do jutra wieczorem brakuje ci %s do awansu na %s. Zdążysz — dorzucę %s premii. Nie zdążysz — też awansujesz, tylko bez premii." % [money(float(goal.at) - S.paid), String(goal.name), money(goal.bonus)])
+	# zeszyt u Wiktora: towar brany „na krechę” trzeba oddać w terminie
 	if float(S.credit) > 0.0 and S.t > float(S.credit_due):
 		var over := int((S.t - float(S.credit_due)) / 1440.0)
 		var pen: float = round(float(S.credit) * 0.06)
 		S.credit = float(S.credit) + pen
 		if over >= 3:
-			missed_payment(float(S.credit), "Zeszyt nie został spłacony.")
+			collectors()
 			S.credit_due = S.t + 2.0 * 1440.0
 		else:
-			chat("wiktor", "Zeszyt po terminie. Doliczam %s. Spłać, zanim przyjadę osobiście." % money(pen))
+			chat("wiktor", "Zeszyt po terminie. Doliczam %s. Oddaj za towar, zanim wyślę po to chłopaków." % money(pen))
 	for id in S.cust:
 		var cs: Dictionary = S.cust[id]
 		cs.sat = clampf(float(cs.sat) + (1.2 if float(cs.sat) < 60.0 else -0.4), 0.0, 100.0)
@@ -1838,31 +1827,23 @@ func on_day() -> void:
 	check_unlocks()
 
 
-func missed_payment(short: float, why: String) -> void:
-	# drobny niedobór (do 12% raty) to jeszcze nie „wpadka”: Wiktor dopisuje brakujące z procentem
-	var due := 0.0
-	for r in D.DEBT_SCHEDULE:
-		if S.paid < float(r.due):
-			due = float(r.due)
-			break
-	if why.begins_with("Rata") and due > 0.0 and short <= due * 0.12:
-		S.debt += round(short * 0.25)
-		chat("wiktor", "Brakuje %s do raty. Tym razem przymknę oko, ale dopisuję %s. Dopłać dziś." % [money(short), money(round(short * 0.25))])
-		notify("Rata prawie pełna — brakujące %s musisz dopłacić." % money(short), "warn")
-		return
-	S.strikes = int(S.strikes) + 1
-	var penalty: float = round(short * 0.15)
-	S.debt += penalty
+## Zeszyt trzy dni po terminie: ludzie Wiktora zabierają gotówkę na poczet towaru. To jedyna „kara” w ekipie —
+## bez liczenia wpadek i bez końca gry; po prostu towar wzięty na zeszyt trzeba oddać.
+func collectors() -> void:
 	var l1: float = round(S.cash * 0.4)
 	var l2: float = round(float(S.stash.safe.cash) * 0.2)
+	var took: float = minf(l1 + l2, float(S.credit))
+	l1 = minf(l1, took)
+	l2 = took - l1
 	S.cash -= l1
 	S.stash.safe.cash = float(S.stash.safe.cash) - l2
-	chat("wiktor", "%s Doliczam %s kary. Moi ludzie właśnie byli u ciebie. (%d/%d)" % [why, money(penalty), int(S.strikes), D.MAX_STRIKES])
-	if ui != null:
+	S.credit = float(S.credit) - took
+	S.stats["collected"] = int(S.stats.get("collected", 0)) + 1
+	Market.add_trust("wiktor", -8.0)
+	chat("wiktor", "Zeszyt leżał za długo. Chłopaki wzięli %s na poczet towaru. Zostało %s. Nie rób mi tego więcej, Kuba." % [money(took), money(S.credit)])
+	if ui != null and took > 0.0:
 		ui.hurt()
-	notify("Ludzie Wiktora zabrali %s!" % money(l1 + l2), "bad")
-	if int(S.strikes) >= D.MAX_STRIKES and main != null:
-		get_tree().create_timer(1.0).timeout.connect(func(): main.ending("dlug"))
+	notify("Ludzie Wiktora zabrali %s na poczet zeszytu." % money(took), "bad")
 
 
 func daily_costs() -> void:
@@ -1874,8 +1855,8 @@ func daily_costs() -> void:
 	S.stash.safe.cash = float(S.stash.safe.cash) - c
 	left -= c
 	if left > 0.0:
-		S.debt += round(left * 1.5)
-		notify("Nie stać Cię na życie. Wiktor „pożyczył” %s — dopisane do długu." % money(round(left * 1.5)), "bad")
+		_credit_add(round(left * 1.5))
+		notify("Nie stać Cię na życie. Wiktor „pożyczył” %s — dopisane do zeszytu." % money(round(left * 1.5)), "bad")
 	else:
 		notify("Koszty życia: −%s" % money(D.LIVING_COST))
 
@@ -2485,7 +2466,9 @@ func sting_chance() -> float:
 
 # ================================================================ hurt u Wiktora i skrytki
 func wholesale_unit(p: String, _high := false) -> float:
-	return float(D.PRODUCTS[p].cost) * float(S.cost_mult) * (0.92 if has_skill("rabat") else 1.0)
+	# awanse w ekipie: Dealer −5%, Prawa ręka kolejne −5%
+	var crew := 1.0 - (0.05 if has_perk("rabat1") else 0.0) - (0.05 if has_perk("rabat2") else 0.0)
+	return float(D.PRODUCTS[p].cost) * float(S.cost_mult) * (0.92 if has_skill("rabat") else 1.0) * crew
 
 
 func wholesale_price(p: String, g: int, _high := false) -> float:
@@ -2511,12 +2494,12 @@ func credit_limit() -> float:
 	for p in D.PRODUCTS:
 		if int(S.lvl) >= int(D.PRODUCTS[p].lvl):
 			top = maxf(top, float(D.PRODUCTS[p].cost) * wholesale_max() * (1.0 - wholesale_disc(wholesale_max())))
-	return maxf(float(D.CREDIT_BASE), round(top * 1.35 / 50.0) * 50.0) * (1.5 if has_skill("kredyt") else 1.0)
+	return maxf(float(D.CREDIT_BASE), round(top * 1.35 / 50.0) * 50.0) * (1.5 if has_skill("kredyt") else 1.0) * (1.5 if has_perk("limit") else 1.0)
 
 
 ## termin spłaty zeszytu w dniach — na początku Wiktor jest wyrozumiały
 func credit_days() -> int:
-	return (D.CREDIT_DAYS_EARLY if int(S.lvl) <= D.CREDIT_EARLY_LVL else D.CREDIT_DAYS) + (2 if has_skill("kredyt") else 0)
+	return (D.CREDIT_DAYS_EARLY if int(S.lvl) <= D.CREDIT_EARLY_LVL else D.CREDIT_DAYS) + (2 if has_skill("kredyt") else 0) + (2 if has_perk("rabat2") else 0)
 
 
 func credit_overdue() -> bool:
@@ -2645,31 +2628,15 @@ func starter_pickup() -> bool:
 	return true
 
 
-## Skrzynka Wiktora: z gotówki, która w niej leży, schodzi najpierw to, co ma bliższy termin — zeszyt za towar
-## albo najbliższa rata długu — potem drugie z nich, a nadwyżka idzie na resztę długu.
-## Woła się to przy zamykaniu skrzynki. Zwraca, ile Wiktor zabrał.
+## Skrzynka Wiktora: z gotówki, która w niej leży, schodzi najpierw zeszyt za towar, a cała reszta idzie na Twój
+## wkład do interesu (i awanse). Woła się to przy zamykaniu skrzynki. Zwraca, ile Wiktor zabrał.
 func box_settle() -> float:
 	var st: Dictionary = S.stash.wiktor
 	var have := float(st.cash)
 	if have < 1.0:
 		return 0.0
-	var ni := next_installment()
-	var rate: float = maxf(0.0, float(ni.get("due", 0.0)) - S.paid) if (not ni.is_empty() and S.debt > 0.0) else 0.0
-	rate = minf(rate, float(S.debt))
-	var rate_first: bool = rate > 0.0 and (float(S.credit) <= 0.0 or float(ni.day) * 1440.0 < float(S.credit_due))
-	var a := 0.0       # na zeszyt
-	var b := 0.0       # na dług
-	var left := have
-	for step in (["rate", "credit"] if rate_first else ["credit", "rate"]):
-		if step == "credit":
-			a = minf(left, float(S.credit))
-			left -= a
-		else:
-			b = minf(left, rate)
-			left -= b
-	# nadwyżka: reszta długu
-	var extra: float = minf(left, float(S.debt) - b)
-	b += maxf(0.0, extra)
+	var a: float = minf(have, float(S.credit))                       # na zeszyt
+	var b: float = minf(have - a, maxf(0.0, float(S.debt)))          # na wkład
 	S.credit = float(S.credit) - a
 	S.debt -= b
 	S.paid += b
@@ -2684,16 +2651,75 @@ func box_settle() -> float:
 	if a > 0.0:
 		parts.append("%s za towar" % money(a))
 	if b > 0.0:
-		parts.append("%s na dług" % money(b))
-	notify("Skrzynka Wiktora: %s. Zeszyt: %s, dług: %s." % [", ".join(parts), money(S.credit), money(S.debt)], "good")
-	chat("wiktor", "Odebrałem %s. Zeszyt: %s. Dług: %s." % [money(took), money(S.credit), money(S.debt)], false, true)
+		parts.append("%s na wkład" % money(b))
+	notify("Skrzynka Wiktora: %s. Zeszyt: %s, wkład: %s z %s." % [", ".join(parts), money(S.credit), money(S.paid), money(D.START_DEBT)], "good")
+	chat("wiktor", "Odebrałem %s. Zeszyt: %s. Twój wkład: %s." % [money(took), money(S.credit), money(S.paid)], false, true)
 	Market.add_trust("wiktor", took / 400.0)
+	rank_check()
+	return took
+
+
+# ================================================================ ekipa Wiktora: wkład, rangi, awanse
+## ranga wynikająca z wkładu (numer w D.RANKS)
+func rank() -> int:
+	var r := 0
+	for i in range(D.RANKS.size()):
+		if S.paid >= float(D.RANKS[i].at):
+			r = i
+	return r
+
+
+func rank_def() -> Dictionary:
+	return D.RANKS[clampi(int(S.get("rank", 0)), 0, D.RANKS.size() - 1)]
+
+
+## następny szczebel ({} = jesteś już wspólnikiem)
+func rank_next() -> Dictionary:
+	var i := int(S.get("rank", 0)) + 1
+	return D.RANKS[i] if i < D.RANKS.size() else {}
+
+
+## czy masz już nagrodę za któryś z awansów ("plecak", "limit", "rabat1", "garaz", "rabat2", "wolny")
+func has_perk(perk: String) -> bool:
+	for i in range(1, mini(int(S.get("rank", 0)), D.RANKS.size() - 1) + 1):
+		if String(D.RANKS[i].perk) == perk:
+			return true
+	return false
+
+
+## po każdej wpłacie: awanse, nagrody, premia za tempo; pełny wkład = wspólnik
+func rank_check() -> void:
+	var target := rank()
+	while int(S.get("rank", 0)) < target:
+		S["rank"] = int(S.get("rank", 0)) + 1
+		_promote(D.RANKS[int(S.rank)])
 	if S.debt <= 0.0 and not flag("free"):
 		S.flags["free"] = true
 		if ui != null:
 			ui.close_all()
-		get_tree().create_timer(0.4).timeout.connect(func(): main.ending("wolnosc"))
-	return took
+		if main != null:
+			get_tree().create_timer(0.4).timeout.connect(func(): main.ending("wolnosc"))
+
+
+func _promote(rd: Dictionary) -> void:
+	var extra := ""
+	match String(rd.perk):
+		"plecak":
+			if upg("plecak1"):
+				# plecak już masz: Wiktor oddaje jego równowartość
+				S.cash += 380.0
+				extra = " Plecak już masz, więc dostajesz 380 zł."
+			else:
+				S.upg["plecak1"] = true
+	var bonus := float(rd.get("bonus", 0))
+	if bonus > 0.0 and day() <= int(rd.day):
+		S.cash += bonus
+		S.stats["bonuses"] = float(S.stats.get("bonuses", 0.0)) + bonus
+		extra += " Premia za tempo: %s." % money(bonus)
+	add_xp(8.0 + 4.0 * float(S.rank))
+	Sfx.play("good")
+	chat("wiktor", "Awans. Od dziś jesteś u mnie: %s. %s%s" % [String(rd.name), String(rd.desc), extra])
+	notify("AWANS: %s. %s%s" % [String(rd.name), String(rd.desc), extra], "level")
 
 
 func pay_credit(amount: float) -> void:
@@ -2940,7 +2966,7 @@ func move_cash(room: String, deposit: bool, amount: float) -> void:
 		S.cash += n2
 
 
-# ================================================================ sklep, nieruchomości, meble, dług
+# ================================================================ sklep, nieruchomości, meble, wkład
 func shop_buy(id: String) -> bool:
 	for it in D.SHOP:
 		if it.id == id:
@@ -2987,6 +3013,12 @@ func use_burner() -> void:
 func prop_def(id: String) -> Dictionary:
 	for p in D.PROPERTIES:
 		if p.id == id:
+			# awans na Zaufanego: garaż za pół ceny (kopia, żeby nie ruszać danych)
+			if id == "garaz" and has_perk("garaz") and not owns(id):
+				var half: Dictionary = p.duplicate()
+				half["price"] = round(float(p.price) * 0.5)
+				half["full_price"] = float(p.price)
+				return half
 			return p
 	return {}
 
@@ -3196,6 +3228,7 @@ func furn_remove(room: String, idx: int) -> bool:
 	return true
 
 
+## wpłata na wkład prosto z kieszeni (testy, bot symulacji; w grze pieniądze idą przez skrzynkę)
 func pay_debt(amount: float) -> void:
 	var n: float = minf(amount, minf(S.cash, S.debt))
 	if n <= 0.0:
@@ -3204,19 +3237,16 @@ func pay_debt(amount: float) -> void:
 	S.debt -= n
 	S.paid += n
 	Sfx.play("cash")
-	notify("Spłacono %s. Zostało: %s" % [money(n), money(S.debt)], "good")
-	if S.debt <= 0.0 and not flag("free"):
-		S.flags["free"] = true
-		if ui != null:
-			ui.close_all()
-		get_tree().create_timer(0.4).timeout.connect(func(): main.ending("wolnosc"))
+	notify("Wkład: +%s (%s z %s)." % [money(n), money(S.paid), money(D.START_DEBT)], "good")
+	rank_check()
 
 
+## następny próg wkładu w dawnym kształcie „raty” ({day, due}) — z tego korzysta bot symulacji i ekrany
 func next_installment() -> Dictionary:
-	for r in D.DEBT_SCHEDULE:
-		if S.paid < float(r.due):
-			return r
-	return {}
+	var g := rank_next()
+	if g.is_empty():
+		return {}
+	return {"day": int(g.day), "due": float(g.at), "name": String(g.name), "bonus": float(g.bonus)}
 
 
 # ================================================================ fabuła
@@ -3243,8 +3273,8 @@ func _build_story() -> void:
 			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
 		{"id": "lvl2", "text": func(): return "Zdobądź poziom 2. Zadowolony Dominik poleci Cię dalej. (%d/%d PD)" % [int(S.xp), int(D.XP_LEVELS[1])],
 			"done": func(): return int(S.lvl) >= 2},
-		{"id": "rata1", "text": func(): return "Spłać pierwszą ratę długu: %s do końca %d. dnia (telefon → Portfel). Spłacono: %s" % [money(D.DEBT_SCHEDULE[0].due), int(D.DEBT_SCHEDULE[0].day), money(S.paid)],
-			"done": func(): return S.paid >= float(D.DEBT_SCHEDULE[0].due)},
+		{"id": "rata1", "text": func(): return "Zanieś Wiktorowi do skrzynki pierwsze %s wkładu (ponad zeszyt za towar): awansujesz na Gońca i dostaniesz plecak. Wkład: %s" % [money(D.RANKS[1].at), money(S.paid)],
+			"done": func(): return S.paid >= float(D.RANKS[1].at)},
 		{"id": "lvl3", "text": func(): return "Zdobądź poziom 3 i wybierz pierwszą umiejętność (telefon → Rozwój).",
 			"done": func(): return int(S.lvl) >= 3 and not S.skills.is_empty()},
 		{"id": "teren1", "text": func(): return "Każdy nowy klient to nowy teren, a z terenem przybywa skrytek. Zdobądź kolejnego klienta — Wiktor zacznie zostawiać paczki dalej. (skrytki: %d)" % drops_open().size(),
@@ -3259,7 +3289,7 @@ func _build_story() -> void:
 			"done": func(): return _any_job() or Prod.plant_count("garage") + Prod.plant_count("basement") > 0 or int(S.stats.grown) > 0, "marker": _garage_marker},
 		{"id": "zbior1", "text": func(): return "Doglądaj krzaków: podlewaj, nawoź, przytnij liście. Dojrzałe zetnij, wysusz w suszarce (kupisz ją w hurtowni) i zważ. Nadwyżki sprzedasz hurtem na Giełdzie. (%d g)" % int(S.stats.grown),
 			"done": func(): return int(S.stats.grown) > 0, "marker": _garage_marker},
-		{"ch": "Wolna gra", "id": "free", "text": func(): return "Rozwijaj interes i spłacaj raty. Dług: %s" % money(S.debt), "done": func(): return false},
+		{"ch": "Wolna gra", "id": "free", "text": func(): return ("Rozwijaj interes i pnij się w ekipie Wiktora. %s — do awansu na %s brakuje %s." % [String(rank_def().name), String(rank_next().name), money(maxf(0.0, float(rank_next().at) - S.paid))]) if not rank_next().is_empty() else "Jesteś wspólnikiem Wiktora. Dzielnica jest Twoja — rozwijaj interes po swojemu.", "done": func(): return false},
 	]
 
 
@@ -3309,7 +3339,7 @@ func _on_tour_done() -> void:
 	var parts := []
 	for e in D.STARTER_PACK:
 		parts.append("%d g %s" % [int(e[1]), String(D.PRODUCT_GEN[e[0]])])
-	chat("wiktor", "Wsunąłem ci pod drzwi paczkę na start: %s. Czyste, nierozrabiane. Ta jedna jest ode mnie, za darmo — na rozruch, bo wiem, że zaczynasz od zera. Za następne płacisz. Zaporcjuj na wadze i czekaj na klienta. A dług brata sam się nie spłaci: pierwszą stówę wrzuć do mojej skrzynki gazowej na tyłach pawilonu, nigdzie indziej." % " i ".join(parts), false, true)
+	chat("wiktor", "Wsunąłem ci pod drzwi paczkę na start: %s. Czyste, nierozrabiane. Ta jedna jest ode mnie, za darmo — na rozruch, bo wiem, że zaczynasz od zera. Za następne płacisz. Zaporcjuj na wadze i czekaj na klienta. Co zarobisz ponad towar, wrzucaj do mojej skrzynki gazowej na tyłach pawilonu — pierwsze trzy stówy i przestajesz być przydupasem: robię z ciebie gońca i dostajesz plecak." % " i ".join(parts), false, true)
 	if main != null:
 		main.door_package()
 
@@ -3529,6 +3559,15 @@ func state_from_save(data: Dictionary) -> Dictionary:
 			base.skills[pair[1]] = true
 	if not (base.get("owned") is Dictionary):
 		base["owned"] = {}
+	# zapis sprzed „ekipy Wiktora”: ranga wynika z tego, co już oddano; plecak za pierwszy awans dostaje się od razu
+	if not data.has("rank"):
+		var r0 := 0
+		for i in range(D.RANKS.size()):
+			if float(base.paid) >= float(D.RANKS[i].at):
+				r0 = i
+		base["rank"] = r0
+		if r0 >= 1:
+			base.upg["plecak1"] = true
 	return base
 
 

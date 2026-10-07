@@ -27,9 +27,13 @@ Obraz 3D skaluje się automatycznie, żeby utrzymać ok. 60 kl./s na MacBooku z 
 
 ## O co chodzi
 
-Brata zabrała policja. Zostawił Ci kawalerkę oraz 25 000 zł długu u Wiktora. Wiktor daje towar na zeszyt i pierwszego klienta.
+Po nalocie na laboratorium w Starej Hucie i zasadzce za garażami zostajesz z niczym. Wiktor nie ma do Ciebie żalu —
+bierze Cię do swojej ekipy na najniższy szczebel, jako chłopaka od wszystkiego: daje towar na zeszyt i pierwszych klientów.
 Resztę budujesz sam: klienci z polecenia, własna kryjówka, uprawa, kolejne towary (marihuana → amfetamina → metamfetamina → kokaina).
-Raty rosną co cztery dni — trzy wpadki i koniec gry. Spłata całości zajmuje ok. 45 dni gry (1 godzina gry = 60 s).
+Nie ma długu, odsetek ani kar za spóźnienie. To, co odnosisz Wiktorowi ponad zeszyt za towar, jest Twoim **wkładem**:
+kolejne progi to awanse z nagrodą (Goniec — plecak, Detalista — większy zeszyt, Dealer — tańszy hurt, Zaufany — garaż
+za pół ceny, Prawa ręka — jeszcze tańszy hurt), a kto trzyma tempo, dostaje premię. Przy 25 000 zł zostajesz wspólnikiem
+(ok. 35–47 dni gry; 1 godzina gry = 60 s).
 
 Nowa gra zaczyna się krótkim wstępem (zatrzymanie brata, „trzy tygodnie później”), a samouczek najpierw oprowadza
 po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierwszą paczkę.
@@ -45,8 +49,8 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
   i domieszać. Mieszanka kosztuje tyle samo, ale klient może kręcić nosem albo odmówić.
 - **Sprzęt i meble**: kupujesz w hurtowni budowlanej przy Hutniczej (szyld BUILDING SUPPLIES), rzeczy trafiają „na stan”,
   w kryjówce ustawiasz je klawiszem B i dopiero wtedy działają. Zdjęty mebel wraca na stan; w hurtowni odsprzedasz go za połowę ceny.
-- **Spłata**: gotówkę wrzucasz do skrzynki Wiktora za pawilonem (zawsze w tym samym miejscu). Idzie najpierw na to,
-  czego termin jest bliżej: zeszyt za towar albo rata długu brata.
+- **Skrzynka Wiktora**: gotówkę wrzucasz do skrzynki za pawilonem (zawsze w tym samym miejscu). Najpierw schodzi z niej
+  zeszyt za towar, cała reszta idzie na Twój wkład i awanse (telefon → Portfel pokazuje szczeble i nagrody).
 - **Klienci**: każdy odzywa się mniej więcej raz dziennie. Odpowiadasz kaflami: Zgoda / Negocjuj / Zmień godzinę / Anuluj.
   Po potwierdzeniu spotkanie jest za ok. godzinę (chyba że ustalisz inną porę); klient wychodzi z domu i idzie na miejsce.
   Na spotkaniu nie ma gadania: wybierasz porcję, ewentualnie cenę (od −10% do +15%) i przytrzymujesz „Podaj towar”.

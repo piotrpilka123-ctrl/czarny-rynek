@@ -881,7 +881,7 @@ func _wiktor_footer() -> void:
 	var t2 := _tile("banknote", "Skrzynka Wiktora", sub, Color(0.3, 0.75, 0.45), func():
 		G.main.set_track("box")
 		ui.close_all()
-		G.notify("Prowadzę do skrzynki Wiktora. Włóż do niej gotówkę — najpierw schodzi zeszyt, potem dług."), 2)
+		G.notify("Prowadzę do skrzynki Wiktora. Włóż do niej gotówkę — najpierw schodzi zeszyt, reszta idzie na Twój wkład."), 2)
 	footer.add_child(_pair(t1, t2))
 
 
@@ -895,28 +895,33 @@ func _wallet() -> void:
 	for r in S.stash:
 		stash_cash += float(S.stash[r].cash)
 	c.add_child(K.rich("W skrytkach: [b]%s[/b]   •   Zeszyt u Wiktora: [b]%s[/b]" % [G.money(stash_cash), G.money(S.credit)], 12))
+	# ekipa Wiktora: ranga, postęp do awansu i to, co za niego dostaniesz
 	var cd := K.card(body)
-	cd.add_child(K.lbl("DŁUG BRATA", 10, K.C_DIM))
-	cd.add_child(K.rich("[b]%s[/b]   %s" % [K.col(G.money(S.debt), K.C_BAD), K.col("spłacono %s" % G.money(S.paid), K.C_DIM)], 17))
-	var ni := G.next_installment()
-	if not ni.is_empty() and S.debt > 0.0:
-		var left := int(ni.day) - G.day()
-		cd.add_child(K.rich("Najbliższa rata: łącznie [b]%s[/b] do końca dnia %d  (%s)" % [G.money(ni.due), int(ni.day), K.col("za %d dni" % left if left > 0 else ("DZIŚ" if left == 0 else "PO TERMINIE"), K.C_WARN if left <= 1 else K.C_DIM)], 12))
-		cd.add_child(K.bar(S.paid, float(ni.due), K.C_ACC))
-	cd.add_child(K.wrap("Pieniądze zanosisz do skrzynki Wiktora na tyłach pawilonu. To, co do niej włożysz, schodzi najpierw z zeszytu za towar, a reszta z długu.", 12, K.C_TXT))
+	cd.add_child(K.lbl("EKIPA WIKTORA", 10, K.C_DIM))
+	var rk: Dictionary = G.rank_def()
+	cd.add_child(K.rich("[b]%s[/b]   %s" % [K.col(String(rk.name), K.C_ACC), K.col("wkład %s z %s" % [G.money(S.paid), G.money(D.START_DEBT)], K.C_DIM)], 17))
+	var nx: Dictionary = G.rank_next()
+	if not nx.is_empty():
+		cd.add_child(K.rich("Następny awans: [b]%s[/b] — przy %s wkładu (brakuje %s)" % [String(nx.name), G.money(nx.at), G.money(maxf(0.0, float(nx.at) - S.paid))], 12))
+		cd.add_child(K.bar(S.paid - float(rk.at), float(nx.at) - float(rk.at), K.C_ACC))
+		cd.add_child(K.wrap("Nagroda: " + String(nx.desc), 12, K.C_TXT))
+		var left := int(nx.day) - G.day()
+		if int(nx.bonus) > 0:
+			cd.add_child(K.rich("Premia za tempo: [b]%s[/b], jeśli zdążysz do końca dnia %d  (%s)" % [G.money(nx.bonus), int(nx.day), K.col("za %d dni" % left if left > 0 else ("DZIŚ" if left == 0 else "termin minął — awans i tak dostaniesz"), K.C_WARN if left <= 1 and left >= 0 else K.C_DIM)], 12))
+	else:
+		cd.add_child(K.wrap("Jesteś wspólnikiem. Wiktor bierze już tylko za towar.", 12, K.C_TXT))
+	cd.add_child(K.wrap("Pieniądze zanosisz do skrzynki Wiktora na tyłach pawilonu. Najpierw schodzi z nich zeszyt za towar, a cała reszta idzie na Twój wkład. Nie ma odsetek ani kar — wkład rośnie w Twoim tempie.", 12, K.C_DIM))
 	var bbx := K.btn("Prowadź do skrzynki", func(): G.main.set_track("box"); ui.close_all(), "go", true)
 	bbx.icon = K.tex("map_pin")
 	bbx.add_theme_constant_override("icon_max_width", 14)
 	cd.add_child(bbx)
-	cd.add_child(K.wrap("Odsetki 1%% co tydzień. Spóźniona rata = kara i wizyta ludzi Wiktora. Trzy wpadki i koniec (%d/%d)." % [int(S.strikes), D.MAX_STRIKES], 11, K.C_DIM))
 	var cs := K.card(body)
-	cs.add_child(K.lbl("HARMONOGRAM", 10, K.C_DIM))
+	cs.add_child(K.lbl("SZCZEBLE", 10, K.C_DIM))
 	var txt := ""
-	var d := G.day()
-	for r in D.DEBT_SCHEDULE:
-		var ok: bool = S.paid >= float(r.due)
-		var mark := K.col("✓", K.C_ACC) if ok else (K.col("zaległa", K.C_BAD) if d > int(r.day) else "")
-		txt += "Dzień %d: [b]%s[/b]  %s\n" % [int(r.day), G.money(r.due), mark]
+	for i in range(1, D.RANKS.size()):
+		var rr: Dictionary = D.RANKS[i]
+		var got: bool = int(S.get("rank", 0)) >= i
+		txt += "%s [b]%s[/b] — %s  %s\n" % [K.col("✓", K.C_ACC) if got else "•", String(rr.name), G.money(rr.at), K.col(String(rr.desc), K.C_DIM)]
 	cs.add_child(K.rich(txt.strip_edges(), 12))
 	var ct := K.card(body)
 	ct.add_child(K.lbl("BILANS", 10, K.C_DIM))
@@ -1033,8 +1038,10 @@ func _props() -> void:
 	_header("Lokale", "Kryjówki i interesy")
 	var c0 := K.card(body, 10)
 	c0.add_child(K.rich("[b]Kawalerka w bloku 7[/b]  %s\nWaga, szafa-skrytka (%d miejsc), łóżko. Na więcej nie ma miejsca." % [K.col("Twoja", K.C_ACC), G.stash_cap("safe")], 12))
-	for p in D.PROPERTIES:
-		var pid: String = p.id
+	for p0 in D.PROPERTIES:
+		var pid: String = p0.id
+		# cena z uwzględnieniem awansu w ekipie (garaż za pół ceny dla Zaufanego)
+		var p: Dictionary = G.prop_def(pid)
 		var c := K.card(body, 10)
 		var own := G.owns(pid)
 		var soon: bool = String(p.room) == ""

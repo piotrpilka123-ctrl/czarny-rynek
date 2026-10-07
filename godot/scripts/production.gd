@@ -769,7 +769,7 @@ static func daily() -> void:
 			var paid := minf(G.S.cash, bill)
 			G.S.cash -= paid
 			if paid < bill:
-				G.S.debt += round((bill - paid) * 1.5)
+				G._credit_add(round((bill - paid) * 1.5))
 			G.notify("Prąd w kryjówce (%s): −%s" % [String(D.ROOMS[room].name), G.money(bill)])
 		if h.has("raid_at"):
 			continue
