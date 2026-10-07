@@ -2855,7 +2855,7 @@ func deal_sell(d: Dictionary, price: float, line: String) -> void:
 		drop_order(o_before)
 	d.over = true
 	d.sold = true
-	d.speech = "%s\n[b][color=#4ade80]+%s[/color][/b] za %d g %s." % [line, money(res.paid), int(d.qty), D.PRODUCT_GEN[d.sel.p]]
+	d.speech = "%s   [b]+%s[/b] za %d g %s." % [line, money(res.paid), int(d.qty), D.PRODUCT_GEN[d.sel.p]]
 	deal_finish(d, res)
 
 

@@ -947,11 +947,11 @@ func _build_modal() -> void:
 	hrow.alignment = BoxContainer.ALIGNMENT_CENTER
 	modal_v.add_child(hrow)
 	modal_hrow = hrow
-	deal_side = K.panel(K.sb(Color(0.045, 0.055, 0.08, 0.97), 14, Color(1, 1, 1, 0.1), 1, 10))
-	deal_side.custom_minimum_size = Vector2(232, 0)
+	deal_side = K.panel(Trade.panel_style(12))
+	deal_side.custom_minimum_size = Vector2(312, 400)
 	deal_side.visible = false
 	hrow.add_child(deal_side)
-	deal_side_body = K.vbox(6)
+	deal_side_body = K.vbox(8)
 	deal_side.add_child(deal_side_body)
 	modal_box = K.panel(K.sb(Color(0.045, 0.055, 0.08, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20))
 	modal_box.custom_minimum_size = Vector2(900, 0)
@@ -996,21 +996,6 @@ func _modal_close() -> void:
 	close_all()
 
 
-## przyciski wyjścia z rozmowy: przy zamówieniu „Poczekaj chwilę” i „Odwołaj”, na ulicy samo „Odejdź”
-func _deal_exit_buttons(parent: Node, small := false) -> void:
-	if deal.ctx.get("order") != null and not deal.over:
-		var bw := K.btn("Poczekaj chwilę", func(): G.deal_pause(deal); close_all(), "", small)
-		bw.icon = K.tex("clock")
-		bw.add_theme_constant_override("icon_max_width", 15)
-		bw.tooltip_text = "Klient poczeka na miejscu. Zamówienie nie przepada."
-		parent.add_child(bw)
-		var bx := K.btn("Odwołaj", func(): G.deal_cancel(deal); close_all(), "bad", small)
-		bx.tooltip_text = "Odwołujesz transakcję. Klient będzie zły."
-		parent.add_child(bx)
-	else:
-		parent.add_child(K.btn("Odejdź", _modal_close, "bad", small))
-
-
 func _open_modal(title: String, sub := "", dock := "center", width := 900.0) -> void:
 	dialog_box.visible = false
 	skill_box.visible = false
@@ -1028,12 +1013,14 @@ func _open_modal(title: String, sub := "", dock := "center", width := 900.0) -> 
 	# okno wymiany jest ciasne: bez dużego tytułu, z wąskimi marginesami i mniejszymi odstępami
 	var tight := dock == "deal"
 	modal_head.visible = not tight
-	modal_box.add_theme_stylebox_override("panel", K.sb(Color(0.045, 0.055, 0.08, 0.97), 14 if tight else 16, Color(1, 1, 1, 0.1), 1, 12 if tight else 20))
+	modal_box.add_theme_stylebox_override("panel", Trade.panel_style(12) if tight else K.sb(Color(0.045, 0.055, 0.08, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20))
 	modal_inner.add_theme_constant_override("separation", 0 if tight else 10)
 	modal_body.add_theme_constant_override("separation", 6 if tight else 8)
 	modal_hrow.add_theme_constant_override("separation", 10 if tight else 14)
+	# ekwipunek po lewej jest wysoki, panel sprzedaży mały — siedzi przy dolnej krawędzi i nie rozciąga się za nim
+	modal_box.size_flags_vertical = Control.SIZE_SHRINK_END if tight else Control.SIZE_FILL
 	modal_box.custom_minimum_size.x = width
-	modal_scroll.custom_minimum_size.x = width - (28.0 if dock == "deal" else 44.0)
+	modal_scroll.custom_minimum_size.x = width - (26.0 if dock == "deal" else 44.0)
 	modal_title.text = title
 	modal_sub.text = sub
 	modal_sub.visible = sub != ""
@@ -1506,7 +1493,7 @@ func _render_deal() -> void:
 	var wants := "chce %d g %s" % [int(saved.want), String(D.PRODUCT_GEN[saved.product])]
 	if ctx.get("agreed") != null:
 		wants += " • umówione %s za całość" % G.money(round(float(ctx.agreed) * int(saved.want)))
-	_open_modal("", "", "deal", 610.0)
+	_open_modal("", "", "deal", 540.0)
 	deal = saved
 	deal_side.visible = not saved.over
 	deal_npc = ctx.get("npc") if (ctx.get("npc") is Dictionary and ctx.get("npc").get("node") != null) else null
@@ -1539,30 +1526,27 @@ func _render_deal() -> void:
 		_mumble_burst(String(who.name), clampi(int(deal_said.length() / 14.0), 1, 3))
 	# nagłówek w jednej linii: kto, czego chce, kto patrzy, zamknięcie
 	var hd := K.hbox(8)
-	hd.add_child(K.head(String(who.name), 19))
-	var wl := K.lbl(wants, 12, K.C_DIM)
+	hd.add_child(K.head(String(who.name), 15, Trade.C_HI))
+	var wl := K.lbl(wants, 11, Trade.C_LOW)
 	wl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hd.add_child(wl)
 	hd.add_child(K.spacer())
 	if not deal.over:
 		hd.add_child(Trade.watch_row(self))
-	var xb := K.btn("", _modal_close, "flat", true)
-	xb.icon = K.tex("x")
-	xb.add_theme_constant_override("icon_max_width", 13)
-	xb.tooltip_text = "Zamknij [Esc] — klient poczeka" if ctx.get("order") != null else "Odejdź [Esc]"
-	hd.add_child(xb)
 	modal_body.add_child(hd)
-	# jedno zdanie klienta — bez rozmowy; pod nim najwyżej dwie ostatnie uwagi
-	var sp := K.panel(K.sb(Color(0.06, 0.08, 0.125), 9, K.C_LINE, 1, 7))
+	# jedno zdanie klienta — sam tekst, bez ramek; pod nim najwyżej dwie ostatnie uwagi
+	var sp := K.rich("[color=#c9ced6]%s[/color]" % String(deal.speech), 12)
 	modal_body.add_child(sp)
-	sp.add_child(K.rich(deal.speech, 13))
 	var notes: Array = deal.notes
 	if not notes.is_empty():
 		var last: Array = notes.slice(maxi(0, notes.size() - 2))
-		modal_body.add_child(K.wrap("• " + "  • ".join(last), 11, K.C_DIM, 570.0))
+		modal_body.add_child(K.wrap("  •  ".join(last), 10, Trade.C_LOW, 500.0))
 	if deal.over:
 		deal_holding = false
-		modal_body.add_child(K.btn("Zamknij", close_all, "go", true))
+		var ch := K.hbox(0)
+		ch.add_child(K.spacer())
+		ch.add_child(Trade._mini("Zamknij  [Esc]", close_all, "box"))
+		modal_body.add_child(ch)
 		# po udanej wymianie nie ma na co czekać: okno samo znika
 		if deal.sold:
 			var me := deal
@@ -1591,9 +1575,8 @@ func _deal_tick(dt: float) -> void:
 	var w: Dictionary = G.deal_watchers()
 	if deal_watch_l != null and is_instance_valid(deal_watch_l):
 		var n := int(w.witnesses)
-		var col: Color = K.C_ACC if n == 0 else (K.C_WARN if n <= 2 else K.C_BAD)
-		deal_watch_l.text = "Nikt nie patrzy" if n == 0 else ("W pobliżu: %d %s" % [n, "osoba" if n == 1 else ("osoby" if n < 5 else "osób")])
-		deal_watch_l.add_theme_color_override("font_color", col)
+		deal_watch_l.text = Trade.watch_text(n)
+		deal_watch_l.add_theme_color_override("font_color", Trade.watch_color(n))
 	var cop = w.cop
 	if cop != null:
 		deal.cop = cop
@@ -1937,16 +1920,25 @@ func _process_ui(dt: float) -> void:
 	_call_tick(dt)
 	# okno przyklejone do dołu ekranu (wymiana, rozmowa): powiadomienia wędrują tuż nad nie
 	var lift := 110.0
+	var t_left := 0.0
+	var t_right := 0.0
 	if modal != null and modal.visible and modal_box != null and modal_box.is_visible_in_tree():
 		var vh := root.size.y
 		if modal_box.global_position.y + modal_box.size.y > vh - 150.0 and modal_box.global_position.y > 170.0:
 			lift = vh - modal_box.global_position.y + 10.0
+			if modal_dock == "deal":
+				# przy wymianie powiadomienia stają nad panelem sprzedaży, a nie na ekwipunku obok
+				t_left = modal_box.global_position.x
+				t_right = -(root.size.x - modal_box.global_position.x - modal_box.size.x)
 	# karta „pierwszy raz" nie nachodzi na przypięty cel w lewym górnym rogu: środkuje się w wolnej części ekranu
 	if tip_box != null and is_instance_valid(tip_box):
 		var left := 0.0
 		if hud.visible and obj_card.visible:
 			left = obj_card.position.x + obj_card.size.x + 14.0
 		tip_box.offset_left = left
+	if absf(toast_wrap.offset_left - t_left) > 0.5:
+		toast_wrap.offset_left = t_left
+		toast_wrap.offset_right = t_right
 	if absf(toast_wrap.offset_bottom + lift) > 0.5:
 		toast_wrap.offset_bottom = -lift
 		toast_wrap.offset_top = -lift - 120.0
