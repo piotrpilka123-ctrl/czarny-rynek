@@ -2372,6 +2372,39 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 	return d
 
 
+## ile ubrań gracz ma (na sobie albo w plecaku)
+func gear_owned() -> int:
+	var n := 0
+	for id in D.ITEMS:
+		var it: Dictionary = D.ITEMS[id]
+		if it.has("slot") and (item(id) > 0 or gear(String(it.slot)) == id):
+			n += 1
+	return n
+
+
+## Cel „kup ubrania”: mówi wprost, co kupić teraz — najpierw to, na co starcza poziomu i pieniędzy,
+## w kolejności: czapka (trudniej opisać), bluza z kapturem, bojówki (kieszenie), buty do biegania.
+const GEAR_PLAN := [["czapka_daszek", "trudniej Cię opisać świadkom"], ["bluza_kaptur", "dwa miejsca więcej i mniej widać Cię po zmroku"], ["bojowki", "trzy miejsca więcej w kieszeniach"],
+	["buty_bieg", "szybszy bieg i więcej tchu"]]
+
+func gear_hint() -> String:
+	var want := []
+	for e in GEAR_PLAN:
+		var id := String(e[0])
+		if not D.ITEMS.has(id):
+			continue
+		var it: Dictionary = D.ITEMS[id]
+		if item(id) > 0 or gear(String(it.slot)) == id:
+			continue
+		var lock := (" — od poziomu %d" % int(it.lvl)) if int(S.lvl) < int(it.lvl) else ""
+		want.append("%s (%s%s): %s" % [String(it.name), money(it.price), lock, String(e[1])])
+		if want.size() >= 2:
+			break
+	if want.is_empty():
+		return "Masz już porządny strój. Resztę wieszaka w „Taniej Odzieży” przejrzyj sam."
+	return "Kup w „Taniej Odzieży” przy Hutniczej dwie rzeczy (masz %d z 2). Teraz najbardziej opłaca się: %s." % [mini(2, gear_owned()), ";  ".join(want)]
+
+
 ## co zamówił pierwszy klient, słownie: „3 g marihuany” (do celu samouczka)
 func _first_order_what() -> String:
 	for o in S.orders:
@@ -3979,8 +4012,8 @@ func _build_story() -> void:
 			"done": func(): return int(S.lvl) >= 3 and not S.skills.is_empty()},
 		{"id": "teren1", "text": func(): return "Każdy nowy klient to nowy teren, a z terenem przybywa skrytek. Zdobądź kolejnego klienta — Wiktor zacznie zostawiać paczki dalej. (skrytki: %d)" % drops_open().size(),
 			"done": func(): return drops_open().size() > 4},
-		{"id": "ciuchy1", "text": func(): return "Zajrzyj do „Taniej Odzieży” przy Hutniczej i kup strój pasujący do roboty: szybszy, mniej rzucający się w oczy albo… kominiarkę.",
-			"done": func(): return not S.get("outfits", {}).is_empty(), "marker": func(): return {"loc": "out", "x": D.DOORS.ciuchy.x, "z": D.DOORS.ciuchy.z}},
+		{"id": "ciuchy1", "text": func(): return gear_hint(),
+			"done": func(): return gear_owned() >= 2, "marker": func(): return {"loc": "out", "x": D.DOORS.ciuchy.x, "z": D.DOORS.ciuchy.z}},
 		{"ch": "Rozdział 3: Kryjówka", "id": "garaz", "text": func(): return "Kup Garaż nr 14 (%s, poziom %d) — pierwszą własną kryjówkę." % [money(prop_def("garaz").price), int(prop_def("garaz").lvl)],
 			"done": func(): return owns("garaz"), "marker": _garage_marker},
 		{"id": "meble", "text": func(): return "Urządź garaż: kup w hurtowni budowlanej przy Hutniczej (otwarta %d:00–%d:00) stół roboczy i regał, a potem w garażu naciśnij [B] i je ustaw." % [int(D.SUPPLY_OPEN[0]), int(D.SUPPLY_OPEN[1])],

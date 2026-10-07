@@ -797,8 +797,69 @@ func ambient(outside: bool, night: float, rain: float) -> void:
 		rain_player.play()
 	var a := (-27.0 - night * 4.0) if outside else -44.0
 	amb_player.volume_db = lerpf(amb_player.volume_db, a, 0.05)
+	_city_tick(outside, night)
 	var r := (-40.0 + rain * 22.0 - (0.0 if outside else 12.0)) if rain > 0.05 else -70.0
 	rain_player.volume_db = lerpf(rain_player.volume_db, r, 0.05)
+
+
+## Żyjące miasto w tle — z nagrań, które gra już ma: przytłumiony gwar ludzi za dnia i co kilkadziesiąt sekund
+## coś z daleka (trzaśnięcie drzwi, skrzypnięcie, łomot w śmietnik, kroki, syrena gdzieś na mieście).
+## To namiastka: prawdziwe tło (ruch uliczny, ptaki, psy, tramwaj) wymaga nowych nagrań na otwartej licencji.
+var city_murmur: AudioStreamPlayer = null
+var city_fx: AudioStreamPlayer = null
+var _city_next := 12.0
+var _city_last := 0
+
+func _city_tick(outside: bool, night: float) -> void:
+	if city_murmur == null:
+		city_murmur = AudioStreamPlayer.new()
+		city_murmur.bus = "Otoczenie" if AudioServer.get_bus_index("Otoczenie") >= 0 else "Master"
+		city_murmur.volume_db = -70.0
+		add_child(city_murmur)
+		city_fx = AudioStreamPlayer.new()
+		city_fx.bus = city_murmur.bus
+		add_child(city_fx)
+		party_prepare()
+		if party_sounds.has("gwar_baru"):
+			city_murmur.stream = party_sounds["gwar_baru"]
+			city_murmur.pitch_scale = 0.82
+	if city_murmur.stream != null:
+		if not city_murmur.playing:
+			city_murmur.play(randf() * 4.0)
+		# gwar słychać w dzień na dworze; nocą i w mieszkaniu prawie znika
+		var m := (-41.0 - night * 16.0) if outside else -62.0
+		city_murmur.volume_db = lerpf(city_murmur.volume_db, m, 0.03)
+	var now := Time.get_ticks_msec()
+	_city_next -= float(now - _city_last) / 1000.0 if _city_last > 0 else 0.0
+	_city_last = now
+	if _city_next > 0.0 or not outside or city_fx.playing:
+		return
+	_city_next = randf_range(14.0, 42.0) * (1.0 + night * 0.8)
+	var pick: Array = [["door_close", -19.0, 0.8], ["creak", -22.0, 0.75], ["thud", -18.0, 0.7], ["lomot", -27.0, 0.6], ["impactmetal", -22.0, 0.7], ["syrena", -33.0, 0.92]].pick_random()
+	var st: AudioStream = null
+	if String(pick[0]) == "syrena":
+		var pth := "res://assets/sfx/syrena_wail.wav"
+		if night > 0.3 and ResourceLoader.exists(pth):
+			st = load(pth)
+	elif String(pick[0]) == "impactmetal":
+		for cand in ["res://assets/sfx/impactmetal_light_000.ogg", "res://assets/sfx/impactmetal_light_001.ogg"]:
+			if ResourceLoader.exists(cand):
+				st = load(cand)
+				break
+	elif sounds.has(String(pick[0])) and not sounds[String(pick[0])].is_empty():
+		st = sounds[String(pick[0])].pick_random()
+	if st == null:
+		return
+	city_fx.stream = st
+	city_fx.volume_db = float(pick[1]) + randf_range(-4.0, 2.0)
+	city_fx.pitch_scale = float(pick[2]) * randf_range(0.92, 1.08)
+	city_fx.play()
+	if String(pick[0]) == "syrena":
+		# syrena przejeżdża gdzieś daleko: kilka sekund i cichnie
+		var tw := create_tween()
+		tw.tween_interval(3.5)
+		tw.tween_property(city_fx, "volume_db", -60.0, 2.5)
+		tw.tween_callback(city_fx.stop)
 
 
 # ---------------------------------------------------------------- synteza (w wątku roboczym)
