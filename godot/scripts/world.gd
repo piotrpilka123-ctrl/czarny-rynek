@@ -591,6 +591,13 @@ func audit() -> void:
 	for r in rows:
 		print(r)
 	print("AUDYT razem: %d" % rows.size())
+	# stojące postacie: żadna nie może tkwić w przeszkodzie (siedzące mają prawo — siedzą na czymś)
+	if G.main != null and G.main.npcs != null:
+		for st0 in G.main.npcs.statics:
+			if String(st0.loc) != "out":
+				continue
+			var blocked := not is_free(float(st0.x), float(st0.z), 0.12)
+			print("AUDYT-POSTAC %-22s x=%7.1f z=%7.1f poza=%-9s %s" % [String(st0.name), float(st0.x) * INV, float(st0.z) * INV, String(st0.pose), "W PRZESZKODZIE" if blocked else "ok"])
 	# przejścia w płotach: po obu stronach musi być dokąd pójść
 	for pg in passages:
 		for sd in [-1.0, 1.0]:

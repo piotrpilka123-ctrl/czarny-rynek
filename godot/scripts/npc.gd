@@ -451,7 +451,8 @@ func _build_static() -> void:
 		"look": {"model": "m09", "kind": "hoodie", "top": "3a3f4a", "bottom": "101114", "hat": "beanie", "hat_color": "101114", "seed": 33},
 		"lines": ["Ej, ty, nowy. Podobno Wiktor ci daje towar?", "Słonecznika chcesz?", "Radiowóz jeździ w kółko: Hutnicza, rampa, osiedle. Zapamiętaj."]})
 	# emeryt w parku
-	_static({"x": -88.0, "z": 63.85, "rot": 0.4, "pose": "sit", "name": "Pan Henryk",
+	# (siedział 17 cm za głęboko — oparcie ławki przechodziło mu przez plecy)
+	_static({"x": -87.94, "z": 64.14, "rot": 0.4, "pose": "sit", "name": "Pan Henryk",
 		"look": {"model": "mg1", "kind": "jacket", "top": "55504a", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "3a3530", "build": 1.05, "height": 1.7, "seed": 34},
 		"lines": ["Jak huta stała, to tu było życie. A teraz? Sam pan widzi.", "Trzydzieści lat przy piecu. I co mi z tego zostało?", "Kiedyś to na tej górce saneczki, festyny… Dziś strach wieczorem wyjść."]})
 	# pijaczek pod monopolowym
