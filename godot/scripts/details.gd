@@ -49,10 +49,18 @@ static func pick(kind: String, rng: RandomNumberGenerator = null) -> String:
 
 
 ## Kalkomania na ścianie. `pos` w metrach świata (punkt na powierzchni muru), `rot_y` — w którą stronę patrzy ściana.
+## [środek x, środek z, pół szerokości wzdłuż x, pół głębokości wzdłuż z] w metrach świata
+const ART_FREE := [[58.24, 17.6, 2.6, 0.9]]
+
+
 static func decal(W: Node3D, name: String, pos: Vector3, rot_y: float, width: float, alpha := 1.0, fade := 50.0) -> Decal:
 	var path := GDIR + name + ".png"
 	if name == "" or not ResourceLoader.exists(path):
 		return null
+	# miejsca bez malunków (np. witryna z modelu 3D — naklejka rzutowałaby się na towar za szybą)
+	for box in ART_FREE:
+		if absf(pos.x - float(box[0])) < float(box[2]) + width * 0.5 and absf(pos.z - float(box[1])) < float(box[3]):
+			return null
 	var t: Texture2D = load(path)
 	var d := Decal.new()
 	d.texture_albedo = t

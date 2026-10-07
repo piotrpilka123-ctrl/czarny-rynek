@@ -673,13 +673,13 @@ func _order_footer(order: Dictionary) -> void:
 		dc.add_child(dial)
 		footer.add_child(dc)
 		dial.setup(S.t, rng.x, rng.y, retime_t)
-		var send_t := _tile("send", "Zaproponuj %s" % G.clock(retime_t), "klient poczeka do %s" % G.clock(retime_t + D.CLIENT_WAIT), K.C_BLUE, func(): var tt := int(retime_t); retime = -1; _reply(oid, "time", tt), 1)
+		var send_t := _tile("send", "Zaproponuj %s" % G.clock(retime_t), "poczeka do %s" % G.clock(retime_t + D.CLIENT_WAIT), K.C_BLUE, func(): var tt := int(retime_t); retime = -1; _reply(oid, "time", tt), 1)
 		var send_l: Label = send_t.find_children("", "Label", true, false)[0]
 		var send_s: Label = send_t.find_children("", "Label", true, false)[1]
 		dial.changed.connect(func(t: float):
 			retime_t = t
 			send_l.text = "Zaproponuj %s" % G.clock(t)
-			send_s.text = "klient poczeka do %s" % G.clock(t + D.CLIENT_WAIT))
+			send_s.text = "poczeka do %s" % G.clock(t + D.CLIENT_WAIT))
 		var fine := K.hbox(6)
 		fine.alignment = BoxContainer.ALIGNMENT_CENTER
 		for dm in [-30, -5, 5, 30]:

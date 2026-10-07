@@ -281,7 +281,7 @@ func _draw() -> void:
 	# --- gotowe porcje
 	var x0 := w * 0.635
 	_box(Rect2(x0, h * 0.12, w - x0 - 12.0, h * 0.8), Color(0, 0, 0, 0.2), 10, Color(1, 1, 1, 0.05), 1)
-	_text(Vector2(x0 + 12, h * 0.12 + 20), "GOTOWE WORECZKI", 12, K.C_DIM, 200.0, HORIZONTAL_ALIGNMENT_LEFT)
+	_text(Vector2(x0 + 12, h * 0.12 + 20), "GOTOWE PORCJE", 12, K.C_DIM, 200.0, HORIZONTAL_ALIGNMENT_LEFT)
 	var total := packs_before + packs.size()
 	_text(Vector2(w - 24 - 100, h * 0.12 + 22), "×%d" % total, 18, K.C_ACC if total > 0 else K.C_DIM, 100.0, HORIZONTAL_ALIGNMENT_RIGHT)
 	var mx := _slots_max()

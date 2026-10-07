@@ -2,6 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://c0ntwdyk58p4g"
+path="res://.godot/imported/notes.png-0852679816b61e52ab8c7d331ffd0a69.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/items/notes.png"
+dest_files=["res://.godot/imported/notes.png-0852679816b61e52ab8c7d331ffd0a69.ctex"]
 
 [params]
 

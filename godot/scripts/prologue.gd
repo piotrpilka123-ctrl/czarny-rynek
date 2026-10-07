@@ -692,7 +692,23 @@ func _boom() -> void:
 	# bandyta w prawdziwych ciuchach: czarna bluza, bojówki, skórzane rękawiczki, robocze buty, kominiarka
 	Chars.dress(arig, {"glowa": "kominiarka", "gora": "bluza_kaptur", "spodnie": "bojowki", "dlonie": "rekawiczki_skora", "buty": "buty_robocze"},
 		{"gora": Color(0.2, 0.2, 0.22), "spodnie": Color(0.28, 0.28, 0.3), "buty": Color(0.35, 0.33, 0.32)})
-	Chars.hold(arig, "rurka", Transform3D(Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0)), Vector3(0.09, 0.03, 0.0)))
+	var pipe: Node3D = Chars.hold(arig, "rurka", Transform3D(Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0)), Vector3(0.09, 0.03, 0.0)))
+	# koniec rurki (w jej własnym układzie): ten z dwóch końców, który jest dalej od dłoni — za nim pójdzie kamera
+	var tip_local := Vector3.ZERO
+	if pipe != null:
+		var bb := AABB()
+		var first_bb := true
+		for mi in pipe.find_children("*", "MeshInstance3D", true, false):
+			var rel: Transform3D = pipe.global_transform.affine_inverse() * (mi as MeshInstance3D).global_transform
+			var b1: AABB = rel * (mi as MeshInstance3D).get_aabb()
+			bb = b1 if first_bb else bb.merge(b1)
+			first_bb = false
+		var ax := bb.get_longest_axis_index()
+		var e0 := bb.get_center()
+		var e1 := bb.get_center()
+		e0[ax] = bb.position[ax]
+		e1[ax] = bb.end[ax]
+		tip_local = e0 if (pipe.transform * e0).length() > (pipe.transform * e1).length() else e1
 	Chars.play(arig, "Idle")
 	attacker = arig
 	drop_bag = Stations.duffel()
@@ -764,6 +780,9 @@ func _boom() -> void:
 	var car_t := -1.0
 	var voiced := false
 	var over := false          # cios znad głowy (OverhandThrow) zamiast dawnego zamachu
+	var last_cam := eye        # gdzie kamera była klatkę wcześniej (od tego miejsca zaczyna się upadek po ciosie)
+	var hit_from := eye
+	var hit_from_set := false
 	var swung := false
 	var thud := false
 	var lunge_from := Vector3.ZERO
@@ -923,6 +942,12 @@ func _boom() -> void:
 				# uniesienie → bezruch z rurką nad głową → błyskawiczny cios
 				apl.speed_scale = 1.0 if striking else (0.6 if apl.current_animation_position < 0.295 else 0.03)
 			var lk := clampf((tm - (hit_at - strike_in)) / strike_in, 0.0, 1.0) if over else clampf((tm - t_swing) / maxf(0.05, hit_at - t_swing), 0.0, 1.0)
+			if M.args.has("boomanim"):
+				# zrzuty: cios zatrzymany w wybranej chwili animacji (sekundy), bandyta już po doskoku
+				apl.play("OverhandThrow", 0.0)
+				apl.speed_scale = 0.0
+				apl.seek(float(M.args.boomanim), true)
+				lk = 1.0
 			var toward := Vector3(eye.x - lunge_from.x, 0.0, eye.z - lunge_from.z)
 			var reach := 1.15 if over else 0.85
 			if toward.length() > reach + 0.05:
@@ -947,16 +972,33 @@ func _boom() -> void:
 		var dir_l := (look0 - cam_pos).normalized()
 		var dir := dir_l.slerp(dir_m, e)
 		var head: Vector3 = arig.root.position + Vector3(0, 1.6, 0)
-		# gdy bandyta unosi rurkę, wzrok idzie za nią w górę (ok. 13°): cios ma spaść na głowę, nie minąć kadru dołem
+		# wzrok zostaje na wysokości oczu: w zamachu bandyta przysiada, więc uniesiona rurka wypada wtedy dokładnie
+		# w środku kadru, a jego twarz w dolnej tercji (sprawdzone na zrzucie z gry; patrzenie wyżej gubiło rurkę pod środkiem)
 		var look_up := clampf((tm - t_swing) / 0.45, 0.0, 1.0)
-		head.y += 0.3 * look_up * look_up * (3.0 - 2.0 * look_up)
+		head.y -= 0.15 * look_up
 		var turn := clampf((tm - t_turn) / 0.55, 0.0, 1.0)
 		turn = turn * turn * (3.0 - 2.0 * turn)
 		if turn > 0.0:
 			dir = dir.slerp((head - cam_pos).normalized(), turn)
 		var fov := lerpf(float(pl.cam.fov), 46.0, e * 0.6 + zoom * 0.4)
 		fov = lerpf(fov, 64.0, turn)
+		# --- unik: widząc rurkę nad głową, kulimy się — kamera schodzi niżej i patrzy na rurkę, a w chwili ciosu
+		# stoi dokładnie na jej drodze. Animacja bije nisko (w grze rurka kończy zamach na wysokości bioder),
+		# więc to kamera musi znaleźć się pod nią: wtedy cios trafia w głowę, a nie „gdzieś w nas”.
+		if swung and not hit and over and pipe != null and is_instance_valid(pipe):
+			var tip: Vector3 = pipe.global_transform * tip_local
+			var duck := clampf((tm - (hit_at - 0.34)) / 0.34, 0.0, 1.0)
+			duck *= duck
+			var strike_k := clampf((tm - (hit_at - strike_in)) / strike_in, 0.0, 1.0)
+			cam_pos.y -= 0.2 * duck
+			dir = dir.slerp((tip - cam_pos).normalized(), maxf(duck * 0.7, strike_k))
+			# ostatnie setne sekundy: głowa wchodzi prosto pod koniec rurki (10 cm przed obiektywem, tuż nad nim)
+			cam_pos = cam_pos.lerp(tip - dir * 0.1 + Vector3(0, -0.06, 0), strike_k * strike_k)
 		if hit:
+			if not hit_from_set:
+				hit_from_set = true
+				hit_from = last_cam
+			cam_pos = hit_from
 			fall = minf(1.0, fall + dt / 0.5)
 			var fe := 1.0 - (1.0 - fall) * (1.0 - fall)
 			cam_pos = cam_pos.lerp(Vector3(cam_pos.x - md.x * 0.35, ground + 0.2, cam_pos.z - md.y * 0.35), fe)
@@ -967,6 +1009,7 @@ func _boom() -> void:
 			var snap := sin(clampf((tm - hit_at) / 0.16, 0.0, 1.0) * PI)
 			dir = dir.slerp(Vector3(dir.x * 0.2, -1.0, dir.z * 0.2).normalized(), 0.62 * snap)
 			cam_pos.y -= 0.12 * snap
+		last_cam = cam_pos
 		var target := cam_pos + dir * 6.0 + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * shake * 0.25
 		M.cine_cam(cam_pos, target, fov)
 		if hit:
