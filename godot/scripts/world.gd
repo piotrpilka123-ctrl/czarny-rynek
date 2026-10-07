@@ -639,7 +639,13 @@ func audit() -> void:
 			var q := lamp_head(float(l.x), float(l.z), a)
 			if is_asphalt(q.x, q.y) and not in_building(q.x, q.y, 0.3):
 				best += " %d°" % int(rad_to_deg(a))
-		if not is_asphalt(hp.x, hp.y) and not is_paved(hp.x, hp.y):
+		# wąska alejka: oprawa może wisieć tuż za jej krawędzią — liczy się, czy między słupem a oprawą jest utwardzona droga
+		var over_path := false
+		for st2 in range(1, 14):
+			var q3 := Vector2(float(l.x) + sin(float(l.ry)) * st2 * 0.5, float(l.z) + cos(float(l.ry)) * st2 * 0.5)
+			if is_paved(q3.x, q3.y) or is_asphalt(q3.x, q3.y):
+				over_path = true
+		if not over_path:
 			why += " NIE_NAD_JEZDNIA(jezdnia w stronę:%s)" % (best if best != "" else " brak")
 		# dla latarni z dala od jezdni: jak daleko w każdą stronę jest ściana budynku i asfalt (do 30 jednostek)
 		var rays := ""
