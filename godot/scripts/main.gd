@@ -495,17 +495,26 @@ func _bed_call() -> void:
 		bed_cam(t)
 		await get_tree().process_frame
 	# koniec rozmowy: siada na brzegu łóżka i wstaje
-	var sit := Vector3(bx + 0.55, 1.05, bz + 0.1)
-	var stand := Vector3(bx + 0.95, 1.6, bz + 0.25)
 	var tw := create_tween()
-	tw.tween_method(func(k: float):
-		var e := smoothstep(0.0, 1.0, k)
-		var pos := head.lerp(sit, minf(1.0, e * 1.7)).lerp(stand, clampf(e * 1.7 - 0.7, 0.0, 1.0))
-		cine_cam(pos, pos + Vector3(1.0, -0.12 + 0.6 * (1.0 - e), 0.35 * (1.0 - e)), 66.0), 0.0, 1.0, 1.8)
+	tw.tween_method(bed_rise, 0.0, 1.0, 1.8)
 	await tw.finished
+	var stand := Vector3(bx + 0.95, 1.6, bz + 0.25)
 	teleport("safe", Vector3(stand.x, 0.0, stand.z), -PI / 2.0)
 	cine_off()
 	G.busy = false
+
+
+## kadr wstawania z łóżka: k = 0 leży, ok. 0,6 siedzi na brzegu, 1 stoi przy łóżku
+func bed_rise(k: float) -> void:
+	var R: Dictionary = D.ROOMS.safe
+	var bx: float = float(R.cx) - float(R.w) * 0.5 + 0.62
+	var bz: float = -float(R.d) * 0.5 + 1.1
+	var head := bed_head()
+	var sit := Vector3(bx + 0.55, 1.05, bz + 0.1)
+	var stand := Vector3(bx + 0.95, 1.6, bz + 0.25)
+	var e := smoothstep(0.0, 1.0, k)
+	var pos := head.lerp(sit, minf(1.0, e * 1.7)).lerp(stand, clampf(e * 1.7 - 0.7, 0.0, 1.0))
+	cine_cam(pos, pos + Vector3(1.0, -0.12 + 0.6 * (1.0 - e), 0.35 * (1.0 - e)), 66.0)
 
 
 ## gdzie leży głowa Kuby na łóżku w kawalerce
@@ -3044,8 +3053,11 @@ func _test_ui(what: String) -> void:
 		"shop": ui.open_shop()
 		"wagi": ui.open_scales()
 		"lozko":
-			# zrzut: kadr z pierwszej rozmowy telefonicznej (Kuba leży w łóżku)
-			bed_cam(1.0)
+			# zrzut: kadr z pierwszej rozmowy telefonicznej (Kuba leży w łóżku); --k=0..1 — kadr wstawania
+			if args.has("k"):
+				bed_rise(float(args.k))
+			else:
+				bed_cam(1.0)
 		"tour":
 			G.S.flags["got_first"] = true
 			G.S.flags["tour_out"] = false

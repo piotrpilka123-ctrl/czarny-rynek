@@ -1897,6 +1897,12 @@ func _process_ui(dt: float) -> void:
 		var vh := root.size.y
 		if modal_box.global_position.y + modal_box.size.y > vh - 150.0 and modal_box.global_position.y > 170.0:
 			lift = vh - modal_box.global_position.y + 10.0
+	# karta „pierwszy raz" nie nachodzi na przypięty cel w lewym górnym rogu: środkuje się w wolnej części ekranu
+	if tip_box != null and is_instance_valid(tip_box):
+		var left := 0.0
+		if hud.visible and obj_card.visible:
+			left = obj_card.position.x + obj_card.size.x + 14.0
+		tip_box.offset_left = left
 	if absf(toast_wrap.offset_bottom + lift) > 0.5:
 		toast_wrap.offset_bottom = -lift
 		toast_wrap.offset_top = -lift - 120.0

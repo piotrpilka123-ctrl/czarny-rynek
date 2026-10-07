@@ -2369,75 +2369,13 @@ var _court_mat: StandardMaterial3D = null
 func court_material() -> StandardMaterial3D:
 	if _court_mat != null:
 		return _court_mat
-	var w := 1120
-	var h := 680
-	var img := Image.create(w, h, true, Image.FORMAT_RGB8)
-	var r2 := RandomNumberGenerator.new()
-	r2.seed = 4107
-	for y in range(h):
-		for x in range(w):
-			var n := r2.randf_range(-0.035, 0.035) + 0.02 * sin(x * 0.011) * cos(y * 0.013)
-			img.set_pixel(x, y, Color(0.62 + n, 0.2 + n * 0.5, 0.15 + n * 0.4))
-	# wytarte, jaśniejsze place pod koszami i w środku
-	for sp in [[0.1, 0.5, 150.0], [0.9, 0.5, 150.0], [0.5, 0.5, 110.0]]:
-		var c0 := Vector2(float(sp[0]) * w, float(sp[1]) * h)
-		var rad: float = sp[2]
-		for y in range(int(c0.y - rad), int(c0.y + rad)):
-			for x in range(int(c0.x - rad), int(c0.x + rad)):
-				if x < 0 or y < 0 or x >= w or y >= h:
-					continue
-				var k := 1.0 - Vector2(x, y).distance_to(c0) / rad
-				if k > 0.0:
-					img.set_pixel(x, y, img.get_pixel(x, y).lerp(Color(0.7, 0.33, 0.27), k * 0.35))
-	var ppm := float(w) / ((float(COURT[2]) - float(COURT[0])) * SC)      # pikseli na metr
-	var white := Color(0.93, 0.92, 0.88)
-	var lw := 0.06 * ppm
-	var line := func(a: Vector2, b: Vector2) -> void:
-		var steps := int(a.distance_to(b)) + 1
-		for i in range(steps + 1):
-			var q: Vector2 = a.lerp(b, float(i) / steps)
-			for oy in range(-int(lw), int(lw) + 1):
-				for ox in range(-int(lw), int(lw) + 1):
-					var px := int(q.x) + ox
-					var py := int(q.y) + oy
-					if px >= 0 and py >= 0 and px < w and py < h and r2.randf() < 0.93:
-						img.set_pixel(px, py, white)
-	var arc := func(c1: Vector2, rad1: float, a0: float, a1: float) -> void:
-		var n1 := int(rad1 * absf(a1 - a0)) + 2
-		var prev := c1 + Vector2(cos(a0), sin(a0)) * rad1
-		for i in range(1, n1 + 1):
-			var aa := lerpf(a0, a1, float(i) / n1)
-			var cur := c1 + Vector2(cos(aa), sin(aa)) * rad1
-			line.call(prev, cur)
-			prev = cur
-	var m := 0.35 * ppm                     # odstęp obrysu od krawędzi płyty
-	line.call(Vector2(m, m), Vector2(w - m, m))
-	line.call(Vector2(w - m, m), Vector2(w - m, h - m))
-	line.call(Vector2(w - m, h - m), Vector2(m, h - m))
-	line.call(Vector2(m, h - m), Vector2(m, m))
-	line.call(Vector2(w * 0.5, m), Vector2(w * 0.5, h - m))
-	arc.call(Vector2(w * 0.5, h * 0.5), 1.5 * ppm, 0.0, TAU)
-	for side in [0, 1]:
-		var ex: float = m if side == 0 else w - m
-		var dirx := 1.0 if side == 0 else -1.0
-		var key_l := 4.6 * ppm
-		var key_w := 1.8 * ppm
-		line.call(Vector2(ex, h * 0.5 - key_w), Vector2(ex + dirx * key_l, h * 0.5 - key_w))
-		line.call(Vector2(ex, h * 0.5 + key_w), Vector2(ex + dirx * key_l, h * 0.5 + key_w))
-		line.call(Vector2(ex + dirx * key_l, h * 0.5 - key_w), Vector2(ex + dirx * key_l, h * 0.5 + key_w))
-		arc.call(Vector2(ex + dirx * key_l, h * 0.5), key_w, -PI * 0.5 if side == 0 else PI * 0.5, PI * 0.5 if side == 0 else PI * 1.5)
-		# łuk za trzy punkty: środek pod obręczą
-		var hoop_c := Vector2(ex + dirx * 1.35 * ppm, h * 0.5)
-		var r3 := minf(4.3 * ppm, h * 0.5 - m - 0.25 * ppm)
-		arc.call(hoop_c, r3, -PI * 0.5 if side == 0 else PI * 0.5, PI * 0.5 if side == 0 else PI * 1.5)
-		line.call(Vector2(ex, h * 0.5 - r3), Vector2(hoop_c.x, h * 0.5 - r3))
-		line.call(Vector2(ex, h * 0.5 + r3), Vector2(hoop_c.x, h * 0.5 + r3))
-	img.generate_mipmaps()
+	# tekstura wypieczona poza grą (tools/make_boisko_tex.py): gładkie linie, wytarte place pod koszami, pęknięcia
 	_court_mat = StandardMaterial3D.new()
-	_court_mat.albedo_texture = ImageTexture.create_from_image(img)
+	_court_mat.albedo_texture = load("res://assets/tex/boisko_kort.jpg")
 	_court_mat.roughness = 0.92
 	_court_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	return _court_mat
+
 
 func _playground() -> void:
 	var x0: float = PLAY[0]

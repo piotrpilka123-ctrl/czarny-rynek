@@ -23,6 +23,28 @@ static func run(T) -> void:
 	T.ok(cam_ok, "kamera przelotu nie wchodzi w budynki ani pod ziemię i zawsze najeżdża na cel")
 	T.ok(String(shots[0].text).contains("woreczki") and String(shots[0].text).contains("mieszanki") and String(shots[1].text).contains("kieszeni"), "opisy mówią, po co tam iść: woreczki i mieszanki u Stasia, statystyki ubrań")
 
+	# kadry: nic nie zasłania pokazywanego miejsca, a przy każdym są karty z ikonami, które istnieją
+	var clear_n := 0
+	var cards_ok := true
+	for sh1 in shots:
+		if bool(sh1.clear):
+			clear_n += 1
+		if (sh1.cards as Array).size() < 3:
+			cards_ok = false
+		for cd in sh1.cards:
+			var icn := String(cd.icon)
+			if String(cd.name) == "" or String(cd.sub) == "" or not (ResourceLoader.exists("res://assets/items/%s.png" % icn) or ResourceLoader.exists("res://assets/icons/%s.svg" % icn)):
+				cards_ok = false
+	T.ok(clear_n == shots.size(), "przelot: żadnego miejsca nie zasłania pień, słup ani ściana (%d z %d czystych kadrów)" % [clear_n, shots.size()])
+	T.ok(cards_ok, "przelot: przy każdym miejscu co najmniej trzy karty z nazwą, opisem i istniejącą ikoną")
+	G.unlock_client("dominik")
+	var o_przelot: Dictionary = G.make_order(G.cust_def("dominik"))
+	G.reply_order(o_przelot.id, "accept")
+	var shots2: Array = G.main.tour_shots()
+	T.ok(shots2.size() == shots.size() + 1 and String(shots2.back().title) == "MIEJSCE SPOTKANIA" and bool(shots2.back().clear) and String(shots2.back().cards[0].name).begins_with("Spotkanie o "), "przelot: po umówieniu klienta dochodzi kadr miejsca spotkania z godziną")
+	G.S = G.new_state()
+	S = G.S
+
 	# --- boisko przed blokiem: równa płyta, dwa kosze, piłka pod koszem, żadnych drzew na boisku ani przy chodniku
 	var CW = G.world
 	var c0x: float = CW.COURT[0]
@@ -50,7 +72,9 @@ static func run(T) -> void:
 	T.ok(on_court == 0 and by_walk == 0 and CW.surface_at((c0x + c1x) * 0.5 * D.SC, (c0z + c1z) * 0.5 * D.SC) == "concrete", "na boisku i przy chodniku przed blokiem nie rosną drzewa; płyta jest twarda")
 	var cm: StandardMaterial3D = CW.court_material()
 	var cimg: Image = cm.albedo_texture.get_image()
-	var mid: Color = cimg.get_pixel(cimg.get_width() / 4, cimg.get_height() / 5)
+	if cimg.is_compressed():
+		cimg.decompress()
+	var mid: Color = cimg.get_pixel(int(cimg.get_width() * 0.12), cimg.get_height() / 2)
 	var ln_px: Color = cimg.get_pixel(cimg.get_width() / 2, cimg.get_height() / 3)
 	T.ok(mid.r > 0.5 and mid.g < 0.35 and ln_px.r > 0.85 and ln_px.g > 0.85, "nawierzchnia jest czerwona, a linia środkowa biała")
 
