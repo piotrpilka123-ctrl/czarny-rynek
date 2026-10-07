@@ -197,6 +197,13 @@ func _ready() -> void:
 			print("HD %s = %.2f" % [pt, world.hd(float(xz[0]), float(xz[1]))])
 		get_tree().quit()
 		return
+	if args.has("glb"):
+		# wycinek świata do pliku GLB: --glb=ścieżka --at=x,z [--r=promień]
+		var at := String(args.get("at", "0,0")).split(",")
+		world.args_debug = args.has("dbg")
+		world.export_glb(String(args.glb), float(at[0]), float(at[1]), float(args.get("r", "70")))
+		get_tree().quit()
+		return
 	if args.has("przeglad"):
 		world.audit()
 		get_tree().quit()

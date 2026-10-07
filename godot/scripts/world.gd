@@ -626,6 +626,128 @@ func audit() -> void:
 	print("AUDYT-RODZAJE ", line)
 
 
+## Wycinek świata do pliku GLB (narzędzie bez okna: ./tools/widok.sh). Teren dostaje mapę nawierzchni jako teksturę,
+## budynki kolor ścian, modele swoje materiały. Plik renderuje potem Blender — to podgląd gry, gdy nie wolno otwierać okna.
+func _glb_plain(src: MeshInstance3D, col: Color, tex: Texture2D = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = src.mesh
+	mi.transform = src.transform
+	var m := StandardMaterial3D.new()
+	m.albedo_color = col
+	m.roughness = 0.95
+	if tex != null and src.mesh is ArrayMesh:
+		# teren ma UV w metrach świata — do pliku idą przeliczone na 0…1 mapy nawierzchni
+		var arr := (src.mesh as ArrayMesh).surface_get_arrays(0)
+		var uv: PackedVector2Array = arr[Mesh.ARRAY_TEX_UV]
+		for i in range(uv.size()):
+			uv[i] = Vector2((uv[i].x * INV - X0) / (MAP_W * 0.5), (uv[i].y * INV - Z0) / (MAP_H * 0.5))
+		arr[Mesh.ARRAY_TEX_UV] = uv
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		mi.mesh = am
+		m.albedo_texture = tex
+	mi.material_override = m
+	return mi
+
+
+func _glb_fix(n: Node) -> void:
+	# shaderów glTF nie zna: elewacje i inne materiały z kodu dostają zwykły kolor
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.material_override is ShaderMaterial:
+			var col = mi.get_instance_shader_parameter("b_wall")
+			var m := StandardMaterial3D.new()
+			m.albedo_color = col if col is Color else Color(0.6, 0.6, 0.58)
+			m.roughness = 0.9
+			mi.material_override = m
+	for c in n.get_children():
+		# ukryte węzły i światła wypadają (Blender nie zna rozszerzenia z widocznością, a słońce ma własne)
+		if (c is Node3D and not (c as Node3D).visible) or c is Light3D or c is Label3D or c is AudioStreamPlayer3D or c is CollisionObject3D:
+			n.remove_child(c)
+			c.free()
+		else:
+			_glb_fix(c)
+
+
+func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
+	var root := Node3D.new()
+	root.name = "Swiat"
+	var c2 := Node3D.new()
+	c2.name = "Miasto"
+	c2.scale = city.scale
+	root.add_child(c2)
+	# mapa nawierzchni w pełnej rozdzielczości jako tekstura terenu
+	var pm := Image.create(MAP_W, MAP_H, false, Image.FORMAT_RGB8)
+	for pz in range(MAP_H):
+		for px in range(MAP_W):
+			var a := img1.get_pixel(px, pz)
+			var b := img2.get_pixel(px, pz)
+			var c := Color(0.23, 0.33, 0.17)
+			if a.r > 0.5: c = Color(0.2, 0.2, 0.22)
+			elif a.g > 0.5: c = Color(0.55, 0.55, 0.54)
+			elif a.b > 0.5: c = Color(0.46, 0.46, 0.44)
+			elif a.a > 0.5: c = Color(0.38, 0.31, 0.22)
+			elif b.r > 0.5: c = Color(0.36, 0.33, 0.3)
+			if b.g > 0.5: c = Color(0.85, 0.85, 0.82)
+			pm.set_pixel(px, pz, c)
+	var ptex := ImageTexture.create_from_image(pm)
+	var wc := Vector2(cx, cz) * SC
+	var wr := rad * SC
+	var n_out := 0
+	if args_debug:
+		var cls := {}
+		for n in get_children():
+			cls[n.get_class()] = int(cls.get(n.get_class(), 0)) + 1
+		print("GLB-DBG dzieci świata: ", cls)
+	for n in get_children():
+		# (teren bywa ukryty, kiedy gracz jest we wnętrzu — do pliku idzie zawsze)
+		if n == city or n == body or not (n is Node3D):
+			continue
+		if n is MeshInstance3D:
+			var mi := n as MeshInstance3D
+			var ab := mi.transform * mi.get_aabb()
+			if G.test_mode and args_debug:
+				print("GLB-DBG ", mi.name, " ", ab, " mat=", mi.material_override)
+			var near := Vector2(clampf(wc.x, ab.position.x, ab.end.x), clampf(wc.y, ab.position.z, ab.end.z))
+			if near.distance_to(wc) > wr or ab.size.x > 1000.0:
+				continue
+			if mi.material_override is ShaderMaterial:
+				root.add_child(_glb_plain(mi, Color.WHITE, ptex))
+			else:
+				root.add_child(mi.duplicate())
+			n_out += 1
+		elif n is MultiMeshInstance3D:
+			var mm := n as MultiMeshInstance3D
+			var ab2 := mm.transform * mm.get_aabb()
+			var c0 := ab2.get_center()
+			if Vector2(c0.x, c0.z).distance_to(wc) < wr + 12.0:
+				root.add_child(mm.duplicate())
+				n_out += 1
+	for n in city.get_children():
+		if not (n is Node3D) or n.is_queued_for_deletion() or n is Label3D or n is Light3D or not (n as Node3D).visible:
+			continue
+		var p3: Vector3 = (n as Node3D).position
+		var keep := Vector2(p3.x, p3.z).distance_to(Vector2(cx, cz)) < rad
+		if not keep and n is MeshInstance3D and (n as MeshInstance3D).mesh is BoxMesh:
+			# długie bryły (estakada, mury, bloki) liczone po obrysie
+			var sz: Vector3 = ((n as MeshInstance3D).mesh as BoxMesh).size
+			var nearp := Vector2(clampf(cx, p3.x - sz.x * 0.5, p3.x + sz.x * 0.5), clampf(cz, p3.z - sz.z * 0.5, p3.z + sz.z * 0.5))
+			keep = nearp.distance_to(Vector2(cx, cz)) < rad
+		if not keep:
+			continue
+		var d := n.duplicate()
+		_glb_fix(d)
+		c2.add_child(d)
+		n_out += 1
+	var doc := GLTFDocument.new()
+	var st := GLTFState.new()
+	var err := doc.append_from_scene(root, st)
+	if err == OK:
+		err = doc.write_to_filesystem(st, path)
+	print("GLB %s: %d węzłów, błąd=%d y=%.2f" % [path, n_out, err, hd(cx, cz)])
+	root.free()
+
+
 ## Plan miasta z góry do pliku PNG (narzędzie bez okna: ./tools/plan.sh) — nawierzchnie, wysokość terenu,
 ## budynki i wszystkie kolizje. 3 piksele na jednostkę planu; `box` = [x0, z0, x1, z1] wycina fragment (wtedy 8 px).
 func dump_plan(path: String, box: Array = []) -> void:
@@ -3160,6 +3282,7 @@ func _backdrop() -> void:
 
 ## Zieleń sadzona jest, zanim stanie zabudowa uzupełniająca i garaże, więc część drzew i krzaków lądowała w środku
 ## budynków (pień przez dach garażu). Po postawieniu wszystkiego takie rośliny znikają razem z kolizją i kryjówką.
+var args_debug := false
 var greens_evicted := 0
 var passages: Array = []            # przejścia w płotach: [x, z, czy płot biegnie wschód–zachód, rodzaj]
 
