@@ -103,7 +103,7 @@ def pizza():
     ob = join('Pizza', p)
     weather([ob], 512, 0.6, 0.3, (0.35, 0.22, 0.1))
     t = [text('logo', 'PIZZA', 0.07, mat('druk', 'a8322a', 0.9), (0, 0.02, 0.0462), (0, 0, 0), 0.0003),
-         text('logo2', 'NA TELEFON  24H', 0.022, mat('druk', 'a8322a', 0.9), (0, -0.06, 0.0458), (0, 0, 0), 0.0003)]
+         text('logo2', 'DELIVERY  24H', 0.022, mat('druk', 'a8322a', 0.9), (0, -0.06, 0.0458), (0, 0, 0), 0.0003)]
     join('Druk', t)
     export('dom_pizza')
 
