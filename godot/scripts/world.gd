@@ -3677,16 +3677,33 @@ func _lamps() -> void:
 		_lamp(e[0], e[1], e[2], e[3])
 
 
+## Materiał dalekiej zabudowy: jednolita, chłodna szarość bez okien — z daleka i we mgle czyta się jak sylwetka miasta.
+var _far_mats := {}
+
+func far_mat(shade := 1.0) -> StandardMaterial3D:
+	var key := int(round(shade * 20.0))
+	if not _far_mats.has(key):
+		var fm := StandardMaterial3D.new()
+		fm.albedo_color = Color(0.44, 0.47, 0.52) * shade
+		fm.roughness = 1.0
+		fm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		_far_mats[key] = fm
+	return _far_mats[key]
+
+
 func _backdrop() -> void:
-	var m: ShaderMaterial = fac["plyta"]
+	var m: StandardMaterial3D = far_mat(1.12)
 	for e in [[-170.0, -230.0, 50.0, 14.0, 33.0], [-90.0, -240.0, 60.0, 14.0, 39.0], [0.0, -228.0, 46.0, 14.0, 33.0], [80.0, -244.0, 60.0, 14.0, 45.0], [170.0, -232.0, 40.0, 14.0, 30.0],
 			[-270.0, -90.0, 14.0, 60.0, 36.0], [-262.0, 40.0, 14.0, 50.0, 30.0], [-275.0, 140.0, 14.0, 60.0, 39.0], [-120.0, 232.0, 60.0, 14.0, 33.0], [20.0, 240.0, 50.0, 14.0, 39.0], [130.0, 230.0, 46.0, 14.0, 27.0]]:
-		var mi := Models.box(city, Vector3(e[2], e[4], e[3]), Vector3(e[0], e[4] * 0.5 - 0.5, e[1]), m)
-		mi.set_instance_shader_parameter("b_origin", Vector3(e[0] - e[2] * 0.5, 0.0, e[1] - e[3] * 0.5))
-		mi.set_instance_shader_parameter("b_wall", Color(0.72, 0.72, 0.7))
-		mi.set_instance_shader_parameter("b_accent", Color(0.6, 0.55, 0.45))
-		mi.set_instance_shader_parameter("b_seed", rng.randf() * 10.0)
+		# dalej od muru (×1,25) i niżej: tło, nie ściana nad głową; każda bryła ma niższe skrzydło, żeby linia dachów nie była pudełkiem
+		var bx0: float = float(e[0]) * 1.25
+		var bz0: float = float(e[1]) * 1.25
+		var bh: float = float(e[4]) * 0.8
+		var mi := Models.box(city, Vector3(e[2], bh, e[3]), Vector3(bx0, bh * 0.5 - 0.5, bz0), m)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var wing := Models.box(city, Vector3(float(e[2]) * 0.7, bh * 0.62, float(e[3]) * 0.9), Vector3(bx0 + float(e[2]) * 0.8 * (1.0 if float(e[2]) > float(e[3]) else 0.0), bh * 0.31 - 0.5,
+			bz0 + float(e[3]) * 0.8 * (0.0 if float(e[2]) > float(e[3]) else 1.0)), far_mat(1.0))
+		wing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for e in [[262.0, -60.0, 3.0, 60.0], [280.0, 40.0, 2.4, 48.0], [250.0, 120.0, 2.0, 40.0]]:
 		var c := Models.cyl(city, e[2] * 0.6, e[2], e[3], Vector3(e[0], e[3] * 0.5, e[1]), Models.mat("5a4f4a", 0.9), Vector3.ZERO, 10)
 		c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -3753,6 +3770,30 @@ func _backdrop() -> void:
 			1: _graffiti(tags[rng.randi_range(0, 11)], t * 200.0, 168.95, rng.randf_range(1.2, 2.4), PI, GC[rng.randi_range(0, 5)], rng.randi_range(110, 220))
 			2: _graffiti(tags[rng.randi_range(0, 11)], -208.55, t * 160.0, rng.randf_range(1.2, 2.4), PI / 2.0, GC[rng.randi_range(0, 5)], rng.randi_range(110, 220))
 			_: _graffiti(tags[rng.randi_range(0, 11)], 208.55, t * 160.0, rng.randf_range(1.2, 2.4), -PI / 2.0, GC[rng.randi_range(0, 5)], rng.randi_range(110, 220))
+	var tr := RandomNumberGenerator.new()
+	tr.seed = 7711
+	var line: Array = []
+	var ta := -200.0
+	while ta < 202.0:
+		for sz in [-1.0, 1.0]:
+			if not (ta > 126.0 and ta < 150.0):
+				line.append(Vector2(ta + tr.randf_range(-3.0, 3.0), sz * (173.5 + tr.randf_range(0.0, 4.0))))
+		ta += tr.randf_range(13.0, 19.0)
+	ta = -160.0
+	while ta < 162.0:
+		for sx in [-1.0, 1.0]:
+			var gate: bool = (sx < 0.0 and ta > -6.0 and ta < 46.0) or (sx > 0.0 and ta > -56.0 and ta < 76.0)
+			if not gate:
+				line.append(Vector2(sx * (213.0 + tr.randf_range(0.0, 4.0)), ta + tr.randf_range(-3.0, 3.0)))
+		ta += tr.randf_range(13.0, 19.0)
+	for tp2 in line:
+		var bt := Props.tree(tr.randi(), tr.randf_range(1.5, 2.1), tr.randf_range(0.55, 0.9))
+		bt.position = Vector3(tp2.x, hd(clampf(tp2.x, -205.0, 205.0), clampf(tp2.y, -166.0, 166.0)) - 0.2, tp2.y)
+		bt.scale *= Vector3(INV, 1.0, INV)
+		Props._no_shadow(bt)
+		Props.set_range(bt, 190.0)
+		city.add_child(bt)
+		border_trees += 1
 	# pierścień zabudowy za murem
 	var keys := ["plyta", "plyta2", "kamA", "kamB", "cegla2", "kamC", "plyta", "cegla"]
 	var px := -230.0
@@ -3804,7 +3845,7 @@ func _backdrop() -> void:
 			along = -226.0
 		while along < lim:
 			var w2 := r2.randf_range(30.0, 42.0)
-			var h2 := float(r2.randi_range(9, 16)) * 3.0
+			var h2 := float(r2.randi_range(7, 12)) * 3.0
 			var key2: String = ["plyta", "plyta2", "plyta", "kamC"][r2.randi_range(0, 3)]
 			var off := r2.randf_range(-5.0, 5.0)
 			var c2 := along + w2 * 0.5
@@ -3820,12 +3861,8 @@ func _backdrop() -> void:
 				skip = (side == 3 and c2 > -75.0 and c2 < 95.0) or (side == 2 and c2 + w2 * 0.5 > -48.0 and c2 - w2 * 0.5 < 0.0)
 			if not skip:
 				pos2.y = gy2b + h2 * 0.5 - 0.5
-				var m4 := Models.box(city, size2, pos2, fac[key2])
-				m4.set_instance_shader_parameter("b_origin", Vector3((pos2.x - size2.x * 0.5) * SC, gy2b, (pos2.z - size2.z * 0.5) * SC))
-				m4.set_instance_shader_parameter("b_wall", Color(0.7, 0.69, 0.66) * r2.randf_range(0.8, 1.05))
-				m4.set_instance_shader_parameter("b_accent", Color(0.6, 0.55, 0.47))
-				m4.set_instance_shader_parameter("b_seed", r2.randf() * 10.0)
-				m4.set_instance_shader_parameter("b_dead", r2.randf_range(0.0, 0.35))
+				# drugi rząd to już tylko sylwetki (wcześniej elewacje z rozciągniętymi, powtarzalnymi oknami)
+				var m4 := Models.box(city, size2, pos2, far_mat(r2.randf_range(0.85, 1.05)))
 				m4.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				ring2 += 1
 			along += w2 + r2.randf_range(0.0, 3.0)
@@ -4161,6 +4198,7 @@ func _street_details() -> void:
 ## za tunelem i bramą huty, ślepe uliczki oraz tabliczki z nazwami na rogach. Tarcza modelu patrzy na +z przy obrocie 0;
 ## znak stoi po prawej stronie jezdni i patrzy na nadjeżdżających.
 var road_signs := 0
+var border_trees := 0
 
 func _road_signs() -> void:
 	var list: Array = []          # [model, x, z, obrót]
