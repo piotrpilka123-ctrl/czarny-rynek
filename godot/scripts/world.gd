@@ -43,6 +43,7 @@ var lab_exit := Vector2.ZERO    # gdzie w hali są tylne drzwi (znacznik ucieczk
 var mill_door_light: SpotLight3D = null   # reflektor nad tylnymi drzwiami huty od zewnątrz
 var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
 var ring2 := 0                      # ile bloków stoi w drugim rzędzie za murem
+var litter_items: Array = []         # [siatka, Transform3D] każdego śmiecia — dla podglądu bez okna (MultiMesh bez karty graficznej nie oddaje pozycji)
 var litter_count := 0               # ile drobnych śmieci leży na mieście
 var camp_fire: Node3D = null      # ognisko w obozowisku bezdomnych
 var box_door: Node3D = null       # drzwiczki skrzynki Wiktora (uchylają się, gdy wkładasz pieniądze)
@@ -716,15 +717,18 @@ func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
 			elif mi.visible:
 				root.add_child(mi.duplicate())
 			n_out += 1
-		elif n is MultiMeshInstance3D and (n as Node3D).visible:
-			var mm := n as MultiMeshInstance3D
-			var ab2 := mm.transform * mm.get_aabb()
-			var c0 := ab2.get_center()
-			if Vector2(c0.x, c0.z).distance_to(wc) < wr + 12.0:
-				root.add_child(mm.duplicate())
-				n_out += 1
+	for it in litter_items:
+		var lt: Transform3D = it[1]
+		if Vector2(lt.origin.x, lt.origin.z).distance_to(wc) < wr:
+			var lm := MeshInstance3D.new()
+			lm.mesh = it[0]
+			lm.transform = lt
+			root.add_child(lm)
+			n_out += 1
 	for n in city.get_children():
 		if not (n is Node3D) or n.is_queued_for_deletion() or n is Label3D or n is Light3D or not (n as Node3D).visible:
+			continue
+		if n is MultiMeshInstance3D:
 			continue
 		var p3: Vector3 = (n as Node3D).position
 		var keep := Vector2(p3.x, p3.z).distance_to(Vector2(cx, cz)) < rad
@@ -2272,7 +2276,7 @@ func _lower_town() -> void:
 	_sign("HUTNICZA ST. 02", Vector3(62.0, 2.2, 8.75), Color(0.9, 0.9, 0.9), 34, 0.0, 0.006, 6)
 	_place(Models.kiosk(), 52.5, -4.0, PI / 2.0, 1.1, 1.4, 2.4)
 	_sign("KIOSK", Vector3(53.6, 2.7, -4.0), Color(0.95, 0.9, 0.5), 60, PI / 2.0, 0.006, 8)
-	_bin(66.0, 9.6, 0.0)
+	_bin(71.8, 10.2, 0.0)       # (stał w środku wiaty, przed ławką)
 	_bench(56.0, -13.0, 0.0)
 	# auta: prawie brak ruchu
 	_car(-40.0, 17.2, PI / 2.0, "sedan", "28424f")
@@ -3517,6 +3521,7 @@ func _litter() -> void:
 		var sc := lr.randf_range(0.9, 1.15)
 		var xf := Transform3D(Basis(Vector3.UP, lr.randf() * TAU).scaled(Vector3(sc, sc, sc)), Vector3(q.x, height(q.x, q.y) + 0.004, q.y))
 		(groups[key] as Array).append(xf * (meshes[kind][1] as Transform3D))
+		litter_items.append([meshes[kind][0], xf * (meshes[kind][1] as Transform3D)])
 		placed += 1
 	for key in groups:
 		var arr: Array = groups[key]
