@@ -219,6 +219,7 @@ func _ready() -> void:
 		var at := String(args.get("at", "0,0")).split(",")
 		world.args_debug = args.has("dbg")
 		world.glb_train_x = float(args.get("pociag", "-9999"))
+		world.glb_people = args.has("ludzie")
 		world.export_glb(String(args.glb), float(at[0]), float(at[1]), float(args.get("r", "70")))
 		get_tree().quit()
 		return

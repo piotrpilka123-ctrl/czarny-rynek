@@ -668,11 +668,16 @@ func _glb_fix(n: Node) -> void:
 			mi.material_override = m
 	for c in n.get_children():
 		# ukryte węzły i światła wypadają (Blender nie zna rozszerzenia z widocznością, a słońce ma własne)
-		if (c is Node3D and not (c as Node3D).visible) or c is Light3D or c is Label3D or c is AudioStreamPlayer3D or c is CollisionObject3D:
+		if (c is Node3D and not (c as Node3D).visible) or c is Light3D or c is Label3D or c is AudioStreamPlayer3D or c is CollisionObject3D or c is AnimationMixer or c is SkeletonModifier3D:
 			n.remove_child(c)
 			c.free()
 		else:
 			_glb_fix(c)
+	if n is Skeleton3D:
+		# do pliku idzie bieżąca poza (jako poza spoczynkowa), bez animacji
+		var sk := n as Skeleton3D
+		for i in range(sk.get_bone_count()):
+			sk.set_bone_rest(i, sk.get_bone_pose(i))
 
 
 ## jedno wnętrze (pokój z meblami) do pliku GLB — do obejrzenia scenek we wnętrzach bez okna
@@ -771,6 +776,24 @@ func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
 		_glb_fix(d)
 		c2.add_child(d)
 		n_out += 1
+	if glb_people and G.main != null and G.main.npcs != null:
+		# stojące postacie (sąsiedzi, bezdomni, kierowca…) w swoich pozach — żeby zobaczyć, czy siedzą na kanapie, a nie w niej
+		for st0 in G.main.npcs.statics:
+			if String(st0.loc) != "out" or Vector2(float(st0.x), float(st0.z)).distance_to(wc) > wr:
+				continue
+			var rig: Dictionary = st0.rig
+			var ap := rig.anim as AnimationPlayer
+			ap.active = true
+			# animacja od razu, bez przenikania z poprzedniej — inaczej w pliku zostaje poza stojąca
+			var an_name := String(G.main.npcs.Chars.POSES.get(String(st0.pose), "Idle"))
+			if ap.has_animation(an_name):
+				ap.play(an_name, 0.0)
+			ap.advance(0.7)
+			var pd: Node3D = (rig.root as Node3D).duplicate()
+			pd.visible = true
+			_glb_fix(pd)
+			root.add_child(pd)
+			n_out += 1
 	if glb_train_x > -9000.0 and not train.is_empty():
 		# kolejka ustawiona na estakadzie w podanym miejscu planu (do obejrzenia; w grze przejeżdża sama)
 		var td: Node3D = (train.node as Node3D).duplicate()
@@ -3391,6 +3414,7 @@ func _backdrop() -> void:
 ## Zieleń sadzona jest, zanim stanie zabudowa uzupełniająca i garaże, więc część drzew i krzaków lądowała w środku
 ## budynków (pień przez dach garażu). Po postawieniu wszystkiego takie rośliny znikają razem z kolizją i kryjówką.
 var args_debug := false
+var glb_people := false              # podgląd: dołącz stojące postacie
 var glb_train_x := -9999.0           # podgląd: gdzie postawić kolejkę (plan miasta)
 var greens_evicted := 0
 var passages: Array = []            # przejścia w płotach: [x, z, czy płot biegnie wschód–zachód, rodzaj]
@@ -3497,7 +3521,7 @@ func _border_gates() -> void:
 	city.add_child(gl)
 	lamps.append(gl)
 	# co zostało po ostatniej zmianie: paleta, beczki i pachołki przy portierni
-	for e in [["pallet", 202.4, 30.6, 0.3, 0.16], ["barrel_01", 207.2, 13.0, 0.0, 0.9], ["barrel_01", 206.2, 12.6, 0.0, 0.9], ["cinderblock", 204.8, 12.4, 0.7, 0.3]]:
+	for e in [["pallet", 200.6, 33.4, 0.3, 0.16], ["barrel_01", 207.2, 13.0, 0.0, 0.9], ["barrel_01", 206.2, 12.6, 0.0, 0.9], ["cinderblock", 204.8, 12.4, 0.7, 0.3]]:
 		_prop(String(e[0]), float(e[1]), float(e[2]), float(e[3]), float(e[4]), 0.0, false)
 	for e in [[199.4, 16.4], [199.2, 23.4]]:
 		var pc := Stations.model("pacholek")

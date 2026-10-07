@@ -1,7 +1,7 @@
 #!/bin/sh
 # widok z gry bez okna (gdy nie wolno otwierać okien testowych): gra eksportuje wycinek świata, Blender go renderuje
 #   ./tools/widok.sh wynik.png "x,z" yaw|"cel_x,cel_z" [pitch=0] [promień=70] [oczy=1.7] [fov=75]
-# x,z — miejsce kamery na planie miasta; yaw jak w grze (0 patrzy na −z, 90 na −x). RES=960x540 zmienia rozdzielczość, POCIAG=x stawia kolejkę na estakadzie.
+# x,z — miejsce kamery na planie miasta; yaw jak w grze (0 patrzy na −z, 90 na −x). RES=960x540 zmienia rozdzielczość, POCIAG=x stawia kolejkę na estakadzie, LUDZIE=1 dołącza stojące postacie.
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SP="${CR_OUT:-${TMPDIR:-/tmp}/czarny-rynek}"
 mkdir -p "$SP"
@@ -9,7 +9,7 @@ OUT=$1; AT=$2; YAW=${3:-0}; PITCH=${4:-0}; R=${5:-70}; EYE=${6:-1.7}; FOV=${7:-7
 X=${AT%,*}; Z=${AT#*,}
 # zamiast kąta można podać punkt, na który kamera ma patrzeć: "x,z"
 case "$YAW" in *,*) YAW=$(python3 -c "import math,sys; x,z,tx,tz=[float(v) for v in sys.argv[1:5]]; print(round(math.degrees(math.atan2(-(tx-x), -(tz-z))),1))" "$X" "$Z" "${YAW%,*}" "${YAW#*,}");; esac
-LINE=$(/Applications/Godot.app/Contents/MacOS/Godot --headless --audio-driver Dummy --path "$DIR" -- --autostart --test --glb="$SP/widok.glb" --at="$AT" --r="$R" ${POCIAG:+--pociag=$POCIAG} 2>&1 | grep "^GLB")
+LINE=$(/Applications/Godot.app/Contents/MacOS/Godot --headless --audio-driver Dummy --path "$DIR" -- --autostart --test --glb="$SP/widok.glb" --at="$AT" --r="$R" ${POCIAG:+--pociag=$POCIAG} ${LUDZIE:+--ludzie} 2>&1 | grep "^GLB")
 Y=$(echo "$LINE" | sed -n 's/.*y=\([-0-9.]*\).*/\1/p')
 [ -z "$Y" ] && { echo "eksport nieudany: $LINE"; exit 1; }
 RES=${RES:-960x540}
