@@ -76,7 +76,7 @@ func _ready() -> void:
 	rain_player.bus = "Otoczenie"
 	add_child(rain_player)
 	voice_player = AudioStreamPlayer.new()
-	voice_player.volume_db = -19.0
+	voice_player.volume_db = -13.0
 	voice_player.bus = "Glosy"
 	add_child(voice_player)
 	intro_player = AudioStreamPlayer.new()
@@ -685,7 +685,7 @@ func mumble(voice := 1.0) -> void:
 	if muted or _syll.is_empty():
 		return
 	voice_player.stream = _syll.pick_random()
-	voice_player.pitch_scale = clampf(voice * randf_range(0.97, 1.04), 0.6, 1.7)
+	voice_player.pitch_scale = clampf(voice * randf_range(0.94, 1.07), 0.5, 2.0)
 	voice_player.play()
 
 
@@ -794,27 +794,31 @@ func _generate() -> void:
 		var kf := float(i) / xf
 		tb[i] = tb[i] * kf + tb[tn - xf + i] * (1.0 - kf)
 	var s4 := _wav(tb.slice(0, tn - xf), true)
-	# głos rozmówcy: krótkie, ciepłe „pyknięcia” (miękki atak, szybkie wybrzmienie, lekki zjazd tonu)
-	# zamiast brzęczących sylab — dużo mniej męczące przy dłuższych rozmowach
-	var tones := [196.0, 220.0, 174.6, 207.7, 185.0, 233.1, 164.8, 246.9]
+	# głos rozmówcy: sylaby do mamrotania — impuls krtaniowy i dwa formanty samogłoski. (Przez chwilę były tu
+	# ciche „pyknięcia”, których prawie nie było słychać pod muzyką i ulicą; wróciły sylaby, o które prosił Piotr.)
+	var vowels := [[700.0, 1150.0], [520.0, 1750.0], [320.0, 2200.0], [480.0, 900.0], [360.0, 760.0], [620.0, 1400.0], [430.0, 1100.0], [560.0, 1000.0]]
 	var syl: Array = []
-	for vi in range(tones.size()):
+	for vi in range(vowels.size()):
 		if _abort:
 			return
-		var dur := 0.085 + 0.01 * (vi % 3)
+		var dur := 0.1 + 0.02 * (vi % 4)
 		var sn := int(dur * RATE)
 		var sbuf := PackedFloat32Array()
 		sbuf.resize(sn)
-		var f0: float = tones[vi]
-		var vph := 0.0
+		var f0 := 118.0 + (vi % 3) * 9.0
+		var period := int(RATE / f0)
+		var f1: float = vowels[vi][0]
+		var f2: float = vowels[vi][1]
 		var soft := 0.0
 		for i in range(sn):
-			var tt := float(i) / RATE
-			vph += f0 * (1.0 - 0.07 * tt / dur) / RATE
-			var v := sin(vph * TAU) + sin(vph * TAU * 2.0) * 0.22 + sin(vph * TAU * 3.0) * 0.06
-			var a := sin(minf(1.0, tt / 0.012) * PI * 0.5) * exp(-tt * 30.0) * minf(1.0, float(sn - i) / (0.015 * RATE))
-			soft += (v - soft) * 0.5
-			sbuf[i] = soft * a * 0.7
+			var tp := float(i % period) / RATE
+			var e := exp(-tp * 420.0)
+			var v := (sin(tp * TAU * f1) * 0.8 + sin(tp * TAU * f2) * 0.35) * e
+			if vi % 3 == 0 and i < int(0.018 * RATE):
+				v += randf_range(-0.5, 0.5) * (1.0 - float(i) / (0.018 * RATE))
+			var a := minf(1.0, float(i) / (0.012 * RATE)) * minf(1.0, float(sn - i) / (0.03 * RATE))
+			soft += (v - soft) * 0.42
+			sbuf[i] = soft * a * 0.85
 		syl.append(_wav(sbuf))
 	_set_voice.call_deferred(s4, syl)
 	if not tracks.is_empty():

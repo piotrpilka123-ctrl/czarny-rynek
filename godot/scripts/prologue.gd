@@ -744,10 +744,12 @@ func _boom() -> void:
 	var t_voice := 13.35
 	var t_turn := 13.55
 	# cios: bandyta dochodzi krokiem, staje, unosi rurkę nad głowę (13,62 → 14,11), trzyma ją chwilę nad sobą
-	# i bije znad głowy — rurka dochodzi do twarzy dokładnie w hit_at
+	# i bije znad głowy. Kamera idzie wzrokiem za rurką w górę, a cios kończy się w chwili, gdy rurka przecina środek
+	# kadru tuż przed obiektywem (pozycja animacji ok. 0,355 — sprawdzone klatka po klatce podglądem z oczu gracza);
+	# wcześniej trafienie wypadało, gdy bandyta już nurkował w dół i rurka mijała kadr — wyglądało to na cios „ogólnie”.
 	var t_swing := 13.62
 	var hit_at := 14.5
-	var strike_in := 0.075      # ile sekund trwa sam cios (od uniesionej rurki do twarzy)
+	var strike_in := 0.05       # ile sekund trwa sam cios (od uniesionej rurki do czoła)
 	var bi := 0
 	var fi := 0
 	var li := 0
@@ -945,6 +947,9 @@ func _boom() -> void:
 		var dir_l := (look0 - cam_pos).normalized()
 		var dir := dir_l.slerp(dir_m, e)
 		var head: Vector3 = arig.root.position + Vector3(0, 1.6, 0)
+		# gdy bandyta unosi rurkę, wzrok idzie za nią w górę (ok. 13°): cios ma spaść na głowę, nie minąć kadru dołem
+		var look_up := clampf((tm - t_swing) / 0.45, 0.0, 1.0)
+		head.y += 0.3 * look_up * look_up * (3.0 - 2.0 * look_up)
 		var turn := clampf((tm - t_turn) / 0.55, 0.0, 1.0)
 		turn = turn * turn * (3.0 - 2.0 * turn)
 		if turn > 0.0:
@@ -958,6 +963,10 @@ func _boom() -> void:
 			var low: Vector3 = (drop_bag.position.lerp(arig.root.position, 0.5) + Vector3(0, 0.55, 0)) if grabbed < 2 else (arig.root.position + Vector3(0, 0.9, 0))
 			dir = dir.slerp((low - cam_pos).normalized(), fe)
 			fov = lerpf(fov, 78.0, fe)
+			# pierwsze dziesiąte części sekundy: głowa leci w dół od ciosu (ostry skłon i przysiad), dopiero potem upadek
+			var snap := sin(clampf((tm - hit_at) / 0.16, 0.0, 1.0) * PI)
+			dir = dir.slerp(Vector3(dir.x * 0.2, -1.0, dir.z * 0.2).normalized(), 0.62 * snap)
+			cam_pos.y -= 0.12 * snap
 		var target := cam_pos + dir * 6.0 + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * shake * 0.25
 		M.cine_cam(cam_pos, target, fov)
 		if hit:
