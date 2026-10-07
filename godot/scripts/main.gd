@@ -3183,6 +3183,24 @@ func _test_ui(what: String) -> void:
 				world.starter_rest(float(args.drop))
 				var dc := door_cam(clampf(float(args.drop) * 1.4, 0.0, 1.0))
 				cine_cam(dc[0], dc[1], dc[2])
+		"galeria":
+			# zrzut: wszyscy mężczyźni z biblioteki postaci w rzędzie na boisku (do wybierania modeli po wyglądzie)
+			var ids := ["m01", "m02", "m03", "m04", "m05", "m06", "m07", "m08", "m09", "m10", "m11", "m12", "m13", "m14", "m16", "m17", "m18", "m20", "mb4", "mb7", "mc2", "md1", "mg1"]
+			var from := int(args.get("od", "0"))
+			for i in range(from, mini(ids.size(), from + 8)):
+				var rg: Dictionary = npcs.Chars.make({"model": ids[i], "seed": 5})
+				add_child(rg.root)
+				var gx := (12.0 + (i - from) * 1.6) * D.SC
+				rg.root.position = Vector3(gx, world.height(gx, -52.0 * D.SC), -52.0 * D.SC)
+				var gl := Label3D.new()
+				gl.text = ids[i]
+				gl.font_size = 64
+				gl.pixel_size = 0.004
+				gl.position = Vector3(0, 2.05, 0)
+				gl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+				rg.root.add_child(gl)
+			teleport("out", Vector3((12.0 + 5.6) * D.SC, 0.0, -52.0 * D.SC + 4.6), 0.0)
+			player.pitch = deg_to_rad(-2.0)
 		"hurtownia":
 			G.S.owned = {"regal": 1}
 			ui.open_supply()

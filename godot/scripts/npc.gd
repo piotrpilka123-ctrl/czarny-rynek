@@ -299,12 +299,20 @@ func _build_yard() -> void:
 	gl.shadow_enabled = false
 	grill.node.add_child(gl)
 	gl.global_position = smoke.global_position
+	# Trzech emerytów z huty przy starej kanapie: dwóch na kanapie, trzeci na skrzynce — od południa do nocy łoją browary.
 	# (siedzą bliżej przedniej krawędzi kanapy — wcześniej nogi wchodziły im w siedzisko)
-	for e in [[21.4, -69.38, "sit_talk", "Łysy", "m02"], [22.6, -69.36, "sit", "Młody", "m16"]]:
-		_static({"x": float(e[0]), "z": float(e[1]), "rot": 0.08, "pose": String(e[2]), "name": String(e[3]), "hours": [17.0, 2.0],
-			"look": {"model": String(e[4]), "seed": 510 + int(float(e[0]) * 3.0)},
-			"lines": ["Siema. Siadaj, miejsce jest.", "Masz ognia? Nie? To po co podchodzisz.", "Ta kanapa stoi tu dłużej niż ty żyjesz, szanuj.", "Jak coś ci zginie spod klatki, to nie my. My tu tylko siedzimy.",
-				"Psy jeździły godzinę temu. Dwa kółka i pojechali."]})
+	var gadki := ["Siadaj, młody, miejsce jest. Tylko nie na skrzynce — to Bogdana.", "Trzydzieści lat przy piecu. A teraz? Piwko i ławka.",
+		"Za moich czasów huta dymiła na trzy zmiany. Teraz dymi tylko Mietek.", "Psy jeździły godzinę temu. Dwa kółka i pojechali.",
+		"Jak coś ci zginie spod klatki, to nie my. My tu tylko siedzimy.", "Masz otwieracz? Nie? To po co podchodzisz.", "Ta kanapa stoi tu dłużej niż ty żyjesz, szanuj."]
+	# modele wybrane po wyglądzie (zrzut --ui=galeria): m03 w tweedowej marynarce, łysy m13 w swetrze w romby, łysy mb4 w kamizelce
+	for e in [[21.4, -69.38, 0.08, 0.0, "Pan Mietek", "m03"], [22.6, -69.36, 0.08, 0.0, "Pan Stefan", "m13"], [24.3, -68.0, -1.5, -0.13, "Pan Bogdan", "mb4"]]:
+		var dz: Dictionary = _static({"x": float(e[0]), "z": float(e[1]), "rot": float(e[2]), "y": float(e[3]), "pose": "sit", "name": String(e[4]), "hours": [12.0, 2.0],
+			"look": {"model": String(e[5]), "seed": 510 + int(float(e[0]) * 3.0), "build": 1.06},
+			"lines": gadki})
+		# butelka w prawej dłoni; co kilka–kilkanaście sekund łyk (każdy we własnym rytmie)
+		dz["beer"] = Chars.hold(dz.rig, "dom_butelka", Transform3D(Basis(Vector3(0, 0, -1), Vector3(1, 0, 0), Vector3(0, -1, 0)), Vector3(0.08, 0.03, 0.0)))
+		dz["sip_t"] = 3.0 + float(e[0]) * 0.37
+		dz["sip_on"] = 0.0
 
 
 ## Obozowisko bezdomnych za garażami i posterunek przy zamkniętym tunelu.
@@ -1220,7 +1228,18 @@ func update(dt: float) -> void:
 			n.node.rotation.y += _ang_diff(atan2(pp.x - n.x, pp.z - n.z), n.node.rotation.y) * minf(1.0, dt * 3.0)
 		Chars.set_active(n.rig, dp3 < 60.0)
 		if dp3 < 60.0:
-			Chars.animate(n.rig, dt, 0.0, "talk" if (n.track and dp3 < 3.4) else n.pose)
+			var pose_now: String = "talk" if (n.track and dp3 < 3.4) else n.pose
+			if n.has("sip_t"):
+				# piwosz: siedzi, a co jakiś czas podnosi butelkę do ust na półtorej sekundy
+				if float(n.sip_on) > 0.0:
+					n.sip_on = float(n.sip_on) - dt
+					pose_now = "sit_sip"
+				else:
+					n.sip_t = float(n.sip_t) - dt
+					if float(n.sip_t) <= 0.0:
+						n.sip_on = 1.7
+						n.sip_t = randf_range(6.0, 13.0)
+			Chars.animate(n.rig, dt, 0.0, pose_now)
 			if n.has("anim_speed"):
 				n.rig.anim.speed_scale = float(n.anim_speed)
 

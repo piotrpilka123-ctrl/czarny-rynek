@@ -149,7 +149,7 @@ const HAIR_F := ["hair_long", "hair_buns", "hair_long", "hair_buzzedfemale", "ha
 ## naturalna prędkość animacji (m/s) do synchronizacji kroków
 const ANIM_SPEED := {"Walk_Swagger": 0.97, "Walk_Hunched": 0.9, "Walk_Phone": 0.97, "Walk_Folded": 0.97, "Walk_Stiff": 0.97, "Walk_Loose": 0.97, "Walk": 0.97, "Walk_Formal": 0.97, "Jog_Fwd": 5.36, "Sprint": 8.25, "Zombie_Walk_Fwd": 1.05, "Walk_Carry": 0.65, "Crouch_Fwd": 0.75}
 const POSES := {"": "Idle", "phone": "Idle_TalkingPhone", "talk": "Idle_Talking", "arms": "Idle_FoldArms", "lean": "Idle_Rail", "smoke": "Idle",
-	"sit": "Sitting_Idle", "sit_talk": "Sitting_Talking", "dance": "Dance", "dance2": "Dance_Sway", "dance3": "Dance_Wild", "dance4": "Dance_Drink", "dance5": "Dance_Hips", "dance6": "Dance_Cool", "junkie": "Zombie_Idle", "kneel": "Fixing_Kneeling", "no": "Idle_No",
+	"sit": "Sitting_Idle", "sit_talk": "Sitting_Talking", "sit_sip": "Sitting_Sip", "dance": "Dance", "dance2": "Dance_Sway", "dance3": "Dance_Wild", "dance4": "Dance_Drink", "dance5": "Dance_Hips", "dance6": "Dance_Cool", "junkie": "Zombie_Idle", "kneel": "Fixing_Kneeling", "no": "Idle_No",
 	"crouch": "Crouch_Idle", "handsup": "Idle", "lantern": "Idle_Lantern", "drive": "Driving", "gun": "Pistol_Idle", "aim": "Pistol_Aim_Neutral"}
 
 const USED := ["Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Idle_No", "Yes", "Interact", "PickUp_Table", "Sitting_Idle", "Sitting_Talking",
@@ -234,6 +234,7 @@ static func _library(female: bool) -> AnimationLibrary:
 	tgt.free()
 	_walk_variants(lib)
 	_dance_variants(lib)
+	_sit_variants(lib)
 	_lib[key] = lib
 	return lib
 
@@ -346,6 +347,17 @@ static func _dance_variants(lib: AnimationLibrary) -> void:
 	for nm in made:
 		if not lib.has_animation(nm):
 			lib.add_animation(nm, made[nm])
+
+
+## Siedzenie z piwem: ten sam siad, ale prawa ręka idzie z butelką do ust (poza z animacji „Consume”).
+## Postać przełącza się między zwykłym siadem a łykiem (npc.gd), przejście wygładza mieszanie animacji.
+static func _sit_variants(lib: AnimationLibrary) -> void:
+	if not lib.has_animation("Sitting_Idle") or not lib.has_animation("Consume") or lib.has_animation("Sitting_Sip"):
+		return
+	var a: Animation = lib.get_animation("Sitting_Idle").duplicate(true)
+	a.loop_mode = Animation.LOOP_LINEAR
+	_take_pose(a, lib.get_animation("Consume"), ["clavicle_r", "upperarm_r", "lowerarm_r", "hand_r"], "_r", 0.25, 0.9)
+	lib.add_animation("Sitting_Sip", a)
 
 
 static func _walk_variants(lib: AnimationLibrary) -> void:
