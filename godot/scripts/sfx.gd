@@ -40,6 +40,27 @@ var _rain: AudioStreamWAV = null
 var _siren: AudioStream = null
 var _train: AudioStreamWAV = null
 var _syll: Array = []
+var _banks := {}                # barwa głosu → zestaw sylab
+var phone_player: AudioStreamPlayer
+## Barwy głosu: f0 = wysokość (Hz), mouth = skala formantów (mniejsza = „większe” gardło), damp = jak szybko gaśnie
+## impuls (mniej = bardziej dźwięczny), rasp = chrypa, breath = przydech, bright = ostrość, dur = długość sylaby.
+const VOICES := {
+	"tenor": {"f0": 122.0, "mouth": 1.0, "damp": 420.0, "rasp": 0.01, "breath": 0.02, "bright": 0.42, "dur": 0.1},
+	"bas": {"f0": 88.0, "mouth": 0.86, "damp": 340.0, "rasp": 0.03, "breath": 0.03, "bright": 0.34, "dur": 0.125},
+	"chrypa": {"f0": 104.0, "mouth": 0.93, "damp": 500.0, "rasp": 0.13, "breath": 0.07, "bright": 0.42, "dur": 0.11},
+	"mlody": {"f0": 138.0, "mouth": 1.06, "damp": 440.0, "rasp": 0.015, "breath": 0.04, "bright": 0.5, "dur": 0.09},
+	"starszy": {"f0": 108.0, "mouth": 0.97, "damp": 380.0, "rasp": 0.07, "breath": 0.08, "bright": 0.36, "dur": 0.13},
+	"nosowy": {"f0": 128.0, "mouth": 1.16, "damp": 300.0, "rasp": 0.01, "breath": 0.01, "bright": 0.3, "dur": 0.105},
+	"kobieta": {"f0": 205.0, "mouth": 1.18, "damp": 460.0, "rasp": 0.01, "breath": 0.05, "bright": 0.52, "dur": 0.095},
+	"kobieta_niska": {"f0": 176.0, "mouth": 1.1, "damp": 400.0, "rasp": 0.03, "breath": 0.08, "bright": 0.44, "dur": 0.11},
+}
+## kto jaką barwą mówi; reszta dostaje barwę z imienia (kobiece imiona — głosy kobiece)
+const VOICE_OF := {
+	"Ty": ["mlody", 0.97], "Kuba": ["mlody", 0.97], "Wiktor": ["bas", 0.95], "Nieznany numer": ["chrypa", 0.86], "Mama": ["kobieta_niska", 1.0],
+	"Wujek Staś": ["starszy", 0.95], "Ola z Neonu": ["kobieta", 1.04], "Mecenas Lipko": ["nosowy", 1.0], "Areszt śledczy": ["chrypa", 1.0],
+	"Pan Zenek": ["starszy", 0.9], "Pan Rysiek": ["tenor", 0.93], "Pani Grażyna": ["kobieta_niska", 1.06], "Siwy": ["chrypa", 1.0],
+}
+var _voice_cache := {}
 var voice_player: AudioStreamPlayer
 var _intro: AudioStreamWAV = null
 var intro_player: AudioStreamPlayer
@@ -79,6 +100,11 @@ func _ready() -> void:
 	voice_player.volume_db = -13.0
 	voice_player.bus = "Glosy"
 	add_child(voice_player)
+	# rozmówca w słuchawce: ta sama mowa, ale przez wąskie pasmo telefonu
+	phone_player = AudioStreamPlayer.new()
+	phone_player.volume_db = -10.0
+	phone_player.bus = "Telefon"
+	add_child(phone_player)
 	intro_player = AudioStreamPlayer.new()
 	intro_player.volume_db = -5.0
 	intro_player.bus = "Muzyka"
@@ -132,6 +158,19 @@ func _build_bus() -> void:
 		return
 	for nm in ["Muzyka", "Efekty", "Otoczenie", "Glosy"]:
 		_add_bus(nm, "Master")
+	# słuchawka telefonu: wąskie pasmo (300–3400 Hz) i odrobina przesteru
+	var tb := _add_bus("Telefon", "Glosy")
+	var hp := AudioEffectHighPassFilter.new()
+	hp.cutoff_hz = 420.0
+	AudioServer.add_bus_effect(tb, hp)
+	var lpt := AudioEffectLowPassFilter.new()
+	lpt.cutoff_hz = 3000.0
+	AudioServer.add_bus_effect(tb, lpt)
+	var ds := AudioEffectDistortion.new()
+	ds.mode = AudioEffectDistortion.MODE_OVERDRIVE
+	ds.drive = 0.22
+	ds.post_gain = -2.0
+	AudioServer.add_bus_effect(tb, ds)
 	var i := _add_bus("Klub", "Muzyka")
 	var lp := AudioEffectLowPassFilter.new()
 	lp.cutoff_hz = 420.0
@@ -689,6 +728,39 @@ func mumble(voice := 1.0) -> void:
 	voice_player.play()
 
 
+## barwa i wysokość głosu postaci: [nazwa barwy, mnożnik wysokości]. Znane postacie mają swoje (VOICE_OF),
+## pozostałe dostają barwę z imienia — zawsze tę samą, więc klienta poznaje się po głosie.
+func voice_for(who: String) -> Array:
+	if _voice_cache.has(who):
+		return _voice_cache[who]
+	var out: Array = VOICE_OF.get(who, [])
+	if out.is_empty():
+		var first := who.get_slice(" ", 0).to_lower()
+		var last := who.get_slice(" ", who.get_slice_count(" ") - 1).to_lower()
+		var fem: bool = (last.ends_with("a") or first in ["pani", "ola", "baśka", "mama"]) and not last in ["kuba", "numer", "wrona", "siwy"] and first != "pan"
+		var h := absi(who.hash())
+		var pool: Array = ["kobieta", "kobieta_niska"] if fem else ["tenor", "bas", "chrypa", "mlody", "starszy", "nosowy"]
+		out = [pool[h % pool.size()], 0.93 + float((h / 7) % 16) / 100.0]
+	_voice_cache[who] = out
+	return out
+
+
+## jedna sylaba mowy postaci `who`; phone = rozmówca w słuchawce (wąskie pasmo). Kuba mówi ciszej — to „nasz” głos.
+func say(who: String, phone := false) -> void:
+	if muted or who == "":
+		return
+	var v := voice_for(who)
+	var bank: Array = _banks.get(String(v[0]), _syll)
+	if bank.is_empty():
+		return
+	var mine: bool = who == "Ty" or who == "Kuba"
+	var pl: AudioStreamPlayer = phone_player if (phone and not mine) else voice_player
+	pl.stream = bank.pick_random()
+	pl.pitch_scale = clampf(float(v[1]) * randf_range(0.95, 1.06), 0.5, 2.0)
+	pl.volume_db = (-16.0 if mine else -13.0) if pl == voice_player else -10.0
+	pl.play()
+
+
 func train_stream() -> AudioStream:
 	return _train
 
@@ -794,32 +866,45 @@ func _generate() -> void:
 		var kf := float(i) / xf
 		tb[i] = tb[i] * kf + tb[tn - xf + i] * (1.0 - kf)
 	var s4 := _wav(tb.slice(0, tn - xf), true)
-	# głos rozmówcy: sylaby do mamrotania — impuls krtaniowy i dwa formanty samogłoski. (Przez chwilę były tu
-	# ciche „pyknięcia”, których prawie nie było słychać pod muzyką i ulicą; wróciły sylaby, o które prosił Piotr.)
+	# głosy rozmówców: sylaby do mamrotania — impuls krtaniowy i dwa formanty samogłoski. Każda barwa (VOICES) ma
+	# własną wysokość, „usta” (formanty), chrypę, przydech i tempo, więc postacie różnią się nie tylko wysokością tonu.
 	var vowels := [[700.0, 1150.0], [520.0, 1750.0], [320.0, 2200.0], [480.0, 900.0], [360.0, 760.0], [620.0, 1400.0], [430.0, 1100.0], [560.0, 1000.0]]
-	var syl: Array = []
-	for vi in range(vowels.size()):
-		if _abort:
-			return
-		var dur := 0.1 + 0.02 * (vi % 4)
-		var sn := int(dur * RATE)
-		var sbuf := PackedFloat32Array()
-		sbuf.resize(sn)
-		var f0 := 118.0 + (vi % 3) * 9.0
-		var period := int(RATE / f0)
-		var f1: float = vowels[vi][0]
-		var f2: float = vowels[vi][1]
-		var soft := 0.0
-		for i in range(sn):
-			var tp := float(i % period) / RATE
-			var e := exp(-tp * 420.0)
-			var v := (sin(tp * TAU * f1) * 0.8 + sin(tp * TAU * f2) * 0.35) * e
-			if vi % 3 == 0 and i < int(0.018 * RATE):
-				v += randf_range(-0.5, 0.5) * (1.0 - float(i) / (0.018 * RATE))
-			var a := minf(1.0, float(i) / (0.012 * RATE)) * minf(1.0, float(sn - i) / (0.03 * RATE))
-			soft += (v - soft) * 0.42
-			sbuf[i] = soft * a * 0.85
-		syl.append(_wav(sbuf))
+	var banks := {}
+	for vn in VOICES:
+		var V: Dictionary = VOICES[vn]
+		var bank: Array = []
+		for vi in range(vowels.size()):
+			if _abort:
+				return
+			var dur: float = float(V.dur) + 0.02 * (vi % 4)
+			var sn := int(dur * RATE)
+			var sbuf := PackedFloat32Array()
+			sbuf.resize(sn)
+			var f0: float = float(V.f0) + (vi % 3) * float(V.f0) * 0.07
+			var f1: float = vowels[vi][0] * float(V.mouth)
+			var f2: float = vowels[vi][1] * float(V.mouth)
+			var soft := 0.0
+			var per := 1.0 / f0
+			var tp := 0.0
+			for i in range(sn):
+				var tt := float(i) / RATE
+				tp += 1.0 / RATE
+				if tp >= per:
+					# nowy impuls: chrypa to nierówne odstępy między impulsami, lekki zjazd tonu na końcu sylaby
+					tp -= per
+					per = (1.0 / (f0 * (1.0 - 0.1 * tt / dur))) * (1.0 + randf_range(-1.0, 1.0) * float(V.rasp))
+				var e := exp(-tp * float(V.damp))
+				var v := (sin(tp * TAU * f1) * 0.8 + sin(tp * TAU * f2) * 0.35) * e
+				v += randf_range(-1.0, 1.0) * float(V.breath) * (0.4 + 0.6 * e)
+				if vi % 3 == 0 and i < int(0.018 * RATE):
+					v += randf_range(-0.5, 0.5) * (1.0 - float(i) / (0.018 * RATE))
+				var a := minf(1.0, float(i) / (0.012 * RATE)) * minf(1.0, float(sn - i) / (0.03 * RATE))
+				soft += (v - soft) * float(V.bright)
+				sbuf[i] = soft * a * 0.85
+			bank.append(_wav(sbuf))
+		banks[vn] = bank
+	var syl: Array = banks["tenor"]
+	_set_banks.call_deferred(banks)
 	_set_voice.call_deferred(s4, syl)
 	if not tracks.is_empty():
 		return
@@ -864,6 +949,10 @@ func _loop_wav(path: String) -> AudioStream:
 		w.loop_end = int(w.get_length() * w.mix_rate)
 		return w
 	return st
+
+
+func _set_banks(b: Dictionary) -> void:
+	_banks = b
 
 
 func _set_voice(tr: AudioStreamWAV, syl: Array) -> void:

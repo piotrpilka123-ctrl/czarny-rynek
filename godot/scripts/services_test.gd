@@ -8,6 +8,18 @@ static func run(T) -> void:
 	G.S = G.new_state()
 	var S: Dictionary = G.S
 
+	# --- głosy: każda postać ma swoją barwę (stałą), Kuba też mówi, kobiece imiona dostają głosy kobiece
+	var v_w: Array = Sfx.voice_for("Wiktor")
+	var v_k: Array = Sfx.voice_for("Ty")
+	var v_m: Array = Sfx.voice_for("Mama")
+	var v_d: Array = Sfx.voice_for("Dominik")
+	T.ok(String(v_w[0]) == "bas" and String(v_k[0]) == "mlody" and String(v_m[0]).begins_with("kobieta") and String(v_w[0]) != String(v_k[0]), "Wiktor mówi basem, Kuba własnym głosem, mama — kobiecym")
+	T.ok(Sfx.voice_for("Dominik") == v_d and Sfx.VOICES.has(String(v_d[0])) and String(Sfx.voice_for("Pani Krysia")[0]).begins_with("kobieta") and not String(Sfx.voice_for("Pan Bogdan")[0]).begins_with("kobieta"), "klient ma zawsze ten sam głos; pani Krysia kobiecy, pan Bogdan męski")
+	var kinds := {}
+	for cdv in D.CLIENTS:
+		kinds[String(Sfx.voice_for(String(cdv.name))[0])] = true
+	T.ok(kinds.size() >= 4 and Sfx.VOICES.size() >= 8 and AudioServer.get_bus_index("Telefon") >= 0, "wśród klientów słychać co najmniej cztery różne barwy (%d); rozmowy telefoniczne idą przez osobny tor „słuchawki”" % kinds.size())
+
 	# --- latarnie: słup poza budynkiem i jezdnią, oprawa nad drogą albo alejką, nigdy w ścianie
 	var W0 = G.world
 	var lamp_bad := []

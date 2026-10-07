@@ -1381,11 +1381,11 @@ func _deal_unstage() -> void:
 
 
 ## kilka sylab mamrotania po nowej kwestii klienta
-func _mumble_burst(voice: float, n: int) -> void:
+func _mumble_burst(who: String, n: int) -> void:
 	var tw := create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	for i in range(n):
-		tw.tween_callback(Sfx.mumble.bind(voice))
+		tw.tween_callback(Sfx.say.bind(who))
 		tw.tween_interval(randf_range(0.12, 0.2))
 
 
@@ -1436,7 +1436,7 @@ func _render_deal() -> void:
 			gt.tween_callback(_deal_anim_done)
 		deal_said = String(deal.speech)
 		var fem: bool = who.get("look", {}).get("female", false)
-		_mumble_burst((1.32 if fem else 0.86) + float(absi(String(who.name).hash()) % 20) / 100.0, clampi(int(deal_said.length() / 14.0), 1, 3))
+		_mumble_burst(String(who.name), clampi(int(deal_said.length() / 14.0), 1, 3))
 	if not deal.over:
 		modal_body.add_child(Trade.watch_row(self))
 	# jedno zdanie klienta — bez rozmowy
@@ -1830,13 +1830,14 @@ func _process_ui(dt: float) -> void:
 		dlg.typed = float(dlg.typed) + dt * 55.0
 		d_text.visible_characters = int(dlg.typed)
 		# co kilka liter jedna sylaba mamrotania (narrator i gracz milczą)
+		# każda postać mówi swoją barwą; Kuba („Ty”) też ma głos — ciszej, bo to my
 		var speaker := String(dlg.lines[dlg.i].n)
-		if int(dlg.typed) >= int(dlg.said) + 7 and speaker != "" and speaker != "Ty" and speaker != "Łóżko":
+		if int(dlg.typed) >= int(dlg.said) + 7 and speaker != "" and speaker != "Łóżko":
 			dlg.said = int(dlg.typed)
 			# po znaku przestankowym krótka pauza, żeby brzmiało jak mowa, a nie terkot
 			var ch := String(dlg.lines[dlg.i].t).substr(maxi(0, int(dlg.typed) - 2), 2)
 			if not (ch.contains(".") or ch.contains(",") or ch.contains("?") or ch.contains("!") or ch.contains("…")):
-				Sfx.mumble(float(dlg.voice))
+				Sfx.say(speaker)
 		if int(dlg.typed) >= String(dlg.lines[dlg.i].t).length():
 			_line_done()
 	if mode == "modal":
@@ -2028,7 +2029,8 @@ func call_active() -> bool:
 
 
 ## ktoś dzwoni: `lines` jak w dialog() — napisy albo {"n": "Ty", "t": "…"}
-func call_start(caller: String, lines: Array, on_end := Callable()) -> void:
+## voice_as: czyim głosem mówi dzwoniący, gdy na ekranie jest np. „Nieznany numer”, a w słuchawce — Wiktor
+func call_start(caller: String, lines: Array, on_end := Callable(), voice_as := "") -> void:
 	if G.test_mode:
 		dialog({"name": caller, "lines": lines, "on_end": on_end})
 		return
@@ -2041,6 +2043,8 @@ func call_start(caller: String, lines: Array, on_end := Callable()) -> void:
 	var fem: bool = last.ends_with("a") and not last in ["kuba"]
 	call = {"name": caller, "lines": ls, "i": 0, "state": "ring", "t": 0.0, "typed": 0.0, "hold": 0.0, "again": 0.0, "said": 0, "on_end": on_end,
 		"voice": (1.26 if fem else 0.8) + float(absi(caller.hash()) % 30) / 100.0}
+	if voice_as != "":
+		call["voice_as"] = voice_as
 	_call_ring()
 
 
@@ -2144,9 +2148,11 @@ func _call_tick(dt: float) -> void:
 			if int(call.typed) < body.length():
 				call.typed = float(call.typed) + dt * 42.0
 				call_text.visible_characters = int(call.typed) + pre
-				if String(l.n) != "Ty" and int(call.typed) >= int(call.said) + 7:
+				if int(call.typed) >= int(call.said) + 7:
 					call.said = int(call.typed)
-					Sfx.mumble(float(call.voice))
+					# rozmówca brzmi jak w słuchawce, Kuba — normalnie
+					var spk := String(l.n) if String(l.n) != "" else String(call.name)
+					Sfx.say(String(call.get("voice_as", spk)) if spk == String(call.name) else spk, true)
 			else:
 				call_text.visible_characters = -1
 				# kwestia zostaje na ekranie tym dłużej, im jest dłuższa

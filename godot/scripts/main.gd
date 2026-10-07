@@ -190,6 +190,37 @@ func _ready() -> void:
 		_record()
 	if args.has("recklub"):
 		_record_klub()
+	if args.has("glosy"):
+		# kontrola głosów bez słuchania: czeka na wygenerowanie barw i wypisuje głośność oraz wysokość każdej z nich
+		var tries := 0
+		while Sfx._banks.size() < Sfx.VOICES.size() and tries < 1200:
+			tries += 1
+			await get_tree().process_frame
+		for vn in Sfx.VOICES:
+			var bank: Array = Sfx._banks.get(vn, [])
+			if bank.is_empty():
+				print("GLOS %-14s BRAK" % vn)
+				continue
+			var peak := 0.0
+			var sq := 0.0
+			var n := 0
+			var cross := 0
+			var secs := 0.0
+			for st in bank:
+				var data: PackedByteArray = (st as AudioStreamWAV).data
+				var prev := 0.0
+				for i in range(0, data.size() - 1, 2):
+					var v := float(data.decode_s16(i)) / 32768.0
+					peak = maxf(peak, absf(v))
+					sq += v * v
+					n += 1
+					if prev <= 0.0 and v > 0.0:
+						cross += 1
+					prev = v
+				secs += float(data.size() / 2.0) / float(Sfx.RATE)
+			print("GLOS %-14s sylab %d  szczyt %.2f  rms %.3f  przejść przez zero %d/s  długość sylaby %.0f ms" % [vn, bank.size(), peak, sqrt(sq / maxf(1.0, n)), int(cross / maxf(0.01, secs)), secs / bank.size() * 1000.0])
+		get_tree().quit()
+		return
 	if args.has("probe"):
 		# wysokość terenu w punktach planu: --probe="x,z;x,z;…"
 		for pt in String(args.probe).split(";", false):
@@ -453,7 +484,7 @@ func _intro() -> void:
 		"Masz głowę i nie sypnąłeś. Takich ludzi mi trzeba. Biorę cię do siebie — zaczynasz od dołu, jako chłopak od wszystkiego. Dostajesz Hutniczą i osiedle.",
 		"Pierwszą paczkę masz ode mnie za darmo, na rozruch. Następne idą na zeszyt. Co zarobisz ponad towar, odnoś do skrzynki — to twój wkład. Im większy, tym wyżej u mnie stoisz: plecak, większy zeszyt, tańszy hurt, garaż. A jak dobijesz do dwudziestu pięciu tysięcy, robimy to razem, jako wspólnicy.",
 		"Zaraz wyślę ci SMS-em, co dalej. I Kuba — tego, kto nas sprzedał, znajdziemy. Powoli.",
-	], _intro_sms)
+	], _intro_sms, "Wiktor")
 
 
 func _intro_sms() -> void:
