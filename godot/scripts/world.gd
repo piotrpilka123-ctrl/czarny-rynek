@@ -670,6 +670,27 @@ func _glb_fix(n: Node) -> void:
 			_glb_fix(c)
 
 
+## jedno wnętrze (pokój z meblami) do pliku GLB — do obejrzenia scenek we wnętrzach bez okna
+func export_room_glb(path: String, id: String) -> void:
+	if not rooms.has(id):
+		print("GLB brak pokoju ", id)
+		return
+	var root := Node3D.new()
+	root.name = "Pokoj"
+	var d: Node = (rooms[id] as Node).duplicate()
+	if d is Node3D:
+		(d as Node3D).visible = true
+	_glb_fix(d)
+	root.add_child(d)
+	var doc := GLTFDocument.new()
+	var st := GLTFState.new()
+	var err := doc.append_from_scene(root, st)
+	if err == OK:
+		err = doc.write_to_filesystem(st, path)
+	print("GLB %s: pokój %s, błąd=%d" % [path, id, err])
+	root.free()
+
+
 func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
 	var root := Node3D.new()
 	root.name = "Swiat"
@@ -1520,8 +1541,8 @@ func refresh_starter() -> void:
 	if not G.flag("wiktor_sms") or G.flag("got_first") or not rooms.has("safe"):
 		return
 	var R: Dictionary = D.ROOMS.safe
-	# 2 cm nad podłogą: przy drzwiach leży wycieraczka
-	var at := Vector3(float(R.cx) - 0.04, 0.022, float(R.d) * 0.5 - 0.62)
+	# na wycieraczce przy drzwiach (jej wierzch jest 13 mm nad podłogą; wcześniej paczka wisiała nad nią prawie centymetr)
+	var at := Vector3(float(R.cx) - 0.04, 0.0135, float(R.d) * 0.5 - 0.62)
 	starter = Stations.model("paczka_start")
 	if starter == null:
 		starter = Node3D.new()

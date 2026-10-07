@@ -201,6 +201,19 @@ func _ready() -> void:
 		# przegląd układu okna bez rysowania: --uiaudit=nazwa (te same nazwy co --ui=)
 		_ui_audit(String(args.uiaudit))
 		return
+	if args.has("glb") and args.has("room"):
+		# wnętrze do pliku GLB: --glb=ścieżka --room=safe [--paczka=k,k2] — z --paczka wypisuje też kadr scenki pod drzwiami
+		if args.has("paczka"):
+			var pk := String(args.paczka).split(",")
+			G.S.flags["wiktor_sms"] = true
+			G.S.flags.erase("got_first")
+			world.refresh_starter()
+			world.starter_rest(float(pk[0]), float(pk[1]) if pk.size() > 1 else -1.0)
+			var dc := door_cam(float(args.get("kam", "1")))
+			print("CAM %.3f %.3f %.3f %.3f %.3f %.3f %.1f" % [dc[0].x, dc[0].y, dc[0].z, dc[1].x, dc[1].y, dc[1].z, dc[2]])
+		world.export_room_glb(String(args.glb), String(args.room))
+		get_tree().quit()
+		return
 	if args.has("glb"):
 		# wycinek świata do pliku GLB: --glb=ścieżka --at=x,z [--r=promień]
 		var at := String(args.get("at", "0,0")).split(",")
@@ -992,6 +1005,17 @@ func close_box() -> void:
 
 ## Paczka na start: pukanie, kamera schodzi do podłogi przy drzwiach kawalerki, spod drzwi wsuwają się
 ## dwa woreczki — zioło i strunowy z amfetaminą. Potem paczka leży i czeka, aż gracz ją podniesie.
+## kamera scenki z paczką pod drzwiami: [skąd, na co patrzy, kąt] dla postępu najazdu k = 0…1
+## (osobno, bo tym samym kadrem podgląd bez okna sprawdza, czy paczkę w ogóle widać)
+func door_cam(k: float) -> Array:
+	var R: Dictionary = D.ROOMS.safe
+	var cx := float(R.cx)
+	var ez := float(R.d) * 0.5
+	var from := Vector3(cx + 0.46, 0.13, ez - 1.38)
+	var to := Vector3(cx + 0.27, 0.085, ez - 1.02)
+	return [from.lerp(to, k), Vector3(cx + 0.03, 0.03, ez - 0.52), lerpf(34.0, 30.0, k)]
+
+
 func door_package() -> void:
 	if not world.rooms.has("safe"):
 		world.refresh_starter()
@@ -1008,13 +1032,13 @@ func door_package() -> void:
 	Sfx.knock()
 	await get_tree().create_timer(0.9).timeout
 	ui.cut_begin()
-	var from := Vector3(cx + 0.46, 0.13, ez - 1.38)
-	var to := Vector3(cx + 0.27, 0.085, ez - 1.02)
-	var look := Vector3(cx + 0.03, 0.03, ez - 0.52)
-	cine_cam(from, look, 34.0)
+	var c0 := door_cam(0.0)
+	cine_cam(c0[0], c0[1], c0[2])
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_method(func(k: float): cine_cam(from.lerp(to, k), look, lerpf(34.0, 30.0, k)), 0.0, 1.0, 3.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(k: float):
+		var ck := door_cam(k)
+		cine_cam(ck[0], ck[1], ck[2]), 0.0, 1.0, 3.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	# pierwszy wsuwa się worek z ziołem — dwoma pchnięciami, jak ręką spod drzwi
 	tw.tween_method(func(k: float): world.starter_rest(k * 0.55, 0.0), 0.0, 1.0, 0.4).set_delay(0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(0.5)
