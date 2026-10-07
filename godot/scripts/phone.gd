@@ -25,6 +25,7 @@ var contact_id := ""
 var skill_sel := ""
 ## zamawianie u Wiktora: wybrany towar i paczka, koszyk, zakładka (buy | sell)
 var shop := {"p": "dym", "g": 5, "cart": [], "tab": "buy"}
+var shop_edit: LineEdit = null      # pole „ile gramów” w sklepie Wiktora
 var bezel: PanelContainer        # telefon trzymany pionowo
 var land: Control                # ten sam telefon położony na boku (sklep Wiktora)
 var cc2: CenterContainer

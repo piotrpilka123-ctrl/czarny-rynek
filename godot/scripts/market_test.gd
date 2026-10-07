@@ -18,6 +18,11 @@ static func run(T) -> void:
 	T.ok(M.block("wiktor", "dym", 5) == "" and M.block("wiktor", "szron", 5) == "" and M.block("wiktor", "krysztal", 5).contains("poziomu") and M.block("wiktor", "snieg", 5).contains("poziomu"),
 		"od początku marihuana i amfetamina, mocniejszy towar z poziomem")
 	T.ok(M.sizes() == [5, 10] and M.block("wiktor", "dym", 20).contains("najwyżej"), "na 1. poziomie paczki do 10 g")
+	var c7: Array = []
+	M.cart_add(c7, "dym", 7)
+	M.cart_add(c7, "dym", 2)
+	T.ok(c7.size() == 1 and int(c7[0].g) == 9 and M.cart_block(c7) == "" and M.cart_cost(c7) == M.price("wiktor", "dym", 9), "do koszyka wchodzi dowolna liczba gramów, a ten sam towar się sumuje (9 g za %d zł)" % int(M.cart_cost(c7)))
+	T.ok(G.wholesale_disc(19) == 0.0 and G.wholesale_disc(20) == 0.04 and G.wholesale_disc(120) == 0.12 and G.wholesale_disc(250) == 0.16, "rabat za ilość liczy się progami: od 20, 50, 100 i 250 g")
 	# ceny: uliczna marihuana ok. 50 zł/g, hurt ok. połowę; rabat za ilość i za zaufanie
 	var pw: float = M.price("wiktor", "dym", 10)
 	T.ok(int(D.PRODUCTS.dym.base) == 50 and pw == 260.0 and G.market_price("dym") == 50.0 and G.market_price("dym", 100) == G.market_price("dym", 42), "marihuana: 26 zł/g w hurcie, 50 zł/g na ulicy — czysta i rozrobiona kosztują tyle samo")

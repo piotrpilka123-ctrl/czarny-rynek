@@ -49,9 +49,8 @@ static func render(PH) -> void:
 	var st: Dictionary = PH.shop
 	if not D.PRODUCTS.has(String(st.get("p", ""))) or int(S.lvl) < int(D.PRODUCTS[st.p].lvl):
 		st.p = "dym"
-	var sizes: Array = M.sizes()
-	if not sizes.has(int(st.get("g", 0))):
-		st.g = int(sizes[0])
+	var max_g: int = G.wholesale_max()
+	st.g = clampi(int(st.get("g", 5)), 1, max_g)
 	# --- nagłówek: powrót, tytuł, zakładki, stan zeszytu
 	var head := K.hbox(8)
 	root.add_child(head)
@@ -99,24 +98,52 @@ static func render(PH) -> void:
 	var pd: Dictionary = D.PRODUCTS[st.p]
 	var info := K.wrap(String(pd.desc), 11, K.C_DIM, 470.0)
 	left.add_child(info)
+	# ile gramów: wpisujesz liczbę (albo −/+); rabat za ilość liczy się progami
 	var sz := K.hbox(6)
 	left.add_child(sz)
-	sz.add_child(K.lbl("Paczka:", 12, K.C_DIM))
-	for g0 in sizes:
-		var g: int = g0
-		var disc := float(D.WHOLESALE_DISC.get(g, 0.0))
-		var sbn := K.btn("%d g" % g, func(): st.g = g; render(PH), "go" if int(st.g) == g else "", true)
-		if disc > 0.0:
-			sbn.tooltip_text = "Rabat za ilość: −%d%%" % int(round(disc * 100.0))
-		sz.add_child(sbn)
-	if sizes.size() < D.WHOLESALE_SIZES.size():
-		var nl := K.lbl("większe paczki z poziomem", 10, K.C_DIM)
-		nl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		sz.add_child(nl)
-	var cost: float = M.price("wiktor", String(st.p), int(st.g))
-	var disc2 := float(D.WHOLESALE_DISC.get(int(st.g), 0.0))
-	var add := K.btn("Dodaj do koszyka:  %d g %s  —  %s%s" % [int(st.g), String(D.PRODUCT_GEN[st.p]), G.money(cost), ("  (−%d%%)" % int(round(disc2 * 100.0))) if disc2 > 0.0 else ""],
-		func(): M.cart_add(st.cart, String(st.p), int(st.g)); Sfx.play("select"); render(PH), "go")
+	sz.add_child(K.lbl("Ile gramów:", 12, K.C_DIM))
+	var minus := K.btn("−", func(): st.g = maxi(1, int(st.g) - 1); render(PH), "", true)
+	minus.custom_minimum_size = Vector2(30, 30)
+	sz.add_child(minus)
+	var ed := LineEdit.new()
+	ed.text = str(int(st.g))
+	ed.custom_minimum_size = Vector2(72, 30)
+	ed.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ed.max_length = 3
+	ed.select_all_on_focus = true
+	ed.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
+	ed.tooltip_text = "Wpisz, ile gramów chcesz zamówić"
+	ed.add_theme_font_size_override("font_size", 14)
+	ed.add_theme_stylebox_override("normal", K.sb(Color(0.03, 0.04, 0.06), 8, Color(1, 1, 1, 0.18), 1, 8))
+	ed.add_theme_stylebox_override("focus", K.sb(Color(0.03, 0.04, 0.06), 8, K.C_ACC, 1, 8))
+	sz.add_child(ed)
+	sz.add_child(K.lbl("g", 12, K.C_DIM))
+	var plus := K.btn("+", func(): st.g = mini(max_g, int(st.g) + 1); render(PH), "", true)
+	plus.custom_minimum_size = Vector2(30, 30)
+	sz.add_child(plus)
+	var lim := K.lbl("najwyżej %d g na raz%s" % [max_g, "" if max_g >= 250 else " (więcej z poziomem)"], 10, K.C_DIM)
+	lim.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sz.add_child(lim)
+	var add := K.btn("", func(): M.cart_add(st.cart, String(st.p), int(st.g)); Sfx.play("select"); render(PH), "go")
+	var relabel := func():
+		var cost: float = M.price("wiktor", String(st.p), int(st.g))
+		var disc2: float = G.wholesale_disc(int(st.g))
+		add.text = "Dodaj do koszyka:  %d g %s  —  %s%s" % [int(st.g), String(D.PRODUCT_GEN[st.p]), G.money(cost), ("  (rabat −%d%%)" % int(round(disc2 * 100.0))) if disc2 > 0.0 else ""]
+	relabel.call()
+	# pisanie w polu od razu przelicza cenę (bez przerysowania okna — pole nie traci kursora)
+	ed.text_changed.connect(func(t: String):
+		var digits := ""
+		for ch in t:
+			if ch >= "0" and ch <= "9":
+				digits += ch
+		var v := clampi(int(digits) if digits != "" else 1, 1, max_g)
+		st.g = v
+		if digits != t or (digits != "" and int(digits) != v):
+			ed.text = str(v) if digits != "" else ""
+			ed.caret_column = ed.text.length()
+		relabel.call())
+	ed.text_submitted.connect(func(_t: String): M.cart_add(st.cart, String(st.p), int(st.g)); Sfx.play("select"); render(PH))
+	PH.shop_edit = ed
 	add.icon = K.tex("shopping_cart")
 	add.add_theme_constant_override("icon_max_width", 16)
 	left.add_child(add)

@@ -2311,7 +2311,15 @@ func wholesale_unit(p: String, _high := false) -> float:
 
 
 func wholesale_price(p: String, g: int, _high := false) -> float:
-	return round(wholesale_unit(p) * g * (1.0 - float(D.WHOLESALE_DISC.get(g, 0.0))))
+	return round(wholesale_unit(p) * g * (1.0 - wholesale_disc(g)))
+
+
+## rabat za ilość dla zamówienia na `g` gramów jednego towaru (progi: D.WHOLESALE_TIERS)
+func wholesale_disc(g: int) -> float:
+	for t in D.WHOLESALE_TIERS:
+		if g >= int(t[0]):
+			return float(t[1])
+	return 0.0
 
 
 func wholesale_max() -> int:
@@ -2324,7 +2332,7 @@ func credit_limit() -> float:
 	var top := 0.0
 	for p in D.PRODUCTS:
 		if int(S.lvl) >= int(D.PRODUCTS[p].lvl):
-			top = maxf(top, float(D.PRODUCTS[p].cost) * wholesale_max() * (1.0 - float(D.WHOLESALE_DISC.get(wholesale_max(), 0.0))))
+			top = maxf(top, float(D.PRODUCTS[p].cost) * wholesale_max() * (1.0 - wholesale_disc(wholesale_max())))
 	return maxf(float(D.CREDIT_BASE), round(top * 1.35 / 50.0) * 50.0) * (1.5 if has_skill("kredyt") else 1.0)
 
 

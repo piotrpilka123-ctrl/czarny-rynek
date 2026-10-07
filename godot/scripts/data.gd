@@ -48,6 +48,8 @@ const PRODUCT_GEN := {"dym": "marihuany", "szron": "amfetaminy", "krysztal": "me
 ## hurt u Wiktora: ilości i rabaty
 const WHOLESALE_SIZES := [5, 10, 20, 50, 100, 250]
 const WHOLESALE_DISC := {5: 0.0, 10: 0.0, 20: 0.04, 50: 0.08, 100: 0.12, 250: 0.16}
+## rabat za ilość liczony progami — zamawia się dowolną liczbę gramów: [od ilu gramów, rabat]
+const WHOLESALE_TIERS := [[250, 0.16], [100, 0.12], [50, 0.08], [20, 0.04]]
 ## maks. jednorazowe zamówienie (g) na danym poziomie
 const WHOLESALE_MAX := [10, 10, 20, 20, 50, 50, 100, 100, 250, 250, 250, 250, 250, 250, 250, 250]
 ## Wiktor daje wyłącznie czysty towar; rozrabiasz go sam (albo nie)

@@ -48,7 +48,7 @@ static func max_g(v: Dictionary) -> int:
 ## cena jednej pozycji (towar × gramy) z rabatem za ilość i za zaufanie
 static func price(_vid: String, p: String, g: int, _method := "drop") -> float:
 	var unit: float = G.wholesale_unit(p, false) * (1.0 - trust_discount(VID))
-	return round(unit * g * (1.0 - float(D.WHOLESALE_DISC.get(g, 0.0))))
+	return round(unit * g * (1.0 - G.wholesale_disc(g)))
 
 
 ## produkty, które Wiktor w ogóle pokazuje w sklepie (zablokowane też — z poziomem, od którego będą)
@@ -83,13 +83,14 @@ static func cart_grams(cart: Array) -> int:
 	return n
 
 
-## dokłada pozycję do koszyka (ten sam towar łączy się w jedną, większą paczkę, jeśli taki rozmiar istnieje)
+## dokłada pozycję do koszyka: ten sam towar zbiera się w jednej pozycji (do limitu na zamówienie)
 static func cart_add(cart: Array, p: String, g: int) -> void:
+	g = maxi(1, g)
 	for it in cart:
-		if String(it.p) == p and D.WHOLESALE_SIZES.has(int(it.g) + g) and int(it.g) + g <= G.wholesale_max():
-			it.g = int(it.g) + g
+		if String(it.p) == p:
+			it.g = mini(G.wholesale_max(), int(it.g) + g)
 			return
-	cart.append({"p": p, "g": g})
+	cart.append({"p": p, "g": mini(G.wholesale_max(), g)})
 
 
 ## dlaczego nie można zamówić koszyka ("" = można)
@@ -106,8 +107,8 @@ static func cart_block(cart: Array) -> String:
 			return "Nie ma takiego towaru."
 		if int(S.lvl) < int(D.PRODUCTS[p].lvl):
 			return "%s od poziomu %d." % [String(D.PRODUCTS[p].name), int(D.PRODUCTS[p].lvl)]
-		if int(it.g) < 5:
-			return "Minimum 5 g."
+		if int(it.g) < 1:
+			return "Minimum 1 g."
 		per[p] = int(per.get(p, 0)) + int(it.g)
 	for p in per:
 		if int(per[p]) > G.wholesale_max():
