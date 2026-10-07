@@ -469,6 +469,7 @@ static func run(T) -> void:
 			if not G.world.is_free(qx0 * D.SC, qz0 * D.SC, 0.25):
 				blocked_pass += 1
 	T.ok(blocked_pass == 0 and G.world.passages.size() >= 15, "każda dziura, przełaz i furtka w płocie ma wolne przejście po obu stronach (%d przejść)" % G.world.passages.size())
+	T.ok(G.world.drains >= 40, "w jezdniach są kratki ściekowe przy krawężnikach (%d)" % G.world.drains)
 	T.ok(G.world.ring2 >= 40, "za murem stoi drugi rząd bloków, który zasłania przerwy w pierwszym (%d)" % G.world.ring2)
 	# --- radiowóz: jedzie prawym pasem, skręca stopniowo, na końcu trasy zawraca
 	var car: Dictionary = N.car

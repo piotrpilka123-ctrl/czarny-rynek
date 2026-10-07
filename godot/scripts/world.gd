@@ -905,6 +905,7 @@ func build(loader = null) -> void:
 	set_mill_burnt(true)
 	_markers()
 	_litter()
+	_street_details()
 
 
 func _facade_mats() -> void:
@@ -3584,6 +3585,65 @@ func _litter() -> void:
 	litter_count = placed
 	if G.test_mode:
 		print("SMIECI: %d sztuk w %d grupach" % [placed, groups.size()])
+
+
+## To, co jest w każdej prawdziwej jezdni: kratki ściekowe przy krawężnikach co kilkanaście metrów
+## i włazy studzienek na osi ulic i na chodnikach.
+var drains := 0
+
+func _street_details() -> void:
+	var pts: Array = []          # [x, z, obrót]
+	var x := -190.0
+	var k := 0
+	while x < 196.0:
+		# Hutnicza: na przemian po obu stronach, z dala od skrzyżowań i przejść
+		var clear := true
+		for cx in [-106.0, 0.0, 75.0, 145.0, 166.0, -98.0, -11.0, 9.0, 64.0, 124.0]:
+			if absf(x - float(cx)) < 6.0:
+				clear = false
+		if clear:
+			pts.append([x, 15.95 if k % 2 == 0 else 24.05, 0.0])
+		x += 17.0
+		k += 1
+	for e in [[-3.15, 40.0, 138.0, 31.0], [3.15, 55.0, 138.0, 31.0], [-109.25, -122.0, 6.0, 34.0], [-102.75, -106.0, 8.0, 34.0], [91.75, -118.0, -64.0, 27.0], [98.25, -104.0, -64.0, 27.0],
+			[72.25, 34.0, 68.0, 22.0], [77.75, 46.0, 70.0, 22.0], [162.75, -92.0, 10.0, 31.0], [169.25, -76.0, 10.0, 31.0]]:
+		var z := float(e[1])
+		while z < float(e[2]):
+			pts.append([float(e[0]), z, PI / 2.0])
+			z += float(e[3])
+	for e in [[-133.25, -96.0, 92.0, 36.0], [-126.75, -78.0, 16.0, 36.0]]:
+		var xx := float(e[1])
+		while xx < float(e[2]):
+			pts.append([xx, float(e[0]), 0.0])
+			xx += float(e[3])
+	for e in [[LOOP[0] + 0.75, 152.0, PI / 2.0], [LOOP[2] - 0.75, 157.0, PI / 2.0], [-4.0, LOOP[3] - 0.75, 0.0]]:
+		pts.append(e)
+	var ps: PackedScene = load("res://assets/models/ul_kratka.glb") if ResourceLoader.exists("res://assets/models/ul_kratka.glb") else null
+	if ps != null:
+		var inst: Node = ps.instantiate()
+		var mis := inst.find_children("*", "MeshInstance3D", true, false)
+		if not mis.is_empty():
+			var mi0: MeshInstance3D = mis[0]
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = mi0.mesh
+			mm.instance_count = pts.size()
+			for i in range(pts.size()):
+				var wx := float(pts[i][0]) * SC
+				var wz := float(pts[i][1]) * SC
+				var xf := Transform3D(Basis(Vector3.UP, float(pts[i][2])), Vector3(wx, height(wx, wz) + 0.012, wz)) * mi0.transform
+				mm.set_instance_transform(i, xf)
+				litter_items.append([mi0.mesh, xf])
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mmi.visibility_range_end = 70.0
+			add_child(mmi)
+			drains = pts.size()
+		inst.free()
+	for e in [[-150.0, 20.6], [-60.0, 19.4], [100.0, 20.5], [150.0, 19.5], [0.6, 70.0], [-0.5, 120.0], [-106.0, -60.0], [-106.4, -110.0], [-40.0, -130.0], [40.0, -130.6], [95.0, -95.0],
+			[-27.0, -90.0], [60.0, -50.0], [8.0, -66.0], [-5.3, 45.0], [75.0, 50.0], [166.0, -30.0], [10.0, 157.0]]:
+		_prop("water_manhole_cover", float(e[0]), float(e[1]), float(e[0]) * 0.7, 0.0, 0.0, false, 0.01)
 
 
 ## Znaki skrytek: mały biały szablon sprejem (liść, czaszka, woreczek…) u stóp najbliższej ściany albo grata.
