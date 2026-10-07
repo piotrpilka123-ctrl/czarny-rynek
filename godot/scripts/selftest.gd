@@ -309,6 +309,11 @@ func run() -> void:
 
 	# --- SMS: zgoda, klient idzie na spotkanie
 	var o: Dictionary = S.orders[0]
+	# test niesie tylko marihuanę: gdy klient wylosował amfetaminę, zamówienie zamienia się na to, co jest w kieszeni
+	# (to losowanie sprawiało, że co kilkanaście przebiegów cała seria testów sprzedaży padała)
+	if String(o.product) != "dym":
+		o.product = "dym"
+		o.grams = 3
 	U.open_phone("sms")
 	U.phone.chat_id = "dominik"
 	U.phone.render()
@@ -353,12 +358,19 @@ func run() -> void:
 		ok(int(U.deal.base) == int(o.agreed) and int(U.deal.pct) == 0 and G.deal_read(U.deal, 0) == "sure", "wymiana zaczyna się od umówionej ceny — bez przywitań i gadek")
 		ok(not G.deal_set(U.deal, 15) == false and int(U.deal.price) > int(o.agreed) and G.deal_set(U.deal, 0), "cenę można lekko podbić albo wrócić do umówionej")
 		# podanie towaru: przytrzymanie napełnia pasek, puszczenie go cofa
-		U.deal_holding = true
-		await frames(6)
-		var held: float = U.deal.hold
+		# (najpierw kilka klatek na ułożenie świeżo zbudowanego okna — „zjechanie myszy z przycisku” tuż po przebudowie
+		# potrafiło w teście skasować przytrzymanie, zanim pasek ruszył)
+		await frames(4)
+		var held := 0.0
+		for _try in range(3):
+			U.deal_holding = true
+			await frames(6)
+			held = maxf(held, float(U.deal.hold))
+			if held > 0.0:
+				break
 		U.deal_holding = false
 		await frames(40)
-		ok(held > 0.0 and float(U.deal.hold) == 0.0 and not U.deal.over, "puszczony przycisk cofa podanie (%.2f → 0)" % held)
+		ok(held > 0.0 and float(U.deal.hold) == 0.0 and not U.deal.over, "puszczony przycisk cofa podanie (%.2f → 0; na tacy %d g, tryb %s, okienko %s, koniec %s, hold %.2f)" % [held, int(U.deal.qty), U.mode, str(not U.deal_ask.is_empty()), str(U.deal.over), float(U.deal.hold)] + " paczki=%s chce=%s %d" % [str(G.stacks(S.inv, "pack")), String(U.deal.ctx.product), int(U.deal.want)])
 		U.deal_holding = true
 		var hg := 0
 		while not U.deal.over and hg < 400:
@@ -558,7 +570,7 @@ func run() -> void:
 	for e in ents:
 		if e.kind == "item" and e.id == "majeranek":
 			G.move_entry("safe", e, true, 1e9)
-	ok(G.item("majeranek") == 0 and int(G.store_items(S.stash.safe).get("majeranek", 0)) == 16, "majeranek przeniesiony do skrytki")
+	ok(G.item("majeranek") == 0 and int(G.store_items(S.stash.safe).get("majeranek", 0)) == 16, "majeranek przeniesiony do skrytki (w plecaku %d, w skrytce %d, skrytka %s / %d)" % [G.item("majeranek"), int(G.store_items(S.stash.safe).get("majeranek", 0)), G.units(G.store_total(S.stash.safe)), int(G.stash_cap("safe"))])
 	ok(G.carry_total() < tot0, "w plecaku zwolniło się miejsce")
 	for t in ["char", "org", "inv"]:
 		U.inv.tab = t
