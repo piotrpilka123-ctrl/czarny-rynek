@@ -30,6 +30,7 @@ var ic_weather: TextureRect
 var minimap: Control
 var compass: Control
 var l_nav: RichTextLabel
+var last_job := ""             # podpis ostatnio pokazanego zlecenia dnia (żeby karta celu błysnęła przy zmianie)
 var l_obj_t: Label
 var l_obj: Label
 var l_zone: Label
@@ -1910,6 +1911,16 @@ func update_hud() -> void:
 	if nm != null:
 		var left = float(nm.meet) - S.t
 		lines += ("\n" if lines != "" else "") + K.col("Spotkanie %s — %s" % [G.clock(nm.meet), ("za %d min" % int(left)) if left > 0.0 else ("klient czeka od %d min" % int(-left))], K.C_ACC if left > 0.0 else K.C_WARN)
+	# zlecenie dnia: postęp pod celem; karta wraca na chwilę, gdy zlecenie się pojawi albo zostanie wykonane
+	if G.job_active() and G.prologue == null:
+		var jb: Dictionary = S.job
+		var jd: Dictionary = G.job_def(String(jb.kind))
+		var jdone: bool = jb.get("done", false)
+		lines += ("\n" if lines != "" else "") + K.col("Zlecenie dnia: %s" % ("zrobione ✓" if jdone else "%s z %s" % [G._job_amount(jd, G.job_progress()), G._job_amount(jd, float(jb.need))]), K.C_GOLD)
+		var sig := "%s|%s|%s" % [String(jb.kind), str(jb.need), str(jdone)]
+		if sig != last_job:
+			last_job = sig
+			obj_t = maxf(obj_t, 6.0)
 	l_nav.text = lines
 	obj_t = maxf(0.0, obj_t - 0.1)
 	obj_card.visible = obj_t > 0.0 and txt != ""
