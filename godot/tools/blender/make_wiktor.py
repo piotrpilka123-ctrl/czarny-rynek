@@ -156,128 +156,72 @@ def _smugi(np, rs, arr, n, sila, dlug=(0.25, 0.8), gr=(1.2, 3.0)):
 
 
 def paczka_start():
-    """Towar wsuwany pod drzwi, tak jak chodzi po mieście: płaska paczka próżniowa z marihuaną („Ziolo”) — folia
-    przyssana do sprasowanych szyszek, żebrowane zgrzewy, pasek srebrnej taśmy z dopiskiem markerem — leżąca na
-    kawałku szarego papieru, w który była zawinięta; do tego mały woreczek strunowy z wilgotną, kremową pastą
-    amfetaminy („Feta”) ściśnięty dwiema gumkami recepturkami. Obie rzeczy mieszczą się w szparze pod drzwiami."""
+    """Paczka od Wiktora, tak jak chodzi po mieście: zwarty pakunek 19 × 12 × 2 cm zawinięty w szary papier
+    pakowy — pognieciony, z zakładkami na końcach — i okręcony brązową taśmą na krzyż; na wierzchu dopisek markerem.
+    Co jest w środku, widać dopiero po otwarciu (okno paczki). Węzeł „Ziolo” to cały pakunek (wsuwa się pod drzwi)."""
     import numpy as np
     reset()
-    rs = np.random.default_rng(11)
-    ink = mat('marker', '15161a', 0.6)
-    # --- paczka próżniowa 20 × 13 cm, gruba na 1,5 cm
-    W, Dd = 0.2, 0.13
-    EU, EV = 0.86, 0.9                       # gdzie kończy się towar, a zaczyna zgrzew / kołnierz folii
+    rs = np.random.default_rng(23)
+    W, Dd, Hh = 0.19, 0.12, 0.021
+    # --- tekstura papieru: szarobrązowy, z włóknami, zagnieceniami (jasne grzbiety, ciemne doliny) i przetarciami
+    wp, hp = 760, 480
+    ys, xs = np.mgrid[0:hp, 0:wp].astype(np.float32)
+    base = np.zeros((hp, wp, 3), dtype=np.float32) + np.array([0.60, 0.50, 0.37], dtype=np.float32)
+    base *= (1.0 + 0.018 * np.sin(xs * 0.9 + np.sin(ys * 0.05) * 3.0))[..., None]            # prążki papieru pakowego
+    base *= rs.uniform(0.93, 1.05, (hp, wp, 1)).astype(np.float32)                          # włókna
+    for _i in range(34):                                                                   # zagniecenia: jasna i ciemna kreska obok siebie
+        x0, y0 = rs.random() * wp, rs.random() * hp
+        a = rs.random() * math.pi
+        ln = rs.uniform(0.12, 0.6) * wp
+        dx, dy = math.cos(a), math.sin(a)
+        t = (xs - x0) * dx + (ys - y0) * dy
+        dist = (xs - x0) * -dy + (ys - y0) * dx
+        k = np.clip(1.0 - np.abs(t) / (ln / 2), 0.0, 1.0)
+        base += (np.exp(-((dist - 1.2) / 1.3) ** 2) * k * 0.10)[..., None]
+        base -= (np.exp(-((dist + 1.4) / 1.8) ** 2) * k * 0.09)[..., None]
+    for _i in range(9):                                                                    # tłustsze plamy i przetarcia
+        cx, cy, rr = rs.random() * wp, rs.random() * hp, rs.uniform(18, 60)
+        base *= (1.0 - 0.10 * np.exp(-(((xs - cx) ** 2 + (ys - cy) ** 2) / (rr * rr))))[..., None]
+    base[:4, :4] = np.array([0.5, 0.42, 0.31])
+    uu, vv = xs / wp * 2 - 1, ys / hp * 2 - 1
+    # zakładki na końcach: papier złożony „w kopertę” — dwie skośne krawędzie schodzące się do środka krótszego boku
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            # prosta od rogu (sx, sy) do punktu (sx·0.62, 0)
+            d = np.abs((vv - sy) * (0.62 - 1.0) * sx - (uu - sx) * (0.0 - sy)) / math.hypot(0.38, 1.0)
+            on = (np.abs(uu) > 0.6) & (vv * sy > 0)
+            base -= (np.exp(-(d / 0.012) ** 2) * 0.16 * on)[..., None]
+            base += (np.exp(-((d - 0.02) / 0.012) ** 2) * 0.07 * on)[..., None]
+    # brązowa taśma pakowa: dwa pasy wzdłuż i jeden w poprzek; lekko prześwituje papier, brzegi łapią światło
+    tape = np.array([0.42, 0.27, 0.12], dtype=np.float32)
+    def pas(mask, edge):
+        k = 0.9 + 0.05 * np.sin(xs * 0.07 + ys * 0.045)
+        base[mask] = (base[mask] * 0.25 + tape * 0.75) * k[mask][..., None]
+        base[edge] = base[edge] * 0.55 + np.array([0.75, 0.62, 0.42]) * 0.45
+    for v0 in (-0.42, 0.46):
+        m = (np.abs(vv - v0) < 0.15) & (np.abs(uu) < 0.985)
+        e = (np.abs(np.abs(vv - v0) - 0.15) < 0.012) & (np.abs(uu) < 0.985)
+        pas(m, e)
+    m2 = (np.abs(uu - 0.3) < 0.1) & (np.abs(vv) < 0.985)
+    e2 = (np.abs(np.abs(uu - 0.3) - 0.1) < 0.008) & (np.abs(vv) < 0.985)
+    pas(m2, e2)
+    _smugi(np, rs, base, 10, 0.05, (0.1, 0.4), (1.0, 2.0))
+    base[:4, :4] = np.array([0.5, 0.42, 0.31])
+    papier = _mat_obraz('papier_pakowy', _obraz('paczka_papier_kolor', base), 0.6)
 
     def hz(u, v):
-        if abs(u) >= EU or abs(v) >= EV:
-            return 0.0012
-        body = (1.0 - (abs(u) / EU) ** 6) * (1.0 - (abs(v) / EV) ** 6)
+        # poduszka o stromych bokach, lekko wybrzuszona; nierówna, bo w środku leżą woreczki
+        edge = (1.0 - abs(u) ** 34) * (1.0 - abs(v) ** 26)
         x, y = u * W / 2, v * Dd / 2
-        buds = 0.5 + 0.5 * noise.noise(Vector((x * 55, y * 55, 1.7)))          # grudki szyszek co ok. 2 cm
-        fine = noise.noise(Vector((x * 210, y * 210, 4.2)))                    # zmarszczki przyssanej folii
-        return 0.0012 + body * (0.0072 + 0.0058 * buds + 0.0013 * fine)
+        bump = 0.5 + 0.5 * noise.noise(Vector((x * 34, y * 34, 2.1)))
+        fine = noise.noise(Vector((x * 150, y * 150, 5.5)))
+        return 0.0008 + edge * (Hh * 0.78 + Hh * 0.22 * bump + 0.0006 * fine)
 
-    # tekstura: sprasowane szyszki (komórki w kilku zieleniach, ciemne szczeliny), rude włoski, szron żywicy, połysk folii
-    wp, hp = 640, 416
-    NB = 230
-    cell, d1, d2 = _komorki(np, rs, wp, hp, NB, 7.0)
-    pal = np.array([[0.19, 0.27, 0.11], [0.25, 0.33, 0.14], [0.31, 0.38, 0.17], [0.22, 0.29, 0.15], [0.35, 0.39, 0.2], [0.27, 0.31, 0.12]])
-    tone = pal[rs.integers(0, len(pal), NB)] * rs.uniform(0.82, 1.12, (NB, 1))
-    img = tone[cell]
-    img *= (0.6 + 0.4 * np.clip((d2 - d1) / 13.0, 0.0, 1.0) ** 0.7)[..., None]    # miękkie szczeliny między szyszkami
-    img *= (0.88 + 0.22 * np.clip(1.0 - d1 / 20.0, 0.0, 1.0))[..., None]          # środek szyszki jaśniejszy
-    # drobniejsza struktura w środku szyszek: listki i kielichy (druga, gęsta siatka komórek)
-    c2, f1, f2 = _komorki(np, rs, wp, hp, 1400, 3.0)
-    img *= (0.84 + 0.16 * np.clip((f2 - f1) / 3.5, 0.0, 1.0))[..., None]
-    img *= rs.uniform(0.86, 1.1, (1400, 1))[c2]
-    img *= rs.uniform(0.9, 1.08, (hp, wp, 1))                                      # ziarno
-    for _i in range(520):                                                          # rude włoski
-        x0, y0, a, ln = rs.random() * wp, rs.random() * hp, rs.random() * math.tau, rs.uniform(5, 13)
-        for t in range(int(ln)):
-            xi, yi = int(x0 + math.cos(a) * t), int(y0 + math.sin(a) * t)
-            if 0 <= xi < wp and 0 <= yi < hp:
-                img[yi, xi] = img[yi, xi] * 0.35 + np.array([0.55, 0.33, 0.12]) * 0.65
-    fr = rs.integers(0, [hp, wp], (2600, 2))
-    img[fr[:, 0], fr[:, 1]] += 0.16                                                # szron żywicy
-    img = img * 0.9 + np.array([0.78, 0.83, 0.8]) * 0.1                            # mleczna folia na wierzchu
-    _smugi(np, rs, img, 26, 0.16)
-    ys, xs = np.mgrid[0:hp, 0:wp].astype(np.float32)
-    uu, vv = xs / wp * 2 - 1, ys / hp * 2 - 1
-    zebra = 0.7 + 0.09 * np.sin(xs * 0.9)
-    seal = (np.abs(uu) >= EU - 0.01)
-    img[seal] = (np.stack([zebra * 0.97, zebra * 1.02, zebra], axis=2))[seal]
-    kol = (np.abs(vv) >= EV - 0.01) & ~seal
-    img[kol] = np.array([0.7, 0.74, 0.72])
-    img[:4, :4] = np.array([0.66, 0.7, 0.68])
-    paczka = _poduszka('ZioloSrodek', W, Dd, 64, 42, hz, _mat_obraz('susz_folia', _obraz('paczka_ziolo_kolor', img), 0.24))
-    paczka.location = (0, 0, 0.0016)
-    # --- reszta: żebra zgrzewu, srebrna taśma przez jeden koniec, szary papier pod spodem (z wypalonym brudem)
-    cz = []
-    zg = mat('zgrzew', 'c9d1cc', 0.22)
-    for sx in (-1, 1):
-        for k in range(5):
-            cz.append(rbox('zebro', (0.0013, Dd - 0.004, 0.0006), zg, 0.0, (sx * (W / 2 - 0.003 - k * 0.0026), 0, 0.0031), segs=1))
-    cz.append(rbox('tasma', (0.03, Dd * 0.5, 0.0009), mat('tasma', '8a9094', 0.42, 0.35), 0.0002, (W / 2 - 0.016, -0.012, 0.0036), (0, 0, 0.05), segs=1))
-    pap = mat('papier', 'b3a68c', 0.92)
-
-    def hpap(u, v):
-        x, y = u * 0.135, v * 0.095
-        z = 0.0007 + 0.0006 * (0.5 + 0.5 * noise.noise(Vector((x * 38, y * 38, 6.0)))) + 0.0005 * abs(noise.noise(Vector((x * 120, y * 14, 1.0))))
-        k = max(0.0, u - 0.72) + max(0.0, v - 0.66)                            # jeden lekko odstający róg
-        return z + 0.011 * max(0.0, k - 0.2)
-
-    papier = _poduszka('papier', 0.27, 0.19, 30, 22, hpap, pap)
-    papier.rotation_euler = (0, 0, -0.16)
-    papier.location = (0.012, -0.006, 0.0)
-    cz.append(papier)
-    zr = join('ZioloReszta', cz)
-    weather([zr], 512, 0.5, 0.3, (0.12, 0.1, 0.07))
-    zn = join('ZioloNapis', [rbox('karteczka', (0.022, 0.036, 0.0005), mat('karteczka', 'f0ece0', 0.8), 0.0, (W / 2 - 0.016, -0.014, 0.0042), (0, 0, 0.05), segs=1),
-                             text('dopisek', '8g', 0.014, ink, (W / 2 - 0.0165, -0.014, 0.0048), (0, 0, 0.05 + R90), 0.0002)])
+    paczka = _poduszka('PaczkaPapier', W, Dd, 60, 38, hz, papier)
+    nap = join('PaczkaNapis', [text('dopisek', 'K.', 0.024, mat('marker', '15161a', 0.6), (-0.035, 0.001, hz(-0.37, 0.02) + 0.0009), (0, 0, 0.12), 0.0002)])
     z = empty('Ziolo')
-    for o in (paczka, zr, zn):
+    for o in (paczka, nap):
         o.parent = z
-    # --- woreczek strunowy 8,5 × 6 cm: dół wypchany pastą, góra pusta z zamkiem, dwie recepturki
-    w2, d2 = 0.085, 0.06
-    FV = 0.42                                # powyżej tej wysokości woreczek jest pusty (zamek)
-
-    def hf(u, v):
-        if abs(u) >= 0.9 or v >= FV or v <= -0.93:
-            return 0.0011
-        body = (1.0 - (abs(u) / 0.9) ** 4) * (1.0 - (abs(v + 0.255) / 0.675) ** 4)
-        x, y = u * w2 / 2, v * d2 / 2
-        lumps = 0.5 + 0.5 * noise.noise(Vector((x * 95, y * 95, 3.3)))
-        return 0.0011 + body * (0.0042 + 0.0042 * lumps + 0.0008 * noise.noise(Vector((x * 300, y * 300, 0.6))))
-
-    wq, hq = 320, 224
-    cell, e1, e2 = _komorki(np, rs, wq, hq, 70, 5.0)
-    tone = np.array([[0.9, 0.86, 0.73]]) * rs.uniform(0.9, 1.05, (70, 1)) * np.array([1.0, 1.0, 1.0]) + rs.uniform(-0.02, 0.02, (70, 3))
-    fi = tone[cell]
-    fi *= (0.86 + 0.14 * np.clip((e2 - e1) / 9.0, 0.0, 1.0) ** 0.7)[..., None]     # grudki pasty
-    fi *= rs.uniform(0.95, 1.04, (hq, wq, 1))
-    wet = np.clip(1.0 - e1 / 9.0, 0.0, 1.0)[..., None] * (rs.random((hq, wq, 1)) < 0.5)
-    fi = fi * (1.0 - 0.12 * wet) + np.array([0.82, 0.74, 0.5]) * 0.12 * wet         # wilgotne, żółtawe plamy
-    _smugi(np, rs, fi, 12, 0.1, (0.2, 0.6), (1.0, 2.2))
-    ys, xs = np.mgrid[0:hq, 0:wq].astype(np.float32)
-    uu, vv = xs / wq * 2 - 1, ys / hq * 2 - 1
-    pusty = (np.abs(uu) >= 0.88) | (vv >= FV - 0.02) | (vv <= -0.91)
-    folia = np.zeros((hq, wq, 3)) + np.array([0.72, 0.76, 0.74])
-    _smugi(np, rs, folia, 8, 0.12, (0.2, 0.7), (1.0, 2.0))
-    fi[pusty] = folia[pusty]
-    fi[:4, :4] = np.array([0.7, 0.74, 0.72])
-    fs = _poduszka('FetaSrodek', w2, d2, 34, 26, hf, _mat_obraz('pasta_folia', _obraz('paczka_feta_kolor', fi), 0.24))
-    fc = []
-    for dv in (0.56, 0.68):
-        fc.append(rbox('zamek', (w2 - 0.004, 0.0016, 0.001), mat('zamek', '2a6ac8', 0.45), 0.0, (0, dv * d2 / 2, 0.0015), segs=1))
-    gum = mat('gumka', 'a8261c', 0.6)
-    for gx in (-0.014, 0.012):
-        u0 = gx / (w2 / 2)
-        pts = [(gx + 0.001 * math.sin(j * 1.3), (-1 + 2 * j / 14) * d2 / 2, hf(u0, -1 + 2 * j / 14) + 0.0007) for j in range(15)]
-        fc.append(tube('gumka', pts, 0.0009, gum, 5))
-    fr2 = join('FetaReszta', fc)
-    f = empty('Feta')
-    fs.parent = f
-    fr2.parent = f
     export('paczka_start')
 
 

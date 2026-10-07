@@ -1115,7 +1115,7 @@ func door_package() -> void:
 	ui.cut_line("Ktoś puka. Kiedy podchodzisz, pod drzwiami leży już paczka.")
 	await get_tree().create_timer(3.9).timeout
 	# drugie ujęcie: kamera unosi się i zbliża — worek zielonego i strunowy woreczek białego
-	ui.cut_line("Worek marihuany i woreczek amfetaminy. Na rozruch, od Wiktora.")
+	ui.cut_line("Paczka w szarym papierze, oklejona taśmą. W środku towar na rozruch — od Wiktora.")
 	var tw2 := create_tween()
 	tw2.tween_method(func(k: float):
 		var ck2 := door_cam(1.0 + k)
