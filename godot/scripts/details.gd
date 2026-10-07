@@ -265,7 +265,7 @@ static func entrance(W: Node3D, pos: Vector3, rot_y: float, accent: Color, label
 	# domofon i tabliczka
 	Models.box(g, Vector3(0.16, 0.28, 0.04), Vector3(0.98, 1.4, 0.06), Models.mat("8a9096", 0.4, 0.6))
 	var pl := Signs.plate(label, Color(0.9, 0.86, 0.7))
-	pl.position = Vector3(0, 2.78, 0.1)
+	pl.position = Vector3(0, 2.84, 1.69)
 	g.add_child(pl)
 	# lampa pod daszkiem (świeci nocą razem z latarniami)
 	var bulb := Models.box(g, Vector3(0.22, 0.05, 0.22), Vector3(0, 2.43, 0.8), W.lamp_mat, Vector3.ZERO, false)

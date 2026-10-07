@@ -772,7 +772,19 @@ func _view_hits(cam: Vector3, at: Vector3, near: Array, crowns: Array) -> int:
 
 ## Ujęcie na miejsce `at`: kamera zaczyna dalej i wyżej, kończy bliżej. `n` to kierunek „sprzed" miejsca,
 ## `turn` — o ile stopni wolno go obrócić w poszukiwaniu kąta, którego nic nie zasłania, `k` — skala odległości.
-func _tour_view(at: Vector3, n: Vector3, turn: float, k: float) -> Dictionary:
+## Każde miejsce pokazu ma inny ruch kamery: [odległość, przesunięcie w bok, wysokość] na początku i na końcu.
+## 0 najazd z prawej z góry, 1 niski kadr z lewej z odjazdem w górę, 2 zjazd żurawiem z wysoka,
+## 3 przejazd bokiem wzdłuż ściany, 4 szeroki plan z daleka do zbliżenia
+const TOUR_STYLES := [
+	[10.0, 4.0, 4.6, 5.5, -1.5, 2.3],
+	[5.2, -3.6, 1.2, 8.6, -0.8, 3.3],
+	[6.5, 1.2, 6.4, 3.4, -0.6, 1.7],
+	[7.4, -5.5, 2.3, 7.0, 4.2, 2.0],
+	[14.0, -3.0, 7.0, 6.0, 1.6, 2.4],
+]
+
+func _tour_view(at: Vector3, n: Vector3, turn: float, k: float, style := 0) -> Dictionary:
+	var ts: Array = TOUR_STYLES[posmod(style, TOUR_STYLES.size())]
 	var near := []
 	for b in world.blocks:
 		if float(b.h) >= 1.0 and float(b.x1) > at.x - 18.0 and float(b.x0) < at.x + 18.0 and float(b.z1) > at.z - 18.0 and float(b.z0) < at.z + 18.0:
@@ -789,8 +801,8 @@ func _tour_view(at: Vector3, n: Vector3, turn: float, k: float) -> Dictionary:
 			continue
 		var d := n.rotated(Vector3.UP, deg_to_rad(deg))
 		var r := Vector3(d.z, 0.0, -d.x)
-		var from := at + d * 10.0 * k + r * 4.0 * k + Vector3(0, 2.2 + 2.4 * k, 0)
-		var to := at + d * 5.5 * k - r * 1.5 * k + Vector3(0, 1.5 + 0.8 * k, 0)
+		var from := at + d * float(ts[0]) * k + r * float(ts[1]) * k + Vector3(0, maxf(1.1, float(ts[2]) * (0.5 + 0.5 * k)), 0)
+		var to := at + d * float(ts[3]) * k + r * float(ts[4]) * k + Vector3(0, maxf(1.1, float(ts[5]) * (0.5 + 0.5 * k)), 0)
 		var score := float(_view_hits(from, at, near, crowns) + _view_hits(to, at, near, crowns) + _view_hits(from.lerp(to, 0.5), at, near, crowns)) + absf(deg) * 0.004
 		if score < best_score:
 			best_score = score
@@ -802,13 +814,13 @@ func _tour_view(at: Vector3, n: Vector3, turn: float, k: float) -> Dictionary:
 	# kamera nie może wejść w ścianę po drugiej stronie ulicy: w razie czego przysuwa się do celu
 	for i in range(8):
 		if world.in_building(from.x / D.SC, from.z / D.SC, 0.6):
+			var fy := from.y
 			from = at + (from - at) * 0.85
-			from.y = at.y + 2.2 + 2.4 * k
+			from.y = fy
 		if world.in_building(to.x / D.SC, to.z / D.SC, 0.6):
+			var ty := to.y
 			to = at + (to - at) * 0.85
-			to.y = at.y + 1.5 + 0.8 * k
-	if from.distance_to(at) < to.distance_to(at) + 0.5:
-		from = at + (to - at) * 1.5 + Vector3(0, 1.6, 0)
+			to.y = ty
 	return {"from": from, "to": to, "clear": best_score < 0.9}
 
 
@@ -816,7 +828,7 @@ func tour_shots() -> Array:
 	var out := []
 	var add := func(title: String, sub: String, text: String, x: float, z: float, nx: float, nz: float, turn: float, k: float, cards: Array) -> void:
 		var at := Vector3(x, world.height(x, z), z)
-		var v := _tour_view(at, Vector3(nx, 0.0, nz).normalized(), turn, k)
+		var v := _tour_view(at, Vector3(nx, 0.0, nz).normalized(), turn, k, out.size())
 		out.append({"title": title, "sub": sub, "text": text, "at": at, "from": v.from, "to": v.to, "clear": v.clear, "cards": cards})
 	var sh: Dictionary = D.DOORS.shop
 	add.call("SKLEP U STASIA", "woreczki • dodatki do mieszanek", "Wujek Staś. Tu kupisz woreczki, kiedy się skończą, a także majeranek i cukier puder, jeśli zechcesz robić mieszanki. Później — doniczki, nasiona i nawóz.", float(sh.x), float(sh.z), 0.0, float(sh.dz), 54.0, 1.0, [

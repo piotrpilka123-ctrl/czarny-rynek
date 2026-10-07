@@ -1278,9 +1278,13 @@ func _finish() -> void:
 	await get_tree().create_timer(0.5).timeout
 	M.ui.cut_end()
 	G.prologue = null
-	await M.ui.fade_to(0.0, 1.1)
 	G.busy = false
 	M.nav_force = true
+	# najpierw scena w łóżku (zamknięte powieki, kamera na poduszce), dopiero potem zdejmujemy czerń —
+	# wcześniej przez sekundę było widać bohatera stojącego w przejściu
 	if G.running:
 		M._intro()
+		await get_tree().process_frame
+		await get_tree().process_frame
+	await M.ui.fade_to(0.0, 0.4)
 	queue_free()

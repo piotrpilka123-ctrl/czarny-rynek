@@ -89,10 +89,10 @@ static func run(T) -> void:
 		for cp in [sh0.from, sh0.to]:
 			if G.world.in_building(float(cp.x) / D.SC, float(cp.z) / D.SC, 0.3) or float(cp.y) < G.world.height(float(cp.x), float(cp.z)) + 1.0:
 				cam_ok = false
-		if String(sh0.text).length() < 40 or (sh0.from as Vector3).distance_to(sh0.at) < (sh0.to as Vector3).distance_to(sh0.at):
+		if String(sh0.text).length() < 40 or (sh0.from as Vector3).distance_to(sh0.to) < 2.0:
 			cam_ok = false
 	T.ok(shots.size() >= 4 and titles.has("SKLEP U STASIA") and titles.has("TANIA ODZIEŻ") and titles.has("SKRZYNKA WIKTORA") and titles.has("LOMBARD"), "przelot po mieście pokazuje sklep Stasia, odzież, skrzynkę Wiktora i lombard (%d ujęć)" % shots.size())
-	T.ok(cam_ok, "kamera przelotu nie wchodzi w budynki ani pod ziemię i zawsze najeżdża na cel")
+	T.ok(cam_ok, "kamera przelotu nie wchodzi w budynki ani pod ziemię i w każdym ujęciu wyraźnie się porusza")
 	T.ok(String(shots[0].text).contains("woreczki") and String(shots[0].text).contains("mieszanki") and String(shots[1].text).contains("kieszeni"), "opisy mówią, po co tam iść: woreczki i mieszanki u Stasia, statystyki ubrań")
 
 	# kadry: nic nie zasłania pokazywanego miejsca, a przy każdym są karty z ikonami, które istnieją
@@ -107,6 +107,12 @@ static func run(T) -> void:
 			var icn := String(cd.icon)
 			if String(cd.name) == "" or String(cd.sub) == "" or not (ResourceLoader.exists("res://assets/items/%s.png" % icn) or ResourceLoader.exists("res://assets/icons/%s.svg" % icn)):
 				cards_ok = false
+	var moves := {}
+	for sh2 in shots:
+		var mv: Vector3 = (sh2.to as Vector3) - (sh2.from as Vector3)
+		var toward: float = (sh2.from as Vector3).distance_to(sh2.at) - (sh2.to as Vector3).distance_to(sh2.at)
+		moves["%d|%d" % [int(signf(mv.y)), int(signf(toward)) if absf(toward) > 1.0 else 0]] = true
+	T.ok(moves.size() >= 2, "przelot: ujęcia różnią się ruchem kamery (najazd z góry, odjazd w górę, przejazd bokiem) — %d rodzaje" % moves.size())
 	T.ok(clear_n == shots.size(), "przelot: żadnego miejsca nie zasłania pień, słup ani ściana (%d z %d czystych kadrów)" % [clear_n, shots.size()])
 	T.ok(cards_ok, "przelot: przy każdym miejscu co najmniej trzy karty z nazwą, opisem i istniejącą ikoną")
 	G.unlock_client("dominik")

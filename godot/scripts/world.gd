@@ -2138,7 +2138,7 @@ func door(id: String) -> void:
 		Models.box(g, Vector3(0.16, 0.3, 0.05), Vector3(0.85, 1.4, dz * 0.2), Models.mat("9aa3ab", 0.4, 0.6))
 	if String(dd.title) != "":
 		var lb := Signs.plate(String(dd.title), c)
-		lb.position = Vector3(0, 3.2 if id != "garage" else 2.75, dz * 0.22)
+		lb.position = Vector3(0, 3.02 if id != "garage" else 2.75, dz * (1.28 if id != "garage" else 0.22))
 		lb.rotation.y = 0.0 if dz > 0.0 else PI
 		g.add_child(lb)
 		var li := OmniLight3D.new()
