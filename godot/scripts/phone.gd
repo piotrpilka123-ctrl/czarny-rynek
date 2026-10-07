@@ -1052,6 +1052,23 @@ func _skills() -> void:
 func _tasks() -> void:
 	_header("Zadania", G.chapter())
 	var cur := int(G.S.step)
+	# zlecenie dnia od Wiktora: mały cel na dziś, premia idzie na wkład
+	if G.job_active():
+		var jb: Dictionary = G.S.job
+		var jc := K.card(body)
+		var jh := K.hbox(6)
+		jh.add_child(K.lbl("ZLECENIE DNIA", 10, K.C_GOLD))
+		jh.add_child(K.spacer())
+		jh.add_child(K.lbl("seria: %d" % int(G.S.get("job_streak", 0)), 10, K.C_DIM))
+		jc.add_child(jh)
+		jc.add_child(K.wrap(G.job_text(), 13, K.C_TXT))
+		if jb.get("done", false):
+			jc.add_child(K.rich("%s  premia %s" % [K.col("Zrobione.", K.C_ACC), G.money(float(jb.get("reward", 0.0)))], 12))
+		else:
+			jc.add_child(K.bar(G.job_progress(), float(jb.need), K.C_GOLD))
+			var jd: Dictionary = G.job_def(String(jb.kind))
+			jc.add_child(K.rich("%s z %s  •  premia: [b]%s[/b] do wkładu%s" % [G._job_amount(jd, G.job_progress()), G._job_amount(jd, float(jb.need)), G.money(G.job_reward()), K.col("  (trzecie z rzędu — podwójna)", K.C_GOLD) if (int(G.S.get("job_streak", 0)) + 1) % 3 == 0 else ""], 12))
+		jc.add_child(K.wrap("Do północy. Nie zdążysz — nic się nie dzieje, jutro będzie następne.", 11, K.C_DIM))
 	var c := K.card(body)
 	for i in range(G.story.size()):
 		var st: Dictionary = G.story[i]

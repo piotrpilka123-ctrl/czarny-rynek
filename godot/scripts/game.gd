@@ -105,7 +105,7 @@ func new_state() -> Dictionary:
 	return {
 		"v": 3, "t": 9.0 * 60.0, "cash": float(D.START_CASH), "debt": float(D.START_DEBT), "paid": 0.0,
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
-		"heat": 0.0, "invest": 0.0, "strikes": 0, "rank": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
+		"heat": 0.0, "invest": 0.0, "strikes": 0, "rank": 0, "job": {}, "job_streak": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store(), "loot": new_store()},
 		"items": {"notes": 1, "woreczki": 0, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
@@ -1708,6 +1708,7 @@ func order_in_talk(o: Dictionary) -> bool:
 # ================================================================ zdarzenia czasowe
 ## co 10 minut gry: terminy zamówień i paczki w skrytkach
 func on_tick() -> void:
+	job_check()
 	Prod.tick(10.0)
 	Prod.raid_tick()
 	Prod.flat_raid_tick()
@@ -1808,6 +1809,8 @@ func on_day() -> void:
 	if randf() < 0.34:
 		var st: float = S.t + randf_range(2.0, 14.0) * 60.0
 		S.weather = {"start": st, "end": st + randf_range(2.0, 7.0) * 60.0, "power": randf_range(0.5, 1.0)}
+	# ekipa Wiktora: nowe zlecenie dnia (stare, niewykonane, po prostu przepada — zeruje tylko serię)
+	job_new()
 	# ekipa Wiktora: przypomnienie o premii za tempo (nic się nie traci, gdy się nie zdąży)
 	var goal := rank_next()
 	if not goal.is_empty() and int(goal.bonus) > 0 and d == int(goal.day) - 1 and S.paid < float(goal.at):
@@ -2465,10 +2468,13 @@ func deal_hand(d: Dictionary) -> void:
 	elif float(d.pct) > 0.5:
 		line = ["„…Niech ci będzie.”", "„Drogo, ale biorę.”"].pick_random()
 	# zdążyłeś w godzinę od umówionej pory: klient to docenia
-	if d.get("early", false) and d.st.has("sat") and q != "meh":
-		d.st.sat = minf(100.0, float(d.st.sat) + 2.5)
-		d.st.loy = minf(100.0, float(d.st.get("loy", 0.0)) + 0.8)
+	if d.get("early", false):
+		S.stats["early"] = int(S.stats.get("early", 0)) + 1
+		if d.st.has("sat") and q != "meh":
+			d.st.sat = minf(100.0, float(d.st.sat) + 2.5)
+			d.st.loy = minf(100.0, float(d.st.get("loy", 0.0)) + 0.8)
 	deal_sell(d, float(d.price), line)
+	job_check()
 
 
 func deal_sell(d: Dictionary, price: float, line: String) -> void:
@@ -2790,7 +2796,108 @@ func box_settle() -> float:
 	chat("wiktor", "Odebrałem %s. Zeszyt: %s. Twój wkład: %s." % [money(took), money(S.credit), money(S.paid)], false, true)
 	Market.add_trust("wiktor", took / 400.0)
 	rank_check()
+	job_check()
 	return took
+
+
+# ================================================================ ekipa Wiktora: zlecenie dnia
+## licznik, od którego zależy dany rodzaj zlecenia (rośnie przez całą grę; zlecenie liczy przyrost od rana)
+func _job_counter(kind: String) -> float:
+	match kind:
+		"sprzedaj": return float(S.stats.sold)
+		"utarg": return float(S.stats.earned)
+		"skrzynka": return float(S.stats.get("box_paid", 0.0))
+		"transakcje": return float(S.stats.deals)
+		"punktualnie": return float(S.stats.get("early", 0))
+	return 0.0
+
+
+func job_def(kind: String) -> Dictionary:
+	for j in D.JOBS:
+		if String(j.kind) == kind:
+			return j
+	return {}
+
+
+func job_active() -> bool:
+	var j: Dictionary = S.get("job", {})
+	return not j.is_empty() and int(j.get("day", -1)) == day()
+
+
+## ile już zrobiono z dzisiejszego zlecenia (w jego jednostkach)
+func job_progress() -> float:
+	if not job_active():
+		return 0.0
+	return clampf(_job_counter(String(S.job.kind)) - float(S.job.base), 0.0, float(S.job.need))
+
+
+func _job_amount(j: Dictionary, need: float) -> String:
+	match String(j.unit):
+		"g": return "%d g" % int(need)
+		"zł": return money(need)
+	return str(int(need))
+
+
+func job_text() -> String:
+	if not job_active():
+		return ""
+	var j := job_def(String(S.job.kind))
+	return String(j.text) % _job_amount(j, float(S.job.need))
+
+
+## premia za dzisiejsze zlecenie: co trzecie wykonane z rzędu liczy się podwójnie
+func job_reward() -> float:
+	var r: float = D.JOB_REWARD + D.JOB_REWARD_LVL * float(int(S.lvl))
+	return r * (2.0 if (int(S.get("job_streak", 0)) + 1) % 3 == 0 else 1.0)
+
+
+## rano: Wiktor daje nowe zlecenie (dopiero gdy już u niego pracujesz — po pierwszej wpłacie do skrzynki)
+func job_new(force_kind := "") -> void:
+	var old: Dictionary = S.get("job", {})
+	if not old.is_empty() and not old.get("done", false):
+		S["job_streak"] = 0
+	S["job"] = {}
+	if force_kind == "" and (not flag("hurt_on") or day() < D.JOB_FROM_DAY):
+		return
+	var pool := []
+	for j in D.JOBS:
+		if int(S.lvl) >= int(j.lvl) and String(j.kind) != String(old.get("kind", "")):
+			pool.append(j)
+	if pool.is_empty():
+		return
+	var j2: Dictionary = pool.pick_random() if force_kind == "" else job_def(force_kind)
+	var need: float = (float(j2.base) + float(j2.per) * float(int(S.lvl) - 1)) * (1.0 if force_kind != "" else randf_range(0.88, 1.12))
+	need = maxf(1.0, round(need / 10.0) * 10.0 if String(j2.unit) == "zł" else round(need))
+	S["job"] = {"kind": String(j2.kind), "need": need, "day": day(), "base": _job_counter(String(j2.kind)), "done": false}
+	var streak := int(S.get("job_streak", 0))
+	chat("wiktor", (String(j2.sms) % _job_amount(j2, need)) + (" Trzecie z rzędu — premia podwójna." if (streak + 1) % 3 == 0 else ""))
+
+
+## sprawdza, czy dzisiejsze zlecenie jest już zrobione; premia idzie na wkład (wspólnik dostaje ją do ręki)
+func job_check() -> void:
+	if not job_active() or S.job.get("done", false):
+		return
+	if job_progress() < float(S.job.need) - 0.001:
+		return
+	var r := job_reward()
+	S.job["done"] = true
+	S.job["reward"] = r
+	S["job_streak"] = int(S.get("job_streak", 0)) + 1
+	S.stats["jobs"] = int(S.stats.get("jobs", 0)) + 1
+	add_xp(12.0)
+	Market.add_trust("wiktor", 2.0)
+	Sfx.play("good")
+	if S.debt > 0.0:
+		var b: float = minf(r, float(S.debt))
+		S.debt -= b
+		S.paid += b
+		chat("wiktor", "Zlecenie zrobione. Dopisuję ci %s do wkładu.%s" % [money(b), " Seria: %d z rzędu." % int(S.job_streak) if int(S.job_streak) >= 2 else ""])
+		notify("ZLECENIE DNIA wykonane: +%s do wkładu (%s z %s)." % [money(b), money(S.paid), money(D.START_DEBT)], "level")
+		rank_check()
+	else:
+		S.cash += r
+		chat("wiktor", "Zlecenie zrobione. %s premii — wspólnikowi płacę do ręki." % money(r))
+		notify("ZLECENIE DNIA wykonane: +%s." % money(r), "level")
 
 
 # ================================================================ ekipa Wiktora: wkład, rangi, awanse

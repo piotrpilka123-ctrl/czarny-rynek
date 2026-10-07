@@ -114,6 +114,43 @@ static func run(T) -> void:
 	S.stash.safe.cash = safe_keep
 	M.add_trust("wiktor", 8.0)
 	T.ok(G.box_settle() == 0.0 and float(S.stats.box_paid) == 900.0, "pusta skrzynka nic nie zmienia")
+	# --- zlecenie dnia od Wiktora: mały cel, premia na wkład, seria podwaja co trzecie
+	var job_keep: Dictionary = S.job
+	var streak_keep: int = S.job_streak
+	var paid_j: float = S.paid
+	var debt_j: float = S.debt
+	var sold_j: int = S.stats.sold
+	S["job"] = {}
+	S.job_streak = 0
+	var hurt_j: bool = G.flag("hurt_on")
+	S.flags["hurt_on"] = false
+	G.job_new()
+	T.ok(not G.job_active(), "zanim zaczniesz pracować dla Wiktora (pierwsza wpłata), zleceń nie ma")
+	S.flags["hurt_on"] = hurt_j
+	G.job_new("sprzedaj")
+	var need_j: float = S.job.need
+	T.ok(G.job_active() and need_j >= 4.0 and G.job_progress() == 0.0 and G.job_text().contains("%d g" % int(need_j)) and (S.chats.wiktor as Array).back().text.contains("%d g" % int(need_j)), "zlecenie dnia: %s" % G.job_text())
+	S.stats.sold = sold_j + int(need_j) - 1
+	G.job_check()
+	T.ok(not S.job.done and G.job_progress() == need_j - 1.0, "gram przed celem: jeszcze nie zrobione (%d z %d)" % [int(G.job_progress()), int(need_j)])
+	S.stats.sold = sold_j + int(need_j)
+	var rew_j: float = G.job_reward()
+	G.job_check()
+	T.ok(S.job.done and int(S.job_streak) == 1 and absf(S.paid - (paid_j + rew_j)) < 0.01 and absf(S.debt - (debt_j - rew_j)) < 0.01 and rew_j == D.JOB_REWARD + D.JOB_REWARD_LVL * int(S.lvl), "wykonane: premia %d zł dopisana do wkładu, seria 1" % int(rew_j))
+	G.job_check()
+	T.ok(absf(S.paid - (paid_j + rew_j)) < 0.01, "premia jest jedna — drugie sprawdzenie nic nie dopisuje")
+	S.job_streak = 2
+	T.ok(G.job_reward() == rew_j * 2.0, "trzecie zlecenie z rzędu: premia podwójna")
+	G.job_new("utarg")
+	T.ok(int(S.job_streak) == 2 and String(S.job.kind) == "utarg" and int(S.job.need) % 10 == 0, "nowe zlecenie po wykonanym nie zeruje serii (cel %d zł)" % int(S.job.need))
+	G.job_new("sprzedaj")
+	T.ok(int(S.job_streak) == 0, "niewykonane zlecenie przepada bez kary — zeruje tylko serię")
+	S["job"] = job_keep
+	S.job_streak = streak_keep
+	S.paid = paid_j
+	S.debt = debt_j
+	S["rank"] = G.rank()
+	S.stats.sold = sold_j
 	# po terminie: blokada zamówień, a bez towaru — deska ratunku
 	S.inv = G.new_store()
 	S.credit = 400.0

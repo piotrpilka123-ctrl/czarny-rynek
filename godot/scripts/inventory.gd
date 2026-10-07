@@ -1342,6 +1342,11 @@ func _tab_org() -> void:
 	var bv := K.vbox(7)
 	b.add_child(bv)
 	_title(bv, "notebook_pen", "ZESZYT")
+	if G.job_active():
+		var jdone: bool = G.S.job.get("done", false)
+		var jdef: Dictionary = G.job_def(String(G.S.job.kind))
+		_note(bv, "target", K.C_ACC if jdone else K.C_GOLD, "Zlecenie dnia", G.job_text() + (" Zrobione." if jdone else " Premia: %s do wkładu." % G.money(G.job_reward())),
+			"✓" if jdone else "%s / %s" % [G._job_amount(jdef, G.job_progress()), G._job_amount(jdef, float(G.S.job.need))])
 	var nxo: Dictionary = G.rank_next()
 	if not nxo.is_empty():
 		var txt := "Do awansu na %s brakuje %s. Nagroda: %s" % [String(nxo.name), G.money(maxf(0.0, float(nxo.at) - S.paid)), String(nxo.desc)]

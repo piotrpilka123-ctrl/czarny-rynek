@@ -586,6 +586,18 @@ const RANKS := [
 	{"at": 15000, "name": "Prawa ręka", "perk": "rabat2", "day": 38, "bonus": 1200, "desc": "Hurt tańszy o kolejne 5% i dwa dni dłużej na spłatę zeszytu."},
 	{"at": 25000, "name": "Wspólnik", "perk": "wolny", "day": 46, "bonus": 0, "desc": "Dzielnica jest Twoja. Wiktor bierze już tylko za towar."},
 ]
+## Zlecenie dnia od Wiktora: jeden mały cel na dobę z premią dopisywaną do wkładu. Za niewykonanie nie ma kary —
+## rano przychodzi następne. Trzy wykonane z rzędu podwajają premię. need = base + per · (poziom − 1).
+const JOBS := [
+	{"kind": "sprzedaj", "lvl": 1, "base": 4.0, "per": 2.2, "unit": "g", "text": "Sprzedaj dziś %s towaru.", "sms": "Na dziś: puść w miasto %s. Zrobisz — dopisuję ci premię do wkładu."},
+	{"kind": "utarg", "lvl": 1, "base": 180.0, "per": 150.0, "unit": "zł", "text": "Zarób dziś %s na sprzedaży.", "sms": "Dziś chcę widzieć ruch: %s utargu. Dasz radę — jest premia."},
+	{"kind": "skrzynka", "lvl": 2, "base": 120.0, "per": 90.0, "unit": "zł", "text": "Zanieś dziś %s do skrzynki Wiktora.", "sms": "Potrzebuję dziś gotówki w obrocie. Wrzuć do skrzynki %s, a dorzucę coś od siebie."},
+	{"kind": "transakcje", "lvl": 2, "base": 2.0, "per": 0.3, "unit": "", "text": "Dobij dziś %s transakcji.", "sms": "Ludzie mają cię widzieć. %s transakcji dzisiaj i jest premia."},
+	{"kind": "punktualnie", "lvl": 3, "base": 1.0, "per": 0.25, "unit": "", "text": "Bądź dziś %s razy u klienta w ciągu godziny od umówionej pory.", "sms": "Klient, który nie czeka, wraca. Dziś %s razy bądź na czas — policzę ci to."},
+]
+const JOB_REWARD := 40.0          # premia do wkładu za zlecenie: tyle + JOB_REWARD_LVL za każdy poziom
+const JOB_REWARD_LVL := 12.0
+const JOB_FROM_DAY := 3
 const LIVING_COST := 28
 ## klient czeka na umówionym miejscu około pięciu godzin i nie ma żalu, że musiał postać;
 ## cieszy się za to, gdy zjawisz się w ciągu godziny od umówionej pory

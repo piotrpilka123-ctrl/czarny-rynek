@@ -2759,6 +2759,10 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "org")
 		"shop": ui.open_shop()
 		"wagi": ui.open_scales()
+		"zlecenie":
+			G.job_new("utarg")
+			G.S.stats.earned = float(G.S.stats.earned) + 60.0
+			ui.open_phone("zadania")
 		"paczka3d":
 			# zrzut: paczka od Wiktora na wycieraczce, widziana z góry oczami gracza
 			G.S.flags["wiktor_sms"] = true

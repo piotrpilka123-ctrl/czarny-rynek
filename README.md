@@ -33,7 +33,10 @@ Resztę budujesz sam: klienci z polecenia, własna kryjówka, uprawa, kolejne to
 Nie ma długu, odsetek ani kar za spóźnienie. To, co odnosisz Wiktorowi ponad zeszyt za towar, jest Twoim **wkładem**:
 kolejne progi to awanse z nagrodą (Goniec — plecak, Detalista — większy zeszyt, Dealer — tańszy hurt, Zaufany — garaż
 za pół ceny, Prawa ręka — jeszcze tańszy hurt), a kto trzyma tempo, dostaje premię. Przy 25 000 zł zostajesz wspólnikiem
-(ok. 35–47 dni gry; 1 godzina gry = 60 s).
+(ok. 30–37 dni gry; 1 godzina gry = 60 s). Co rano Wiktor daje też **zlecenie dnia** — mały cel na dziś (sprzedać
+kilka gramów, zrobić utarg, zanieść gotówkę do skrzynki, być u klientów na czas). Premia za wykonanie idzie na wkład,
+co trzecie zlecenie z rzędu liczy się podwójnie, a niewykonane po prostu przepada. Przy kolejnych awansach Wiktor
+dzwoni i dokłada kawałek sprawy „kto nas sprzedał”.
 
 Nowa gra zaczyna się krótkim wstępem (zatrzymanie brata, „trzy tygodnie później”), a samouczek najpierw oprowadza
 po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierwszą paczkę.
