@@ -3493,6 +3493,14 @@ func load_game() -> bool:
 	f.close()
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
+	S = state_from_save(data)
+	Prod.migrate()
+	return true
+
+
+## Stan gry z wczytanego zapisu: świeży stan uzupełniony danymi z pliku i przeliczony ze starszych wersji
+## (osobno od czytania pliku, żeby testy mogły sprawdzić przeliczanie bez dotykania prawdziwego zapisu).
+func state_from_save(data: Dictionary) -> Dictionary:
 	var base := new_state()
 	_merge(base, data)
 	for k in ["woreczki", "majeranek", "cukier", "nasiona", "burner", "nawoz", "chemia", "doniczka"]:
@@ -3519,9 +3527,9 @@ func load_game() -> bool:
 		if base.skills.has(pair[0]):
 			base.skills.erase(pair[0])
 			base.skills[pair[1]] = true
-	S = base
-	Prod.migrate()
-	return true
+	if not (base.get("owned") is Dictionary):
+		base["owned"] = {}
+	return base
 
 
 func delete_save() -> void:

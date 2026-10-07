@@ -7,6 +7,16 @@ static func run(T) -> void:
 	var keep: Dictionary = G.S
 	G.S = G.new_state()
 	var S: Dictionary = G.S
+
+	# --- stary zapis sprzed zmian w pakowaniu i meblach wczytuje się i przelicza
+	var old_save := {"cash": 1234.0, "lvl": 3, "items": {"woreczki": 37, "majeranek": 5}, "upg": {"waga": true, "plecak1": true},
+		"stash": {"safe": {"bulk": {"dym": {"100": 12.0}}, "pack": {"dym": {"100": 4}}, "cash": 50.0, "items": {"woreczki": 20, "cukier": 3}}},
+		"hide": {"garage": {"items": [{"f": "stol", "x": -1.6, "z": -3.6, "r": 0}], "jobs": {}}}}
+	var mig: Dictionary = G.state_from_save(old_save)
+	T.ok(int(mig.items.woreczki) == 0 and not mig.stash.safe.items.has("woreczki") and int(mig.stash.safe.items.cukier) == 3 and int(mig.items.majeranek) == 5, "stary zapis: woreczki znikają, reszta rzeczy zostaje")
+	T.ok(int(mig.scale) == 1 and not mig.upg.has("waga") and bool(mig.upg.get("plecak1", false)), "stary zapis: kupiona „waga jubilerska” staje się wagą drugiej klasy, plecak zostaje")
+	T.ok(mig.owned is Dictionary and mig.owned.is_empty() and mig.stash.has("loot") and G.goods_total(mig.stash.loot) == 0.0, "stary zapis: pusty stan sprzętu i pusty pojemnik podręczny")
+	T.ok(float(mig.cash) == 1234.0 and float(mig.stash.safe.bulk.dym["100"]) == 12.0 and int(mig.stash.safe.pack.dym["100"]) == 4 and mig.hide.garage.items.size() == 1, "stary zapis: gotówka, towar i ustawione meble bez zmian")
 	var P = G.player
 	var back_loc: String = P.loc
 	var back_pos: Vector3 = P.global_position
