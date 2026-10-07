@@ -4566,13 +4566,18 @@ func _clothes_room() -> void:
 			var col: String = cloth_cols[rng2.randi() % cloth_cols.size()]
 			var len := rng2.randf_range(0.55, 1.05)
 			var wd := rng2.randf_range(0.36, 0.48)
-			# wieszak z haczykiem i wiszący ciuch
-			Models.box(g, Vector3(0.012, 0.02, wd), Vector3(rx + x, 1.5, rz), Models.mat("3a3027", 0.7), Vector3.ZERO, false)
-			Models.box(g, Vector3(0.035, len, wd), Vector3(rx + x, 1.49 - len * 0.5, rz), Models.mat(col, 0.95), Vector3(0, rng2.randf_range(-0.12, 0.12), 0))
-			if rng2.randf() < 0.4:
-				Models.box(g, Vector3(0.03, len * 0.75, 0.1), Vector3(rx + x, 1.42 - len * 0.4, rz + wd * 0.5 + 0.04), Models.mat(col, 0.95), Vector3(0.12, 0, 0), false)
-				Models.box(g, Vector3(0.03, len * 0.75, 0.1), Vector3(rx + x, 1.42 - len * 0.4, rz - wd * 0.5 - 0.04), Models.mat(col, 0.95), Vector3(-0.12, 0, 0), false)
-			x += rng2.randf_range(0.07, 0.12)
+			# ubranie na wieszaku: koszula, kurtka, bluza, spodnie albo płaszcz w kolorze z palety (wcześniej kolorowe deski)
+			var gm := Stations.model(["ciuch_koszula", "ciuch_kurtka", "ciuch_bluza", "ciuch_spodnie", "ciuch_plaszcz", "ciuch_koszula", "ciuch_bluza"][rng2.randi() % 7])
+			if gm != null:
+				Interior._tint(gm, Models.col(col).lightened(0.12))
+				gm.position = Vector3(rx + x, 1.57, rz)
+				gm.rotation.y = PI / 2.0 + rng2.randf_range(-0.16, 0.16)
+				gm.rotation.z = rng2.randf_range(-0.04, 0.04)
+				g.add_child(gm)
+			else:
+				Models.box(g, Vector3(0.012, 0.02, wd), Vector3(rx + x, 1.5, rz), Models.mat("3a3027", 0.7), Vector3.ZERO, false)
+				Models.box(g, Vector3(0.035, len, wd), Vector3(rx + x, 1.49 - len * 0.5, rz), Models.mat(col, 0.95), Vector3(0, rng2.randf_range(-0.12, 0.12), 0))
+			x += rng2.randf_range(0.09, 0.14)
 		add_col(rx - rl * 0.5 - 0.05, rx + rl * 0.5 + 0.05, rz - 0.3, rz + 0.3, 1.2, true, -1.0)
 		rects.pop_back()
 	# regał ze złożonymi ubraniami pod zachodnią ścianą
@@ -4583,12 +4588,29 @@ func _clothes_room() -> void:
 				var py := 0.04 + row * 0.633
 				var pz: float = sz + (cell - 1) * 0.438
 				for k in range(rng2.randi_range(1, 4)):
+					var fm := Stations.model("ciuch_zlozony")
+					if fm != null:
+						# złożony sweter z modelu (przodem — grzbietem — do sali)
+						Interior._tint(fm, Models.col(cloth_cols[rng2.randi() % cloth_cols.size()]).lightened(0.1))
+						fm.position = Vector3(cx - w * 0.5 + 0.27, py + k * 0.068, pz)
+						fm.rotation.y = -PI / 2.0 + rng2.randf_range(-0.08, 0.08)
+						g.add_child(fm)
+						continue
 					Models.box(g, Vector3(0.3, 0.07, 0.34), Vector3(cx - w * 0.5 + 0.27, py + 0.035 + k * 0.072, pz), Models.mat(cloth_cols[rng2.randi() % cloth_cols.size()], 0.95), Vector3(0, rng2.randf_range(-0.08, 0.08), 0), false)
 	add_col(cx - w * 0.5, cx - w * 0.5 + 0.5, -2.6, 0.0, 2.0, true, -1.0)
 	rects.pop_back()
 	# kosze „wszystko po 5 zł”
 	for e in [[1.9, 1.5], [2.7, 1.9]]:
 		var bx: float = cx + e[0]
+		var km2 := Stations.model("ciuch_kosz")
+		if km2 != null:
+			# druciany kosz na kółkach ze stertą ubrań
+			km2.position = Vector3(bx, 0.0, e[1])
+			km2.rotation.y = rng2.randf_range(-0.2, 0.2)
+			g.add_child(km2)
+			add_col(bx - 0.42, bx + 0.42, e[1] - 0.32, e[1] + 0.32, 1.0, true, -1.0)
+			rects.pop_back()
+			continue
 		Models.box(g, Vector3(0.8, 0.5, 0.6), Vector3(bx, 0.25, e[1]), Models.mat("a88a5e", 0.95))
 		for k in range(9):
 			Models.box(g, Vector3(rng2.randf_range(0.2, 0.4), 0.08, rng2.randf_range(0.2, 0.34)), Vector3(bx + rng2.randf_range(-0.2, 0.2), 0.52 + rng2.randf() * 0.1, e[1] + rng2.randf_range(-0.14, 0.14)), Models.mat(cloth_cols[rng2.randi() % cloth_cols.size()], 0.95), Vector3(rng2.randf_range(-0.3, 0.3), rng2.randf() * 3.0, rng2.randf_range(-0.3, 0.3)), false)
@@ -4607,8 +4629,15 @@ func _clothes_room() -> void:
 	var bx2 := cx + w * 0.5 - 0.75
 	var bz2 := d * 0.5 - 0.9
 	Models.cyl(g, 0.014, 0.014, 1.4, Vector3(bx2 - 0.02, 2.1, bz2 - 0.85), steel, Vector3(0, 0, PI / 2.0), 6)
-	for k in range(6):
-		Models.box(g, Vector3(0.2, 1.95, 0.03), Vector3(bx2 - 0.62 + k * 0.2, 1.1, bz2 - 0.85 + (0.02 if k % 2 == 0 else -0.02)), Models.mat("7a2a4a", 0.95), Vector3(0, 0.3 if k % 2 == 0 else -0.3, 0))
+	var cur := Stations.model("ciuch_zaslona")
+	if cur != null:
+		# zasłona z fałdami na kółkach (wcześniej sześć desek na zmianę skręconych)
+		Interior._tint(cur, Color(0.56, 0.2, 0.34))
+		cur.position = Vector3(bx2 - 0.02, 0.13, bz2 - 0.85)
+		g.add_child(cur)
+	else:
+		for k in range(6):
+			Models.box(g, Vector3(0.2, 1.95, 0.03), Vector3(bx2 - 0.62 + k * 0.2, 1.1, bz2 - 0.85 + (0.02 if k % 2 == 0 else -0.02)), Models.mat("7a2a4a", 0.95), Vector3(0, 0.3 if k % 2 == 0 else -0.3, 0))
 	var mirror := StandardMaterial3D.new()
 	mirror.albedo_color = Color(0.62, 0.7, 0.76)
 	mirror.metallic = 0.55
@@ -4631,6 +4660,15 @@ func _clothes_room() -> void:
 	var wn: Dictionary = Interior.window(g, Vector3(cx - 2.2, 1.6, d * 0.5), 1.8, 1.3, "n", "sheer", false)
 	g.get_child(g.get_child_count() - 1).rotation.y = PI
 	windows.append(wn)
+	# manekin w oknie wystawowym: marynarka przodem do ulicy
+	var mk := Stations.model("manekin")
+	if mk != null:
+		Interior._tint(mk, Color(0.2, 0.3, 0.42))
+		mk.position = Vector3(cx - 2.6, 0.0, d * 0.5 - 0.5)
+		mk.rotation.y = 0.25
+		g.add_child(mk)
+		add_col(cx - 2.85, cx - 2.35, d * 0.5 - 0.75, d * 0.5 - 0.25, 1.6, true, -1.0)
+		rects.pop_back()
 	Interior.shoes(g, Vector3(cx + 0.9, 0.0, 2.6), 0.4, "5a3a1a")
 	Interior.shoes(g, Vector3(cx + 1.3, 0.0, 2.7), -0.3, "1c1c20")
 	Interior.shoes(g, Vector3(cx + 0.5, 0.0, 2.75), 0.1, "d8d4c8")
