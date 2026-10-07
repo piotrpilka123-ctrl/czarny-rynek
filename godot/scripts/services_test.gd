@@ -8,6 +8,15 @@ static func run(T) -> void:
 	G.S = G.new_state()
 	var S: Dictionary = G.S
 
+	# --- dym z kominów: kotłownia i trzy kominy huty; smuga zaczyna się u wylotu, nie w połowie komina
+	var sm_n: int = G.world.smokes.size()
+	var boiler_ok := false
+	for smk0 in G.world.smokes:
+		var sp0: Vector3 = (smk0 as GPUParticles3D).global_position
+		if absf(sp0.x - 84.0 * D.SC) < 0.5 and absf(sp0.z + 106.0 * D.SC) < 0.5 and sp0.y > G.world.height(sp0.x, sp0.z) + 23.5:
+			boiler_ok = (smk0 as GPUParticles3D).emitting and (smk0 as GPUParticles3D).amount >= 20
+	T.ok(sm_n >= 4 and boiler_ok and G.world.smoke_mats.size() == sm_n, "z kominów unosi się dym (%d kolumn; kotłownia dymi u wylotu, 24 m nad ziemią)" % sm_n)
+
 	# --- głosy: każda postać ma swoją barwę (stałą), Kuba też mówi, kobiece imiona dostają głosy kobiece
 	var v_w: Array = Sfx.voice_for("Wiktor")
 	var v_k: Array = Sfx.voice_for("Ty")

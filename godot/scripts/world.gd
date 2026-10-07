@@ -53,6 +53,8 @@ var covers: Array = []          # krzaki, za którymi da się przyczaić: Vector
 var hides: Array = []           # kryjówki na czas pościgu (altanki śmietnikowe): {x, z, rot, name}
 var _lamp_pts: PackedVector3Array = PackedVector3Array()
 var lamp_mat: StandardMaterial3D
+var smoke_mats: Array = []       # materiały dymu z kominów — env.gd przyciemnia je po zmroku
+var smokes: Array = []           # kolumny dymu z kominów (do testów): GPUParticles3D
 var sirens: Array = []
 var rooms := {}
 ## gdzie gracz budzi się po wypadku albo zatrzymaniu: pokój -> [pozycja, obrót]
@@ -1851,6 +1853,35 @@ func _bush(x: float, z: float, s := 1.0) -> void:
 	b.set_meta("green", Vector2(x, z))
 
 
+## Dym z komina: wolna smuga, która rośnie i rzednie, znoszona wiatrem na wschód. `top` = wylot komina w metrach
+## świata, s = skala (1 = komin kotłowni, 2+ = kominy huty za murem), tone = jasność dymu (ciemniejszy = przemysłowy).
+func _chimney_smoke(top: Vector3, s := 1.0, tone := 0.62) -> void:
+	var p: GPUParticles3D = Props._particles(int(24 + 10 * s), 16.0, 2.4 * s, false,
+		[Color(tone, tone, tone, 0.0), Color(tone, tone, tone, 0.5), Color(tone * 1.08, tone * 1.08, tone * 1.1, 0.26), Color(tone * 1.15, tone * 1.15, tone * 1.18, 0.0)],
+		Vector2(1.5, 2.4) * sqrt(s), 0.4 * s, true)
+	var pm: ParticleProcessMaterial = p.process_material
+	pm.spread = 8.0
+	pm.gravity = Vector3(0.5, 0.1, 0.16)
+	pm.damping_min = 0.1
+	pm.damping_max = 0.22
+	pm.scale_min = 0.7
+	pm.scale_max = 1.3
+	var sc := Curve.new()
+	sc.add_point(Vector2(0.0, 0.45))
+	sc.add_point(Vector2(0.25, 1.6))
+	sc.add_point(Vector2(1.0, 4.2))
+	var sct := CurveTexture.new()
+	sct.curve = sc
+	pm.scale_curve = sct
+	p.visibility_aabb = AABB(Vector3(-12, -3, -22) * s, Vector3(110, 80, 70) * s)
+	p.position = top
+	add_child(p)
+	smokes.append(p)
+	var q := p.draw_pass_1 as QuadMesh
+	if q != null and q.material != null:
+		smoke_mats.append(q.material)
+
+
 var lamp_list: Array = []        # latarnie uliczne: {x, z, ry, broken} w układzie projektu (do przeglądu i testów)
 
 
@@ -3037,6 +3068,8 @@ func _dense() -> void:
 	var chy := hd(84.0, -106.0)
 	Models.cyl(city, 0.9, 1.4, 24.0, Vector3(84.0, chy + 12.0, -106.0), Props.pbr("factory_brick", 0.3, Color(0.8, 0.74, 0.7)), Vector3.ZERO, 12)
 	add_col(82.4, 85.6, -107.6, -104.4, 24.0)
+	# kotłownia grzeje osiedle: z komina idzie jasny dym
+	_chimney_smoke(Vector3(84.0 * SC, chy + 24.2, -106.0 * SC), 1.0, 0.7)
 	_shopfront(104.0, 10.0, "BAKERY", Color(0.95, 0.75, 0.35), "rusted_shutter", true)
 	_supply_store()
 	_shopfront(-131.0, 10.0, "SECOND HAND", Color(0.9, 0.5, 0.6), "painted_metal_shutter", true)
@@ -3448,6 +3481,8 @@ func _backdrop() -> void:
 	for e in [[262.0, -60.0, 3.0, 60.0], [280.0, 40.0, 2.4, 48.0], [250.0, 120.0, 2.0, 40.0]]:
 		var c := Models.cyl(city, e[2] * 0.6, e[2], e[3], Vector3(e[0], e[3] * 0.5, e[1]), Models.mat("5a4f4a", 0.9), Vector3.ZERO, 10)
 		c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# kominy huty za murem dymią ciemniej i szerzej — widać je z całej dzielnicy
+		_chimney_smoke(Vector3(e[0] * SC, e[3] + 0.5, e[1] * SC), 1.6 + float(e[2]) * 0.3, 0.5)
 	# hala huty za wschodnim murem: ceglana, z wybitymi oknami i pilastym dachem (zamiast gładkiego, ciemnego klocka)
 	var hall_mi := Models.box(city, Vector3(60.0, 18.0, 120.0), Vector3(262.0, 9.0, 10.0), fac["cegla"], Vector3.ZERO, false)
 	hall_mi.set_instance_shader_parameter("b_origin", Vector3(232.0 * SC, 0.0, -50.0 * SC))
