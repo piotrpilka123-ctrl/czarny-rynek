@@ -347,6 +347,12 @@ func _build_edges() -> void:
 	_static({"x": 11.6, "z": 164.55, "rot": 2.4, "pose": "phone", "name": "Chłopak z pętli", "hours": [7.0, 23.5],
 		"look": {"model": "m16", "kind": "hoodie", "top": "2c3340", "bottom": "20242c", "seed": 967},
 		"lines": ["Czekam na kumpla. Nie twoja sprawa.", "Autobus? Nie, ja tu tylko stoję.", "Masz ogień?"]})
+	# magazynier przy palecie pod hurtownią budowlaną: pali i pilnuje towaru wystawionego na chodnik
+	_static({"x": 95.6, "z": 30.3, "rot": 2.75, "pose": "arms", "name": "Darek", "label": "Darek, magazynier", "hours": [7.0, 18.0],
+		"look": {"model": "m14", "kind": "jacket", "top": "c9641c", "bottom": "2b2f36", "seed": 977, "build": 1.05},
+		"lines": ["Szef jest przy okienku. Ja tylko noszę.", "Cement po dwadzieścia pięć kilo. Trzeci raz dziś przekładam tę paletę.",
+			"Lamp LED schodzi więcej niż cementu. Nie pytam, po co ludziom tyle światła w piwnicy.", "Dowozimy tego samego dnia. Żukiem, jak odpali.",
+			"Regał? Weź stalowy. Te z płyty to się rozłażą po jednej zimie w garażu."]})
 	var ge: Vector2 = G.world.GATE_E
 	_static({"x": ge.x - 4.3, "z": ge.y + 2.4, "rot": -PI / 2.0, "pose": "arms", "name": "Pan Bogdan", "label": "Pan Bogdan, stróż", "hours": [6.0, 22.0],
 		"look": {"model": "m12", "kind": "jacket", "top": "3d4438", "bottom": "2c2c2a", "seed": 953, "build": 1.0},
