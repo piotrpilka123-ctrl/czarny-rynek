@@ -754,14 +754,14 @@ def rekawiczki():
     """rękawice robocze: zamsz z dzianinowym ściągaczem i wzmocnieniem na grzbiecie dłoni"""
     B = Body()
     suede = mat('skora_rekawiczki', 'b0915a', 0.95)
-    rib = mat('sciagacz_rekawiczki', 'c8b23a', 0.95)
+    rib = mat('sciagacz_rekawiczki', '9c8d58', 0.95)
     bm, tree, wrists = _hands(B, lambda co, w: 0.0045)
     ob = to_object(B, bm, 'rekawiczki', [suede, rib])
     paint(ob, lambda c, n: along(B, c, 'Forearm', 'Hand') < 0.97, 1)
     parts = []
     for lp in wrists:
         c = sum(lp, Vector()) / len(lp)
-        parts.append(band(lp, 0.008, rib, 'sciagacz', 0.001, 1.8))
+        parts.append(band(lp, 0.005, rib, 'sciagacz', 0.001, 1.8))
     finish(B, ob, parts, 'rekawiczki')
 
 
@@ -796,7 +796,7 @@ def _feet(B, off, shaft=None, smooth=1, top=0.105):
     return bm, BVHTree.FromBMesh(bm), pick_loops(lps, lambda c: c.z > 0.06)
 
 
-def _sock(B, material, hi=0.21):
+def _sock(B, material, hi=0.16):
     """skarpetka między butem a nogawką"""
     def pick(co, w):
         return co.z < hi and (foot_w(w) >= 0.2 or part(w, ('Calf',)) > 0.3)
@@ -852,7 +852,7 @@ def trampki():
     rubber = mat('guma_trampki', 'e8e6df', 0.6)
     lace = mat('plotno_sznurowka', 'f0eee8', 0.9)
     stripe = mat('guma_pasek', 'b0382c', 0.6)
-    sock = mat('dzianina_skarpeta', 'dcdad2', 0.95)
+    sock = mat('dzianina_skarpeta', 'b4b3ad', 0.95)
     bm, tree, tops = _feet(B, lambda co, w: 0.006 if co.z < 0.03 else 0.0035)
     ob = to_object(B, bm, 'trampki', [canvas, rubber, lace, stripe, sock])
     toe_y = min(B.H['Bip01 L Toe0'].y, B.H['Bip01 R Toe0'].y)
@@ -874,7 +874,7 @@ def buty_bieg():
     sole = mat('guma_bieznik', '1c1c1f', 0.8)
     lace = mat('plotno_sznurowka', 'f0eee8', 0.9)
     grey = mat('skora_zapietek', '55585f', 0.7)
-    sock = mat('dzianina_skarpeta', 'dcdad2', 0.95)
+    sock = mat('dzianina_skarpeta', 'b4b3ad', 0.95)
     bm, tree, tops = _feet(B, lambda co, w: 0.009 if co.z < 0.04 else 0.004)
     ob = to_object(B, bm, 'buty_bieg', [mesh, foam, sole, lace, grey, sock])
     paint(ob, lambda c, n: c.z < 0.042, 1)
@@ -905,14 +905,14 @@ def buty_robocze():
     sole = mat('guma_protektor', '1c1c1f', 0.85)
     lace = mat('plotno_sznurowka_b', 'c9a24a', 0.9)
     metal = mat('metal_oczko', 'b08a4a', 0.35, 0.9)
-    bm, tree, tops = _feet(B, lambda co, w: 0.011 if co.z < 0.04 else 0.006, 0.74, 2)
+    bm, tree, tops = _feet(B, lambda co, w: 0.0085 if co.z < 0.04 else 0.0045, 0.74, 2)
     ob = to_object(B, bm, 'buty_robocze', [lea, dark, sole, lace, metal])
     toe_y = min(B.H['Bip01 L Toe0'].y, B.H['Bip01 R Toe0'].y)
     paint(ob, lambda c, n: c.y < toe_y - 0.005 and c.z < 0.085, 1)
     paint(ob, lambda c, n: c.z < 0.038, 2)
     parts = []
     for lp in tops:
-        parts.append(band(lp, 0.009, dark, 'kolnierz', 0.001, 1.5))
+        parts.append(band(lp, 0.006, dark, 'kolnierz', 0.001, 1.5))
     _welt(B, tree, 0.04, 0.0045, dark, parts)
     _laces(B, tree, lace, parts, 6, 0.02, 0.6, 0.004, metal)
     for side in ('L', 'R'):
