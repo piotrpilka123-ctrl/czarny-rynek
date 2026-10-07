@@ -85,9 +85,9 @@ static func poster(seed_v: int, s := 1.0) -> Node3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v
 	var kinds := [
-		["KONCERT", "SALA GIMNASTYCZNA • 19:00", "e8dcc0", "8a1c1c"], ["ZAGINĄŁ PIES", "wabi się Reks • nagroda", "f0ece0", "15171a"], ["SKUP AUT", "gotówka od ręki", "e8d040", "15171a"],
-		["WYBORY", "Twój głos się liczy", "d8dce4", "1c3f8a"], ["KREDYT 0%", "bez BIK • bez pytań", "e8e0d0", "b0492c"], ["DISCO NEON", "piątek / sobota", "1a1420", "ff3bd0"],
-		["KOREPETYCJE", "matematyka • tanio", "f0f0e8", "23402e"], ["WYWÓZ GRUZU", "tel. 600 200 …", "d8d0b8", "3b3630"], ["HUTNIK — STAL", "derby • niedziela", "c9c4b8", "8a1c1c"],
+		["CONCERT", "SCHOOL GYM • 7 PM", "e8dcc0", "8a1c1c"], ["LOST DOG", "answers to Reks • reward", "f0ece0", "15171a"], ["CARS WANTED", "cash on the spot", "e8d040", "15171a"],
+		["ELECTIONS", "your vote counts", "d8dce4", "1c3f8a"], ["0% LOAN", "no checks • no questions", "e8e0d0", "b0492c"], ["DISCO NEON", "friday / saturday", "1a1420", "ff3bd0"],
+		["TUTORING", "maths • cheap", "f0f0e8", "23402e"], ["RUBBLE REMOVAL", "call 600 200 …", "d8d0b8", "3b3630"], ["HUTNIK — STAL", "derby • sunday", "c9c4b8", "8a1c1c"],
 	]
 	var k: Array = kinds[rng.randi_range(0, kinds.size() - 1)]
 	var g := Node3D.new()

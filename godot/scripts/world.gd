@@ -4302,7 +4302,7 @@ func _interiors() -> void:
 	_rp(g, "painted_wooden_cabinet", cx + w * 0.5 - 0.32, 0.6, -PI / 2.0, 1.9, 0.0, 0.32, 0.66)
 	inter.append({"loc": "safe", "x": cx + w * 0.5 - 0.42, "z": 0.6, "y0": 0.1, "y1": 1.7, "r": 0.62, "reach": 2.5, "id": "stash_safe",
 		"label": func(): return "Skrytka w szafie", "act": func(): G.ui.open_stash("safe")})
-	Interior.note(g, Vector3(cx + w * 0.5 - 0.01, 1.62, 1.75), -PI / 2.0, "WYBUCH W STAREJ HUCIE\nPolicja szuka świadków. Jedna osoba zatrzymana.", 0.46, 0.3)
+	Interior.note(g, Vector3(cx + w * 0.5 - 0.01, 1.62, 1.75), -PI / 2.0, "BLAST AT THE OLD STEELWORKS\nPolice seek witnesses. One man detained.", 0.46, 0.3)
 	Interior.picture(g, Vector3(cx + w * 0.5 - 0.01, 1.55, 2.35), -PI / 2.0, 0.46, "pic_kalendarz")
 	# kanapa, ława, telewizor
 	_rp(g, "sofa_02", cx - 2.05, d * 0.5 - 0.55, PI, 0.88, 0.0, 0.95, 0.45)
@@ -4440,7 +4440,7 @@ func _interiors() -> void:
 	Interior.picture(g2, Vector3(sx2 + w2 * 0.5 - 0.01, 1.6, -0.6), -PI / 2.0, 0.8, "poster_12")
 	Interior.picture(g2, Vector3(sx2 - w2 * 0.5 + 0.01, 1.75, -0.6), PI / 2.0, 0.8, "poster_04")
 	Interior.picture(g2, Vector3(sx2 - 1.6, 1.7, d2 * 0.5 - 0.01), PI, 0.7, "poster_10")
-	Interior.note(g2, Vector3(sx2 + 1.3, 1.5, d2 * 0.5 - 0.01), PI, "NA KRESKĘ NIE DAJEMY\n(chyba że Kubie)", 0.4, 0.26, "f2e8a8")
+	Interior.note(g2, Vector3(sx2 + 1.3, 1.5, d2 * 0.5 - 0.01), PI, "NO CREDIT\n(unless you're Kuba)", 0.4, 0.26, "f2e8a8")
 	windows.append(Interior.window(g2, Vector3(sx2 + 2.9, 1.55, d2 * 0.5), 1.6, 1.3, "n", "blinds", false))
 	var win_n: Node3D = g2.get_child(g2.get_child_count() - 1)
 	win_n.rotation.y = PI
@@ -4465,7 +4465,7 @@ func _interiors() -> void:
 	Interior.pegboard(g3, Vector3(c3 + R3.w * 0.5 - 0.01, 1.55, -1.2), -PI / 2.0, 1.6, 0.9)
 	Interior.picture(g3, Vector3(c3 - R3.w * 0.5 + 0.01, 1.6, 1.4), PI / 2.0, 0.8, "pic_auto")
 	Interior.picture(g3, Vector3(c3 - R3.w * 0.5 + 0.01, 1.7, 2.3), PI / 2.0, 0.55, "pic_kalendarz")
-	Interior.note(g3, Vector3(c3 + R3.w * 0.5 - 0.01, 1.5, 1.6), -PI / 2.0, "OLEJ 5W40 — 3 l\nKLOCKI PRZÓD\nODDAĆ KLUCZ 13", 0.3, 0.36)
+	Interior.note(g3, Vector3(c3 + R3.w * 0.5 - 0.01, 1.5, 1.6), -PI / 2.0, "OIL 5W40 — 3 l\nFRONT PADS\nRETURN THE 13 mm", 0.3, 0.36)
 	Interior.pipe(g3, Vector3(c3 - R3.w * 0.5 + 0.12, R3.h - 0.18, -R3.d * 0.5 + 0.1), Vector3(c3 - R3.w * 0.5 + 0.12, R3.h - 0.18, R3.d * 0.5 - 0.1), 0.035, "6a6a66", 0.5)
 	Interior.pipe(g3, Vector3(c3 - R3.w * 0.5 + 0.12, 0.0, -R3.d * 0.5 + 0.12), Vector3(c3 - R3.w * 0.5 + 0.12, R3.h - 0.18, -R3.d * 0.5 + 0.12), 0.035, "6a6a66", 0.5)
 	Interior.pipe(g3, Vector3(c3 - 1.0, R3.h - 0.08, -R3.d * 0.5 + 0.2), Vector3(c3 + R3.w * 0.5 - 0.1, R3.h - 0.08, -R3.d * 0.5 + 0.2), 0.02, "1a1a1a", 0.0)
@@ -4503,7 +4503,7 @@ func _interiors() -> void:
 	Interior.stain(g4, Vector3(c4 - 2.8, 0.004, 2.2), Vector3(-PI / 2.0, 0, 0), Vector2(1.4, 1.1), Color(0.04, 0.05, 0.06, 0.4))
 	Interior.stain(g4, Vector3(c4 - R4.w * 0.5 + 0.012, 0.7, -1.0), Vector3(0, PI / 2.0, 0), Vector2(2.2, 1.4), Color(0.05, 0.07, 0.05, 0.4))
 	Interior.stain(g4, Vector3(c4, 0.9, R4.d * 0.5 - 0.012), Vector3(0, PI, 0), Vector2(2.6, 1.6), Color(0.05, 0.07, 0.05, 0.35))
-	Interior.note(g4, Vector3(c4 + R4.w * 0.5 - 0.01, 1.4, 1.2), -PI / 2.0, "PIWNICA NR 4\nNIE ZASTAWIAĆ ZAWORU", 0.36, 0.22)
+	Interior.note(g4, Vector3(c4 + R4.w * 0.5 - 0.01, 1.4, 1.2), -PI / 2.0, "CELLAR No. 4\nKEEP THE VALVE CLEAR", 0.36, 0.22)
 	_lab_room()
 	_hospital_room()
 	_station_room()
@@ -4578,7 +4578,7 @@ func _clothes_room() -> void:
 			Models.box(g, Vector3(rng2.randf_range(0.2, 0.4), 0.08, rng2.randf_range(0.2, 0.34)), Vector3(bx + rng2.randf_range(-0.2, 0.2), 0.52 + rng2.randf() * 0.1, e[1] + rng2.randf_range(-0.14, 0.14)), Models.mat(cloth_cols[rng2.randi() % cloth_cols.size()], 0.95), Vector3(rng2.randf_range(-0.3, 0.3), rng2.randf() * 3.0, rng2.randf_range(-0.3, 0.3)), false)
 		add_col(bx - 0.42, bx + 0.42, e[1] - 0.32, e[1] + 0.32, 1.0, true, -1.0)
 		rects.pop_back()
-	Interior.note(g, Vector3(cx + 2.3, 1.25, d * 0.5 - 0.01), PI, "WSZYSTKO Z KOSZA\nPO 5 ZŁ", 0.5, 0.3, "f2e24a")
+	Interior.note(g, Vector3(cx + 2.3, 1.25, d * 0.5 - 0.01), PI, "EVERYTHING IN THE BIN\n5 ZŁ EACH", 0.5, 0.3, "f2e24a")
 	# lada z kasą
 	var lx := cx + w * 0.5 - 1.3
 	Models.box(g, Vector3(1.9, 0.95, 0.6), Vector3(lx, 0.475, -d * 0.5 + 1.25), Props.pbr("old_wood_floor", 0.6, Color(0.62, 0.5, 0.4)))
@@ -4611,7 +4611,7 @@ func _clothes_room() -> void:
 	# plakaty, okno wystawowe, manekin z kapeluszem
 	Interior.picture(g, Vector3(cx - 1.4, 1.75, -d * 0.5 + 0.01), 0.0, 0.8, "pic_boks")
 	Interior.picture(g, Vector3(cx + 0.2, 1.8, -d * 0.5 + 0.01), 0.0, 0.6, "pic_kalendarz", "5a4326")
-	Interior.note(g, Vector3(cx + 3.2, 1.7, -d * 0.5 + 0.01), 0.0, "ZWROTÓW NIE PRZYJMUJEMY\nPRZYMIERZALNIA ZA ZASŁONKĄ", 0.5, 0.26)
+	Interior.note(g, Vector3(cx + 3.2, 1.7, -d * 0.5 + 0.01), 0.0, "NO RETURNS\nFITTING ROOM BEHIND THE CURTAIN", 0.5, 0.26)
 	var wn: Dictionary = Interior.window(g, Vector3(cx - 2.2, 1.6, d * 0.5), 1.8, 1.3, "n", "sheer", false)
 	g.get_child(g.get_child_count() - 1).rotation.y = PI
 	windows.append(wn)

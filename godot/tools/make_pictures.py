@@ -49,9 +49,9 @@ def koncert():
     d.ellipse([W / 2 - 120, 180, W / 2 + 120, 420], fill=(18, 16, 22))
     d.rectangle([0, 470, W, 478], fill=(214, 46, 80))
     center(d, 28, 'BLOKERSI', font(112), (245, 240, 230))
-    center(d, 492, 'NOC NA OSIEDLU', font(58), (240, 170, 40))
-    center(d, 566, 'KLUB NEON  •  SOBOTA 22:00', font(34), (230, 226, 216))
-    center(d, 616, 'WSTĘP 20 ZŁ', font(42), (214, 46, 80))
+    center(d, 492, 'NIGHT ON THE ESTATE', font(58), (240, 170, 40))
+    center(d, 566, 'NEON CLUB  •  SATURDAY 10 PM', font(34), (230, 226, 216))
+    center(d, 616, 'ENTRY 20 ZŁ', font(42), (214, 46, 80))
     center(d, 676, 'support: DJ ŻELBET', font(26), (150, 146, 140))
     return grain(im, 8, 2)
 
@@ -68,11 +68,11 @@ def boks():
         d.ellipse([cx - 78, 250, cx + 78, 410], fill=(24, 22, 26))
         d.ellipse([cx - sx * 20 - 44, 232, cx - sx * 20 + 44, 320], fill=(24, 22, 26))
         d.rectangle([cx - 46, 396, cx + 46, 470], fill=(236, 230, 214))
-    center(d, 30, 'GALA BOKSU', font(104), (248, 236, 200))
-    center(d, 150, 'HALA SPORTOWA „HUTNIK”', font(36), (24, 22, 26))
-    center(d, 500, 'WALKA WIECZORU', font(60), (248, 236, 200))
+    center(d, 30, 'BOXING GALA', font(104), (248, 236, 200))
+    center(d, 150, '“HUTNIK” SPORTS HALL', font(36), (24, 22, 26))
+    center(d, 500, 'MAIN EVENT', font(60), (248, 236, 200))
     center(d, 572, 'KOWALSKI  vs  NOWAK', font(46), (24, 22, 26))
-    center(d, 644, 'bilety w kasie i u Stasia', font(28), (248, 236, 200))
+    center(d, 644, 'tickets at the door and at Staś\'s', font(28), (248, 236, 200))
     return grain(im, 8, 3)
 
 
@@ -94,8 +94,8 @@ def kalendarz():
         pts.append((W, 300))
         d.polygon(pts, fill=col)
     d.rectangle([0, 300, W, 372], fill=(170, 40, 36))
-    center(d, 306, 'PAŹDZIERNIK', font(60), (250, 244, 230))
-    days = ['PN', 'WT', 'ŚR', 'CZ', 'PT', 'SB', 'ND']
+    center(d, 306, 'OCTOBER', font(60), (250, 244, 230))
+    days = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
     f = font(30)
     for i, dn in enumerate(days):
         d.text((34 + i * 66, 386), dn, font=f, fill=(170, 40, 36) if i >= 5 else (60, 60, 66))
@@ -111,7 +111,7 @@ def kalendarz():
             if n in (5, 9, 13):
                 d.ellipse([28 + c * 66, 428 + r * 54, 84 + c * 66, 476 + r * 54], outline=(30, 60, 170), width=4)
             n += 1
-    center(d, 694, 'Hurtownia „Żelbet” życzy udanego roku', font(22), (120, 116, 108))
+    center(d, 694, '“Żelbet” Wholesale wishes you a good year', font(22), (120, 116, 108))
     d.ellipse([W / 2 - 9, 6, W / 2 + 9, 24], fill=(60, 60, 60))
     return im
 
@@ -174,9 +174,9 @@ def auto():
         d.ellipse([cx - 26, 374, cx + 26, 426], fill=(190, 194, 200))
     d.rectangle([452, 330, 476, 352], fill=(255, 236, 170))
     center(d, 40, 'TURBO', font(150), (248, 240, 220))
-    center(d, 520, 'RAJD HUTNIKA', font(72), (248, 240, 220))
-    center(d, 606, 'odcinki specjalne: hałda • rampa • tory', font(26), (230, 90, 40))
-    center(d, 660, 'XVII edycja', font(34), (150, 200, 230))
+    center(d, 520, 'HUTNIK RALLY', font(72), (248, 240, 220))
+    center(d, 606, 'special stages: slag heap • ramp • tracks', font(26), (230, 90, 40))
+    center(d, 660, '17th edition', font(34), (150, 200, 230))
     return grain(im, 8, 6)
 
 

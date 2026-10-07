@@ -308,52 +308,52 @@ def poster(name, seed, paper, ink, head, lines, accent=None, strips=False, size=
 
 random.seed(7)
 POSTERS = [
-    ((232, 220, 192), (120, 26, 26), "KONCERT", ["!ZESPÓŁ „HAŁDA”", "sala gimnastyczna SP 12", "sobota 19:00", "wstęp wolny"], None, False),
-    ((240, 236, 224), (20, 22, 26), "ZAGINĄŁ\nPIES", ["!wabi się REKS", "rudy kundel, czerwona obroża", "ostatnio widziany pod pawilonem", "NAGRODA"], None, True),
-    ((232, 208, 64), (20, 22, 26), "SKUP AUT", ["!GOTÓWKA OD RĘKI", "całe, rozbite, bez przeglądu", "dojazd do klienta"], None, True),
-    ((216, 220, 228), (28, 62, 138), "WYBORY", ["!Twój głos się liczy", "lokal: Dom Kultury „Hutnik”", "niedziela 7:00–21:00"], (28, 62, 138), False),
-    ((232, 224, 208), (176, 72, 44), "KREDYT 0%", ["!BEZ BIK • BEZ PYTAŃ", "decyzja w 15 minut", "ul. Hutnicza 12"], (176, 72, 44), False),
-    ((26, 20, 32), (255, 60, 208), "DISCO\nNEON", ["!PIĄTEK / SOBOTA", "klub NEON • start 21:00", "panie wstęp free do 22"], None, False),
-    ((240, 240, 232), (36, 64, 46), "KOREPETYCJE", ["!MATEMATYKA • FIZYKA", "tanio, dojeżdżam", "student politechniki"], None, True),
-    ((216, 208, 184), (58, 54, 48), "WYWÓZ\nGRUZU", ["!KONTENERY 3–7 m³", "szybko i tanio", "także w soboty"], None, True),
-    ((201, 196, 184), (138, 28, 28), "HUTNIK\n— STAL", ["!DERBY", "niedziela 15:00", "stadion przy Robotniczej", "wszyscy na mecz!"], (138, 28, 28), False),
-    ((236, 232, 220), (18, 18, 20), "POSZUKIWANY", ["!POLICJA PROSI O POMOC", "mężczyzna ok. 30 lat", "handel środkami odurzającymi", "komisariat III, tel. 997"], (18, 18, 20), False),
-    ((244, 240, 228), (30, 30, 34), "SPRZEDAM", ["!FIAT 126p", "rocznik 1988, garażowany", "cena do uzgodnienia"], None, True),
-    ((226, 232, 226), (40, 90, 60), "WYNAJMĘ\nPOKÓJ", ["!BLOK 9, III piętro", "dla pracującego", "bez nałogów"], None, True),
-    ((250, 246, 230), (190, 30, 30), "CYRK", ["!„ARENA”", "plac przy boisku", "tylko 3 dni!", "akrobaci • klauni • konie"], (250, 200, 40), False),
-    ((228, 228, 232), (20, 20, 24), "UWAGA", ["!KRADZIEŻE W PIWNICACH", "zamykajcie drzwi na klucz", "administracja osiedla"], None, False),
+    ((232, 220, 192), (120, 26, 26), "CONCERT", ["!THE SLAGHEAP BAND", "school gym, PS 12", "Saturday 7 PM", "free entry"], None, False),
+    ((240, 236, 224), (20, 22, 26), "LOST\nDOG", ["!answers to REKS", "ginger mutt, red collar", "last seen by the pavilion", "REWARD"], None, True),
+    ((232, 208, 64), (20, 22, 26), "CARS\nWANTED", ["!CASH ON THE SPOT", "running, crashed, no papers", "we come to you"], None, True),
+    ((216, 220, 228), (28, 62, 138), "ELECTIONS", ["!Your vote counts", "polling place: Hutnik Culture House", "Sunday 7:00–21:00"], (28, 62, 138), False),
+    ((232, 224, 208), (176, 72, 44), "0% LOAN", ["!NO CHECKS • NO QUESTIONS", "decision in 15 minutes", "12 Hutnicza St"], (176, 72, 44), False),
+    ((26, 20, 32), (255, 60, 208), "DISCO\nNEON", ["!FRIDAY / SATURDAY", "NEON club • from 9 PM", "ladies free before 10"], None, False),
+    ((240, 240, 232), (36, 64, 46), "TUTORING", ["!MATHS • PHYSICS", "cheap, I come to you", "engineering student"], None, True),
+    ((216, 208, 184), (58, 54, 48), "RUBBLE\nREMOVAL", ["!SKIPS 3–7 m³", "fast and cheap", "Saturdays too"], None, True),
+    ((201, 196, 184), (138, 28, 28), "HUTNIK\n— STAL", ["!DERBY", "Sunday 3 PM", "stadium on Robotnicza St", "everyone to the match!"], (138, 28, 28), False),
+    ((236, 232, 220), (18, 18, 20), "WANTED", ["!POLICE APPEAL", "male, about 30", "drug dealing", "3rd Precinct, call 997"], (18, 18, 20), False),
+    ((244, 240, 228), (30, 30, 34), "FOR SALE", ["!FIAT 126p", "1988, garage kept", "price negotiable"], None, True),
+    ((226, 232, 226), (40, 90, 60), "ROOM\nTO LET", ["!BLOCK 9, 3rd floor", "working person only", "no addictions"], None, True),
+    ((250, 246, 230), (190, 30, 30), "CIRCUS", ["!“ARENA”", "field by the pitch", "3 days only!", "acrobats • clowns • horses"], (250, 200, 40), False),
+    ((228, 228, 232), (20, 20, 24), "WARNING", ["!BASEMENT BREAK-INS", "keep the doors locked", "estate management"], None, False),
 ]
 for i, (paper, ink, head, lines, accent, strips) in enumerate(POSTERS):
     poster('poster_%02d' % i, 800 + i, paper, ink, head, lines, accent, strips)
 
-TAGS = ["DBS", "SKERO", "MZK", "HWK", "ZGR", "KSH", "1986", "STAL", "BLOKI", "JARA", "ELO", "LOVE", "PUNK", "HIP-HOP", "ZOSTAŃ", "SIWY", "HTK", "BLOK 7", "RAP", "OSIEDLE", "NOC", "KUBA", "B7", "ZAGŁĘBIE"]
+TAGS = ["DBS", "SKERO", "MZK", "HWK", "ZGR", "KSH", "1986", "STEEL", "BLOCKS", "JARA", "ELO", "LOVE", "PUNK", "HIP-HOP", "STAY", "SIWY", "HTK", "BLOCK 7", "RAP", "ESTATE", "NIGHT", "KUBA", "B7", "ZAGŁĘBIE"]
 for i, t in enumerate(TAGS):
     tag('tag_%02d' % i, t, 100 + i, fnt=['marker', 'sedg', 'marker', 'spray'][i % 4])
-THROWS = [("DBS", (236, 96, 190)), ("HWK", (52, 120, 226)), ("STAL", (214, 48, 44)), ("KSH", (242, 204, 40)), ("MZK", (62, 190, 96)), ("ELO", (250, 130, 30)), ("B7", (232, 232, 228)), ("ZGR", (120, 60, 200))]
+THROWS = [("DBS", (236, 96, 190)), ("HWK", (52, 120, 226)), ("STEEL", (214, 48, 44)), ("KSH", (242, 204, 40)), ("MZK", (62, 190, 96)), ("ELO", (250, 130, 30)), ("B7", (232, 232, 228)), ("ZGR", (120, 60, 200))]
 for i, (t, c) in enumerate(THROWS):
     throwup('throw_%02d' % i, t, 200 + i, fill=c)
 piece('piece_00', "HUTNIK '86", 300, (255, 90, 80), (150, 20, 30), cloud=(240, 240, 235))
 piece('piece_01', "STEEL\nBLOCKS", 301, (90, 190, 255), (30, 70, 190), cloud=(20, 20, 26))
-piece('piece_02', "STARA HUTA\nŻYJE", 302, (245, 245, 240), (150, 150, 160), edge=(120, 20, 20))
+piece('piece_02', "OLD MILL\nLIVES", 302, (245, 245, 240), (150, 150, 160), edge=(120, 20, 20))
 piece('piece_03', "ZAGŁĘBIE", 303, (255, 220, 60), (240, 120, 20), cloud=(30, 30, 34))
 piece('piece_04', "NO FUTURE", 304, (250, 215, 50), (200, 110, 10))
 piece('piece_05', "DEAD MILL", 305, (235, 235, 235), (140, 140, 150), edge=(110, 15, 15))
 piece('piece_06', "OLD TOWN", 306, (110, 230, 140), (20, 110, 60), cloud=(16, 26, 18))
 piece('piece_07', "SIWY\nR.I.P.", 307, (240, 240, 240), (120, 120, 130))
-piece('piece_08', "HUTNIK\nPANY", 308, (255, 255, 255), (214, 48, 44), edge=(20, 20, 90))
-piece('piece_09', "BLOK 7\nRZĄDZI", 309, (250, 130, 30), (160, 50, 10), cloud=(236, 236, 230))
-SLOG = [("TU BYŁ SIWY", (18, 18, 20)), ("KOCHAM CIĘ ANKA", (214, 48, 44)), ("NIE UFAJ NIKOMU", (232, 232, 228)), ("PRAWDA BOLI", (242, 204, 40)), ("STAL TO MY", (52, 120, 226)),
-        ("KONIEC ŚWIATA", (232, 232, 228)), ("NIE MA WYJŚCIA", (214, 48, 44)), ("WOLNOŚĆ", (18, 18, 20)), ("TU RZĄDZĄ BLOKI", (232, 232, 228)), ("ZOSTAŃ TU", (62, 190, 96)),
-        ("GDZIE JEST SIWY?", (18, 18, 20)), ("HUTA NIE ZGINIE", (214, 48, 44))]
+piece('piece_08', "HUTNIK\nRULES", 308, (255, 255, 255), (214, 48, 44), edge=(20, 20, 90))
+piece('piece_09', "BLOCK 7\nRUNS IT", 309, (250, 130, 30), (160, 50, 10), cloud=(236, 236, 230))
+SLOG = [("SIWY WAS HERE", (18, 18, 20)), ("I LOVE YOU ANKA", (214, 48, 44)), ("TRUST NO ONE", (232, 232, 228)), ("TRUTH HURTS", (242, 204, 40)), ("STEEL IS US", (52, 120, 226)),
+        ("END OF THE WORLD", (232, 232, 228)), ("NO WAY OUT", (214, 48, 44)), ("FREEDOM", (18, 18, 20)), ("BLOCKS RULE HERE", (232, 232, 228)), ("STAY HERE", (62, 190, 96)),
+        ("WHERE IS SIWY?", (18, 18, 20)), ("THE MILL WON'T DIE", (214, 48, 44))]
 for i, (t, c) in enumerate(SLOG):
     slogan('slogan_%02d' % i, t, 400 + i, c, fnt=['spray', 'marker', 'spray', 'sedg'][i % 4])
-ghost('ghost_00', ["HUTA", "IM. HUTNIKÓW", "1952"], 500, (60, 58, 56))
-ghost('ghost_01', ["WĘGIEL", "STAL", "PRACA"], 501, (120, 40, 34))
-ghost('ghost_02', ["PIJ", "MLEKO"], 502, (40, 70, 120))
-ghost('ghost_03', ["KINO", "„STALOWNIK”"], 503, (70, 66, 60), size=(1024, 512))
-ghost('ghost_04', ["PRALNIA", "MAGIEL"], 504, (50, 80, 70), size=(1024, 512))
-ghost('ghost_05', ["DOM TOWAROWY", "HUTNIK"], 505, (110, 44, 36), size=(1024, 512))
-ghost('ghost_06', ["CZYSTE OSIEDLE", "DUMĄ MIESZKAŃCÓW"], 506, (60, 60, 64), size=(1024, 384), frame=False)
+ghost('ghost_00', ["HUTNIK", "STEELWORKS", "1952"], 500, (60, 58, 56))
+ghost('ghost_01', ["COAL", "STEEL", "WORK"], 501, (120, 40, 34))
+ghost('ghost_02', ["DRINK", "MILK"], 502, (40, 70, 120))
+ghost('ghost_03', ["CINEMA", "“STALOWNIK”"], 503, (70, 66, 60), size=(1024, 512))
+ghost('ghost_04', ["LAUNDRY", "DRY CLEANING"], 504, (50, 80, 70), size=(1024, 512))
+ghost('ghost_05', ["DEPARTMENT STORE", "HUTNIK"], 505, (110, 44, 36), size=(1024, 512))
+ghost('ghost_06', ["A CLEAN ESTATE", "IS OUR PRIDE"], 506, (60, 60, 64), size=(1024, 384), frame=False)
 for n in ["3", "5", "7", "9", "11", "13"]:
     number('num_' + n, n, 600 + int(n))
 for i in range(4):
