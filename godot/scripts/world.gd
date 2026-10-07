@@ -1626,10 +1626,11 @@ func refresh_starter() -> void:
 	rooms.safe.add_child(starter)
 	starter.position = at
 	starter_rest(1.0)
-	inter.append({"loc": "safe", "x": at.x, "z": at.z, "y0": -0.1, "y1": 0.35, "r": 0.4, "reach": 2.4, "hold": 0.6, "id": "starter",
-		"label": func(): return "Podnieś paczkę od Wiktora (przytrzymaj)", "act": func():
-			if G.starter_pickup():
-				refresh_starter()})
+	inter.append({"loc": "safe", "x": at.x, "z": at.z, "y0": -0.1, "y1": 0.35, "r": 0.4, "reach": 2.4, "id": "starter",
+		"label": func(): return "Paczka od Wiktora — otwórz", "act": func():
+			if G.ui != null and G.ui.mode == "" and not G.busy:
+				Sfx.play("open")
+				G.ui.open_loot({"kind": "starter"})})
 
 
 ## ustawia dwa woreczki paczki: k = 0 jeszcze za drzwiami, k = 1 leżą w pokoju (drugi lekko na pierwszym)
@@ -1677,7 +1678,10 @@ func refresh_ground() -> void:
 		ground_nodes.append(n)
 		var r: Dictionary = rec
 		inter.append({"loc": loc, "x": x, "z": z, "y0": y - 0.1, "y1": y + 0.5, "r": 0.45, "reach": 2.3, "id": "ziemia_%d" % k,
-			"label": func(): return "Podnieś: " + G.ground_name(r), "act": func(): G.ground_take(r)})
+			"label": func(): return "Na ziemi: " + G.ground_name(r), "act": func():
+				if G.ui != null and G.ui.mode == "" and not G.busy:
+					Sfx.play("open")
+					G.ui.open_loot({"kind": "ground", "rec": r})})
 		k += 1
 
 

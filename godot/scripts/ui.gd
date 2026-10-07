@@ -1142,6 +1142,14 @@ func open_inventory(room := "", tab := "inv") -> void:
 	inv.open(room, tab)
 
 
+## paczka, skrytka Wiktora, rzeczy na ziemi: ekwipunek z zawartością po prawej stronie
+func open_loot(src: Dictionary) -> bool:
+	if not G.loot_open(src):
+		return false
+	open_inventory("loot")
+	return true
+
+
 # ---------------------------------------------------------------- sklep u Stasia
 func open_shop() -> void:
 	_open_modal("Sklep spożywczy u Stasia", "„Wszystko, czego trzeba. O nic nie pytam.”")

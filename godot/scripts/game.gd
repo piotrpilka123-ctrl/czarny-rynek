@@ -106,7 +106,7 @@ func new_state() -> Dictionary:
 		"v": 3, "t": 9.0 * 60.0, "cash": float(D.START_CASH), "debt": float(D.START_DEBT), "paid": 0.0,
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
-		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store()},
+		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store(), "loot": new_store()},
 		"items": {"woreczki": 0, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
@@ -672,6 +672,9 @@ func move_limit(room: String, e: Dictionary, to_stash: bool) -> float:
 	if room == "wiktor" and to_stash:
 		# skrzynka Wiktora jest tylko na pieniądze
 		return 0.0
+	if room == "loot" and to_stash and String(loot.get("kind", "")) != "ground":
+		# z paczki i ze skrytki Wiktora tylko się wyjmuje; odkładać można jedynie na ziemię
+		return 0.0
 	var space: float = (float(stash_cap(room)) - store_total(S.stash[room])) if to_stash else (float(capacity()) - carry_total())
 	var step: float = e.get("step", 1.0)
 	var fit := floorf(maxf(0.0, space) / maxf(0.001, float(e.usize)) / step + 0.001) * step
@@ -700,6 +703,177 @@ func discard_entry(e: Dictionary, amount: float) -> void:
 		var pp: Vector3 = player.global_position
 		ground_add(String(player.loc), pp.x + f.x * 0.7, pp.z + f.y * 0.7, {"kind": String(e.kind), "p": String(e.p), "pur": int(e.pur), "id": String(e.id), "n": amount, "name": String(e.name)})
 	notify("Upuszczono na ziemię: %s." % e.name, "warn")
+
+
+# ================================================================ pojemnik „z ręki”: paczka, skrytka Wiktora, rzeczy na ziemi
+## Jedno naciśnięcie [E] otwiera ekwipunek, a po prawej widać, co leży w środku — przeciągasz do siebie to, co chcesz.
+## Na czas oglądania zawartość siedzi w S.stash.loot; przy zamknięciu to, co zostało, wraca tam, skąd przyszło
+## (paczka spod drzwi i rzeczy z ziemi — na ziemię, towar Wiktora — do jego skrytki, płacisz tylko za to, co wziąłeś).
+var loot := {}
+
+
+func loot_store() -> Dictionary:
+	if not S.stash.has("loot"):
+		S.stash["loot"] = new_store()
+	return S.stash.loot
+
+
+func _loot_put(rec: Dictionary) -> void:
+	var st := loot_store()
+	var n := float(rec.n)
+	match String(rec.kind):
+		"cash": st.cash = float(st.cash) + n
+		"pack": add_pack(st, String(rec.p), int(rec.pur), int(n))
+		"bulk": add_bulk(st, String(rec.p), int(rec.pur), n)
+		_:
+			if D.ITEMS.has(String(rec.id)):
+				var its := store_items(st)
+				its[String(rec.id)] = int(its.get(String(rec.id), 0)) + int(n)
+
+
+## otwiera pojemnik: {kind: "starter"} / {kind: "drop", d} / {kind: "ground", rec}
+func loot_open(src: Dictionary) -> bool:
+	if not loot.is_empty():
+		loot_close()
+	S.stash["loot"] = new_store()
+	var kind := String(src.get("kind", ""))
+	match kind:
+		"starter":
+			if flag("got_first"):
+				return false
+			for e in D.STARTER_PACK:
+				add_bulk(loot_store(), String(e[0]), D.PURITY_STD, float(e[1]))
+			loot = {"kind": kind, "title": "PACZKA OD WIKTORA", "note": "pierwsza za darmo",
+				"empty": "Paczka jest pusta.", "hint": "Przeciągnij towar z paczki (po prawej) do swoich kieszeni (po lewej)."}
+		"drop":
+			var d: Dictionary = src.d
+			for it in d.get("items", [{"p": d.p, "g": d.g}]):
+				add_bulk(loot_store(), String(it.p), int(d.get("pur", D.PURITY_STD)), float(it.g))
+			loot = {"kind": kind, "d": d, "title": "SKRYTKA — TOWAR OD WIKTORA", "note": "na zeszyt: %s" % money(float(d.cost)),
+				"empty": "Skrytka jest pusta.", "hint": "Przeciągnij towar ze skrytki do plecaka. Na zeszyt idzie tylko to, co zabierzesz — reszta poczeka w skrytce."}
+		"ground":
+			var rec: Dictionary = src.rec
+			var loc := String(rec.loc)
+			var x := float(rec.x)
+			var z := float(rec.z)
+			for r in S.get("ground", []).duplicate():
+				if String(r.loc) == loc and Vector2(float(r.x) - x, float(r.z) - z).length() <= 1.6:
+					_loot_put(r)
+					S.ground.erase(r)
+			loot = {"kind": kind, "loc": loc, "x": x, "z": z, "title": "NA ZIEMI", "note": "",
+				"empty": "Nic tu już nie leży. Możesz coś odłożyć: przeciągnij rzecz z plecaka.", "hint": "Przeciągnij rzecz z ziemi do plecaka — albo z plecaka na ziemię, jeśli chcesz ją tu zostawić."}
+			if world != null:
+				world.refresh_ground()
+		_:
+			return false
+	loot["total"] = goods_total(loot_store())
+	loot["value"] = _loot_value()
+	return true
+
+
+## hurtowa wartość towaru w pojemniku (do rozliczenia części paczki: droższy towar waży w rachunku więcej)
+func _loot_value() -> float:
+	var v := 0.0
+	for sx in stacks(loot_store(), "bulk"):
+		v += float(sx.n) * float(D.PRODUCTS[sx.p].cost)
+	return v
+
+
+## przenosi do plecaka wszystko, co się zmieści; zwraca, ile pozycji ruszyło
+func loot_take_all() -> int:
+	var moved := 0
+	for e in entries(loot_store()):
+		var lim := move_limit("loot", e, false)
+		if lim > 0.0 and move_entry("loot", e, false, lim) > 0.0:
+			moved += 1
+	return moved
+
+
+## to, co zostało w pojemniku, jako rekordy „na ziemię”
+func _loot_left() -> Array:
+	var out := []
+	var st := loot_store()
+	for kind in ["pack", "bulk"]:
+		for sx in stacks(st, kind):
+			out.append({"kind": kind, "p": String(sx.p), "pur": int(sx.pur), "id": "", "n": float(sx.n), "name": String(D.PRODUCTS[sx.p].name)})
+	var its := store_items(st)
+	for id in its:
+		if int(its[id]) > 0 and D.ITEMS.has(id):
+			out.append({"kind": "item", "p": "", "pur": 0, "id": String(id), "n": float(its[id]), "name": String(D.ITEMS[id].name)})
+	if float(st.get("cash", 0.0)) >= 1.0:
+		out.append({"kind": "cash", "p": "", "pur": 0, "id": "cash", "n": floorf(float(st.cash)), "name": "Gotówka"})
+	return out
+
+
+## zamknięcie pojemnika: rozlicza, co zabrano, i odkłada resztę na miejsce
+func loot_close() -> void:
+	if loot.is_empty():
+		return
+	var L: Dictionary = loot
+	loot = {}
+	var left: Array = _loot_left()
+	var left_g: float = goods_total(loot_store())
+	var left_v: float = _loot_value()
+	var taken: float = maxf(0.0, float(L.get("total", 0.0)) - left_g)
+	match String(L.kind):
+		"starter":
+			if taken > 0.01:
+				S.flags["got_first"] = true
+				S.stats.pickups = int(S.stats.pickups) + 1
+				add_xp(6.0)
+				# czego nie wziąłeś, zostaje na wycieraczce jako zwykłe rzeczy na ziemi
+				if not left.is_empty() and D.ROOMS.has("safe"):
+					var R: Dictionary = D.ROOMS.safe
+					for i in range(left.size()):
+						ground_add("safe", float(R.cx) - 0.04 + 0.16 * i, float(R.d) * 0.5 - 0.62, left[i])
+					notify("Paczka od Wiktora: wziąłeś %s, reszta leży przy drzwiach. Ta pierwsza jest za darmo." % grams(taken), "good")
+				else:
+					notify("Paczka od Wiktora: %s czystego towaru. Ta pierwsza jest za darmo." % grams(taken), "good")
+				Sfx.play("pickup")
+				if world != null:
+					world.refresh_starter()
+				nav_dirty.emit()
+		"drop":
+			var d: Dictionary = L.d
+			var total_v: float = maxf(0.001, float(L.get("value", 0.0)))
+			if taken > 0.01 and S.drops.has(d):
+				var part: float = round(float(d.cost) * (total_v - left_v) / total_v)
+				if left_g <= 0.01:
+					part = float(d.cost)
+				_credit_add(part)
+				S.flags["got_first"] = true
+				if not d.get("touched", false):
+					d["touched"] = true
+					S.stats.pickups = int(S.stats.pickups) + 1
+					add_xp(6.0)
+				Sfx.play("pickup")
+				if left_g <= 0.01:
+					S.drops.erase(d)
+					notify("Zabrano całą paczkę (czysty towar). Na zeszycie: %s, termin: dzień %d." % [money(S.credit), int(float(S.credit_due) / 1440.0) + 1], "good")
+					Market.add_trust("wiktor", 3.0 + float(d.g) / 12.0)
+					if main != null:
+						main.drop_gone(d)
+					if S.track is String and S.track == "drop":
+						S.track = null
+				else:
+					# reszta czeka w skrytce: paczka robi się mniejsza i tańsza o to, co już wziąłeś
+					var items := []
+					for sx in stacks(loot_store(), "bulk"):
+						items.append({"p": String(sx.p), "g": float(sx.n)})
+					d["items"] = items
+					d["p"] = String(items[0].p)
+					d["g"] = left_g
+					d["cost"] = maxf(0.0, float(d.cost) - part)
+					notify("Wziąłeś %s (na zeszyt +%s). W skrytce czeka jeszcze %s." % [grams(taken), money(part), grams(left_g)], "good")
+				nav_dirty.emit()
+		"ground":
+			for i in range(left.size()):
+				var a := float(i) * 2.4
+				var rr := 0.0 if left.size() == 1 else 0.22
+				ground_add(String(L.loc), float(L.x) + cos(a) * rr, float(L.z) + sin(a) * rr, left[i])
+			if left.is_empty() and world != null:
+				world.refresh_ground()
+	S.stash["loot"] = new_store()
 
 
 # ================================================================ rzeczy na ziemi, śmietniki, lombard
@@ -958,6 +1132,8 @@ func stash_cap(room: String) -> int:
 		return 1000
 	if room == "wiktor":
 		return 100000
+	if room == "loot":
+		return 0 if loot.is_empty() else 100000
 	if room == "safe":
 		return 150 if upg("szafka") else D.STASH_BASE
 	var cap := 0
@@ -2364,7 +2540,7 @@ func tips_tick() -> void:
 	if night > 0.6 and player.loc == "out":
 		tip("noc", "Noc", "Po ciemku trudniej Cię zauważyć, ale snop latarki patrolu odbiera tę przewagę. Własną latarkę włączasz klawiszem [%s] — świeci tylko Tobie pod nogi, nie zdradza Cię bardziej." % kn("flash"))
 	if ready_drop() != null and flag("hurt_on"):
-		tip("skrytka", "Paczka w skrytce", "Wiktor zostawił towar. Idź do miejsca z wiadomości, znajdź mały biały znak sprejem i przytrzymaj [%s]. Nic nie płacisz na miejscu — należność idzie na zeszyt, a gotówkę zanosisz do skrzynki Wiktora." % kn("use"))
+		tip("skrytka", "Paczka w skrytce", "Wiktor zostawił towar. Idź do miejsca z wiadomości, znajdź mały biały znak sprejem i naciśnij [%s] — skrytka otworzy się obok plecaka, towar przeciągasz do siebie. Nic nie płacisz na miejscu — należność idzie na zeszyt, a gotówkę zanosisz do skrzynki Wiktora." % kn("use"))
 	if carry_total() > float(capacity()) - 0.6 and carry_total() > 3.0:
 		tip("pelny", "Pełne kieszenie", "Każdy gram i każdy woreczek zajmuje miejsce. Nadmiar odłóż do szafy w kawalerce albo kup u Stasia plecak. Z dużą ilością towaru kontrola osobista kończy się gorzej.")
 
@@ -2930,7 +3106,7 @@ func _build_story() -> void:
 			"done": func(): return flag("tut_bench"), "marker": _bench_marker, "on_done": _on_tour_done},
 		{"id": "phone", "text": func(): return "Ktoś wsunął paczkę pod drzwi. Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
 			"done": func(): return flag("read_wiktor") or flag("got_first"), "on_done": _on_phone_done},
-		{"id": "drop1", "text": func(): return "Podnieś paczkę, która leży przy drzwiach kawalerki (przytrzymaj [E]).",
+		{"id": "drop1", "text": func(): return "Przy drzwiach kawalerki leży paczka od Wiktora. Otwórz ją [E] i przeciągnij towar do swoich kieszeni.",
 			"done": func(): return flag("got_first"), "marker": _starter_marker},
 		{"id": "pack1", "text": func(): return "Wróć do kawalerki i zaporcjuj towar na wadze. (%d/3 g)" % mini(3, int(S.stats.packed)),
 			"done": func(): return int(S.stats.packed) >= 3 or _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
@@ -3195,6 +3371,7 @@ func load_game() -> bool:
 		if int(base.step) >= TOUR_STEPS:
 			base.flags[k] = true
 	base.wanted = false
+	base.stash["loot"] = new_store()
 	# woreczków do kupowania już nie ma, a „ulepszenie” wagi stało się po prostu lepszą wagą
 	base.items["woreczki"] = 0
 	for st0 in base.stash.values():

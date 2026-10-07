@@ -54,6 +54,14 @@ static func run(T) -> void:
 	T.ok(d1.state == "ready" and (S.chats.wiktor as Array).back().text.contains("znaku"), "gdy paczka jest na miejscu, Wiktor pisze, jakiego znaku szukać")
 	S.upg["plecak1"] = true
 	var t_pick: float = S.t
+	# skrytka otwiera się jak pojemnik: bierzesz część, płacisz tylko za nią, reszta czeka
+	T.ok(G.loot_open({"kind": "drop", "d": d1}) and G.goods_total(S.stash.loot) == 20.0, "skrytka Wiktora: po otwarciu leży w niej cała paczka (20 g)")
+	for le in G.entries(S.stash.loot):
+		if String(le.p) == "dym":
+			G.move_entry("loot", le, false, 4.0)
+	G.loot_close()
+	T.ok(float(S.credit) == 104.0 and S.drops.has(d1) and float(d1.g) == 16.0 and float(d1.cost) == 476.0 and M.contents(d1) == "6 g marihuany + 10 g amfetaminy",
+		"wzięte 4 g marihuany: na zeszyt 104 zł, w skrytce czeka reszta (%s, zeszyt %d)" % [M.contents(d1), int(S.credit)])
 	T.ok(G.pickup_block(d1) == "" and G.pickup_drop(d1) and float(S.credit) == 580.0 and S.cash == 5000.0, "odbiór nic nie kosztuje na miejscu — 580 zł idzie na zeszyt")
 	T.ok(float(S.inv.bulk.dym.get("100", 0.0)) == 10.0 and float(S.inv.bulk.szron.get("100", 0.0)) == 10.0, "w plecaku czysty towar: 10 g + 10 g")
 	T.ok(absf(float(S.credit_due) - (t_pick + D.CREDIT_DAYS_EARLY * 1440.0)) < 1.0 and G.credit_days() == D.CREDIT_DAYS_EARLY, "na początku Wiktor jest wyrozumiały: %d dni na spłatę" % G.credit_days())

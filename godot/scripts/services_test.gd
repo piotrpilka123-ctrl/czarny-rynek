@@ -202,6 +202,25 @@ static func run(T) -> void:
 			G.discard_entry(en, 1.0)
 	T.ok(G.item("zegarek") == 0 and S.ground.size() == 1 and String(S.ground[0].id) == "zegarek", "wyrzucona rzecz leży na ziemi, a nie znika")
 	T.ok(G.world.ground_nodes.size() == 1, "na ziemi widać zawiniątko do podniesienia")
+	# ziemia otwiera się jak skrytka: można brać i odkładać, a to, co zostaje, leży dalej
+	T.ok(G.loot_open({"kind": "ground", "rec": S.ground[0]}) and S.ground.is_empty() and int(G.store_items(S.stash.loot).get("zegarek", 0)) == 1, "ziemia otwarta jak pojemnik: zegarek po prawej stronie")
+	G.loot_close()
+	T.ok(S.ground.size() == 1 and String(S.ground[0].id) == "zegarek" and G.item("zegarek") == 0, "zamknięcie bez brania: rzecz leży dalej")
+	G.loot_open({"kind": "ground", "rec": S.ground[0]})
+	S.items["majeranek"] = 4
+	var maj = null
+	for en2 in G.entries(S.inv):
+		if String(en2.id) == "majeranek":
+			maj = en2
+	T.ok(maj != null and G.move_limit("loot", maj, true) >= 4.0 and G.move_entry("loot", maj, true, 4.0) == 4.0, "na ziemię można też coś odłożyć z plecaka")
+	T.ok(G.loot_take_all() == 2 and G.item("zegarek") == 1 and G.item("majeranek") == 4, "„Zabierz wszystko” bierze z ziemi obie rzeczy")
+	G.loot_close()
+	T.ok(S.ground.is_empty() and G.world.ground_nodes.is_empty(), "po zabraniu wszystkiego zawiniątko znika")
+	S.items["majeranek"] = 0
+	S.items["zegarek"] = 1
+	for en3 in G.entries(S.inv):
+		if String(en3.id) == "zegarek":
+			G.discard_entry(en3, 1.0)
 	T.ok(G.ground_take(S.ground[0]) and G.item("zegarek") == 1 and S.ground.is_empty(), "podniesiona rzecz wraca do plecaka")
 	S.items["zegarek"] = 0
 	var spawned: int = G.loot_spawn(rl)

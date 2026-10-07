@@ -118,9 +118,48 @@ func run() -> void:
 	var d = null
 	G.world.refresh_starter()
 	ok(G.world.starter != null and G.cur_step().id == "drop1", "paczka na start leży przy drzwiach kawalerki")
-	ok(G.starter_pickup() and not G.starter_pickup(), "paczkę spod drzwi podnosi się raz")
-	G.world.refresh_starter()
-	ok(G.world.starter == null, "po podniesieniu paczka znika z podłogi")
+	# paczka otwiera się jednym naciśnięciem: ekwipunek, a po prawej jej zawartość do przeciągnięcia
+	var st_i = null
+	for it_s in G.world.inter:
+		if String(it_s.get("id", "")) == "starter":
+			st_i = it_s
+	ok(st_i != null and not st_i.has("hold"), "paczka pod drzwiami: zwykłe naciśnięcie, bez przytrzymywania")
+	st_i.act.call()
+	await frames(3)
+	ok(U.mode == "inv" and U.inv.room == "loot" and String(G.loot.get("kind", "")) == "starter" and G.goods_total(S.stash.loot) > 0.0, "paczka otwiera się jako prawa strona ekwipunku (%s g)" % str(G.goods_total(S.stash.loot)))
+	ok(G.goods_total(S.inv) == 0.0 and not G.flag("got_first"), "samo otwarcie niczego nie zabiera")
+	var le: Array = G.entries(S.stash.loot)
+	ok(G.move_limit("loot", le[0], true) == 0.0, "do paczki nic się nie odkłada")
+	ok(G.move_entry("loot", le[0], false, 2.0) == 2.0, "z paczki da się wziąć część (2 g)")
+	U.close_all()
+	await frames(2)
+	ok(G.flag("got_first") and G.loot.is_empty() and G.goods_total(S.stash.loot) == 0.0, "po zamknięciu paczka jest rozliczona")
+	var on_floor := 0.0
+	for gr in S.get("ground", []):
+		if String(gr.loc) == "safe":
+			on_floor += float(gr.n)
+	var pack_g := 0.0
+	for e0 in D.STARTER_PACK:
+		pack_g += float(e0[1])
+	ok(absf(on_floor - (pack_g - 2.0)) < 0.01 and G.world.starter == null, "czego nie wziąłeś, leży dalej przy drzwiach (%s g)" % str(on_floor))
+	# reszta z ziemi: znów jedno naciśnięcie i „Zabierz wszystko”
+	var gi = null
+	for it_g in G.world.inter:
+		if String(it_g.get("id", "")).begins_with("ziemia_"):
+			gi = it_g
+	ok(gi != null and not gi.has("hold"), "rzeczy na ziemi też otwiera zwykłe naciśnięcie")
+	gi.act.call()
+	await frames(3)
+	ok(U.mode == "inv" and String(G.loot.get("kind", "")) == "ground" and absf(G.goods_total(S.stash.loot) - on_floor) < 0.01, "ziemia: w oknie leży wszystko, co było obok siebie")
+	ok(G.loot_take_all() >= 1 and G.goods_total(S.stash.loot) == 0.0, "„Zabierz wszystko” przenosi resztę do kieszeni")
+	U.close_all()
+	await frames(2)
+	var still := 0
+	for gr2 in S.get("ground", []):
+		if String(gr2.loc) == "safe":
+			still += 1
+	ok(still == 0 and absf(G.goods_total(S.inv) - pack_g) < 0.01, "na podłodze nic nie zostało, cała paczka w kieszeniach")
+	ok(not G.starter_pickup(), "paczkę spod drzwi bierze się raz")
 	var start_g := 0.0
 	for e in D.STARTER_PACK:
 		start_g += float(e[1])

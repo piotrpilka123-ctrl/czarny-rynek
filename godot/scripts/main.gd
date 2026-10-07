@@ -871,31 +871,30 @@ func _drop_inter() -> Variant:
 		var dd: Dictionary = G.Market.spot(d)
 		if Vector2(float(dd.x) - pp.x, float(dd.z) - pp.z).length() < 3.6:
 			var drop: Dictionary = d
-			var why := String(G.pickup_block(drop))
-			var what := "Skrytka: zabierz paczkę"
-			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "hold": 1.5, "id": "drop", "y0": 0.0, "y1": 1.2, "r": 0.85, "reach": 2.8,
-				"label": func(): return (what + " (przytrzymaj)" if why == "" else what.get_slice(":", 0) + ": " + why), "act": func(): _take_drop(drop)}
+			return {"loc": "out", "x": float(dd.x), "z": float(dd.z), "id": "drop", "y0": 0.0, "y1": 1.2, "r": 0.85, "reach": 2.8,
+				"label": func(): return "Skrytka: otwórz (%s)" % G.Market.contents(drop), "act": func(): _take_drop(drop)}
 	return null
 
 
+## Skrytka Wiktora otwiera się jednym naciśnięciem: po prawej stronie ekwipunku leży paczka, bierzesz z niej, ile chcesz.
 func _take_drop(d: Dictionary) -> void:
-	if G.pickup_block(d) != "":
-		G.pickup_drop(d)
+	if G.busy or ui.mode != "":
 		return
-	# odbiór na oczach policji: przy „spalonej” skrytce tajniak rusza od razu
+	# grzebanie w skrytce na oczach policji: przy „spalonej” skrytce tajniak rusza od razu
 	var pp: Vector3 = player.global_position
 	for c in npcs.cops:
 		if (c.sees or float(c.get("lvl", 0.0)) > 0.0) and Vector2(c.x - pp.x, c.z - pp.z).length() < 16.0:
 			G.add_heat(8.0)
 			if d.get("burned", false):
-				G.notify("To była zasadzka! Tajniak tylko czekał, aż sięgniesz po paczkę.", "bad")
+				G.notify("To była zasadzka! Tajniak tylko czekał, aż sięgniesz do skrytki.", "bad")
 				c.idle = 0.0
 				npcs.start_chase(c)
 			else:
 				c.susp = minf(1.0, float(c.susp) + 0.6)
 				G.notify("Policjant widział, jak grzebiesz w skrytce!", "bad")
 			break
-	G.pickup_drop(d)
+	Sfx.play("open")
+	ui.open_loot({"kind": "drop", "d": d})
 
 
 ## Interakcja wymaga nacelowania: promień wzroku musi przejść przez obiekt z normalnej odległości.
@@ -2719,6 +2718,14 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "org")
 		"shop": ui.open_shop()
 		"wagi": ui.open_scales()
+		"paczka":
+			G.S.flags["got_first"] = false
+			ui.open_loot({"kind": "starter"})
+		"ziemia":
+			G.S.ground = []
+			G.ground_add("out", player.global_position.x, player.global_position.z + 0.5, {"kind": "item", "p": "", "pur": 0, "id": "zegarek", "n": 1.0, "name": "Zegarek"})
+			G.ground_add("out", player.global_position.x + 0.3, player.global_position.z + 0.5, {"kind": "bulk", "p": "dym", "pur": 100, "id": "", "n": 6.0, "name": "Marihuana"})
+			ui.open_loot({"kind": "ground", "rec": G.S.ground[0]})
 		"build": ui.open_build("garage")
 		"ghost": build_begin("regal")
 		"pause": ui.show_pause()

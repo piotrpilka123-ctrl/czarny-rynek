@@ -265,6 +265,10 @@ func _first_time() -> void:
 		shown = G.tip("torba", "Pakowanie torby", "Po prawej leży towar ze stołu, po lewej Twoja torba. Złap kokainę lewym przyciskiem myszy, przeciągnij na lewą stronę i puść. W oknie ilości wybierz wszystko i zatwierdź [Enter].")
 		if shown:
 			drag_demo(false)
+	elif room == "loot":
+		shown = G.tip("pojemnik", "Zabieranie rzeczy", "Po prawej widzisz, co tu leży, po lewej swój plecak. Złap rzecz lewym przyciskiem myszy, przeciągnij na lewą stronę i puść — przy większej ilości wybierasz, ile bierzesz. Przycisk „Zabierz wszystko” bierze naraz tyle, ile się zmieści. Czego nie weźmiesz, zostaje na miejscu.")
+		if shown:
+			drag_demo(false)
 	elif room == "wiktor":
 		shown = G.tip("skrzynka", "Skrzynka Wiktora", "Przeciągnij gotówkę z plecaka (po lewej) do skrzynki (po prawej) i wybierz kwotę. Gdy zamkniesz okno, Wiktor zabierze to, co ma bliższy termin — zeszyt za towar albo ratę długu — a nadwyżkę zaliczy na dług.")
 		if shown:
@@ -310,6 +314,10 @@ func close() -> void:
 		G.box_settle()
 		if G.main != null:
 			G.main.close_box()
+	if room == "loot":
+		# paczka, skrytka Wiktora albo rzeczy z ziemi: rozliczenie tego, co zabrano, i odłożenie reszty
+		room = ""
+		G.loot_close()
 	visible = false
 	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
@@ -414,12 +422,31 @@ func _tab_inv() -> void:
 			var due := ("PO TERMINIE" if G.credit_overdue() else "do dnia %d" % (int(float(S.credit_due) / 1440.0) + 1)) if float(S.credit) > 0.0 else "nic nie wisisz"
 			rv.add_child(K.rich("Zeszyt za towar: [b]%s[/b]  %s\nDług brata: [b]%s[/b]" % [K.col(G.money(S.credit), K.C_WARN if float(S.credit) > 0.0 else K.C_ACC), K.col(due, K.C_DIM), K.col(G.money(S.debt), K.C_BAD)], 13))
 			_list(rv, st, "stash", "Przeciągnij tu gotówkę z plecaka. Gdy zamkniesz skrzynkę, Wiktor zabierze najpierw to, co wisisz za towar, a resztę zaliczy na dług.")
+		elif room == "loot":
+			# paczka / skrytka Wiktora / rzeczy na ziemi: bierzesz stąd do plecaka (na ziemię można też odkładać)
+			var L: Dictionary = G.loot
+			_title(rv, "package_open" if String(L.get("kind", "")) != "ground" else "map_pin", String(L.get("title", "POJEMNIK")), String(L.get("note", "")), K.C_DIM)
+			_list(rv, st, "stash", String(L.get("empty", "Pusto.")))
+			var all := K.btn("Zabierz wszystko", func():
+				if G.loot_take_all() > 0:
+					Sfx.play("pickup")
+				else:
+					G.notify("Nic więcej się nie zmieści w %s." % ("kieszeniach" if G.bag_name() == "Kieszenie" else "plecaku"), "warn")
+					Sfx.play("error")
+				sel = {}
+				render(), "go")
+			all.disabled = G.entries(st).is_empty()
+			all.custom_minimum_size = Vector2(0, 40)
+			rv.add_child(all)
+			rv.add_child(K.wrap(String(L.get("hint", "")), 12, K.C_DIM, W_SIDE - 44.0))
 		else:
 			_title(rv, "warehouse", "SKRYTKA — " + String(D.ROOMS[room].name).to_upper(), "%s / %d" % [G.units(sused), int(scap)])
 			_list(rv, st, "stash", "Skrytka jest pusta. Przeciągnij tu rzeczy z plecaka.")
 			rv.add_child(_cap_bar(sused, scap, K.C_GOLD))
 		right.set_drag_forwarding(Callable(), _can_drop.bind("stash"), _drop.bind("stash"))
 		hint.text = "Przeciągnij rzecz na drugą stronę i wybierz ilość   •   ubranie przeciągnij na pole przy postaci"
+		if room == "loot":
+			hint.text = "Przeciągnij rzecz do plecaka i wybierz ilość   •   dwuklik robi to samo   •   czego nie weźmiesz, zostaje na miejscu"
 	else:
 		var right2 := K.vbox(10)
 		right2.custom_minimum_size = Vector2(W_SIDE, H_BODY)
@@ -811,7 +838,10 @@ func ask_amount(e: Dictionary, from: String, to: String) -> void:
 	var step: float = e.get("step", 1.0)
 	var limit: float = float(e.n) if to == "bin" else G.move_limit(room, e, to == "stash")
 	if limit < step - 0.001:
-		G.notify("Brak miejsca w %s." % ("skrytce" if to == "stash" else "plecaku"), "warn")
+		if room == "loot" and to == "stash":
+			G.notify("Tu tylko wyjmujesz — do tej skrytki nic się nie odkłada.", "warn")
+		else:
+			G.notify("Brak miejsca w %s." % ("skrytce" if to == "stash" else "plecaku"), "warn")
 		Sfx.play("error")
 		return
 	if float(e.n) <= step + 0.001:
