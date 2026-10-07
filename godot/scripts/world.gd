@@ -518,6 +518,114 @@ func _map_texture() -> void:
 	map_tex = ImageTexture.create_from_image(m)
 
 
+## Przegląd rekwizytów bez okna (--przeglad): wypisuje te, które stoją krzywo na skarpie, wiszą nad ziemią, są zakopane
+## albo siedzą w budynku. Zastępuje chodzenie po mapie z nosem przy ziemi; każdą pozycję trzeba potem obejrzeć na planie.
+func _audit_boxes(n: Node, out: Array) -> void:
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null and (n as MeshInstance3D).visible:
+		out.append((n as MeshInstance3D).global_transform * (n as MeshInstance3D).get_aabb())
+	for c in n.get_children():
+		_audit_boxes(c, out)
+
+
+func _audit_kind(n: Node) -> String:
+	if n.scene_file_path != "":
+		return n.scene_file_path.get_file().get_basename()
+	for c in n.get_children():
+		var k := _audit_kind(c)
+		if k != "":
+			return k
+	return ""
+
+
+func audit() -> void:
+	var rows: Array = []
+	for n in city.get_children():
+		if not (n is Node3D) or n.is_queued_for_deletion():
+			continue
+		var kind := _audit_kind(n)
+		if kind == "":
+			continue
+		var boxes: Array = []
+		_audit_boxes(n, boxes)
+		if boxes.is_empty():
+			continue
+		var bb: AABB = boxes[0]
+		for b in boxes:
+			bb = bb.merge(b)
+		if maxf(bb.size.x, bb.size.z) > 9.0:
+			continue
+		var lo := 1e9
+		var hi := -1e9
+		for fx in [0.0, 0.5, 1.0]:
+			for fz in [0.0, 0.5, 1.0]:
+				var gy := height(bb.position.x + bb.size.x * fx, bb.position.z + bb.size.z * fz)
+				lo = minf(lo, gy)
+				hi = maxf(hi, gy)
+		var gap := bb.position.y - hi          # > 0: cały wisi nad ziemią
+		var sunk := lo - bb.position.y         # > 0: spód jest pod najniższym punktem terenu
+		var tilt := hi - lo
+		var cx := (bb.position.x + bb.size.x * 0.5) * INV
+		var cz := (bb.position.z + bb.size.z * 0.5) * INV
+		var inside := false
+		for b2 in blds:
+			if cx > float(b2.x0) + 0.3 and cx < float(b2.x1) - 0.3 and cz > float(b2.z0) + 0.3 and cz < float(b2.z1) - 0.3:
+				inside = true
+		var why := ""
+		if inside:
+			why += " W_BUDYNKU"
+		if gap > 0.12:
+			why += " WISI %.2f" % gap
+		if tilt > 0.45 and bb.size.y < 4.0:
+			why += " SKARPA %.2f" % tilt
+		if sunk > 0.45 and bb.size.y < 4.0 and tilt <= 0.45:
+			why += " ZAKOPANY %.2f" % sunk
+		if why != "":
+			rows.append("AUDYT %-26s x=%7.1f z=%7.1f  %.1fx%.1fx%.1f m %s" % [kind, cx, cz, bb.size.x, bb.size.y, bb.size.z, why])
+	rows.sort()
+	for r in rows:
+		print(r)
+	print("AUDYT razem: %d" % rows.size())
+	# przejścia w płotach: po obu stronach musi być dokąd pójść
+	for pg in passages:
+		for sd in [-1.0, 1.0]:
+			for dist in [1.2, 2.6]:
+				var qx: float = float(pg[0]) + (0.0 if pg[2] else sd * dist)
+				var qz: float = float(pg[1]) + (sd * dist if pg[2] else 0.0)
+				if not is_free(qx * SC, qz * SC, 0.25):
+					print("AUDYT-PRZEJSCIE %s x=%.1f z=%.1f: zastawione %.1f m dalej (%.1f, %.1f)" % [["dziura", "przełaz", "furtka"][int(pg[3])], float(pg[0]), float(pg[1]), dist * SC, qx, qz])
+	# rzeczy, które powinny wisieć na ścianie albo stać przy niej: jak daleko mają do najbliższego budynku
+	for n in city.get_children():
+		if not (n is Node3D):
+			continue
+		var kind := _audit_kind(n)
+		var wallish := false
+		for w in ["utility_box", "power_box", "aircon", "electr", "fuse", "meter", "pipe_", "vent", "satellite", "camera", "szyld", "mailbox", "fire_hydrant_wall", "ladder"]:
+			if kind.contains(w):
+				wallish = true
+		if not wallish:
+			continue
+		var px := (n as Node3D).position.x
+		var pz := (n as Node3D).position.z
+		var best := 1e9
+		for b2 in blds:
+			var dx := maxf(maxf(float(b2.x0) - px, 0.0), px - float(b2.x1))
+			var dz := maxf(maxf(float(b2.z0) - pz, 0.0), pz - float(b2.z1))
+			best = minf(best, sqrt(dx * dx + dz * dz))
+		if best > 0.9:
+			print("AUDYT-SCIANA %-24s x=%7.1f z=%7.1f  %.1f od ściany" % [kind, px, pz, best])
+	var kinds := {}
+	for n in city.get_children():
+		var k2 := _audit_kind(n)
+		if k2 != "":
+			kinds[k2] = int(kinds.get(k2, 0)) + 1
+	var ks := kinds.keys()
+	ks.sort()
+	var line := ""
+	for k3 in ks:
+		line += "%s×%d " % [k3, kinds[k3]]
+	print("AUDYT-RODZAJE ", line)
+
+
 ## Plan miasta z góry do pliku PNG (narzędzie bez okna: ./tools/plan.sh) — nawierzchnie, wysokość terenu,
 ## budynki i wszystkie kolizje. 3 piksele na jednostkę planu; `box` = [x0, z0, x1, z1] wycina fragment (wtedy 8 px).
 func dump_plan(path: String, box: Array = []) -> void:
@@ -635,6 +743,7 @@ func build(loader = null) -> void:
 		await loader.step(52.0, "Spraying graffiti")
 	_dense()
 	_trap_houses()
+	_evict_greens()
 	Details.entrances(self)
 	Details.wall_art(self)
 	Details.facade_props(self)
@@ -1402,6 +1511,8 @@ func _tree(x: float, z: float, s := 1.0, leaves := 0.5) -> void:
 	tree_pos.append(Vector2(x, z))
 	add_col(x - 0.3 * INV, x + 0.3 * INV, z - 0.3 * INV, z + 0.3 * INV, 3.0)
 	rects.pop_back()
+	t.set_meta("green", Vector2(x, z))
+	t.set_meta("col", [body.get_child(body.get_child_count() - 1), blocks.back()])
 
 
 ## odległość (w jednostkach planu) od najbliższej ścieżki przechodniów
@@ -1461,6 +1572,9 @@ func _bush(x: float, z: float, s := 1.0) -> void:
 		add_col(x - r * INV, x + r * INV, z - r * INV, z + r * INV, clampf(sz.y, 1.0, 2.0))
 		rects.pop_back()
 		covers.append(Vector3(x * SC, z * SC, sz.x * 0.5))
+		b.set_meta("col", [body.get_child(body.get_child_count() - 1), blocks.back()])
+		b.set_meta("cover", covers.back())
+	b.set_meta("green", Vector2(x, z))
 
 
 func _lamp(x: float, z: float, ry: float, broken := false) -> void:
@@ -1962,6 +2076,8 @@ func _yard() -> void:
 			t.scale = Vector3(ts.x * INV, ts.y, ts.z * INV)
 		t.position.y -= 0.2
 		tree_pos.append(Vector2(x, z))
+		t.set_meta("green", Vector2(x, z))
+		t.set_meta("col", [body.get_child(body.get_child_count() - 1), blocks.back(), rects.back()])
 		k += 1
 	if G.test_mode:
 		print("DRZEWA podwórka: %d (przy chodniku %d)" % [k, by_path])
@@ -2060,10 +2176,12 @@ func _lower_town() -> void:
 	_prop("cardboard_box_01", -83.0, -11.6, 1.1, 0.3, 0.0, false)
 	_prop("plastic_crate_01", -8.0, -11.0, 0.2, 0.28, 0.0, false)
 	_prop("wooden_crate_02", 20.0, -11.4, 0.3, 0.5, 0.5)
-	_prop("exterior_aircon_unit", -6.0, -10.3, 0.0, 0.8, 0.0, false, 2.6)
-	# (stała luzem w przejściu między kamienicami — teraz wisi przy tylnej ścianie kamienicy D)
-	_prop("utility_box_01", 19.2, -10.42, 0.0, 1.1, 0.3)
-	_prop("power_box_01", -57.0, -10.12, 0.0, 0.5, 0.0, false, 1.2)
+	# rzeczy na tylnych ścianach kamienic: przód modelu patrzy na +z, więc na ścianie północnej trzeba je obrócić,
+	# inaczej wentylatory i drzwiczki celują w mur
+	_prop("exterior_aircon_unit", -6.0, -10.3, PI, 0.8, 0.0, false, 2.6)
+	_prop("utility_box_01", 19.2, -10.4, PI, 1.1, 0.3)
+	# (wisiała w powietrzu w wylocie zaułka, metr od ściany — teraz jest przykręcona do kamienicy B)
+	_prop("power_box_01", -52.0, -10.38, PI, 0.5, 0.0, false, 1.2)
 	_prop("water_manhole_cover", -27.0, -14.0, 0.0, 0.0, 0.0, false, 0.01)
 	_prop("water_manhole_cover", 30.0, 20.0, 0.0, 0.0, 0.0, false, 0.01)
 	_prop("water_manhole_cover", -80.0, 20.5, 0.0, 0.0, 0.0, false, 0.01)
@@ -2126,7 +2244,8 @@ func _park() -> void:
 	_bin(-90.5, 64.6, 0.0)
 	_bin(-121.0, 101.5, 0.0)
 	_prop("can_rusted", -123.0, 102.6, 0.0, 0.13, 0.0, false)
-	_prop("wooden_picnic_table", -146.0, 96.0, 0.6, 0.75, 1.2)
+	# (stał w połowie stromego zbocza górki — teraz jest na płaskim szczycie, obok ławki)
+	_prop("wooden_picnic_table", -117.0, 107.5, 0.6, 0.75, 1.2)
 	# stary dąb ze skrytką
 	var oak := Props.tree(777, 1.9, 0.7)
 	oak.position = Vector3(-161.5, hd(-161.5, 123.5) - 0.2, 123.5)
@@ -2325,6 +2444,7 @@ func _fence_run(ax: float, az: float, bx: float, bz: float, kind: String, h: flo
 			_barrier(from, az, cc - gap, az, kind, h)
 		else:
 			_barrier(ax, from, ax, cc - gap, kind, h)
+		passages.append([cc if ew else ax, az if ew else cc, ew, int(c[1])])
 		match int(c[1]):
 			1:
 				_crawl_hole(cc if ew else ax, az if ew else cc, ew, kind, h, gap)
@@ -2590,7 +2710,7 @@ func _dense() -> void:
 	_fence_run(66.0, -31.6, 104.0, -31.6, "siatka", 1.8, [88.0], [], [74.0])
 	_fence_run(-90.0, 57.6, -50.0, 57.6, "mur", 2.2, [], [-70.0], [-56.0])
 	_barrier(-44.0, 57.6, -9.0, 57.6, "mur", 2.2)
-	_fence_run(8.0, 57.6, 40.0, 57.6, "mur", 2.2, [], [24.0])
+	_fence_run(8.0, 57.6, 40.0, 57.6, "mur", 2.2, [], [37.0])    # (przełaz był na wysokości ściany kamienicy — prowadził w mur)
 	_barrier(46.0, 52.0, 68.0, 52.0, "blacha", 2.0)
 	_barrier(-48.5, 60.0, -48.5, 96.0, "siatka", 1.8)
 	_fence_run(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8, [123.0], [], [146.0])
@@ -2601,7 +2721,7 @@ func _dense() -> void:
 	_barrier(40.0, 100.0, 40.0, 130.0, "blacha", 2.0)
 	_fence_run(128.6, 32.0, 128.6, 120.0, "siatka", 1.8, [78.0], [], [50.0, 104.0])
 	_fence_run(128.6, -160.0, 128.6, -72.0, "siatka", 1.8, [], [-90.0], [-112.0, -140.0])
-	_fence_run(128.6, -60.0, 128.6, -20.0, "siatka", 1.8, [-40.0], [], [-27.0])
+	_fence_run(128.6, -60.0, 128.6, -20.0, "siatka", 1.8, [-40.0], [], [-52.0])   # furtka na płaskim, nie w połowie skarpy
 	# nowe ogrodzenia w miejscach, gdzie dało się biegać na przełaj
 	_fence_run(44.0, 127.0, 104.0, 127.0, "blacha", 2.0, [71.0], [], [92.0, 52.0])  # garaże / wysypisko
 	_fence_run(-146.0, 57.6, -113.0, 57.6, "siatka", 1.8, [-130.0])       # tyły kamienicy od strony parku
@@ -3038,6 +3158,38 @@ func _backdrop() -> void:
 			along += w2 + r2.randf_range(0.0, 3.0)
 
 
+## Zieleń sadzona jest, zanim stanie zabudowa uzupełniająca i garaże, więc część drzew i krzaków lądowała w środku
+## budynków (pień przez dach garażu). Po postawieniu wszystkiego takie rośliny znikają razem z kolizją i kryjówką.
+var greens_evicted := 0
+var passages: Array = []            # przejścia w płotach: [x, z, czy płot biegnie wschód–zachód, rodzaj]
+
+func _evict_greens() -> void:
+	for n in city.get_children():
+		if not n.has_meta("green"):
+			continue
+		var g: Vector2 = n.get_meta("green")
+		var hit := false
+		for b in blds:
+			if g.x > float(b.x0) - 0.7 and g.x < float(b.x1) + 0.7 and g.y > float(b.z0) - 0.7 and g.y < float(b.z1) + 0.7:
+				hit = true
+				break
+		if not hit:
+			continue
+		if n.has_meta("col"):
+			var c: Array = n.get_meta("col")
+			(c[0] as Node).queue_free()
+			blocks.erase(c[1])
+			if c.size() > 2:
+				rects.erase(c[2])
+		if n.has_meta("cover"):
+			covers.erase(n.get_meta("cover"))
+		tree_pos.erase(g)
+		n.queue_free()
+		greens_evicted += 1
+	if G.test_mode:
+		print("ZIELEŃ w budynkach usunięta: %d" % greens_evicted)
+
+
 ## Pętla autobusowa na południowym końcu Robotniczej: ulica nie urywa się w trawie, tylko zawraca wokół wysepki.
 ## Przy peronie pod murem stoi wiata, a obok autobus linii 12, który skończył kurs.
 const LOOP := [-17.0, 143.0, 17.0, 164.0]       # jezdnia pętli (plan miasta)
@@ -3050,12 +3202,12 @@ func _bus_loop() -> void:
 	if bus != null:
 		_place(bus, BUS.x, BUS.y, PI / 2.0, 5.55, 1.3, 3.0)
 		Props.set_range(bus, 220.0)
-	_place(Props.bus_stop(), 8.0, 166.9, PI, 2.0, 0.3, 2.4)
-	_sign("12  HUTNIK LOOP", Vector3(8.0, 2.62, 165.5), Color(0.95, 0.85, 0.35), 34, PI, 0.005, 8)
-	_bin(13.4, 166.8)
-	_bench(-9.0, 167.3, PI)
-	_lamp(-14.0, 167.6, PI)
-	_lamp(16.0, 167.6, PI, true)
+	_place(Props.bus_stop(), 8.0, 167.2, PI, 2.0, 0.3, 2.4)
+	_sign("12  HUTNIK LOOP", Vector3(8.0, 2.62, 165.8), Color(0.95, 0.85, 0.35), 34, PI, 0.005, 8)
+	_bin(13.4, 167.6)
+	_bench(-9.0, 167.7, PI)
+	_lamp(-14.0, 168.0, PI)
+	_lamp(16.0, 168.0, PI, true)
 	_lamp(0.0, 151.2, PI / 2.0)
 	# wysepka: krzak, znak objazdu wokół i wydeptana na skróty ścieżka
 	_bush(-4.5, 151.6, 1.0)
@@ -3330,7 +3482,7 @@ func _graph() -> void:
 		[[-101.0, 13.5], [-96.0, 26.5]], [[-58.0, 13.5], [-58.0, 26.5]], [[-6.0, 13.5], [-5.3, 26.5]], [[13.0, 13.5], [5.3, 26.5]], [[60.0, 13.5], [60.0, 26.5]], [[126.0, 13.5], [126.0, 26.5]], [[166.0, 13.5], [172.0, 26.5]],
 		[[-5.3, 26.5], [-5.3, 56.0], [-5.3, 84.0], [-5.3, 100.0], [-5.3, 124.0], [-5.3, 141.5]],
 		[[5.3, 26.5], [5.3, 56.0], [5.3, 84.0], [5.3, 124.0], [5.3, 141.5]],
-		[[-5.3, 141.5], [-19.0, 141.5], [-19.0, 166.4], [0.0, 166.4], [19.0, 166.4], [19.0, 141.5], [5.3, 141.5]],
+		[[-5.3, 141.5], [-19.0, 141.5], [-19.0, 165.0], [0.0, 165.0], [19.0, 165.0], [19.0, 141.5], [5.3, 141.5]],
 		[[-5.3, 84.0], [5.3, 84.0]], [[-5.3, 124.0], [5.3, 124.0]],
 		[[-101.0, 13.5], [-101.0, -12.0], [-101.0, -52.0], [-101.0, -66.0], [-101.0, -103.0], [-101.0, -125.0]],
 		[[-101.0, -125.0], [-60.0, -125.0], [-27.0, -125.0], [8.0, -125.0], [47.0, -125.0], [90.0, -125.0]],

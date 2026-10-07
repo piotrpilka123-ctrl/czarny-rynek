@@ -454,6 +454,21 @@ static func run(T) -> void:
 	T.ok(G.world.is_free(-12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(0.0, 145.5 * D.SC, 0.8), "pętlę da się objechać: obok autobusu zostaje wolny pas")
 	T.ok(names.has("Pan Zenek") and names.has("Pan Bogdan") and names["Pan Zenek"].has("interact") and G.world.is_free(float(names["Pan Bogdan"].x), float(names["Pan Bogdan"].z), 0.3) and G.world.is_free(float(names["Pan Zenek"].x), float(names["Pan Zenek"].z), 0.3),
 		"na pętli stoi kierowca, a przy bramie huty stróż — z oboma da się pogadać")
+	# --- przegląd mapy: nic nie rośnie w budynkach, a każde przejście w płocie dokądś prowadzi
+	var in_bld := 0
+	for tp0 in G.world.tree_pos:
+		for b0 in G.world.blds:
+			if tp0.x > float(b0.x0) and tp0.x < float(b0.x1) and tp0.y > float(b0.z0) and tp0.y < float(b0.z1):
+				in_bld += 1
+	T.ok(in_bld == 0 and G.world.greens_evicted > 0, "żadne drzewo nie rośnie w budynku ani w garażu (usunięte: %d)" % G.world.greens_evicted)
+	var blocked_pass := 0
+	for pg0 in G.world.passages:
+		for sd0 in [-1.0, 1.0]:
+			var qx0: float = float(pg0[0]) + (0.0 if pg0[2] else sd0 * 1.5)
+			var qz0: float = float(pg0[1]) + (sd0 * 1.5 if pg0[2] else 0.0)
+			if not G.world.is_free(qx0 * D.SC, qz0 * D.SC, 0.25):
+				blocked_pass += 1
+	T.ok(blocked_pass == 0 and G.world.passages.size() >= 15, "każda dziura, przełaz i furtka w płocie ma wolne przejście po obu stronach (%d przejść)" % G.world.passages.size())
 	T.ok(G.world.ring2 >= 40, "za murem stoi drugi rząd bloków, który zasłania przerwy w pierwszym (%d)" % G.world.ring2)
 	# --- radiowóz: jedzie prawym pasem, skręca stopniowo, na końcu trasy zawraca
 	var car: Dictionary = N.car

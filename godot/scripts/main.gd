@@ -197,6 +197,10 @@ func _ready() -> void:
 			print("HD %s = %.2f" % [pt, world.hd(float(xz[0]), float(xz[1]))])
 		get_tree().quit()
 		return
+	if args.has("przeglad"):
+		world.audit()
+		get_tree().quit()
+		return
 	if args.has("plan"):
 		# plan miasta z góry do pliku (bez okna): --plan=ścieżka [--box=x0,z0,x1,z1]
 		var pb: Array = []
