@@ -479,16 +479,44 @@ func prologue_act(what: String) -> void:
 
 ## Pierwszy telefon od Wiktora zastaje Kubę w łóżku: przez całą rozmowę leży (kamera patrzy w sufit, lekko „oddycha”),
 ## dopiero po rozłączeniu siada i wstaje. Do tego czasu nie da się chodzić.
+## Przebudzenie w kawalerce: Kuba leży na boku (widać pokój, nie sufit), zaczyna wibrować telefon,
+## półprzytomne „kto do mnie dzwoni?”, kilka mrugnięć — i dopiero wtedy pojawia się karta połączenia.
+## Po rozmowie siada na brzegu łóżka i wstaje.
 func _bed_call() -> void:
 	if G.test_mode or player.loc != "safe":
+		_intro_call()
 		return
 	var R: Dictionary = D.ROOMS.safe
 	var bx: float = float(R.cx) - float(R.w) * 0.5 + 0.62
 	var bz: float = -float(R.d) * 0.5 + 1.1
-	var head := bed_head()
 	G.busy = true
+	ui.cut_begin()
+	ui.set_lids(1.0)
 	var t := 0.0
-	# rozmowa jeszcze się nie zaczęła w tej samej klatce — czekamy, aż telefon zadzwoni
+	var rang := false
+	var said := false
+	while t < BED_WAKE:
+		t += get_process_delta_time()
+		# spacja przewija przebudzenie (napis „Spacja — pomiń” jest na ekranie)
+		if t > 0.4 and Input.is_key_pressed(KEY_SPACE):
+			break
+		bed_cam(t)
+		ui.set_lids(bed_lids(t))
+		if not rang and t > 0.7:
+			rang = true
+			Sfx.ring(true)
+		if not said and t > 2.7:
+			said = true
+			ui.cut_line("…Kto do mnie dzwoni?")
+			ui._mumble_burst("Ty", 3)
+		await get_tree().process_frame
+	ui.set_lids(0.0)
+	ui.cut_line("")
+	ui.cut_end()
+	if not rang:
+		Sfx.ring(true)
+	# oczy otwarte: teraz dopiero widać, kto dzwoni i czym odebrać
+	_intro_call()
 	await get_tree().process_frame
 	while ui.call_active():
 		t += get_process_delta_time()
@@ -496,7 +524,7 @@ func _bed_call() -> void:
 		await get_tree().process_frame
 	# koniec rozmowy: siada na brzegu łóżka i wstaje
 	var tw := create_tween()
-	tw.tween_method(bed_rise, 0.0, 1.0, 1.8)
+	tw.tween_method(bed_rise, 0.0, 1.0, 2.1)
 	await tw.finished
 	var stand := Vector3(bx + 0.95, 1.6, bz + 0.25)
 	teleport("safe", Vector3(stand.x, 0.0, stand.z), -PI / 2.0)
@@ -504,7 +532,27 @@ func _bed_call() -> void:
 	G.busy = false
 
 
-## kadr wstawania z łóżka: k = 0 leży, ok. 0,6 siedzi na brzegu, 1 stoi przy łóżku
+const BED_WAKE := 5.4
+## „góra” kamery, gdy głowa leży na poduszce na boku: prawie poziomo (czubek głowy w stronę ściany)
+const BED_UP := Vector3(0.0, 0.6, -1.0)
+## powieki przy przebudzeniu: [sekunda, zamknięcie 0–1] — pierwsze ospałe uchylenie, potem trzy mrugnięcia
+const BED_LIDS := [[0.0, 1.0], [1.7, 1.0], [2.35, 0.52], [2.65, 0.55], [2.9, 1.0], [3.15, 1.0], [3.65, 0.22], [3.95, 0.2], [4.05, 1.0], [4.17, 0.1],
+	[4.6, 0.07], [4.7, 1.0], [4.82, 0.03], [5.2, 0.0], [5.4, 0.0]]
+
+
+## na ile zamknięte są powieki w sekundzie `t` przebudzenia (1 = ciemno, 0 = oczy otwarte)
+func bed_lids(t: float) -> float:
+	if t >= float(BED_LIDS[BED_LIDS.size() - 1][0]):
+		return 0.0
+	for i in range(BED_LIDS.size() - 1):
+		var a: Array = BED_LIDS[i]
+		var b: Array = BED_LIDS[i + 1]
+		if t >= float(a[0]) and t < float(b[0]):
+			return lerpf(float(a[1]), float(b[1]), smoothstep(0.0, 1.0, (t - float(a[0])) / maxf(0.001, float(b[0]) - float(a[0]))))
+	return 1.0
+
+
+## kadr wstawania z łóżka: k = 0 leży na boku, ok. 0,6 siedzi na brzegu, 1 stoi przy łóżku
 func bed_rise(k: float) -> void:
 	var R: Dictionary = D.ROOMS.safe
 	var bx: float = float(R.cx) - float(R.w) * 0.5 + 0.62
@@ -514,7 +562,10 @@ func bed_rise(k: float) -> void:
 	var stand := Vector3(bx + 0.95, 1.6, bz + 0.25)
 	var e := smoothstep(0.0, 1.0, k)
 	var pos := head.lerp(sit, minf(1.0, e * 1.7)).lerp(stand, clampf(e * 1.7 - 0.7, 0.0, 1.0))
-	cine_cam(pos, pos + Vector3(1.0, -0.12 + 0.6 * (1.0 - e), 0.35 * (1.0 - e)), 66.0)
+	# wzrok przechodzi z kadru „na boku” na pokój przed sobą, a głowa prostuje się w pierwszej połowie ruchu
+	var look := (head + BED_LOOK).lerp(pos + Vector3(1.0, -0.12, 0.0), smoothstep(0.0, 0.8, e))
+	cine_cam(pos, look, 64.0)
+	cine.look_at(look, BED_UP.normalized().slerp(Vector3.UP, smoothstep(0.0, 0.55, e)))
 
 
 ## gdzie leży głowa Kuby na łóżku w kawalerce
@@ -523,15 +574,24 @@ func bed_head() -> Vector3:
 	return Vector3(float(R.cx) - float(R.w) * 0.5 + 0.62, 0.72, -float(R.d) * 0.5 + 1.1 - 0.72)
 
 
-## kadr „leżę i gadam przez telefon”: wzrok w sufit nad nogami łóżka, lekki oddech i błądzenie oczu
+## dokąd patrzy, leżąc na boku: przez pokój, w stronę biurka i drzwi
+const BED_LOOK := Vector3(1.0, 0.1, 0.55)
+
+
+## kadr „leżę na boku”: głowa na poduszce, obraz przechylony, lekki oddech i błądzenie oczu
 func bed_cam(t: float) -> void:
-	var head := bed_head()
-	var look := head + Vector3(0.18 + sin(t * 0.31) * 0.1, 1.5, 1.25 + cos(t * 0.23) * 0.08)
-	cine_cam(head + Vector3(0, sin(t * 1.5) * 0.012, 0), look, 66.0)
+	var head := bed_head() + Vector3(0, 0.03 + sin(t * 1.5) * 0.008, 0)
+	var look := bed_head() + BED_LOOK + Vector3(0.0, sin(t * 0.31) * 0.02, cos(t * 0.23) * 0.04)
+	cine_cam(head, look, 64.0)
+	cine.look_at(look, BED_UP.normalized())
 
 
 func _intro() -> void:
 	_bed_call()
+
+
+## pierwsza rozmowa z Wiktorem (po przebudzeniu)
+func _intro_call() -> void:
 	ui.call_start("Nieznany numer", [
 		"Kuba. Żyjesz. To dobrze. Tu Wiktor.",
 		"Wiem, co się stało w hucie i za garażami. Ktoś nas sprzedał — i to nie byłeś ty. Partia przepadła, trudno. Żalu do ciebie nie mam.",
@@ -3054,8 +3114,15 @@ func _test_ui(what: String) -> void:
 		"wagi": ui.open_scales()
 		"lozko":
 			# zrzut: kadr z pierwszej rozmowy telefonicznej (Kuba leży w łóżku); --k=0..1 — kadr wstawania
+			# --wake=sekunda — kadr przebudzenia (powieki, myśl bohatera)
 			if args.has("k"):
 				bed_rise(float(args.k))
+			elif args.has("wake"):
+				ui.cut_begin()
+				bed_cam(float(args.wake))
+				ui.set_lids(bed_lids(float(args.wake)))
+				if float(args.wake) > 2.7:
+					ui.cut_line("…Kto do mnie dzwoni?")
 			else:
 				bed_cam(1.0)
 		"tour":

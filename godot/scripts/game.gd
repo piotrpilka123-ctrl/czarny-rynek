@@ -2182,7 +2182,7 @@ func _accept_order(o: Dictionary, agreed, line: String) -> void:
 	S.track = int(o.id)
 	S.nav_on = true
 	chat(o.cust, line, false, true)
-	notify("Spotkanie o %s: %s — %s. Poczeka do %s." % [clock(o.meet), def.name, spot_def(o.spot).name, clock(o.deadline)], "good")
+	notify("Spotkanie o %s: %s, %d g %s — %s. Poczeka do %s." % [clock(o.meet), def.name, int(o.grams), String(D.PRODUCT_GEN[o.product]), spot_def(o.spot).name, clock(o.deadline)], "good")
 	nav_dirty.emit()
 
 
@@ -2362,6 +2362,14 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 		else:
 			d.notes.append("Wciąż wisi Ci %s („następnym razem…”)" % money(st.owes))
 	return d
+
+
+## co zamówił pierwszy klient, słownie: „3 g marihuany” (do celu samouczka)
+func _first_order_what() -> String:
+	for o in S.orders:
+		if String(o.cust) == "dominik":
+			return "%d g %s" % [int(o.grams), String(D.PRODUCT_GEN[o.product])]
+	return "marihuana"
 
 
 ## cena za gram przy danym odchyleniu od ceny wyjściowej (w procentach)
@@ -3946,7 +3954,7 @@ func _build_story() -> void:
 			"done": func(): return flag("got_first"), "marker": _starter_marker},
 		{"id": "pack1", "text": func(): return "Zapakuj cały towar od Wiktora: podejdź do wagi na biurku [E], wybierz, ile gramów idzie do jednego woreczka, i pakuj. Klienci biorą po kilka gramów — z małych paczek (1–2 g) złożysz każde zamówienie. Luzem zostało: %d g." % loose_left(),
 			"done": func(): return _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
-		{"id": "sell1", "text": func(): return ("Odpisz Dominikowi: telefon [%s] → Wiadomości → Zgoda. Dopiero potem wyjdź z mieszkania." % kn("phone")) if _first_order_new() else "Zanieś Dominikowi towar — czeka w umówionym miejscu. Trasę włącza [%s]." % kn("nav"),
+		{"id": "sell1", "text": func(): return ("Odpisz Dominikowi: telefon [%s] → Wiadomości → Zgoda. Dopiero potem wyjdź z mieszkania." % kn("phone")) if _first_order_new() else "Zanieś Dominikowi towar (%s) — czeka w umówionym miejscu. Trasę włącza [%s]." % [_first_order_what(), kn("nav")],
 			"done": func(): return int(S.stats.sold) >= 1 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
 		{"id": "repay1", "text": func(): return "Zanieś pierwsze pieniądze do skrzynki Wiktora — to stara skrzynka gazowa na tyłach pawilonu. Otwórz ją [E] i przeciągnij do niej gotówkę. (%s / %s)" % [money(minf(float(D.BOX_FIRST), float(S.stats.get("box_paid", 0.0)))), money(D.BOX_FIRST)],
 			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST), "marker": _box_marker, "on_done": _on_repay_done},

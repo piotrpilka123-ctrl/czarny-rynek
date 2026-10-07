@@ -463,7 +463,7 @@ static func build(U) -> void:
 	zh.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	zone.add_child(zh)
 	if given <= 0:
-		var hint := K.lbl("przeciągnij tutaj to, co dajesz", 12, C_LOW)
+		var hint := K.lbl("przeciągnij tutaj %d g %s" % [int(deal.want), String(D.PRODUCT_GEN[ctx.product])], 12, C_LOW)
 		hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		zh.add_child(hint)
 		var auto := _mini("dobierz %d g" % int(deal.want), func():

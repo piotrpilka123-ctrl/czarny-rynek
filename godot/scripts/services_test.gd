@@ -8,6 +8,38 @@ static func run(T) -> void:
 	G.S = G.new_state()
 	var S: Dictionary = G.S
 
+	# --- przebudzenie w kawalerce: leży na boku (widać pokój), powieki — uchylenie i trzy mrugnięcia, potem telefon
+	var M0 = G.main
+	M0.bed_cam(1.0)
+	var cam0: Camera3D = M0.cine
+	var fwd0: Vector3 = -cam0.global_transform.basis.z
+	var up0: Vector3 = cam0.global_transform.basis.y
+	var Rs: Dictionary = D.ROOMS.safe
+	T.ok(fwd0.x > 0.7 and absf(fwd0.y) < 0.3 and absf(up0.y) < 0.65 and cam0.global_position.y < 1.0 and cam0.global_position.x < float(Rs.cx) - float(Rs.w) * 0.5 + 1.2,
+		"przebudzenie: głowa na poduszce, wzrok przez pokój, obraz przechylony na bok (nie w sufit)")
+	var blinks := 0
+	var was_open := false
+	var lt := 0.0
+	var peak_open := 1.0
+	while lt < M0.BED_WAKE:
+		var lk: float = M0.bed_lids(lt)
+		if lk < 0.6:
+			was_open = true
+			peak_open = minf(peak_open, lk)
+		elif lk > 0.95 and was_open:
+			blinks += 1
+			was_open = false
+		lt += 0.02
+	T.ok(M0.bed_lids(0.0) == 1.0 and M0.bed_lids(1.0) == 1.0 and M0.bed_lids(M0.BED_WAKE) == 0.0 and blinks >= 3 and peak_open < 0.1,
+		"przebudzenie: najpierw ciemno, potem %d mrugnięcia i oczy otwarte — karta połączenia dopiero po nich" % blinks)
+	G.ui.set_lids(0.6)
+	var lid_ok: bool = G.ui.lids != null and G.ui.lids.visible and (G.ui.lids.get_child(0) as Control).offset_bottom > 100.0 and G.ui.lids.get_index() < G.ui.cut.get_index()
+	G.ui.set_lids(0.0)
+	T.ok(lid_ok and not G.ui.lids.visible, "powieki: dwie zasłony pod napisami przerywnika, przy otwartych oczach znikają")
+	M0.bed_rise(1.0)
+	T.ok(absf(cam0.global_transform.basis.y.y) > 0.97 and cam0.global_position.y > 1.5, "wstawanie: na końcu głowa prosto, na wysokości stojącego")
+	M0.cine_off()
+
 	# --- pierwsze wyjście z bloku: przelot kamery po miejscach, które już się liczą (sklep, odzież, skrzynka, lombard)
 	var shots: Array = G.main.tour_shots()
 	var titles := []

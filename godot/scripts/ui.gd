@@ -63,6 +63,8 @@ var cut_title_l: Label
 var cut_tsub_l: Label
 var cut_tw: Tween = null
 var cut_cards_box: VBoxContainer
+var lids: Control = null
+var lid_k := 0.0
 var cross: Control
 var aim_on := false
 var aim_t := 0.0
@@ -619,6 +621,43 @@ func _build_cut() -> void:
 	skip.offset_bottom = -10.0
 	skip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	cut.add_child(skip)
+
+
+## Powieki bohatera (przebudzenie): k = 1 — oczy zamknięte, 0 — otwarte. Dwie czarne zasłony z miękką krawędzią
+## schodzą się od góry i od dołu; rysują się pod pasami i napisami przerywnika.
+func set_lids(k: float) -> void:
+	if lids == null:
+		if k <= 0.001:
+			return
+		lids = Control.new()
+		lids.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		lids.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(lids)
+		root.move_child(lids, cut.get_index())
+		for top in [true, false]:
+			var g := Gradient.new()
+			g.set_color(0, Color.BLACK)
+			g.set_color(1, Color(0, 0, 0, 0))
+			g.set_offset(0, 0.76)
+			g.set_offset(1, 1.0)
+			var gt := GradientTexture2D.new()
+			gt.gradient = g
+			gt.width = 4
+			gt.height = 128
+			gt.fill_from = Vector2(0, 0) if top else Vector2(0, 1)
+			gt.fill_to = Vector2(0, 1) if top else Vector2(0, 0)
+			var tr := TextureRect.new()
+			tr.texture = gt
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_SCALE
+			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tr.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE if top else Control.PRESET_BOTTOM_WIDE)
+			lids.add_child(tr)
+	lids.visible = k > 0.001
+	lid_k = clampf(k, 0.0, 1.0)
+	var h := root.size.y * 0.67 * lid_k
+	(lids.get_child(0) as Control).offset_bottom = h
+	(lids.get_child(1) as Control).offset_top = -h
 
 
 func cut_begin() -> void:
@@ -1490,9 +1529,8 @@ func _render_deal() -> void:
 	var saved := deal
 	var who: Dictionary = saved.who
 	var ctx: Dictionary = saved.ctx
-	var wants := "chce %d g %s" % [int(saved.want), String(D.PRODUCT_GEN[saved.product])]
-	if ctx.get("agreed") != null:
-		wants += " • umówione %s za całość" % G.money(round(float(ctx.agreed) * int(saved.want)))
+	# co zamówił: nazwa towaru w pełnym brzmieniu, żeby nie trzeba było zgadywać z ikony
+	var wants := "%s  •  %d g" % [String(D.PRODUCTS[saved.product].name), int(saved.want)]
 	_open_modal("", "", "deal", 540.0)
 	deal = saved
 	deal_side.visible = not saved.over
@@ -1527,7 +1565,11 @@ func _render_deal() -> void:
 	# nagłówek w jednej linii: kto, czego chce, kto patrzy, zamknięcie
 	var hd := K.hbox(8)
 	hd.add_child(K.head(String(who.name), 15, Trade.C_HI))
-	var wl := K.lbl(wants, 11, Trade.C_LOW)
+	var zl := K.lbl("zamówił", 11, Trade.C_LOW)
+	zl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hd.add_child(zl)
+	hd.add_child(K.icon("pack_" + String(saved.product), 20))
+	var wl := K.lbl(wants, 13, Trade.C_HI)
 	wl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hd.add_child(wl)
 	hd.add_child(K.spacer())
@@ -2027,7 +2069,7 @@ func update_hud() -> void:
 	var nm = G.next_meeting()
 	if nm != null:
 		var left = float(nm.meet) - S.t
-		lines += ("\n" if lines != "" else "") + K.col("Spotkanie %s — %s" % [G.clock(nm.meet), ("za %d min" % int(left)) if left > 0.0 else ("klient czeka od %d min" % int(-left))], K.C_ACC if left > 0.0 else K.C_WARN)
+		lines += ("\n" if lines != "" else "") + K.col("%s: %d g %s  •  %s — %s" % [String(G.cust_def(nm.cust).name), int(nm.grams), String(D.PRODUCT_GEN[nm.product]), G.clock(nm.meet), ("za %d min" % int(left)) if left > 0.0 else ("czeka od %d min" % int(-left))], K.C_ACC if left > 0.0 else K.C_WARN)
 	# zlecenie dnia: postęp pod celem; karta wraca na chwilę, gdy zlecenie się pojawi albo zostanie wykonane
 	if G.job_active() and G.prologue == null:
 		var jb: Dictionary = S.job
