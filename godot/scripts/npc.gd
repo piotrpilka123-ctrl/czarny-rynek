@@ -335,7 +335,7 @@ func _build_outskirts() -> void:
 ## ludzie na krańcach dzielnicy: kierowca autobusu na pętli i stróż przy bramie huty
 func _build_edges() -> void:
 	var bus: Vector2 = G.world.BUS
-	_static({"x": bus.x + 8.6, "z": bus.y + 3.25, "rot": 2.6, "pose": "arms", "name": "Pan Zenek", "label": "Pan Zenek, kierowca", "hours": [5.0, 23.0],
+	_static({"x": bus.x + 8.6, "z": bus.y + 3.25, "rot": 2.6, "pose": "arms", "name": "Pan Mirek", "label": "Pan Mirek, kierowca", "hours": [5.0, 23.0],
 		"look": {"model": "m09", "kind": "jacket", "top": "2f3b4a", "bottom": "2a2a2e", "seed": 941, "build": 1.1},
 		"lines": ["Kurs skończony. Następny za czterdzieści minut — o ile ten grat odpali.", "Dwunastka jeździ tylko do pętli. Dalej jest mur i tyle.",
 			"Kiedyś woziłem całą zmianę do huty, trzy autobusy naraz. Teraz trzech emerytów i jeden pijany.", "Na postoju nie zabieram. Przepisy.",

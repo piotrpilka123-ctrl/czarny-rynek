@@ -471,7 +471,7 @@ static func run(T) -> void:
 	T.ok(bus_n == 1 and G.world.surface_at(0.0, (float(lp[3]) - 1.0) * D.SC) == "concrete" and G.world.surface_at(0.0, 151.0 * D.SC) == "grass" and not G.world.is_free(G.world.BUS.x * D.SC, G.world.BUS.y * D.SC, 0.2),
 		"Robotnicza kończy się pętlą: jezdnia dookoła wysepki i autobus przy peronie")
 	T.ok(G.world.is_free(-12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(0.0, 145.5 * D.SC, 0.8), "pętlę da się objechać: obok autobusu zostaje wolny pas")
-	T.ok(names.has("Pan Zenek") and names.has("Pan Bogdan") and names["Pan Zenek"].has("interact") and G.world.is_free(float(names["Pan Bogdan"].x), float(names["Pan Bogdan"].z), 0.3) and G.world.is_free(float(names["Pan Zenek"].x), float(names["Pan Zenek"].z), 0.3),
+	T.ok(names.has("Pan Mirek") and names.has("Pan Bogdan") and names["Pan Mirek"].has("interact") and G.world.is_free(float(names["Pan Bogdan"].x), float(names["Pan Bogdan"].z), 0.3) and G.world.is_free(float(names["Pan Mirek"].x), float(names["Pan Mirek"].z), 0.3),
 		"na pętli stoi kierowca, a przy bramie huty stróż — z oboma da się pogadać")
 	# --- przegląd mapy: nic nie rośnie w budynkach, a każde przejście w płocie dokądś prowadzi
 	var in_bld := 0

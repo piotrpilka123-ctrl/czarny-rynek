@@ -584,7 +584,8 @@ func audit() -> void:
 		var why := ""
 		if inside:
 			why += " W_BUDYNKU"
-		if gap > 0.12:
+		# rzeczy celowo ułożone na innych (worki na palecie, pustak na pustakach) mają znacznik „na_stosie”
+		if gap > 0.12 and not n.has_meta("na_stosie"):
 			why += " WISI %.2f" % gap
 		if tilt > 0.45 and bb.size.y < 4.0:
 			why += " SKARPA %.2f" % tilt
@@ -1218,6 +1219,8 @@ func _prop(name: String, x: float, z: float, ry := 0.0, h := 0.0, solid := 0.0, 
 	n.position = Vector3(x, hd(x, z) + yoff, z)
 	n.rotation.y = ry
 	n.scale = Vector3(INV, 1.0, INV)
+	if yoff > 0.05:
+		n.set_meta("na_stosie", true)
 	city.add_child(n)
 	Props.set_range(n, 90.0)
 	if not (name in SOFT_PROPS):

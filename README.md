@@ -34,14 +34,22 @@ Raty rosną co cztery dni — trzy wpadki i koniec gry. Spłata całości zajmuj
 Nowa gra zaczyna się krótkim wstępem (zatrzymanie brata, „trzy tygodnie później”), a samouczek najpierw oprowadza
 po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierwszą paczkę.
 
-- **Towar**: piszesz do Wiktora — telefon obraca się na bok i pokazuje jego „sklep”: kafle z towarem, rozmiar paczki, koszyk.
+- **Towar**: piszesz do Wiktora — telefon obraca się na bok i pokazuje jego „sklep”: kafle z towarem, pole na liczbę gramów, koszyk.
   Towar jest zawsze czysty i idzie na zeszyt. Paczka czeka w skrytce oznaczonej małym znakiem sprejem (z czasem skrytki
-  są coraz dalej). Porcjujesz na wadze, możesz rozrobić — cena zostaje ta sama, ale klient może kręcić nosem albo odmówić.
+  są coraz dalej). Skrytkę, paczkę pod drzwiami i rzeczy leżące na ziemi otwierasz jednym naciśnięciem E: zawartość widać
+  po prawej stronie ekwipunku i przeciągasz do siebie to, co chcesz (jest też „Zabierz wszystko”). Na zeszyt idzie tylko to,
+  co zabrałeś.
+- **Waga**: porcjowanie nie ma trybów ani woreczków — liczy się waga. Kuchenna stoi w kawalerce od początku, lepsze
+  (jubilerska, laboratoryjna, z dozownikiem) kupisz w lombardzie: każda następna jest szybsza i gubi mniej towaru.
+  Stół roboczy widzi cały towar razem — luzem i w porcjach, z plecaka i ze skrytki; porcje można rozsypać z powrotem
+  i domieszać. Mieszanka kosztuje tyle samo, ale klient może kręcić nosem albo odmówić.
+- **Sprzęt i meble**: kupujesz w hurtowni budowlanej przy Hutniczej (szyld BUILDING SUPPLIES), rzeczy trafiają „na stan”,
+  w kryjówce ustawiasz je klawiszem B i dopiero wtedy działają. Zdjęty mebel wraca na stan; w hurtowni odsprzedasz go za połowę ceny.
 - **Spłata**: gotówkę wrzucasz do skrzynki Wiktora za pawilonem (zawsze w tym samym miejscu). Idzie najpierw na to,
   czego termin jest bliżej: zeszyt za towar albo rata długu brata.
 - **Klienci**: każdy odzywa się mniej więcej raz dziennie. Odpowiadasz kaflami: Zgoda / Negocjuj / Zmień godzinę / Anuluj.
   Po potwierdzeniu spotkanie jest za ok. godzinę (chyba że ustalisz inną porę); klient wychodzi z domu i idzie na miejsce.
-  Na spotkaniu nie ma gadania: wybierasz woreczek, ewentualnie cenę (od −10% do +15%) i przytrzymujesz „Podaj towar”.
+  Na spotkaniu nie ma gadania: wybierasz porcję, ewentualnie cenę (od −10% do +15%) i przytrzymujesz „Podaj towar”.
   Świat się wtedy nie zatrzymuje — pasek pokazuje, ilu ludzi patrzy i czy widzi Was patrol.
   „Zaraz wracam” zostawia klienta na miejscu, „Rezygnuję” odwołuje transakcję.
 - **Ekwipunek** (I): rzeczy mają rozmiar i wagę, układają się w stosy. Przeciągasz je między plecakiem a skrytką,
@@ -60,7 +68,7 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
 |---|---|
 | WASD, mysz | ruch i rozglądanie |
 | Shift | sprint |
-| E | interakcja z tym, na co celujesz (przytrzymaj przy skrytce w mieście) |
+| E | interakcja z tym, na co celujesz (skrytki, paczki i rzeczy na ziemi otwierają ekwipunek) |
 | Tab | telefon |
 | I | ekwipunek |
 | N / Q | trasa do celu / następny cel |
