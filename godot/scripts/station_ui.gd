@@ -142,7 +142,7 @@ static func _empty_ui(_U, body: VBoxContainer, view, room: String, idx: int, kin
 			again.call())
 		row.add_child(b2)
 	if kind == "grow":
-		c2.add_child(K.wrap("Nasiona i nawóz kupisz u Stasia. Suszarka, zbiornik z pompą i filtr węglowy są w meblach kryjówki [%s]." % G.kn("build"), 12, K.C_DIM))
+		c2.add_child(K.wrap("Nasiona i nawóz kupisz u Stasia. Suszarkę, zbiornik z pompą i filtr węglowy — w hurtowni budowlanej przy Hutniczej; ustawiasz je klawiszem [%s]." % G.kn("build"), 12, K.C_DIM))
 	else:
 		c2.add_child(K.wrap("Zestawy chemikaliów kupisz u Stasia. Synteza śmierdzi — bez filtra węglowego ryzyko nalotu szybko rośnie.", 12, K.C_DIM))
 
@@ -223,7 +223,7 @@ static func _job_ui(_U, body: VBoxContainer, view, room: String, idx: int, j: Di
 		if float(j.ripe_t) > 12.0 * 60.0:
 			rv.add_child(K.lbl("Stoi już długo — z każdą godziną traci na jakości.", 12, K.C_WARN))
 		if r.get("wet", false) and not P.has_station(room, "dry"):
-			rv.add_child(K.lbl("Nie masz suszarki — kup ją w meblach kryjówki, inaczej zbiór zgnije.", 12, K.C_WARN))
+			rv.add_child(K.lbl("Nie masz suszarki — kup ją w hurtowni budowlanej i ustaw, inaczej zbiór zgnije.", 12, K.C_WARN))
 		var hb := K.btn("  Zbierz  ", func(): act.call("harvest", "pack", func(): P.collect(room, idx)), "go")
 		hb.custom_minimum_size = Vector2(0, 42)
 		hb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN

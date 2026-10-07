@@ -11,6 +11,14 @@ var packs: Array = []      # porcje zrobione w tej sesji: {t} (t = postęp lotu 
 var packs_before := 0      # porcje, które leżały tu już wcześniej
 var spills: Array = []     # rozsypane okruchy: {p, r}
 var scale_name := "Waga kuchenna"
+var scale_tier := 0        # klasa wagi (D.SCALES): od niej zależy wygląd korpusu, dokładność wyświetlacza, osłona i lejek
+## wygląd wag: kuchenna z pożółkłego plastiku i szarym ekranikiem, czarna jubilerska, jasna analityczna, ciemny półautomat
+const SCALE_LOOK := [
+	{"body": Color(0.86, 0.84, 0.76), "edge": Color(0.66, 0.64, 0.56), "lcd": Color(0.56, 0.61, 0.5), "ink": Color(0.1, 0.13, 0.1), "fmt": "%.0f g"},
+	{"body": Color(0.11, 0.115, 0.13), "edge": Color(0.3, 0.31, 0.34), "lcd": Color(0.05, 0.1, 0.16), "ink": Color(0, 0, 0, 0), "fmt": "%.2f g"},
+	{"body": Color(0.82, 0.84, 0.85), "edge": Color(0.55, 0.57, 0.6), "lcd": Color(0.05, 0.1, 0.16), "ink": Color(0, 0, 0, 0), "fmt": "%.3f g"},
+	{"body": Color(0.18, 0.2, 0.23), "edge": Color(0.36, 0.38, 0.42), "lcd": Color(0.05, 0.14, 0.08), "ink": Color(0, 0, 0, 0), "fmt": "%.2f g"},
+]
 var job := {}              # {left, mode, sec, t, stepped, res, tgt, step, done, good, lost}
 var reading := 0.0         # wskazanie wagi
 var filler := ""           # ikona dodatku (majeranek / cukier), "" = brak słoika
@@ -204,10 +212,24 @@ func _draw() -> void:
 
 	# --- waga
 	_box(Rect2(sp + Vector2(-98, -18), Vector2(196, 84)), Color(0, 0, 0, 0.32), 14)
-	_box(Rect2(sp + Vector2(-94, -24), Vector2(188, 80)), Color(0.74, 0.75, 0.78), 12, Color(0.5, 0.51, 0.55), 2)
-	_box(Rect2(sp + Vector2(-70, 14), Vector2(140, 34)), Color(0.07, 0.13, 0.09), 5, Color(0.2, 0.3, 0.22), 1)
+	var look: Dictionary = SCALE_LOOK[clampi(scale_tier, 0, SCALE_LOOK.size() - 1)]
+	if scale_tier == 3:
+		# półautomat: kolumna z ramieniem i lejek zasypowy nad szalką
+		_box(Rect2(sp + Vector2(-86, -128), Vector2(9, 110)), Color(0.5, 0.52, 0.55), 3)
+		_box(Rect2(sp + Vector2(-86, -126), Vector2(70, 7)), Color(0.5, 0.52, 0.55), 3)
+		draw_colored_polygon(PackedVector2Array([sp + Vector2(-48, -132), sp + Vector2(48, -132), sp + Vector2(11, -84), sp + Vector2(-11, -84)]), Color(0.72, 0.74, 0.77))
+		draw_colored_polygon(PackedVector2Array([sp + Vector2(-40, -128), sp + Vector2(40, -128), sp + Vector2(30, -116), sp + Vector2(-30, -116)]), Color.html(String(D.PRODUCTS[product].color)).darkened(0.2))
+		_box(Rect2(sp + Vector2(-11, -86), Vector2(22, 14)), Color(0.14, 0.38, 0.66), 3)
+	_box(Rect2(sp + Vector2(-94, -24), Vector2(188, 80)), look.body, 12, look.edge, 2)
+	_box(Rect2(sp + Vector2(-70, 14), Vector2(140, 34)), look.lcd, 5, Color(look.lcd.r + 0.12, look.lcd.g + 0.16, look.lcd.b + 0.12), 1)
 	var lcd := Color(0.45, 1.0, 0.62) if absf(reading - 1.0) < 0.045 or reading < 0.02 else Color(1.0, 0.82, 0.3)
-	_text(sp + Vector2(0, 40), "%.2f g" % maxf(0.0, reading), 24, lcd, 136.0)
+	if float(look.ink.a) > 0.0:
+		lcd = look.ink
+	_text(sp + Vector2(0, 40), String(look.fmt) % maxf(0.0, reading), 24, lcd, 136.0)
+	if scale_tier == 0:
+		# dwa gumowe przyciski kuchennej
+		K.circle(self, sp + Vector2(80, 22), 5.0, Color(0.66, 0.2, 0.16))
+		K.circle(self, sp + Vector2(80, 38), 5.0, Color(0.34, 0.38, 0.42))
 	# szalka
 	draw_set_transform(sp + Vector2(0, -34), 0.0, Vector2(1.0, 0.36))
 	K.circle(self, Vector2(0, 8), 80.0, Color(0, 0, 0, 0.28))
@@ -215,7 +237,12 @@ func _draw() -> void:
 	K.circle(self, Vector2.ZERO, 72.0, Color(0.82, 0.83, 0.86))
 	K.circle(self, Vector2(-14, -10), 46.0, Color(0.9, 0.91, 0.93, 0.6))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	_text(sp + Vector2(0, -78), scale_name.to_upper(), 12, K.C_DIM, 200.0)
+	if scale_tier == 2:
+		# analityczna: szklana osłona przeciwwiatrowa nad szalką
+		_box(Rect2(sp + Vector2(-88, -128), Vector2(176, 104)), Color(0.75, 0.9, 0.95, 0.07), 4, Color(0.78, 0.82, 0.86, 0.55), 2)
+		draw_line(sp + Vector2(-88, -128), sp + Vector2(-64, -112), Color(1, 1, 1, 0.12), 2.0)
+		draw_line(sp + Vector2(-52, -124), sp + Vector2(-20, -40), Color(1, 1, 1, 0.05), 6.0)
+	_text(sp + Vector2(0, 76), scale_name.to_upper(), 12, K.C_DIM, 200.0)
 
 	# --- rozsypane okruchy
 	var pcol := Color.html(String(D.PRODUCTS[product].color))

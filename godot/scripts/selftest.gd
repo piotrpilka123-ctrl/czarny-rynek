@@ -217,6 +217,15 @@ func run() -> void:
 		prev_w = float(sc.waste)
 		prev_m = float(sc.min)
 	ok(mono, "każda następna waga jest szybsza i nie gubi więcej niż poprzednia")
+	# rysunek wagi w oknie stołu zmienia się z klasą: każda musi się narysować bez błędów
+	for tier in range(D.SCALES.size()):
+		U.bench.view.scale_tier = tier
+		U.bench.view.reading = 0.62
+		U.bench.view.queue_redraw()
+		await frames(2)
+	ok(U.bench.view.SCALE_LOOK.size() == D.SCALES.size(), "każda klasa wagi ma swój wygląd na blacie")
+	U.bench.view.reading = 0.0
+	U.bench.view.scale_tier = 0
 	var top_scale: Node3D = null
 	for sp in G.world.scale_spots:
 		if is_instance_valid(sp.node):

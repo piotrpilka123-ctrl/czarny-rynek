@@ -98,6 +98,7 @@ Lepszą wagę kupisz w lombardzie przy Hutniczej." if G.scale() < D.SCALES.size(
 		view.packs_before = _packed_here(room, sel.p)
 		view.tint = 0.6 if G.is_mix(sel.pur) else 0.0
 	view.scale_name = String(sc.name)
+	view.scale_tier = G.scale()
 
 	var cols := K.hbox(12)
 	body.add_child(cols)

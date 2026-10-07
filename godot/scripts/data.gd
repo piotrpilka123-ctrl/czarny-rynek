@@ -535,7 +535,7 @@ const SKILLS := [
 	{"id": "reka", "name": "Pewna ręka", "branch": "Towar", "row": 0, "desc": "Przy porcjowaniu rozsypujesz o 40% mniej towaru."},
 	{"id": "mieszanie", "name": "Dobra mieszanka", "branch": "Towar", "row": 1, "req": "reka", "desc": "Rozrabianie obniża czystość o 20% mniej."},
 	{"id": "czysta", "name": "Niewidoczny dodatek", "branch": "Towar", "row": 2, "req": "mieszanie", "desc": "Doświadczeni klienci o 30% rzadziej rozpoznają rozrobiony towar."},
-	{"id": "paczki", "name": "Szybkie palce", "branch": "Towar", "row": 3, "req": "czysta", "desc": "Porcjujesz dwa razy szybciej — każdy woreczek zabiera połowę czasu."},
+	{"id": "paczki", "name": "Szybkie palce", "branch": "Towar", "row": 3, "req": "czysta", "desc": "Porcjujesz dwa razy szybciej — każdy gram zabiera połowę czasu, na każdej wadze."},
 	{"id": "ogrodnik", "name": "Ogrodnik", "branch": "Towar", "row": 4, "req": "paczki", "lvl": 5, "desc": "Namiot uprawowy daje o 35% większy plon."},
 
 	{"id": "slowo", "name": "Dobre słowo", "branch": "Kontakty", "row": 0, "desc": "Zadowoleni klienci szybciej polecają Cię dalej."},
@@ -571,14 +571,16 @@ const BOX_FIRST := 100
 var WIKTOR_BOX := {"x": 70.0, "z": -57.9, "ry": 3.14159}
 
 const HINTS := [
-	"Im bliżej ukrytego maksimum klienta zaproponujesz cenę, tym większy zysk. Kontroferta zdradza, ile jest gotów dać.",
-	"Każdy klient lubi inny styl rozmowy. Raz odkryty zapisuje się w aplikacji Kontakty.",
+	"Cenę podbijasz w wiadomości. Kilka procent klient zwykle przełknie, przy większej podwyżce odbije kontrofertą albo zerwie rozmowę.",
+	"Przy wymianie możesz jeszcze podbić cenę. Jeśli przesadzisz, klient jej nie przyjmie, wróci do swojej i zapamięta, że próbowałeś.",
 	"Nie handluj na oczach policji. Nocą jest mniej świadków, ale patrole są czujniejsze.",
 	"Towar w skrytce jest bezpieczny podczas zatrzymania. Noś przy sobie tylko tyle, ile sprzedasz.",
-	"Niedokładne porcjowanie marnuje towar. Trzy trafienia na wadze = zero strat.",
+	"Stara waga kuchenna zawsze coś rozsypie. Porządniejszą ma Zenek w lombardzie — zwraca się szybciej, niż myślisz.",
 	"Majeranek podbija wagę marihuany, ale stali klienci, którzy biorą dużo, rozpoznają mieszankę i odmówią.",
 	"Umawiaj spotkania tak, żeby zdążyć dojść. Klient wychodzi z domu tuż przed godziną i czeka tylko godzinę.",
-	"Odbieraj paczki ze skrytek szybko — po 16 godzinach przepadają.",
+	"Odbieraj paczki ze skrytek szybko — po 16 godzinach przepadają. Nie musisz brać wszystkiego naraz: płacisz tylko za to, co zabierzesz.",
+	"Regały, stoły i lampy bierz w hurtowni budowlanej na końcu Hutniczej. Rysiek dowozi pod adres i o nic nie pyta.",
+	"Co wyrzucisz z plecaka, leży na ziemi, aż ktoś to podniesie. A śmietniki przeglądaj co dzień — lombard skupuje znaleziska.",
 	"Sprzedawaj w różnych miejscach. Tam, gdzie handlujesz często, patroli jest więcej.",
 	"Klawisz N włącza trasę do celu, Q przełącza kolejne cele.",
 ]
