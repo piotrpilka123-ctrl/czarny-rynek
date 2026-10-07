@@ -1756,19 +1756,37 @@ func refresh_starter() -> void:
 				G.ui.open_loot({"kind": "starter"})})
 
 
-## szczelina na listy w drzwiach kawalerki: mosiężna ramka z klapką (jedna na cały pokój, dokładana raz)
+## Wrzutnia na listy w drzwiach kawalerki: mosiężna ramka przykręcona czterema śrubami, ciemny otwór ze szczotką
+## i klapka na zawiasie u góry (uchyla się, gdy coś przez nią przechodzi). Jedna na cały pokój, dokładana raz.
+var mail_flap: Node3D = null
+
 func _mail_slot() -> void:
 	if rooms.safe.has_node("SzczelinaNaListy"):
 		return
 	var R: Dictionary = D.ROOMS.safe
 	var g := Node3D.new()
 	g.name = "SzczelinaNaListy"
-	g.position = Vector3(float(R.cx) - 0.04, SLOT_Y, float(R.d) * 0.5 - 0.075)
+	g.position = Vector3(float(R.cx) - 0.04, SLOT_Y, float(R.d) * 0.5 - 0.072)
 	rooms.safe.add_child(g)
-	var brass := Models.mat("a8894a", 0.35, 0.85)
-	Models.box(g, Vector3(0.27, 0.075, 0.012), Vector3.ZERO, brass)
-	Models.box(g, Vector3(0.22, 0.036, 0.016), Vector3(0, 0.0, -0.002), Models.mat("0b0b0c", 0.9))
-	Models.box(g, Vector3(0.225, 0.04, 0.006), Vector3(0, 0.012, -0.012), brass, Vector3(0.5, 0, 0))
+	var brass := Models.mat("b08a3c", 0.32, 0.9)
+	var dark := Models.mat("070708", 0.95)
+	# ramka z czterech listew wokół otworu 24 × 5 cm
+	Models.box(g, Vector3(0.31, 0.022, 0.012), Vector3(0, 0.041, 0), brass)
+	Models.box(g, Vector3(0.31, 0.022, 0.012), Vector3(0, -0.041, 0), brass)
+	for sx in [-1.0, 1.0]:
+		Models.box(g, Vector3(0.035, 0.06, 0.012), Vector3(sx * 0.1375, 0, 0), brass)
+		for sy in [-1.0, 1.0]:
+			Models.cyl(g, 0.006, 0.006, 0.004, Vector3(sx * 0.14, sy * 0.041, -0.008), Models.mat("6b5320", 0.4, 0.9), Vector3(PI / 2.0, 0, 0), 8)
+	Models.box(g, Vector3(0.24, 0.06, 0.008), Vector3(0, 0, 0.004), dark)
+	# szczotka w otworze: rząd ciemnych włosków
+	for k in range(24):
+		Models.box(g, Vector3(0.006, 0.026, 0.004), Vector3(-0.115 + k * 0.01, -0.016, -0.002), Models.mat("1a1a1c", 0.9))
+	# klapka: zawias przy górnej krawędzi otworu
+	mail_flap = Node3D.new()
+	mail_flap.position = Vector3(0, 0.03, -0.009)
+	g.add_child(mail_flap)
+	Models.box(mail_flap, Vector3(0.246, 0.058, 0.005), Vector3(0, -0.029, 0), brass)
+	Models.cyl(mail_flap, 0.005, 0.005, 0.25, Vector3.ZERO, brass, Vector3(0, 0, PI / 2.0), 8)
 
 
 ## Paczka wpada przez szczelinę na listy w drzwiach: k = 0 tkwi w szczelinie, do 0,3 jest przepychana,
@@ -1781,6 +1799,9 @@ func starter_rest(k: float, _k2 := -1.0) -> void:
 	if a == null:
 		return
 	k = clampf(k, 0.0, 1.0)
+	# klapka uchyla się do środka, gdy paczka przechodzi, i opada, gdy ta już leci
+	if mail_flap != null and is_instance_valid(mail_flap):
+		mail_flap.rotation.x = -1.25 * smoothstep(0.0, 0.12, k) * (1.0 - smoothstep(0.34, 0.5, k))
 	var z_door := 0.56
 	if k < 0.3:
 		# przepychanie przez szczelinę: paczka idzie na sztorc, wąskim bokiem naprzód
