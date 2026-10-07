@@ -1216,6 +1216,57 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 			k += 1
 	if plyta and opt.get("balc", true):
 		_balconies(blds.back())
+	elif (key.begins_with("kam") or key == "cegla2") and opt.get("balc", true):
+		_juliets(blds.back())
+
+
+## Kamienice nie są gładkie: część okien (mniej więcej co szóste, nigdy parter) dostaje żelazny balkonik —
+## wąską płytę z balustradą albo samą kratę „do wychylenia się”. Co drugi dom ma ich wyraźnie mniej.
+var juliets := 0
+
+func _juliets(b: Dictionary) -> void:
+	if not fac_cell.has(b.key):
+		return
+	var cs: Vector2 = fac_cell[b.key]
+	var floors := int(floor((float(b.h) + 0.3) / cs.y))
+	var iron := Models.mat("1d1f22", 0.6, 0.7)
+	var slab_m := Props.pbr("concrete_wall_008", 0.4, Color(0.62, 0.6, 0.56))
+	var chance := 0.2 if rng.randf() < 0.5 else 0.09
+	for code in range(1, 5):
+		var xface := code >= 3
+		if (int(b.blind) == 1 and xface) or (int(b.blind) == 2 and not xface):
+			continue
+		var g: Array = b.gz if xface else b.gx
+		var out := 1.0 if code % 2 == 1 else -1.0
+		var wall_c: float = [b.z1, b.z0, b.x1, b.x0][code - 1]
+		for cx in range(int(g[1])):
+			for fl in range(1, floors):
+				if rng.randf() > chance:
+					continue
+				var along := (float(g[0]) + (cx + 0.5) * cs.x) * INV
+				var y := float(b.by) + fl * cs.y
+				var n := Node3D.new()
+				n.position = Vector3(wall_c, y, float(b.z0) + along) if xface else Vector3(float(b.x0) + along, y, wall_c)
+				n.rotation.y = (PI / 2.0 if out > 0.0 else -PI / 2.0) if xface else (0.0 if out > 0.0 else PI)
+				n.scale = Vector3(INV, 1.0, INV) if not xface else Vector3(INV, 1.0, INV)
+				city.add_child(n)
+				var wide := minf(1.5, cs.x * 0.62)
+				var micro := rng.randf() < 0.45
+				var deep := 0.16 if micro else 0.55
+				if not micro:
+					Models.box(n, Vector3(wide + 0.1, 0.09, deep + 0.05), Vector3(0, 0.3, deep * 0.5), slab_m)
+				var y0 := 0.36 if not micro else 0.75
+				var y1 := 1.32
+				Models.box(n, Vector3(wide, 0.035, 0.035), Vector3(0, y1, deep), iron)
+				Models.box(n, Vector3(wide, 0.03, 0.03), Vector3(0, y0, deep), iron)
+				for side in [-1.0, 1.0]:
+					Models.box(n, Vector3(0.03, 0.03, deep), Vector3(side * wide * 0.5, y1, deep * 0.5), iron)
+					Models.box(n, Vector3(0.03, 0.03, deep), Vector3(side * wide * 0.5, y0, deep * 0.5), iron)
+				var bars := 7
+				for k in range(bars + 1):
+					Models.box(n, Vector3(0.018, y1 - y0, 0.018), Vector3(-wide * 0.5 + wide * k / float(bars), (y0 + y1) * 0.5, deep), iron)
+				Props.set_range(n, 85.0)
+				juliets += 1
 
 
 ## Płyty i balustrady loggii — dokładnie tam, gdzie shader elewacji rysuje wnęki balkonowe.

@@ -23,7 +23,7 @@ def _plate(name, pts, material, z, y=-0.045, depth=0.012):
 def _slupek(h, st, con):
     p = [tube('slupek', [(0, 0, 0.0), (0, 0, h)], 0.03, st, 10),
          lathe('kapturek', [(0.0, 0.0), (0.033, 0.0), (0.033, 0.015), (0.0, 0.025)], st, 10, loc=(0, 0, h)),
-         rbox('stopa', (0.26, 0.26, 0.05), con, 0.01, (0, 0, 0.02))]
+         rbox('stopa', (0.2, 0.2, 0.03), con, 0.008, (0, 0, 0.008))]
     return p
 
 
@@ -41,7 +41,7 @@ def znak(nazwa, rodzaj, napis=''):
     blue = mat('niebieski', '1c4f9c', 0.45)
     yel = mat('zolty', 'e8b818', 0.45)
     ink = mat('czarny', '15161a', 0.5)
-    H = 2.75 if rodzaj != 'ulica' else 3.0
+    H = 2.75 if rodzaj != 'ulica' else 2.9
     zc = H - 0.42
     p = _slupek(H, st, con)
     f = []          # grafika tarczy — osobny obiekt, żeby była ostra
@@ -90,17 +90,23 @@ def znak(nazwa, rodzaj, napis=''):
         f.append(rbox('trzon', (0.085, 0.006, 0.36), white, 0.0, (0, -0.053, zc - 0.08), segs=1))
         f.append(rbox('belka', (0.26, 0.006, 0.085), red, 0.0, (0, -0.054, zc + 0.14), segs=1))
     elif rodzaj == 'ulica':
-        # dwie tabliczki pod kątem prostym na jednym słupku
-        zc = H - 0.2
+        # Dwie tabliczki na krzyż na szczycie słupka, jak na prawdziwych skrzyżowaniach: cienka blacha z białym rantem
+        # i zaokrąglonymi rogami, osadzona środkiem w siodełku; górna obrócona o 90° i przesunięta wyżej.
+        zc = H + 0.11
         for i, txt in enumerate(napis.split('|')):
-            w = max(0.9, 0.105 * len(txt) + 0.2)
-            pl = rbox('tabliczka%d' % i, (w, 0.014, 0.2), blue, 0.004, (w / 2 + 0.04, 0.0, zc - i * 0.24))
-            t = text('nazwa%d' % i, txt, 0.11, white, (w / 2 + 0.04, -0.009, zc - i * 0.24))
-            t2 = text('nazwa_t%d' % i, txt, 0.11, white, (w / 2 + 0.04, 0.009, zc - i * 0.24), rot=(R90, 0, math.radians(180)))
-            grp = join('Tab%d' % i, [pl, t, t2])
+            w = max(0.72, 0.074 * len(txt) + 0.2)
+            z = zc + i * 0.2
+            rim = rbox('rant%d' % i, (w, 0.006, 0.17), white, 0.02, (0, 0.0, z))
+            pl = rbox('tabliczka%d' % i, (w - 0.026, 0.009, 0.144), blue, 0.014, (0, 0.0, z))
+            t = text('nazwa%d' % i, txt, 0.082, white, (0, -0.0055, z))
+            t2 = text('nazwa_t%d' % i, txt, 0.082, white, (0, 0.0055, z), rot=(R90, 0, math.radians(180)))
+            grp = join('Tab%d' % i, [rim, pl, t, t2])
             grp.rotation_euler = (0, 0, i * R90)
             f.append(grp)
-            p.append(rbox('uchwyt%d' % i, (0.07, 0.07, 0.16), st, 0.006, (0, 0, zc - i * 0.24)))
+            # siodełko: szczelina trzymająca blachę od spodu, ze śrubą
+            sad = rbox('siodlo%d' % i, (0.05, 0.03, 0.05), st, 0.004, (0, 0, z - 0.095), (0, 0, i * R90))
+            p.append(sad)
+        p.append(tube('trzpien', [(0, 0, H), (0, 0, zc + 0.12)], 0.012, st, 8))
     if rodzaj != 'ulica':
         p += _obejmy(zc, st)
     slup = join('Slupek', p)
