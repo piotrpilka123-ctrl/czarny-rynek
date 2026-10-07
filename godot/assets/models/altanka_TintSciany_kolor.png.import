@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dqbwqrb0b3pox"
-path="res://.godot/imported/altanka_TintSciany_kolor.png-8d3628290f4e4f86963e3ee6b26cd170.ctex"
+path.bptc="res://.godot/imported/altanka_TintSciany_kolor.png-8d3628290f4e4f86963e3ee6b26cd170.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d052ea776c2f29af8e6400daf4d1d283"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/altanka_TintSciany_kolor.png"
-dest_files=["res://.godot/imported/altanka_TintSciany_kolor.png-8d3628290f4e4f86963e3ee6b26cd170.ctex"]
+dest_files=["res://.godot/imported/altanka_TintSciany_kolor.png-8d3628290f4e4f86963e3ee6b26cd170.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

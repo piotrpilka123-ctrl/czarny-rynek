@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dgudwq4jmv4i7"
-path="res://.godot/imported/ul_wiata_Dach_kolor.png-c29731a1661ffe4817c9f65eb9ca7385.ctex"
+path.bptc="res://.godot/imported/ul_wiata_Dach_kolor.png-c29731a1661ffe4817c9f65eb9ca7385.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f8c1b2e72949b69426c628ea6eca7dd8"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_wiata_Dach_kolor.png"
-dest_files=["res://.godot/imported/ul_wiata_Dach_kolor.png-c29731a1661ffe4817c9f65eb9ca7385.ctex"]
+dest_files=["res://.godot/imported/ul_wiata_Dach_kolor.png-c29731a1661ffe4817c9f65eb9ca7385.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://usorqxieh005"
-path="res://.godot/imported/plac_plotek_Plotek_kolor.png-3b15e6d0d766006baecf170e883ea998.ctex"
+path.bptc="res://.godot/imported/plac_plotek_Plotek_kolor.png-3b15e6d0d766006baecf170e883ea998.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d822fc509e85c8e55df87c501ad8a189"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/plac_plotek_Plotek_kolor.png"
-dest_files=["res://.godot/imported/plac_plotek_Plotek_kolor.png-3b15e6d0d766006baecf170e883ea998.ctex"]
+dest_files=["res://.godot/imported/plac_plotek_Plotek_kolor.png-3b15e6d0d766006baecf170e883ea998.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

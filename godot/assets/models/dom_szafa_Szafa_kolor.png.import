@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b2i2ys7x3y2nl"
-path="res://.godot/imported/dom_szafa_Szafa_kolor.png-f49c942284ab7249faff4c79e2d48c3f.ctex"
+path.bptc="res://.godot/imported/dom_szafa_Szafa_kolor.png-f49c942284ab7249faff4c79e2d48c3f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b239f7e8d7864af4249971f4dfa89f49"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_szafa_Szafa_kolor.png"
-dest_files=["res://.godot/imported/dom_szafa_Szafa_kolor.png-f49c942284ab7249faff4c79e2d48c3f.ctex"]
+dest_files=["res://.godot/imported/dom_szafa_Szafa_kolor.png-f49c942284ab7249faff4c79e2d48c3f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

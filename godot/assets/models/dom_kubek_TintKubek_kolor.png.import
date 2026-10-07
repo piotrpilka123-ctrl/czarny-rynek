@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://df1xrm1dfxlrh"
-path="res://.godot/imported/dom_kubek_TintKubek_kolor.png-98604c69a480c533ad15da4a86739c51.ctex"
+path.bptc="res://.godot/imported/dom_kubek_TintKubek_kolor.png-98604c69a480c533ad15da4a86739c51.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "52908d6808e933587756893ecee627fb"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_kubek_TintKubek_kolor.png"
-dest_files=["res://.godot/imported/dom_kubek_TintKubek_kolor.png-98604c69a480c533ad15da4a86739c51.ctex"]
+dest_files=["res://.godot/imported/dom_kubek_TintKubek_kolor.png-98604c69a480c533ad15da4a86739c51.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

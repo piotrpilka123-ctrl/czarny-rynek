@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b3s2l5l8nxnyd"
-path="res://.godot/imported/radio_Radio_kolor.png-795b806757563a12f521b5cf7e501c50.ctex"
+path.bptc="res://.godot/imported/radio_Radio_kolor.png-795b806757563a12f521b5cf7e501c50.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "32baec573f80ac74c9cf2daffd87c01e"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/radio_Radio_kolor.png"
-dest_files=["res://.godot/imported/radio_Radio_kolor.png-795b806757563a12f521b5cf7e501c50.ctex"]
+dest_files=["res://.godot/imported/radio_Radio_kolor.png-795b806757563a12f521b5cf7e501c50.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

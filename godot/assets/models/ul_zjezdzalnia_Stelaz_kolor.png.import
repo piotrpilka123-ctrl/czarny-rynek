@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://demh21eaqv5mo"
-path="res://.godot/imported/ul_zjezdzalnia_Stelaz_kolor.png-1c57f9cead590beda224452409b9a4bc.ctex"
+path.bptc="res://.godot/imported/ul_zjezdzalnia_Stelaz_kolor.png-1c57f9cead590beda224452409b9a4bc.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c8160016b4bfc445f9853730c0f4e8e6"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_zjezdzalnia_Stelaz_kolor.png"
-dest_files=["res://.godot/imported/ul_zjezdzalnia_Stelaz_kolor.png-1c57f9cead590beda224452409b9a4bc.ctex"]
+dest_files=["res://.godot/imported/ul_zjezdzalnia_Stelaz_kolor.png-1c57f9cead590beda224452409b9a4bc.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

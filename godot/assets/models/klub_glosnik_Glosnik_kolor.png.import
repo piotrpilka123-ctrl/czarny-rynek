@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://rnb6g1qgs6cs"
-path="res://.godot/imported/klub_glosnik_Glosnik_kolor.png-b0d865b36a4c6b1a4703383da0856702.ctex"
+path.bptc="res://.godot/imported/klub_glosnik_Glosnik_kolor.png-b0d865b36a4c6b1a4703383da0856702.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f6575e897aad5595cdac0bb7c7934589"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/klub_glosnik_Glosnik_kolor.png"
-dest_files=["res://.godot/imported/klub_glosnik_Glosnik_kolor.png-b0d865b36a4c6b1a4703383da0856702.ctex"]
+dest_files=["res://.godot/imported/klub_glosnik_Glosnik_kolor.png-b0d865b36a4c6b1a4703383da0856702.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

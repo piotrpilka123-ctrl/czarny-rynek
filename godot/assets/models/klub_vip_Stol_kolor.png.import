@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bf6fbcw3rqd7q"
-path="res://.godot/imported/klub_vip_Stol_kolor.png-d8e104adc7453ccfd8a36b79f40a99c7.ctex"
+path.bptc="res://.godot/imported/klub_vip_Stol_kolor.png-d8e104adc7453ccfd8a36b79f40a99c7.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8d5dc5c5838d0c02d192fc4bb6a81fb3"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/klub_vip_Stol_kolor.png"
-dest_files=["res://.godot/imported/klub_vip_Stol_kolor.png-d8e104adc7453ccfd8a36b79f40a99c7.ctex"]
+dest_files=["res://.godot/imported/klub_vip_Stol_kolor.png-d8e104adc7453ccfd8a36b79f40a99c7.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

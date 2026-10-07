@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bs33dh8spmcd6"
-path="res://.godot/imported/ul_kontener_Okucia_kolor.png-dd4302dd96e3c692068845c900a2df7a.ctex"
+path.bptc="res://.godot/imported/ul_kontener_Okucia_kolor.png-dd4302dd96e3c692068845c900a2df7a.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "409e7bc97255eb52168fbd8131216ff9"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_kontener_Okucia_kolor.png"
-dest_files=["res://.godot/imported/ul_kontener_Okucia_kolor.png-dd4302dd96e3c692068845c900a2df7a.ctex"]
+dest_files=["res://.godot/imported/ul_kontener_Okucia_kolor.png-dd4302dd96e3c692068845c900a2df7a.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

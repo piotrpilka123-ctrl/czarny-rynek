@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d24vyj3jwp6tr"
-path="res://.godot/imported/lab_prasa_Prasa_kolor.png-d180e2080cca59edc1c470f944c1207c.ctex"
+path.bptc="res://.godot/imported/lab_prasa_Prasa_kolor.png-d180e2080cca59edc1c470f944c1207c.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1771da3cc128bf0f8e60126e70617870"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/lab_prasa_Prasa_kolor.png"
-dest_files=["res://.godot/imported/lab_prasa_Prasa_kolor.png-d180e2080cca59edc1c470f944c1207c.ctex"]
+dest_files=["res://.godot/imported/lab_prasa_Prasa_kolor.png-d180e2080cca59edc1c470f944c1207c.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

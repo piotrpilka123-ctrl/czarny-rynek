@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bkslp5jb1725r"
-path="res://.godot/imported/lab_kanistry_Kanister0_kolor.png-835e6850c72865b50824773f2239147e.ctex"
+path.bptc="res://.godot/imported/lab_kanistry_Kanister0_kolor.png-835e6850c72865b50824773f2239147e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c4a03515851e44ec1f1263e0b36de447"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/lab_kanistry_Kanister0_kolor.png"
-dest_files=["res://.godot/imported/lab_kanistry_Kanister0_kolor.png-835e6850c72865b50824773f2239147e.ctex"]
+dest_files=["res://.godot/imported/lab_kanistry_Kanister0_kolor.png-835e6850c72865b50824773f2239147e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

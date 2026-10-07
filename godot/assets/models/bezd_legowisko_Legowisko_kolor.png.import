@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://7yghm15m1ghy"
-path="res://.godot/imported/bezd_legowisko_Legowisko_kolor.png-deef0cb2ec158aabb69531676b2fb102.ctex"
+path.bptc="res://.godot/imported/bezd_legowisko_Legowisko_kolor.png-deef0cb2ec158aabb69531676b2fb102.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "4122c45f934b3bca447a57d673ea7b6f"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/bezd_legowisko_Legowisko_kolor.png"
-dest_files=["res://.godot/imported/bezd_legowisko_Legowisko_kolor.png-deef0cb2ec158aabb69531676b2fb102.ctex"]
+dest_files=["res://.godot/imported/bezd_legowisko_Legowisko_kolor.png-deef0cb2ec158aabb69531676b2fb102.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

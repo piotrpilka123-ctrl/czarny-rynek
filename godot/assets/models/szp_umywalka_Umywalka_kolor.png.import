@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bht3egy38vio6"
-path="res://.godot/imported/szp_umywalka_Umywalka_kolor.png-6df2a08849a8a4d0799d5a15495fcca4.ctex"
+path.bptc="res://.godot/imported/szp_umywalka_Umywalka_kolor.png-6df2a08849a8a4d0799d5a15495fcca4.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "022609fca8b270cb35d7bab82faab912"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/szp_umywalka_Umywalka_kolor.png"
-dest_files=["res://.godot/imported/szp_umywalka_Umywalka_kolor.png-6df2a08849a8a4d0799d5a15495fcca4.ctex"]
+dest_files=["res://.godot/imported/szp_umywalka_Umywalka_kolor.png-6df2a08849a8a4d0799d5a15495fcca4.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

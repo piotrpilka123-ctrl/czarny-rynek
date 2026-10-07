@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bpq5t6sddvehy"
-path="res://.godot/imported/bezd_szalas_Plandeka_kolor.png-5f134ebdddb5f7e9b8c33d0012e56f14.ctex"
+path.bptc="res://.godot/imported/bezd_szalas_Plandeka_kolor.png-5f134ebdddb5f7e9b8c33d0012e56f14.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6a60925f221190db55b00f67cee1d717"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/bezd_szalas_Plandeka_kolor.png"
-dest_files=["res://.godot/imported/bezd_szalas_Plandeka_kolor.png-5f134ebdddb5f7e9b8c33d0012e56f14.ctex"]
+dest_files=["res://.godot/imported/bezd_szalas_Plandeka_kolor.png-5f134ebdddb5f7e9b8c33d0012e56f14.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

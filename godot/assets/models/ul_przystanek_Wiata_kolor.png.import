@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cdww5tr5j7t46"
-path="res://.godot/imported/ul_przystanek_Wiata_kolor.png-78c6b483cb9f526e7e42acec7e5e9481.ctex"
+path.bptc="res://.godot/imported/ul_przystanek_Wiata_kolor.png-78c6b483cb9f526e7e42acec7e5e9481.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "81482a6539e1b6fcaa910967b13c48bb"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_przystanek_Wiata_kolor.png"
-dest_files=["res://.godot/imported/ul_przystanek_Wiata_kolor.png-78c6b483cb9f526e7e42acec7e5e9481.ctex"]
+dest_files=["res://.godot/imported/ul_przystanek_Wiata_kolor.png-78c6b483cb9f526e7e42acec7e5e9481.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

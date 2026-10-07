@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dt5lr7vsrvb47"
-path="res://.godot/imported/bezd_wozek_Dobytek_kolor.png-1fdf7fa5617dc166bad034b7136aab87.ctex"
+path.bptc="res://.godot/imported/bezd_wozek_Dobytek_kolor.png-1fdf7fa5617dc166bad034b7136aab87.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "eb9b41d3428eac7e51ce8f661520cd01"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/bezd_wozek_Dobytek_kolor.png"
-dest_files=["res://.godot/imported/bezd_wozek_Dobytek_kolor.png-1fdf7fa5617dc166bad034b7136aab87.ctex"]
+dest_files=["res://.godot/imported/bezd_wozek_Dobytek_kolor.png-1fdf7fa5617dc166bad034b7136aab87.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

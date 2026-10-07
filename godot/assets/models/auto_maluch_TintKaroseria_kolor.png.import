@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://i82b7wuduggt"
-path="res://.godot/imported/auto_maluch_TintKaroseria_kolor.png-ce97a2e66a3b7261a592a552a7a02fa8.ctex"
+path.bptc="res://.godot/imported/auto_maluch_TintKaroseria_kolor.png-ce97a2e66a3b7261a592a552a7a02fa8.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6fc22ec10736142c527a6c06475b5e68"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/auto_maluch_TintKaroseria_kolor.png"
-dest_files=["res://.godot/imported/auto_maluch_TintKaroseria_kolor.png-ce97a2e66a3b7261a592a552a7a02fa8.ctex"]
+dest_files=["res://.godot/imported/auto_maluch_TintKaroseria_kolor.png-ce97a2e66a3b7261a592a552a7a02fa8.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

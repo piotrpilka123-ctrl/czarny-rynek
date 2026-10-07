@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cv2a5hf1wqe1x"
-path="res://.godot/imported/dom_kanapa_Kanapa_kolor.png-71d44a35ac0fcbdabd97293e058d32e1.ctex"
+path.bptc="res://.godot/imported/dom_kanapa_Kanapa_kolor.png-71d44a35ac0fcbdabd97293e058d32e1.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7efb8d651bd479f7d8731ce56b3cdeb7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_kanapa_Kanapa_kolor.png"
-dest_files=["res://.godot/imported/dom_kanapa_Kanapa_kolor.png-71d44a35ac0fcbdabd97293e058d32e1.ctex"]
+dest_files=["res://.godot/imported/dom_kanapa_Kanapa_kolor.png-71d44a35ac0fcbdabd97293e058d32e1.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cypon5ijf24oq"
-path="res://.godot/imported/ul_wejscie_TintSkrzydlo_kolor.png-ec641fb81b6fca6f50d9df581d6746ce.ctex"
+path.bptc="res://.godot/imported/ul_wejscie_TintSkrzydlo_kolor.png-ec641fb81b6fca6f50d9df581d6746ce.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8ea1841368375f2b021e3e505b7f18b1"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_wejscie_TintSkrzydlo_kolor.png"
-dest_files=["res://.godot/imported/ul_wejscie_TintSkrzydlo_kolor.png-ec641fb81b6fca6f50d9df581d6746ce.ctex"]
+dest_files=["res://.godot/imported/ul_wejscie_TintSkrzydlo_kolor.png-ec641fb81b6fca6f50d9df581d6746ce.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

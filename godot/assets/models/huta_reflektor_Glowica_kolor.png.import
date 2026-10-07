@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cvb08lbmsg3l6"
-path="res://.godot/imported/huta_reflektor_Glowica_kolor.png-8c89a550aae8c887603b68cdf31ae56a.ctex"
+path.bptc="res://.godot/imported/huta_reflektor_Glowica_kolor.png-8c89a550aae8c887603b68cdf31ae56a.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9432bf1020268a2532b43ba1ae7961cf"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/huta_reflektor_Glowica_kolor.png"
-dest_files=["res://.godot/imported/huta_reflektor_Glowica_kolor.png-8c89a550aae8c887603b68cdf31ae56a.ctex"]
+dest_files=["res://.godot/imported/huta_reflektor_Glowica_kolor.png-8c89a550aae8c887603b68cdf31ae56a.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

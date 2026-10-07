@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dcv4r3103ppx2"
-path="res://.godot/imported/ul_latarnia_Latarnia_kolor.png-bd081dde9e9a85c8844bd9d8ed8029fc.ctex"
+path.bptc="res://.godot/imported/ul_latarnia_Latarnia_kolor.png-bd081dde9e9a85c8844bd9d8ed8029fc.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "facf95d1034054c4510221b35090ee95"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_latarnia_Latarnia_kolor.png"
-dest_files=["res://.godot/imported/ul_latarnia_Latarnia_kolor.png-bd081dde9e9a85c8844bd9d8ed8029fc.ctex"]
+dest_files=["res://.godot/imported/ul_latarnia_Latarnia_kolor.png-bd081dde9e9a85c8844bd9d8ed8029fc.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://u7p4fnd2usmm"
-path="res://.godot/imported/auto_hatch_TintKaroseria_kolor.png-4ac5f720fe7e8738515b354d84b27954.ctex"
+path.bptc="res://.godot/imported/auto_hatch_TintKaroseria_kolor.png-4ac5f720fe7e8738515b354d84b27954.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "46c531dbb374d46c12caf480b2ba4749"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/auto_hatch_TintKaroseria_kolor.png"
-dest_files=["res://.godot/imported/auto_hatch_TintKaroseria_kolor.png-4ac5f720fe7e8738515b354d84b27954.ctex"]
+dest_files=["res://.godot/imported/auto_hatch_TintKaroseria_kolor.png-4ac5f720fe7e8738515b354d84b27954.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

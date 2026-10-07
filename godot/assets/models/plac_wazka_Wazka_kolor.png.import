@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bnern8yaetqq7"
-path="res://.godot/imported/plac_wazka_Wazka_kolor.png-9103d284b5c95ac80a37063ec28f8cab.ctex"
+path.bptc="res://.godot/imported/plac_wazka_Wazka_kolor.png-9103d284b5c95ac80a37063ec28f8cab.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "072749ff506492c58315611a85373ae2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/plac_wazka_Wazka_kolor.png"
-dest_files=["res://.godot/imported/plac_wazka_Wazka_kolor.png-9103d284b5c95ac80a37063ec28f8cab.ctex"]
+dest_files=["res://.godot/imported/plac_wazka_Wazka_kolor.png-9103d284b5c95ac80a37063ec28f8cab.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

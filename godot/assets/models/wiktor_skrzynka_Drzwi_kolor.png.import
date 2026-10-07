@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cn3uor2ld8oo0"
-path="res://.godot/imported/wiktor_skrzynka_Drzwi_kolor.png-d2d0ad0b1b9ae43af2e8a67956c4d955.ctex"
+path.bptc="res://.godot/imported/wiktor_skrzynka_Drzwi_kolor.png-d2d0ad0b1b9ae43af2e8a67956c4d955.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "abeb31b4b81dc615c92b77826f428ae1"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/wiktor_skrzynka_Drzwi_kolor.png"
-dest_files=["res://.godot/imported/wiktor_skrzynka_Drzwi_kolor.png-d2d0ad0b1b9ae43af2e8a67956c4d955.ctex"]
+dest_files=["res://.godot/imported/wiktor_skrzynka_Drzwi_kolor.png-d2d0ad0b1b9ae43af2e8a67956c4d955.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

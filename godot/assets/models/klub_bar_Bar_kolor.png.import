@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://djhi1frmhukjr"
-path="res://.godot/imported/klub_bar_Bar_kolor.png-37a44d1a539ef361d2b638467f3cda46.ctex"
+path.bptc="res://.godot/imported/klub_bar_Bar_kolor.png-37a44d1a539ef361d2b638467f3cda46.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d121c68644ecc1da92f301a84418195c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/klub_bar_Bar_kolor.png"
-dest_files=["res://.godot/imported/klub_bar_Bar_kolor.png-37a44d1a539ef361d2b638467f3cda46.ctex"]
+dest_files=["res://.godot/imported/klub_bar_Bar_kolor.png-37a44d1a539ef361d2b638467f3cda46.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

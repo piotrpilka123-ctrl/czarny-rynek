@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bae5ah2vn78qq"
-path="res://.godot/imported/lab_ladunek_Ladunek_kolor.png-a75cae08abad90e20f84f1ab227ab1ed.ctex"
+path.bptc="res://.godot/imported/lab_ladunek_Ladunek_kolor.png-a75cae08abad90e20f84f1ab227ab1ed.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "15767d20dc3ef94b21ff4ca8216805f2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/lab_ladunek_Ladunek_kolor.png"
-dest_files=["res://.godot/imported/lab_ladunek_Ladunek_kolor.png-a75cae08abad90e20f84f1ab227ab1ed.ctex"]
+dest_files=["res://.godot/imported/lab_ladunek_Ladunek_kolor.png-a75cae08abad90e20f84f1ab227ab1ed.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

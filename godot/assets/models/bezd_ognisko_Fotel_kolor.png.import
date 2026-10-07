@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://blid0sse7qkfs"
-path="res://.godot/imported/bezd_ognisko_Fotel_kolor.png-6996bc2ac57099f3de44c1a379479f4b.ctex"
+path.bptc="res://.godot/imported/bezd_ognisko_Fotel_kolor.png-6996bc2ac57099f3de44c1a379479f4b.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "35f3f9487127d89abecf27c9ac06cf5d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/bezd_ognisko_Fotel_kolor.png"
-dest_files=["res://.godot/imported/bezd_ognisko_Fotel_kolor.png-6996bc2ac57099f3de44c1a379479f4b.ctex"]
+dest_files=["res://.godot/imported/bezd_ognisko_Fotel_kolor.png-6996bc2ac57099f3de44c1a379479f4b.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

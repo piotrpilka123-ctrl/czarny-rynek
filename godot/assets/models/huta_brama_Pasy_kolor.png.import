@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cl7wl7kq85wfm"
-path="res://.godot/imported/huta_brama_Pasy_kolor.png-af93d6bc85046d60e749a6bac81bb7e1.ctex"
+path.bptc="res://.godot/imported/huta_brama_Pasy_kolor.png-af93d6bc85046d60e749a6bac81bb7e1.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7fd2ac1231b7bdf7efa07b39810f81ba"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/huta_brama_Pasy_kolor.png"
-dest_files=["res://.godot/imported/huta_brama_Pasy_kolor.png-af93d6bc85046d60e749a6bac81bb7e1.ctex"]
+dest_files=["res://.godot/imported/huta_brama_Pasy_kolor.png-af93d6bc85046d60e749a6bac81bb7e1.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

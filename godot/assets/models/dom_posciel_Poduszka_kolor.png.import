@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bu5o8dywoxah6"
-path="res://.godot/imported/dom_posciel_Poduszka_kolor.png-7808499aef7cf8c421d65c5a230906c4.ctex"
+path.bptc="res://.godot/imported/dom_posciel_Poduszka_kolor.png-7808499aef7cf8c421d65c5a230906c4.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "dede7f6772aa3dbf50a7df60c4d37795"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_posciel_Poduszka_kolor.png"
-dest_files=["res://.godot/imported/dom_posciel_Poduszka_kolor.png-7808499aef7cf8c421d65c5a230906c4.ctex"]
+dest_files=["res://.godot/imported/dom_posciel_Poduszka_kolor.png-7808499aef7cf8c421d65c5a230906c4.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

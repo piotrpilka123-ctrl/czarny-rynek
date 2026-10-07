@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://5b04rq6kd1me"
-path="res://.godot/imported/klub_kinkiet_Kinkiet_kolor.png-a083f8e5d244ef7f19d7aa545546e1b9.ctex"
+path.bptc="res://.godot/imported/klub_kinkiet_Kinkiet_kolor.png-a083f8e5d244ef7f19d7aa545546e1b9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5f322370bce70f98d45133f244826d38"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/klub_kinkiet_Kinkiet_kolor.png"
-dest_files=["res://.godot/imported/klub_kinkiet_Kinkiet_kolor.png-a083f8e5d244ef7f19d7aa545546e1b9.ctex"]
+dest_files=["res://.godot/imported/klub_kinkiet_Kinkiet_kolor.png-a083f8e5d244ef7f19d7aa545546e1b9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

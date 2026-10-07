@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cerv0ick2q68y"
-path="res://.godot/imported/auto_policja_TintKaroseria_kolor.png-1f9c6f4a28477b61d377c96e8523e135.ctex"
+path.bptc="res://.godot/imported/auto_policja_TintKaroseria_kolor.png-1f9c6f4a28477b61d377c96e8523e135.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "adc2d6bd6c5d0a88a3d39aca129452b1"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/auto_policja_TintKaroseria_kolor.png"
-dest_files=["res://.godot/imported/auto_policja_TintKaroseria_kolor.png-1f9c6f4a28477b61d377c96e8523e135.ctex"]
+dest_files=["res://.godot/imported/auto_policja_TintKaroseria_kolor.png-1f9c6f4a28477b61d377c96e8523e135.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

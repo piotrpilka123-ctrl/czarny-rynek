@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ce25uayk76etj"
-path="res://.godot/imported/lab_ibc_Zbiornik_kolor.png-43997c5bc168acc73a2d00950285296d.ctex"
+path.bptc="res://.godot/imported/lab_ibc_Zbiornik_kolor.png-43997c5bc168acc73a2d00950285296d.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ce5a2c17d005345733826ce34d6ea30f"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/lab_ibc_Zbiornik_kolor.png"
-dest_files=["res://.godot/imported/lab_ibc_Zbiornik_kolor.png-43997c5bc168acc73a2d00950285296d.ctex"]
+dest_files=["res://.godot/imported/lab_ibc_Zbiornik_kolor.png-43997c5bc168acc73a2d00950285296d.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

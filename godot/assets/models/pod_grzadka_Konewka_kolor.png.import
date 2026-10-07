@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dh8ifu81t6a85"
-path="res://.godot/imported/pod_grzadka_Konewka_kolor.png-28a4e88d2c89250d794116f409697d43.ctex"
+path.bptc="res://.godot/imported/pod_grzadka_Konewka_kolor.png-28a4e88d2c89250d794116f409697d43.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7bf923b09095c404d7be7cb4b3183698"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/pod_grzadka_Konewka_kolor.png"
-dest_files=["res://.godot/imported/pod_grzadka_Konewka_kolor.png-28a4e88d2c89250d794116f409697d43.ctex"]
+dest_files=["res://.godot/imported/pod_grzadka_Konewka_kolor.png-28a4e88d2c89250d794116f409697d43.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

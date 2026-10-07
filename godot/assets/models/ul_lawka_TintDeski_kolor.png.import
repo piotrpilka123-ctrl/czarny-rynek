@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://eiqs4ryv0lor"
-path="res://.godot/imported/ul_lawka_TintDeski_kolor.png-3f95f7922961241e15206084fb2b1e17.ctex"
+path.bptc="res://.godot/imported/ul_lawka_TintDeski_kolor.png-3f95f7922961241e15206084fb2b1e17.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a8cebf15b3803bf13e52c94d3926e6f4"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_lawka_TintDeski_kolor.png"
-dest_files=["res://.godot/imported/ul_lawka_TintDeski_kolor.png-3f95f7922961241e15206084fb2b1e17.ctex"]
+dest_files=["res://.godot/imported/ul_lawka_TintDeski_kolor.png-3f95f7922961241e15206084fb2b1e17.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

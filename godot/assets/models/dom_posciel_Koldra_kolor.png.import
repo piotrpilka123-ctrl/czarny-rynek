@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ceunmnxnuuwqr"
-path="res://.godot/imported/dom_posciel_Koldra_kolor.png-1c9298909ab67074290384bb97554800.ctex"
+path.bptc="res://.godot/imported/dom_posciel_Koldra_kolor.png-1c9298909ab67074290384bb97554800.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "fb1e7865103c90379b63a44d12739a20"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_posciel_Koldra_kolor.png"
-dest_files=["res://.godot/imported/dom_posciel_Koldra_kolor.png-1c9298909ab67074290384bb97554800.ctex"]
+dest_files=["res://.godot/imported/dom_posciel_Koldra_kolor.png-1c9298909ab67074290384bb97554800.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

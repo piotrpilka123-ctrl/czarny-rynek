@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d1nnlx08xnsg3"
-path="res://.godot/imported/pacholek_Pacholek_kolor.png-a080203e21a962d07d5adfac0a17d123.ctex"
+path.bptc="res://.godot/imported/pacholek_Pacholek_kolor.png-a080203e21a962d07d5adfac0a17d123.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bd9960550b6273c42615e69a9fb63a12"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/pacholek_Pacholek_kolor.png"
-dest_files=["res://.godot/imported/pacholek_Pacholek_kolor.png-a080203e21a962d07d5adfac0a17d123.ctex"]
+dest_files=["res://.godot/imported/pacholek_Pacholek_kolor.png-a080203e21a962d07d5adfac0a17d123.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://5ap2ycmq5qwu"
-path="res://.godot/imported/plac_karuzela_Deski_kolor.png-3fc85595f6a929b1cafdfceeff399b7f.ctex"
+path.bptc="res://.godot/imported/plac_karuzela_Deski_kolor.png-3fc85595f6a929b1cafdfceeff399b7f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "62d20d759a7422a5a8b63810ce6b360e"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/plac_karuzela_Deski_kolor.png"
-dest_files=["res://.godot/imported/plac_karuzela_Deski_kolor.png-3fc85595f6a929b1cafdfceeff399b7f.ctex"]
+dest_files=["res://.godot/imported/plac_karuzela_Deski_kolor.png-3fc85595f6a929b1cafdfceeff399b7f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

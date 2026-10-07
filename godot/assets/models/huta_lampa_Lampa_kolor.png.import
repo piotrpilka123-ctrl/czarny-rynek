@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cj8qh6vsb13ml"
-path="res://.godot/imported/huta_lampa_Lampa_kolor.png-15e7e8823bce69456b808ed378e02b69.ctex"
+path.bptc="res://.godot/imported/huta_lampa_Lampa_kolor.png-15e7e8823bce69456b808ed378e02b69.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5b81cdd0ab5ebf8165ce0059fa99b95f"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/huta_lampa_Lampa_kolor.png"
-dest_files=["res://.godot/imported/huta_lampa_Lampa_kolor.png-15e7e8823bce69456b808ed378e02b69.ctex"]
+dest_files=["res://.godot/imported/huta_lampa_Lampa_kolor.png-15e7e8823bce69456b808ed378e02b69.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

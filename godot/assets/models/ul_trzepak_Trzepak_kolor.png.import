@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cveq3biajwxgt"
-path="res://.godot/imported/ul_trzepak_Trzepak_kolor.png-b0664b793717b8b6e430a0a1185ad4c9.ctex"
+path.bptc="res://.godot/imported/ul_trzepak_Trzepak_kolor.png-b0664b793717b8b6e430a0a1185ad4c9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "82a0543f2a1a210639b460f28cc7d846"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_trzepak_Trzepak_kolor.png"
-dest_files=["res://.godot/imported/ul_trzepak_Trzepak_kolor.png-b0664b793717b8b6e430a0a1185ad4c9.ctex"]
+dest_files=["res://.godot/imported/ul_trzepak_Trzepak_kolor.png-b0664b793717b8b6e430a0a1185ad4c9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

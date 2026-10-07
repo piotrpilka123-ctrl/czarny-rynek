@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://11jiqi8m3om5"
-path="res://.godot/imported/dom_posciel_Materac_kolor.png-c2c05c980e1369ad2bd4ca69c751411e.ctex"
+path.bptc="res://.godot/imported/dom_posciel_Materac_kolor.png-c2c05c980e1369ad2bd4ca69c751411e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d5c0ec6ff4bd8a3686138a4bd4c18ee0"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_posciel_Materac_kolor.png"
-dest_files=["res://.godot/imported/dom_posciel_Materac_kolor.png-c2c05c980e1369ad2bd4ca69c751411e.ctex"]
+dest_files=["res://.godot/imported/dom_posciel_Materac_kolor.png-c2c05c980e1369ad2bd4ca69c751411e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

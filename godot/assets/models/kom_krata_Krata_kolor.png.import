@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cr7vssmkh85uu"
-path="res://.godot/imported/kom_krata_Krata_kolor.png-e1afdcfc06efe7c7ff129ea8ea9809ca.ctex"
+path.bptc="res://.godot/imported/kom_krata_Krata_kolor.png-e1afdcfc06efe7c7ff129ea8ea9809ca.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d60655858b3d659a1bfd9db2dc64431d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/kom_krata_Krata_kolor.png"
-dest_files=["res://.godot/imported/kom_krata_Krata_kolor.png-e1afdcfc06efe7c7ff129ea8ea9809ca.ctex"]
+dest_files=["res://.godot/imported/kom_krata_Krata_kolor.png-e1afdcfc06efe7c7ff129ea8ea9809ca.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

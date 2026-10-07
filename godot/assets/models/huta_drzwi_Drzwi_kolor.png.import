@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bkf7leh6wj7ru"
-path="res://.godot/imported/huta_drzwi_Drzwi_kolor.png-464d8a07bca885470e5defe23233735e.ctex"
+path.bptc="res://.godot/imported/huta_drzwi_Drzwi_kolor.png-464d8a07bca885470e5defe23233735e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e80794bacd0e06361e253b2cbda97975"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/huta_drzwi_Drzwi_kolor.png"
-dest_files=["res://.godot/imported/huta_drzwi_Drzwi_kolor.png-464d8a07bca885470e5defe23233735e.ctex"]
+dest_files=["res://.godot/imported/huta_drzwi_Drzwi_kolor.png-464d8a07bca885470e5defe23233735e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

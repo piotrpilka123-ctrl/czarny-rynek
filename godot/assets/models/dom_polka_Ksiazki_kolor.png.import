@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cucfwunokofuq"
-path="res://.godot/imported/dom_polka_Ksiazki_kolor.png-53c3b9fab804b744ec7f87a6c382c48e.ctex"
+path.bptc="res://.godot/imported/dom_polka_Ksiazki_kolor.png-53c3b9fab804b744ec7f87a6c382c48e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "600c1a22d0e73f6e9b498b44cdec2d46"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_polka_Ksiazki_kolor.png"
-dest_files=["res://.godot/imported/dom_polka_Ksiazki_kolor.png-53c3b9fab804b744ec7f87a6c382c48e.ctex"]
+dest_files=["res://.godot/imported/dom_polka_Ksiazki_kolor.png-53c3b9fab804b744ec7f87a6c382c48e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

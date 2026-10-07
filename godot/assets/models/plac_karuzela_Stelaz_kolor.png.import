@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://2326uhu0ulkd"
-path="res://.godot/imported/plac_karuzela_Stelaz_kolor.png-e48a8d83e7f5e1e3b21b8b3fe51517b9.ctex"
+path.bptc="res://.godot/imported/plac_karuzela_Stelaz_kolor.png-e48a8d83e7f5e1e3b21b8b3fe51517b9.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "858a62dd541cc29e0c3faebfa3625bc4"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/plac_karuzela_Stelaz_kolor.png"
-dest_files=["res://.godot/imported/plac_karuzela_Stelaz_kolor.png-e48a8d83e7f5e1e3b21b8b3fe51517b9.ctex"]
+dest_files=["res://.godot/imported/plac_karuzela_Stelaz_kolor.png-e48a8d83e7f5e1e3b21b8b3fe51517b9.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

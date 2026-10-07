@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cf08tqgegub4s"
-path="res://.godot/imported/ul_wejscie_Wejscie_kolor.png-b010bdf098b5ceca4bc69f51921e7bae.ctex"
+path.bptc="res://.godot/imported/ul_wejscie_Wejscie_kolor.png-b010bdf098b5ceca4bc69f51921e7bae.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "343816af1d640549abbae2fea122e64c"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_wejscie_Wejscie_kolor.png"
-dest_files=["res://.godot/imported/ul_wejscie_Wejscie_kolor.png-b010bdf098b5ceca4bc69f51921e7bae.ctex"]
+dest_files=["res://.godot/imported/ul_wejscie_Wejscie_kolor.png-b010bdf098b5ceca4bc69f51921e7bae.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

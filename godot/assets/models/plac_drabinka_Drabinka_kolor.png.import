@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dcsl7foxb5e6i"
-path="res://.godot/imported/plac_drabinka_Drabinka_kolor.png-e048fc9530c3f4dc54e36b2715cf6d53.ctex"
+path.bptc="res://.godot/imported/plac_drabinka_Drabinka_kolor.png-e048fc9530c3f4dc54e36b2715cf6d53.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "249b0efd20ede8f32654e3cee80ba2b2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/plac_drabinka_Drabinka_kolor.png"
-dest_files=["res://.godot/imported/plac_drabinka_Drabinka_kolor.png-e048fc9530c3f4dc54e36b2715cf6d53.ctex"]
+dest_files=["res://.godot/imported/plac_drabinka_Drabinka_kolor.png-e048fc9530c3f4dc54e36b2715cf6d53.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

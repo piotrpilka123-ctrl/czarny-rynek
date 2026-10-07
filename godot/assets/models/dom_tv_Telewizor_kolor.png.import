@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dtr7n2wybi7tc"
-path="res://.godot/imported/dom_tv_Telewizor_kolor.png-4b824ed4267de8f1d88525e77d321bed.ctex"
+path.bptc="res://.godot/imported/dom_tv_Telewizor_kolor.png-4b824ed4267de8f1d88525e77d321bed.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0f1e7cf4562409106033dfeb0ac23bf3"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_tv_Telewizor_kolor.png"
-dest_files=["res://.godot/imported/dom_tv_Telewizor_kolor.png-4b824ed4267de8f1d88525e77d321bed.ctex"]
+dest_files=["res://.godot/imported/dom_tv_Telewizor_kolor.png-4b824ed4267de8f1d88525e77d321bed.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

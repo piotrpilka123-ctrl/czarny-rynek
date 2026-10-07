@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bmr6hcruu4hsk"
-path="res://.godot/imported/klub_bramka_Bramka_kolor.png-af5e2f7027deb092e31552420711e15e.ctex"
+path.bptc="res://.godot/imported/klub_bramka_Bramka_kolor.png-af5e2f7027deb092e31552420711e15e.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0654f5e37a36241166b836c3dcca8c78"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/klub_bramka_Bramka_kolor.png"
-dest_files=["res://.godot/imported/klub_bramka_Bramka_kolor.png-af5e2f7027deb092e31552420711e15e.ctex"]
+dest_files=["res://.godot/imported/klub_bramka_Bramka_kolor.png-af5e2f7027deb092e31552420711e15e.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

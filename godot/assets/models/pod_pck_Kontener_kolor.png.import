@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://oh8dku22htkg"
-path="res://.godot/imported/pod_pck_Kontener_kolor.png-54a93e187e31d4a95d74959cbad27d6f.ctex"
+path.bptc="res://.godot/imported/pod_pck_Kontener_kolor.png-54a93e187e31d4a95d74959cbad27d6f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "88b7305ecbca9e154e3c576e8e238ed4"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/pod_pck_Kontener_kolor.png"
-dest_files=["res://.godot/imported/pod_pck_Kontener_kolor.png-54a93e187e31d4a95d74959cbad27d6f.ctex"]
+dest_files=["res://.godot/imported/pod_pck_Kontener_kolor.png-54a93e187e31d4a95d74959cbad27d6f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

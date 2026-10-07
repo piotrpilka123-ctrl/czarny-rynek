@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c3ieq5gr1jdvj"
-path="res://.godot/imported/pod_znalezisko_Znalezisko_kolor.png-d0c8dfabd8419518e2247436688a9316.ctex"
+path.bptc="res://.godot/imported/pod_znalezisko_Znalezisko_kolor.png-d0c8dfabd8419518e2247436688a9316.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "3e81c24dc941e54ee9c466652e85e626"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/pod_znalezisko_Znalezisko_kolor.png"
-dest_files=["res://.godot/imported/pod_znalezisko_Znalezisko_kolor.png-d0c8dfabd8419518e2247436688a9316.ctex"]
+dest_files=["res://.godot/imported/pod_znalezisko_Znalezisko_kolor.png-d0c8dfabd8419518e2247436688a9316.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

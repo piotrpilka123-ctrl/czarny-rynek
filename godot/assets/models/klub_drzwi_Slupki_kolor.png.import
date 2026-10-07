@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c4ilnq8kay02u"
-path="res://.godot/imported/klub_drzwi_Slupki_kolor.png-5f237025431c6c47b003c8254703f336.ctex"
+path.bptc="res://.godot/imported/klub_drzwi_Slupki_kolor.png-5f237025431c6c47b003c8254703f336.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5ad819ade10bef6cc1a54d50c9cb8cd7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/klub_drzwi_Slupki_kolor.png"
-dest_files=["res://.godot/imported/klub_drzwi_Slupki_kolor.png-5f237025431c6c47b003c8254703f336.ctex"]
+dest_files=["res://.godot/imported/klub_drzwi_Slupki_kolor.png-5f237025431c6c47b003c8254703f336.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

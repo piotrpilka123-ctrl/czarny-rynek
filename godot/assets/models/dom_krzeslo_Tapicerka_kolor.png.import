@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qg4o6nt23750"
-path="res://.godot/imported/dom_krzeslo_Tapicerka_kolor.png-bef312eb5ee6f68066d4db0fd1651199.ctex"
+path.bptc="res://.godot/imported/dom_krzeslo_Tapicerka_kolor.png-bef312eb5ee6f68066d4db0fd1651199.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "326c94a79ebab4929ff9d5180aa5eb47"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_krzeslo_Tapicerka_kolor.png"
-dest_files=["res://.godot/imported/dom_krzeslo_Tapicerka_kolor.png-bef312eb5ee6f68066d4db0fd1651199.ctex"]
+dest_files=["res://.godot/imported/dom_krzeslo_Tapicerka_kolor.png-bef312eb5ee6f68066d4db0fd1651199.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

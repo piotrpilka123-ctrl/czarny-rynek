@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c8kriaolka6qc"
-path="res://.godot/imported/kolejka_czolo_Nadwozie_kolor.png-2e7e7897a84e578ea8d5ca0ee265f6dd.ctex"
+path.bptc="res://.godot/imported/kolejka_czolo_Nadwozie_kolor.png-2e7e7897a84e578ea8d5ca0ee265f6dd.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a4bc1f13d11c27a1cb3e80d9e19f19e5"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/kolejka_czolo_Nadwozie_kolor.png"
-dest_files=["res://.godot/imported/kolejka_czolo_Nadwozie_kolor.png-2e7e7897a84e578ea8d5ca0ee265f6dd.ctex"]
+dest_files=["res://.godot/imported/kolejka_czolo_Nadwozie_kolor.png-2e7e7897a84e578ea8d5ca0ee265f6dd.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

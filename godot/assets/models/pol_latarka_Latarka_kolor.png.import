@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bo58sm8470mrw"
-path="res://.godot/imported/pol_latarka_Latarka_kolor.png-0862f257bb542ae66041ee57f9f504b2.ctex"
+path.bptc="res://.godot/imported/pol_latarka_Latarka_kolor.png-0862f257bb542ae66041ee57f9f504b2.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e459459fa876123583be7a1d7a4a7f93"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/pol_latarka_Latarka_kolor.png"
-dest_files=["res://.godot/imported/pol_latarka_Latarka_kolor.png-0862f257bb542ae66041ee57f9f504b2.ctex"]
+dest_files=["res://.godot/imported/pol_latarka_Latarka_kolor.png-0862f257bb542ae66041ee57f9f504b2.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

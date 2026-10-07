@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dt23mh43b4jwd"
-path="res://.godot/imported/dom_pizza_Pizza_kolor.png-6acc99e1b066eb4723e519cf2c55ab45.ctex"
+path.bptc="res://.godot/imported/dom_pizza_Pizza_kolor.png-6acc99e1b066eb4723e519cf2c55ab45.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e0b37fc046ea6cbbc62a4761c7edb56e"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_pizza_Pizza_kolor.png"
-dest_files=["res://.godot/imported/dom_pizza_Pizza_kolor.png-6acc99e1b066eb4723e519cf2c55ab45.ctex"]
+dest_files=["res://.godot/imported/dom_pizza_Pizza_kolor.png-6acc99e1b066eb4723e519cf2c55ab45.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

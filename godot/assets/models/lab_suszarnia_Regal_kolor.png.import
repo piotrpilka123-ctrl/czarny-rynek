@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://deqtw1ljjwy8u"
-path="res://.godot/imported/lab_suszarnia_Regal_kolor.png-cc4e48363f145da1528609dbe545badf.ctex"
+path.bptc="res://.godot/imported/lab_suszarnia_Regal_kolor.png-cc4e48363f145da1528609dbe545badf.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "de10eafe324dbf09fec05b11b779556e"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/lab_suszarnia_Regal_kolor.png"
-dest_files=["res://.godot/imported/lab_suszarnia_Regal_kolor.png-cc4e48363f145da1528609dbe545badf.ctex"]
+dest_files=["res://.godot/imported/lab_suszarnia_Regal_kolor.png-cc4e48363f145da1528609dbe545badf.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

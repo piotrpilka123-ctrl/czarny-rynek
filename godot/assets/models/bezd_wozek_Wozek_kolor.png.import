@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dby2o6s5s6td2"
-path="res://.godot/imported/bezd_wozek_Wozek_kolor.png-97f85370fbde512e3ef5a6ee0460e7c4.ctex"
+path.bptc="res://.godot/imported/bezd_wozek_Wozek_kolor.png-97f85370fbde512e3ef5a6ee0460e7c4.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bc7e980c7ee1c62b75b89b0b0cfdcfe6"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/bezd_wozek_Wozek_kolor.png"
-dest_files=["res://.godot/imported/bezd_wozek_Wozek_kolor.png-97f85370fbde512e3ef5a6ee0460e7c4.ctex"]
+dest_files=["res://.godot/imported/bezd_wozek_Wozek_kolor.png-97f85370fbde512e3ef5a6ee0460e7c4.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

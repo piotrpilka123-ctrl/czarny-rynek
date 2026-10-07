@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cyi18dx7swl2"
-path="res://.godot/imported/kom_biurko_Biurko_kolor.png-8142b1c852e5c33cead3e9a0f35d6040.ctex"
+path.bptc="res://.godot/imported/kom_biurko_Biurko_kolor.png-8142b1c852e5c33cead3e9a0f35d6040.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "51320504c51782ade13fb870affc543a"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/kom_biurko_Biurko_kolor.png"
-dest_files=["res://.godot/imported/kom_biurko_Biurko_kolor.png-8142b1c852e5c33cead3e9a0f35d6040.ctex"]
+dest_files=["res://.godot/imported/kom_biurko_Biurko_kolor.png-8142b1c852e5c33cead3e9a0f35d6040.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

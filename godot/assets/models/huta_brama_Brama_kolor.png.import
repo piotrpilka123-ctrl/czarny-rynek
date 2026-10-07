@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cv46bm70n3g2i"
-path="res://.godot/imported/huta_brama_Brama_kolor.png-4ce131fa6f6e5ec157fab9683d4b40dd.ctex"
+path.bptc="res://.godot/imported/huta_brama_Brama_kolor.png-4ce131fa6f6e5ec157fab9683d4b40dd.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a943da96c7f991a37e0f4476c81b321e"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/huta_brama_Brama_kolor.png"
-dest_files=["res://.godot/imported/huta_brama_Brama_kolor.png-4ce131fa6f6e5ec157fab9683d4b40dd.ctex"]
+dest_files=["res://.godot/imported/huta_brama_Brama_kolor.png-4ce131fa6f6e5ec157fab9683d4b40dd.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

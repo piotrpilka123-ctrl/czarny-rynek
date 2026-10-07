@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://yjo8coivqv7s"
-path="res://.godot/imported/portal_kolejowy_Brama_kolor.png-ccf0484054841ea49ef18c1c34418bb5.ctex"
+path.bptc="res://.godot/imported/portal_kolejowy_Brama_kolor.png-ccf0484054841ea49ef18c1c34418bb5.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "4f208fd3cd8655521da88b2af848391d"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/portal_kolejowy_Brama_kolor.png"
-dest_files=["res://.godot/imported/portal_kolejowy_Brama_kolor.png-ccf0484054841ea49ef18c1c34418bb5.ctex"]
+dest_files=["res://.godot/imported/portal_kolejowy_Brama_kolor.png-ccf0484054841ea49ef18c1c34418bb5.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

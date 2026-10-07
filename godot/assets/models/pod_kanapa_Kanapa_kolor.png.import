@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://coyuanbgmxul1"
-path="res://.godot/imported/pod_kanapa_Kanapa_kolor.png-9b2200ec56799cbe50cefa5607fec684.ctex"
+path.bptc="res://.godot/imported/pod_kanapa_Kanapa_kolor.png-9b2200ec56799cbe50cefa5607fec684.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7483b888cac10b3c8dcfe6e87069eeaf"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/pod_kanapa_Kanapa_kolor.png"
-dest_files=["res://.godot/imported/pod_kanapa_Kanapa_kolor.png-9b2200ec56799cbe50cefa5607fec684.ctex"]
+dest_files=["res://.godot/imported/pod_kanapa_Kanapa_kolor.png-9b2200ec56799cbe50cefa5607fec684.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c7x2gp3r81sai"
-path="res://.godot/imported/wiktor_skrzynka_Skrzynka_kolor.png-f4df4f99cd226d5ff07f10445ef67396.ctex"
+path.bptc="res://.godot/imported/wiktor_skrzynka_Skrzynka_kolor.png-f4df4f99cd226d5ff07f10445ef67396.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1a88634e1e2f39424f37b73d4e527193"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/wiktor_skrzynka_Skrzynka_kolor.png"
-dest_files=["res://.godot/imported/wiktor_skrzynka_Skrzynka_kolor.png-f4df4f99cd226d5ff07f10445ef67396.ctex"]
+dest_files=["res://.godot/imported/wiktor_skrzynka_Skrzynka_kolor.png-f4df4f99cd226d5ff07f10445ef67396.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

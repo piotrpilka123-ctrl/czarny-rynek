@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://p854pofygiim"
-path="res://.godot/imported/dom_aneks_Aneks_kolor.png-86ed3339d28c1764d2a9a267e13b6cb4.ctex"
+path.bptc="res://.godot/imported/dom_aneks_Aneks_kolor.png-86ed3339d28c1764d2a9a267e13b6cb4.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8c3f0b8d4d662f823346919ccb33d582"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_aneks_Aneks_kolor.png"
-dest_files=["res://.godot/imported/dom_aneks_Aneks_kolor.png-86ed3339d28c1764d2a9a267e13b6cb4.ctex"]
+dest_files=["res://.godot/imported/dom_aneks_Aneks_kolor.png-86ed3339d28c1764d2a9a267e13b6cb4.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

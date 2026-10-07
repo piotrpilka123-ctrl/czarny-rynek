@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://7xquo52eadnp"
-path="res://.godot/imported/torba_Torba_kolor.png-519e3e019a1cf8dcd99514224ba7fc77.ctex"
+path.bptc="res://.godot/imported/torba_Torba_kolor.png-519e3e019a1cf8dcd99514224ba7fc77.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8829b98753c72cfd94c901b6334cd811"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/torba_Torba_kolor.png"
-dest_files=["res://.godot/imported/torba_Torba_kolor.png-519e3e019a1cf8dcd99514224ba7fc77.ctex"]
+dest_files=["res://.godot/imported/torba_Torba_kolor.png-519e3e019a1cf8dcd99514224ba7fc77.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

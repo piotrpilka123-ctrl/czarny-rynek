@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cjtdfxa4ubhwy"
-path="res://.godot/imported/pod_grill_Grill_kolor.png-1f2bc83c79a40eef10a366996ab3df8f.ctex"
+path.bptc="res://.godot/imported/pod_grill_Grill_kolor.png-1f2bc83c79a40eef10a366996ab3df8f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "13af0c04c4cbaaed9f46af982ad9f0d2"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/pod_grill_Grill_kolor.png"
-dest_files=["res://.godot/imported/pod_grill_Grill_kolor.png-1f2bc83c79a40eef10a366996ab3df8f.ctex"]
+dest_files=["res://.godot/imported/pod_grill_Grill_kolor.png-1f2bc83c79a40eef10a366996ab3df8f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

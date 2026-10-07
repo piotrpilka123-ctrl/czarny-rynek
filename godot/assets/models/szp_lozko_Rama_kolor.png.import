@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d8ggfoyyy1p4"
-path="res://.godot/imported/szp_lozko_Rama_kolor.png-c98b8f9fc184faaa01595cf75fda7138.ctex"
+path.bptc="res://.godot/imported/szp_lozko_Rama_kolor.png-c98b8f9fc184faaa01595cf75fda7138.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "3f3c1054332627bf7eff23df16b29df0"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/szp_lozko_Rama_kolor.png"
-dest_files=["res://.godot/imported/szp_lozko_Rama_kolor.png-c98b8f9fc184faaa01595cf75fda7138.ctex"]
+dest_files=["res://.godot/imported/szp_lozko_Rama_kolor.png-c98b8f9fc184faaa01595cf75fda7138.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cf18i6q8lfkis"
-path="res://.godot/imported/plac_piaskownica_Obrzeze_kolor.png-06440d69699022a243993ab109c3fb12.ctex"
+path.bptc="res://.godot/imported/plac_piaskownica_Obrzeze_kolor.png-06440d69699022a243993ab109c3fb12.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1d4ffb482dbb4c7ff90b78068ad938ea"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/plac_piaskownica_Obrzeze_kolor.png"
-dest_files=["res://.godot/imported/plac_piaskownica_Obrzeze_kolor.png-06440d69699022a243993ab109c3fb12.ctex"]
+dest_files=["res://.godot/imported/plac_piaskownica_Obrzeze_kolor.png-06440d69699022a243993ab109c3fb12.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

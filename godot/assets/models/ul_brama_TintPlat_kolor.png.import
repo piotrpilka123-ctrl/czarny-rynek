@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b778mwuowh6s8"
-path="res://.godot/imported/ul_brama_TintPlat_kolor.png-5d27bad5d5b5785b600b078b1f78227b.ctex"
+path.bptc="res://.godot/imported/ul_brama_TintPlat_kolor.png-5d27bad5d5b5785b600b078b1f78227b.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9f4852f940f292846937df84012b7afe"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_brama_TintPlat_kolor.png"
-dest_files=["res://.godot/imported/ul_brama_TintPlat_kolor.png-5d27bad5d5b5785b600b078b1f78227b.ctex"]
+dest_files=["res://.godot/imported/ul_brama_TintPlat_kolor.png-5d27bad5d5b5785b600b078b1f78227b.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

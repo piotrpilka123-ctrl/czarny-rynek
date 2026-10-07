@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://buhnx6pekuc4e"
-path="res://.godot/imported/huta_drzwi_Szewrony_kolor.png-70425912cc17363a006f12961e3c912f.ctex"
+path.bptc="res://.godot/imported/huta_drzwi_Szewrony_kolor.png-70425912cc17363a006f12961e3c912f.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "7f729aaf6557a9767e15e7d3697b2ebc"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/huta_drzwi_Szewrony_kolor.png"
-dest_files=["res://.godot/imported/huta_drzwi_Szewrony_kolor.png-70425912cc17363a006f12961e3c912f.ctex"]
+dest_files=["res://.godot/imported/huta_drzwi_Szewrony_kolor.png-70425912cc17363a006f12961e3c912f.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

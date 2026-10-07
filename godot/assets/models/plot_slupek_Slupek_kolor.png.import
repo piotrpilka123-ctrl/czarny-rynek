@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dfsitqifo1xhf"
-path="res://.godot/imported/plot_slupek_Slupek_kolor.png-1f1648a001ff13548dae018d0574b48b.ctex"
+path.bptc="res://.godot/imported/plot_slupek_Slupek_kolor.png-1f1648a001ff13548dae018d0574b48b.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2539e1e7aee87d6e391bd4e1a8ac67f4"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/plot_slupek_Slupek_kolor.png"
-dest_files=["res://.godot/imported/plot_slupek_Slupek_kolor.png-1f1648a001ff13548dae018d0574b48b.ctex"]
+dest_files=["res://.godot/imported/plot_slupek_Slupek_kolor.png-1f1648a001ff13548dae018d0574b48b.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

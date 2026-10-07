@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bwfbhhtsmcmu8"
-path="res://.godot/imported/brama_huty_Portiernia_kolor.png-3e8cc0f8b5f55146bac78578d95874d2.ctex"
+path.bptc="res://.godot/imported/brama_huty_Portiernia_kolor.png-3e8cc0f8b5f55146bac78578d95874d2.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ecbc4da51ea095a1467e729c77b427fa"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/brama_huty_Portiernia_kolor.png"
-dest_files=["res://.godot/imported/brama_huty_Portiernia_kolor.png-3e8cc0f8b5f55146bac78578d95874d2.ctex"]
+dest_files=["res://.godot/imported/brama_huty_Portiernia_kolor.png-3e8cc0f8b5f55146bac78578d95874d2.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

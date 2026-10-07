@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cnyyslwt1pilw"
-path="res://.godot/imported/dom_wieszak_Wieszak_kolor.png-954d22a3c8146ec1d35864726f957844.ctex"
+path.bptc="res://.godot/imported/dom_wieszak_Wieszak_kolor.png-954d22a3c8146ec1d35864726f957844.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9bccf106856af1080825d54bebdaed65"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_wieszak_Wieszak_kolor.png"
-dest_files=["res://.godot/imported/dom_wieszak_Wieszak_kolor.png-954d22a3c8146ec1d35864726f957844.ctex"]
+dest_files=["res://.godot/imported/dom_wieszak_Wieszak_kolor.png-954d22a3c8146ec1d35864726f957844.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

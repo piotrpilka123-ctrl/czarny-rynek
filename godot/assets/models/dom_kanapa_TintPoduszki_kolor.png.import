@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://t48ygt77ygfl"
-path="res://.godot/imported/dom_kanapa_TintPoduszki_kolor.png-b57c4c5832a7c37d88dd562357206c06.ctex"
+path.bptc="res://.godot/imported/dom_kanapa_TintPoduszki_kolor.png-b57c4c5832a7c37d88dd562357206c06.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b3e8ae9081fd7604d4418865c6024822"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_kanapa_TintPoduszki_kolor.png"
-dest_files=["res://.godot/imported/dom_kanapa_TintPoduszki_kolor.png-b57c4c5832a7c37d88dd562357206c06.ctex"]
+dest_files=["res://.godot/imported/dom_kanapa_TintPoduszki_kolor.png-b57c4c5832a7c37d88dd562357206c06.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://blv6bsgg5ck4m"
-path="res://.godot/imported/rurka_Rurka_kolor.png-d9a7f78893175df5b0efb48fb0e1c4cf.ctex"
+path.bptc="res://.godot/imported/rurka_Rurka_kolor.png-d9a7f78893175df5b0efb48fb0e1c4cf.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ad83c0e802fbc6a4e56504d59f82e362"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/rurka_Rurka_kolor.png"
-dest_files=["res://.godot/imported/rurka_Rurka_kolor.png-d9a7f78893175df5b0efb48fb0e1c4cf.ctex"]
+dest_files=["res://.godot/imported/rurka_Rurka_kolor.png-d9a7f78893175df5b0efb48fb0e1c4cf.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

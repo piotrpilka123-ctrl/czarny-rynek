@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://5siuripvkyq6"
-path="res://.godot/imported/ul_brama_Rama_kolor.png-e786df1100576ab31a2cdd5f7ffd421c.ctex"
+path.bptc="res://.godot/imported/ul_brama_Rama_kolor.png-e786df1100576ab31a2cdd5f7ffd421c.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "891e49128b99bd6708a59a6a8a7d46eb"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/ul_brama_Rama_kolor.png"
-dest_files=["res://.godot/imported/ul_brama_Rama_kolor.png-e786df1100576ab31a2cdd5f7ffd421c.ctex"]
+dest_files=["res://.godot/imported/ul_brama_Rama_kolor.png-e786df1100576ab31a2cdd5f7ffd421c.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

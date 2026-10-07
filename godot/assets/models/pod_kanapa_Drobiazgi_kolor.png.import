@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://isnilnwjk6d3"
-path="res://.godot/imported/pod_kanapa_Drobiazgi_kolor.png-8773a9c04ac5f39fc5e21e12138c8d72.ctex"
+path.bptc="res://.godot/imported/pod_kanapa_Drobiazgi_kolor.png-8773a9c04ac5f39fc5e21e12138c8d72.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "956f215bab384e21a523af1dc26a2fb3"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/pod_kanapa_Drobiazgi_kolor.png"
-dest_files=["res://.godot/imported/pod_kanapa_Drobiazgi_kolor.png-8773a9c04ac5f39fc5e21e12138c8d72.ctex"]
+dest_files=["res://.godot/imported/pod_kanapa_Drobiazgi_kolor.png-8773a9c04ac5f39fc5e21e12138c8d72.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

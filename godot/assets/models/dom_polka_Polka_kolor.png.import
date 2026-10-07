@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c3bg5ppd4h2b1"
-path="res://.godot/imported/dom_polka_Polka_kolor.png-9933e0c7e45664370de27cc0f62778fc.ctex"
+path.bptc="res://.godot/imported/dom_polka_Polka_kolor.png-9933e0c7e45664370de27cc0f62778fc.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "29f692627c36432e48c0ac552f629500"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/dom_polka_Polka_kolor.png"
-dest_files=["res://.godot/imported/dom_polka_Polka_kolor.png-9933e0c7e45664370de27cc0f62778fc.ctex"]
+dest_files=["res://.godot/imported/dom_polka_Polka_kolor.png-9933e0c7e45664370de27cc0f62778fc.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

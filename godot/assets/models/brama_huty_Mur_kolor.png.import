@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://71ne05wt2uss"
-path="res://.godot/imported/brama_huty_Mur_kolor.png-7bb067884d5c1588e35ab95bd50a716b.ctex"
+path.bptc="res://.godot/imported/brama_huty_Mur_kolor.png-7bb067884d5c1588e35ab95bd50a716b.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bb8cad757da770aa23d68298ffc50d55"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/brama_huty_Mur_kolor.png"
-dest_files=["res://.godot/imported/brama_huty_Mur_kolor.png-7bb067884d5c1588e35ab95bd50a716b.ctex"]
+dest_files=["res://.godot/imported/brama_huty_Mur_kolor.png-7bb067884d5c1588e35ab95bd50a716b.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
