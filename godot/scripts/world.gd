@@ -699,6 +699,22 @@ func export_room_glb(path: String, id: String) -> void:
 		(d as Node3D).visible = true
 	_glb_fix(d)
 	root.add_child(d)
+	if glb_people and G.main != null and G.main.npcs != null:
+		# ludzie w tym wnętrzu (barman, goście, dyżurny…) w swoich pozach
+		for st0 in G.main.npcs.statics:
+			if String(st0.loc) != id:
+				continue
+			var rig: Dictionary = st0.rig
+			var ap := rig.anim as AnimationPlayer
+			ap.active = true
+			var an_name := String(G.main.npcs.Chars.POSES.get(String(st0.pose), "Idle"))
+			if ap.has_animation(an_name):
+				ap.play(an_name, 0.0)
+			ap.advance(0.7)
+			var pd: Node3D = (rig.root as Node3D).duplicate()
+			pd.visible = true
+			_glb_fix(pd)
+			root.add_child(pd)
 	var doc := GLTFDocument.new()
 	var st := GLTFState.new()
 	var err := doc.append_from_scene(root, st)

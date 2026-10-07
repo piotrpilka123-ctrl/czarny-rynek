@@ -211,6 +211,7 @@ func _ready() -> void:
 			world.starter_rest(float(pk[0]), float(pk[1]) if pk.size() > 1 else -1.0)
 			var dc := door_cam(float(args.get("kam", "1")))
 			print("CAM %.3f %.3f %.3f %.3f %.3f %.3f %.1f" % [dc[0].x, dc[0].y, dc[0].z, dc[1].x, dc[1].y, dc[1].z, dc[2]])
+		world.glb_people = args.has("ludzie")
 		world.export_room_glb(String(args.glb), String(args.room))
 		get_tree().quit()
 		return

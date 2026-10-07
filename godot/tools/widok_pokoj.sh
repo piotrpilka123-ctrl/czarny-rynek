@@ -1,11 +1,11 @@
 #!/bin/sh
 # widok wnętrza bez okna: ./tools/widok_pokoj.sh wynik.png pokój "x,y,z" "cel_x,cel_y,cel_z" [fov=70]
-# współrzędne względem środka pokoju (x w prawo, y od podłogi, z w głąb); nazwy pokojów jak w D.ROOMS (safe, lab, klub…)
+# współrzędne względem środka pokoju (x w prawo, y od podłogi, z w głąb); nazwy pokojów jak w D.ROOMS (safe, lab, club…); LUDZIE=1 dołącza postacie
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SP="${CR_OUT:-${TMPDIR:-/tmp}/czarny-rynek}"
 mkdir -p "$SP"
 OUT=$1; ROOM=$2; FROM=$3; TO=$4; FOV=${5:-70}
-LINE=$(/Applications/Godot.app/Contents/MacOS/Godot --headless --audio-driver Dummy --path "$DIR" -- --autostart --test --glb="$SP/pokoj.glb" --room="$ROOM" $EXTRA 2>&1 | grep "^ROOM")
+LINE=$(/Applications/Godot.app/Contents/MacOS/Godot --headless --audio-driver Dummy --path "$DIR" -- --autostart --test --glb="$SP/pokoj.glb" --room="$ROOM" ${LUDZIE:+--ludzie} $EXTRA 2>&1 | grep "^ROOM")
 [ -z "$LINE" ] && { echo "eksport nieudany (pokój $ROOM?)"; exit 1; }
 set -- $LINE
 CX=$2
