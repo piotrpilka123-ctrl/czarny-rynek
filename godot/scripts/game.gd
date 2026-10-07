@@ -1116,10 +1116,12 @@ func capacity() -> int:
 	if prologue != null:
 		return 600
 	var extra := int(outfit_stat("cap", 0.0)) + (8 if has_skill("kieszenie") else 0)
-	if upg("plecak2"):
-		return 90 + extra
-	if upg("plecak1"):
-		return 40 + extra
+	# pojemność plecaków stoi w D.UPGRADES (cap), żeby opis w sklepie i gra zawsze mówiły to samo
+	for id in ["plecak2", "plecak1"]:
+		if upg(id):
+			for u in D.UPGRADES:
+				if String(u.id) == id:
+					return int(u.cap) + extra
 	return maxi(5, D.CAP_BASE + extra)
 
 
@@ -2814,6 +2816,10 @@ func pack_one(room: String, p: String, pur: int, _mode := 1) -> int:
 	add_minutes(pack_minutes())
 	if randf() < pack_waste():
 		S.stats.wasted = int(S.stats.wasted) + 1
+		# pierwszy rozsypany gram na kuchennej: podpowiedź, gdzie kupić lepszą wagę (raz)
+		if scale() == 0 and not flag("tip_waga"):
+			S.flags["tip_waga"] = true
+			notify("Gram poszedł na blat. Stara waga kuchenna tak ma — dokładniejszą sprzedaje Zenek w lombardzie przy Hutniczej.", "warn")
 		return 0
 	# porcja wraca tam, skąd wzięto towar (plecak albo skrytka)
 	add_pack(S.inv if from_inv >= 0.5 else S.stash[room], p, pur, 1)

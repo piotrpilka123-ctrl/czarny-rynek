@@ -78,8 +78,8 @@ const SCALES := [
 	{"id": "dozownik", "name": "Waga z dozownikiem", "price": 7500, "lvl": 8, "min": 0.1, "waste": 0.0, "sec": 0.15, "desc": "Półautomat z lejkiem: sypiesz towar, a ona sama odmierza porcje. Do dużych partii."},
 ]
 const UPGRADES := [
-	{"id": "plecak1", "name": "Plecak szkolny (40 miejsc)", "price": 380, "lvl": 2, "cap": 40, "desc": "Zamiast upychać towar po kieszeniach."},
-	{"id": "plecak2", "name": "Plecak turystyczny (90 miejsc)", "price": 1500, "lvl": 5, "cap": 90, "req": "plecak1", "desc": "Na poważniejsze kursy."},
+	{"id": "plecak1", "name": "Plecak szkolny (60 miejsc)", "price": 380, "lvl": 2, "cap": 60, "desc": "Zamiast upychać towar po kieszeniach."},
+	{"id": "plecak2", "name": "Plecak turystyczny (120 miejsc)", "price": 1500, "lvl": 5, "cap": 120, "req": "plecak1", "desc": "Na poważniejsze kursy."},
 	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 150 miejsc zamiast 60."},
 ]
 ## Dostawca jest jeden: Wiktor. Czysty towar, zamówienie SMS-em, paczka w skrytce oznaczonej sprejem, zapłata „na zeszyt”

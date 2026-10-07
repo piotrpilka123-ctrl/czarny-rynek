@@ -627,7 +627,7 @@ func run() -> void:
 	for sk0 in D.SKILLS:
 		sk_names.append(String(sk0.id))
 	ok(not sk_names.has("gadka") and not sk_names.has("rekin") and sk_names.has("kieszenie") and sk_names.has("klientela"), "drzewko nie ma już umiejętności „gadanych”")
-	ok(G.upgrade_buy("plecak1") and G.capacity() == 40, "plecak szkolny: 40 miejsc")
+	ok(G.upgrade_buy("plecak1") and G.capacity() == 60 and G.capacity() >= D.CAP_BASE * 2, "plecak szkolny: 60 miejsc — dwa razy tyle co kieszenie")
 	U.open_shop()
 	await frames(3)
 	U.close_all()
