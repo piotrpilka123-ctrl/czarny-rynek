@@ -340,6 +340,13 @@ func _build_edges() -> void:
 		"lines": ["Kurs skończony. Następny za czterdzieści minut — o ile ten grat odpali.", "Dwunastka jeździ tylko do pętli. Dalej jest mur i tyle.",
 			"Kiedyś woziłem całą zmianę do huty, trzy autobusy naraz. Teraz trzech emerytów i jeden pijany.", "Na postoju nie zabieram. Przepisy.",
 			"Wieczorem uważaj przy klubie. Raz mi tam szybę wybili, bo nie chciałem czekać."]})
+	# pasażerowie na pętli: starsza pani na ławce w wiacie i chłopak z telefonem
+	_static({"x": 8.6, "z": 166.75, "rot": PI, "pose": "sit", "y": 0.05, "name": "Pani Krysia", "hours": [6.0, 20.0],
+		"look": {"model": "fb3", "female": true, "kind": "coat", "top": "6a5a48", "bottom": "2a2622", "seed": 961},
+		"lines": ["Dwunastka miała być dziesięć po. Kierowca pali, to i nie jedzie.", "Do przychodni jadę. Trzeci raz w tym tygodniu.", "Kiedyś to tu kwiaty na pętli rosły. Teraz butelki."]})
+	_static({"x": 10.9, "z": 165.3, "rot": 2.4, "pose": "phone", "name": "Chłopak z pętli", "hours": [7.0, 23.5],
+		"look": {"model": "m16", "kind": "hoodie", "top": "2c3340", "bottom": "20242c", "seed": 967},
+		"lines": ["Czekam na kumpla. Nie twoja sprawa.", "Autobus? Nie, ja tu tylko stoję.", "Masz ogień?"]})
 	var ge: Vector2 = G.world.GATE_E
 	_static({"x": ge.x - 4.3, "z": ge.y + 2.4, "rot": -PI / 2.0, "pose": "arms", "name": "Pan Bogdan", "label": "Pan Bogdan, stróż", "hours": [6.0, 22.0],
 		"look": {"model": "m12", "kind": "jacket", "top": "3d4438", "bottom": "2c2c2a", "seed": 953, "build": 1.0},
