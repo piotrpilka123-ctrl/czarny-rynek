@@ -2817,14 +2817,31 @@ func _dense() -> void:
 		var x := rng.randf_range(-200.0, -160.0)
 		var z := -160.0 + k * 19.0 + rng.randf_range(-3.0, 3.0)
 		var by := hd(x, z)
-		Models.box(city, Vector3(4.6, 2.3, 3.6), Vector3(x, by + 1.1, z), Models.mat(hc[k], 0.9), Vector3(0, rng.randf_range(-0.2, 0.2), 0))
-		var roof := PrismMesh.new()
-		roof.size = Vector3(5.2, 1.1, 4.2)
-		var rm := MeshInstance3D.new()
-		rm.mesh = roof
-		rm.material_override = Props.pbr("asbestos_sheet", 0.4, Color(0.6, 0.55, 0.52))
-		rm.position = Vector3(x, by + 2.8, z)
-		city.add_child(rm)
+		var hrot := rng.randf_range(-0.2, 0.2)
+		var hut := Stations.model("altanka")
+		if hut != null:
+			# drzwiami do ścieżki działkowej (na wschód), co trzecia bokiem
+			Interior._tint(hut, Models.col(hc[k]).lightened(0.25))
+			_place(hut, x, z, hrot + (PI / 2.0 if k % 3 != 1 else 0.0))
+			Props.set_range(hut, 150.0)
+			# ogródek przy altance: grządki, kwiaty, czasem krasnal (własne losowanie — reszta miasta zostaje na miejscu)
+			var gr := RandomNumberGenerator.new()
+			gr.seed = 4400 + k
+			for e in [["pod_grzadka", 5.2, -1.6], ["pod_grzadka", 5.6, 2.4], ["pod_kwiaty", 3.4, 3.6], ["pod_krasnal", 3.0, -3.2]]:
+				if String(e[0]) == "pod_krasnal" and k % 2 == 1:
+					continue
+				var gm := Stations.model(String(e[0]))
+				if gm != null:
+					Props.set_range(_place(gm, x + float(e[1]) + gr.randf_range(-0.5, 0.5), z + float(e[2]) + gr.randf_range(-0.5, 0.5), gr.randf_range(-0.3, 0.3) + (PI / 2.0 if gr.randf() < 0.5 else 0.0)), 70.0)
+		else:
+			Models.box(city, Vector3(4.6, 2.3, 3.6), Vector3(x, by + 1.1, z), Models.mat(hc[k], 0.9), Vector3(0, hrot, 0))
+			var roof := PrismMesh.new()
+			roof.size = Vector3(5.2, 1.1, 4.2)
+			var rm := MeshInstance3D.new()
+			rm.mesh = roof
+			rm.material_override = Props.pbr("asbestos_sheet", 0.4, Color(0.6, 0.55, 0.52))
+			rm.position = Vector3(x, by + 2.8, z)
+			city.add_child(rm)
 		add_col(x - 2.4, x + 2.4, z - 1.9, z + 1.9, 2.4)
 		rects.pop_back()
 	# --- mury i płoty: ciasne podwórka, mniej otwartej przestrzeni
