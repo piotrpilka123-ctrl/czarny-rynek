@@ -3702,6 +3702,10 @@ func state_from_save(data: Dictionary) -> Dictionary:
 			base.skills[pair[1]] = true
 	if not (base.get("owned") is Dictionary):
 		base["owned"] = {}
+	# umówione spotkania ze starszych zapisów: klient czeka teraz pięć godzin, nie godzinę
+	for o0 in base.orders:
+		if o0 is Dictionary and o0.has("meet") and float(o0.get("deadline", 0.0)) < float(o0.meet) + D.CLIENT_WAIT:
+			o0["deadline"] = float(o0.meet) + D.CLIENT_WAIT
 	# w starszych zapisach notesu nie było — nie pojawia się nagle w kieszeni
 	if not (data.get("items") is Dictionary and data.items.has("notes")):
 		base.items["notes"] = 0

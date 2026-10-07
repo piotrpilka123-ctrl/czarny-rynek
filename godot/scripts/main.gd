@@ -2057,6 +2057,12 @@ func _apply_test_args() -> void:
 		else:
 			pos = Vector3(float(D.ROOMS[loc].cx), 0.0, float(D.ROOMS[loc].d) * 0.5 - 1.5)
 		teleport(loc, pos, deg_to_rad(float(args.get("yaw", "0"))))
+		# zrzuty: --pitch=stopnie (ujemne = w dół), --waga=0…3 (klasa wagi na stołach)
+		if args.has("pitch"):
+			player.pitch = deg_to_rad(float(args.pitch))
+		if args.has("waga"):
+			G.S["scale"] = int(args.waga)
+			world.refresh_scales()
 	elif args.has("yaw"):
 		player.place(player.global_position, deg_to_rad(float(args.yaw)))
 	if args.has("pitch"):
