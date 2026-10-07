@@ -3085,7 +3085,12 @@ func _viaduct() -> void:
 		Models.box(city, Vector3(0.8, 6.6, 9.0), Vector3(231.6 * sx, top + 3.1, zc), hole, Vector3.ZERO, false)
 		Models.box(city, Vector3(1.2, 0.8, 10.4), Vector3(231.5 * sx, top + 6.8, zc), cm, Vector3.ZERO, false)
 		# hala, w którą wjeżdża kolejka: na wschodzie wyższa część huty, na zachodzie zajezdnia
-		Models.box(city, Vector3(40.2, 24.0, 40.0), Vector3(252.0 * sx, 11.5, zc), hall, Vector3.ZERO, false)
+		var tw := Models.box(city, Vector3(40.2, 24.0, 40.0), Vector3(252.0 * sx, 11.5, zc), fac["cegla"], Vector3.ZERO, false)
+		tw.set_instance_shader_parameter("b_origin", Vector3((252.0 * sx - 20.1) * SC, -0.5, (zc - 20.0) * SC))
+		tw.set_instance_shader_parameter("b_wall", Color(0.5, 0.44, 0.4))
+		tw.set_instance_shader_parameter("b_accent", Color(0.4, 0.4, 0.4))
+		tw.set_instance_shader_parameter("b_seed", 5.1 + sx)
+		tw.set_instance_shader_parameter("b_dead", 0.8)
 		Models.box(city, Vector3(28.0, 5.0, 28.0), Vector3(254.0 * sx, 25.5, zc), hall, Vector3.ZERO, false)
 	var tags := ["DBS", "SKERO", "STAL", "HWK", "86", "ELO", "KSH", "OLD TOWN", "BLOKI"]
 	var x := -204.0
@@ -3216,7 +3221,25 @@ func _backdrop() -> void:
 	for e in [[262.0, -60.0, 3.0, 60.0], [280.0, 40.0, 2.4, 48.0], [250.0, 120.0, 2.0, 40.0]]:
 		var c := Models.cyl(city, e[2] * 0.6, e[2], e[3], Vector3(e[0], e[3] * 0.5, e[1]), Models.mat("5a4f4a", 0.9), Vector3.ZERO, 10)
 		c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	Models.box(city, Vector3(60.0, 18.0, 120.0), Vector3(262.0, 9.0, 10.0), Models.mat("3a3836", 0.95), Vector3.ZERO, false)
+	# hala huty za wschodnim murem: ceglana, z wybitymi oknami i pilastym dachem (zamiast gładkiego, ciemnego klocka)
+	var hall_mi := Models.box(city, Vector3(60.0, 18.0, 120.0), Vector3(262.0, 9.0, 10.0), fac["cegla"], Vector3.ZERO, false)
+	hall_mi.set_instance_shader_parameter("b_origin", Vector3(232.0 * SC, 0.0, -50.0 * SC))
+	hall_mi.set_instance_shader_parameter("b_wall", Color(0.52, 0.45, 0.41))
+	hall_mi.set_instance_shader_parameter("b_accent", Color(0.4, 0.4, 0.4))
+	hall_mi.set_instance_shader_parameter("b_seed", 3.3)
+	hall_mi.set_instance_shader_parameter("b_dead", 0.85)
+	var shed_m := Models.mat("2e2f33", 0.8, 0.3)
+	for k in range(8):
+		var pm := PrismMesh.new()
+		pm.size = Vector3(15.0, 3.6, 60.0)
+		pm.left_to_right = 0.12
+		var pr := MeshInstance3D.new()
+		pr.mesh = pm
+		pr.material_override = shed_m
+		pr.position = Vector3(262.0, 19.8, -42.5 + k * 15.0)
+		pr.rotation.y = PI / 2.0
+		pr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		city.add_child(pr)
 	# granice mapy: kolizja, wysoki mur i gęsta zabudowa tuż za nim — żadnych pustych pól po horyzont
 	add_col(-214.0, -209.0, -175.0, 175.0, 6.0)
 	add_col(209.0, 214.0, -175.0, 175.0, 6.0)
@@ -3290,6 +3313,9 @@ func _backdrop() -> void:
 			mi3.visible = pz + d2 < -46.0 or pz > -2.0
 			# tak samo rura tunelu na zachodnim końcu Hutniczej
 			if xx2 < 0.0 and pz < 33.0 and pz + d2 > 7.0:
+				mi3.visible = false
+			# przed halą huty nie stoją bloki mieszkalne — za bramą ma być widać zakład
+			if xx2 > 0.0 and pz < 72.0 and pz + d2 > -52.0:
 				mi3.visible = false
 			mi3.set_instance_shader_parameter("b_origin", Vector3((bx3 - 8.0) * SC, hd(xx2 * 0.9, pz), pz * SC))
 			mi3.set_instance_shader_parameter("b_wall", Color(0.74, 0.72, 0.68) * rng.randf_range(0.85, 1.1))
