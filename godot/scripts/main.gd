@@ -485,16 +485,14 @@ func _bed_call() -> void:
 	var R: Dictionary = D.ROOMS.safe
 	var bx: float = float(R.cx) - float(R.w) * 0.5 + 0.62
 	var bz: float = -float(R.d) * 0.5 + 1.1
-	var head := Vector3(bx, 0.72, bz - 0.72)
+	var head := bed_head()
 	G.busy = true
 	var t := 0.0
 	# rozmowa jeszcze się nie zaczęła w tej samej klatce — czekamy, aż telefon zadzwoni
 	await get_tree().process_frame
 	while ui.call_active():
 		t += get_process_delta_time()
-		var breathe := sin(t * 1.5) * 0.012
-		var look := head + Vector3(0.18 + sin(t * 0.31) * 0.1, 1.5, 1.25 + cos(t * 0.23) * 0.08)
-		cine_cam(head + Vector3(0, breathe, 0), look, 66.0)
+		bed_cam(t)
 		await get_tree().process_frame
 	# koniec rozmowy: siada na brzegu łóżka i wstaje
 	var sit := Vector3(bx + 0.55, 1.05, bz + 0.1)
@@ -508,6 +506,19 @@ func _bed_call() -> void:
 	teleport("safe", Vector3(stand.x, 0.0, stand.z), -PI / 2.0)
 	cine_off()
 	G.busy = false
+
+
+## gdzie leży głowa Kuby na łóżku w kawalerce
+func bed_head() -> Vector3:
+	var R: Dictionary = D.ROOMS.safe
+	return Vector3(float(R.cx) - float(R.w) * 0.5 + 0.62, 0.72, -float(R.d) * 0.5 + 1.1 - 0.72)
+
+
+## kadr „leżę i gadam przez telefon”: wzrok w sufit nad nogami łóżka, lekki oddech i błądzenie oczu
+func bed_cam(t: float) -> void:
+	var head := bed_head()
+	var look := head + Vector3(0.18 + sin(t * 0.31) * 0.1, 1.5, 1.25 + cos(t * 0.23) * 0.08)
+	cine_cam(head + Vector3(0, sin(t * 1.5) * 0.012, 0), look, 66.0)
 
 
 func _intro() -> void:
@@ -693,7 +704,7 @@ func tour_shots() -> Array:
 func _tour_marker(at: Vector3) -> Node3D:
 	var g := Node3D.new()
 	add_child(g)
-	g.global_position = at + Vector3(0, 3.6, 0)
+	g.global_position = at + Vector3(0, 4.4, 0)
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.albedo_color = Color(1.0, 0.82, 0.3)
@@ -737,12 +748,17 @@ func city_tour() -> void:
 		var t := 0.0
 		var dur := 8.5
 		var was_down := true
+		var title_on := true
 		while t < dur:
 			var dt := get_process_delta_time()
 			t += dt
+			# tytuł miejsca tylko na początku ujęcia — potem ma być widać samo miejsce i opis na dole
+			if title_on and t > 2.3:
+				title_on = false
+				ui.cut_title("")
 			var e := smoothstep(0.0, 1.0, t / dur)
 			cine_cam((sh.from as Vector3).lerp(sh.to, e), (sh.at as Vector3) + Vector3(0, 1.5, 0), lerpf(60.0, 48.0, e))
-			mark.position.y = float(sh.at.y) + 3.6 + sin(t * 3.2) * 0.22
+			mark.position.y = float(sh.at.y) + 4.4 + sin(t * 3.2) * 0.22
 			mark.rotation.y = t * 1.6
 			var down := Input.is_key_pressed(KEY_SPACE)
 			held = held + dt if down else 0.0
@@ -2946,6 +2962,24 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "org")
 		"shop": ui.open_shop()
 		"wagi": ui.open_scales()
+		"lozko":
+			# zrzut: kadr z pierwszej rozmowy telefonicznej (Kuba leży w łóżku)
+			bed_cam(1.0)
+		"tour":
+			G.S.flags["got_first"] = true
+			G.S.flags["tour_out"] = false
+			teleport("out", Vector3(float(D.DOORS.safe.x), 0.0, float(D.DOORS.safe.z) + 1.2), PI)
+			city_tour()
+		"paczki":
+			# zrzut: ekwipunek z paczkami różnej wagi (woreczki, kostka, cegła)
+			G.S.upg["plecak2"] = true
+			G.add_pack(G.S.inv, "dym", 100, 6)
+			G.add_pack(G.S.inv, "dym", 100, 2, 5)
+			G.add_pack(G.S.inv, "szron", 100, 1, 13)
+			G.add_pack(G.S.stash.safe, "dym", 100, 1, 250)
+			G.add_pack(G.S.stash.safe, "snieg", 90, 1, 500)
+			G.add_bulk(G.S.stash.safe, "dym", 100, 40.0)
+			ui.open_inventory("safe")
 		"zlecenie":
 			G.job_new("utarg")
 			G.S.stats.earned = float(G.S.stats.earned) + 60.0

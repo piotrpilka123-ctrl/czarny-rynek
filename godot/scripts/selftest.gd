@@ -687,7 +687,7 @@ func run() -> void:
 		if String(te.kind) == "pack":
 			kinds_t[int(te.g)] = te
 	ok(G.packed_total(tmp) == 15 + 250 + 500 + 2 and G.packed_bags(tmp) == 7 and kinds_t.size() == 4, "paczki: 3×5 g, kostka 250 g, cegła 500 g i 2×1 g to %d g w %d sztukach" % [G.packed_total(tmp), G.packed_bags(tmp)])
-	ok(String(kinds_t[5].name).contains("woreczek 5 g") and String(kinds_t[250].name).contains("kostka 250 g") and String(kinds_t[500].name).contains("cegła 500 g") and String(kinds_t[250].icon) == "kostka_dym" and String(kinds_t[500].icon) == "brick_dym", "w ekwipunku każda paczka ma swoją wagę i nazwę: woreczek, kostka od 200 g, cegła od 500 g")
+	ok(String(kinds_t[5].name).contains("5 g") and String(kinds_t[5].sub) == "woreczek" and String(kinds_t[250].sub) == "kostka" and String(kinds_t[500].sub) == "cegła" and String(kinds_t[500].name).contains("500 g") and String(kinds_t[250].icon) == "kostka_dym" and String(kinds_t[500].icon) == "brick_dym", "w ekwipunku każda paczka ma swoją wagę i nazwę: woreczek, kostka od 200 g, cegła od 500 g")
 	ok(absf(float(kinds_t[5].size) - 15.0) < 0.01 and absf(float(kinds_t[5].weight) - 15.0 * D.W_PACK) < 0.01 and G.take_pack(tmp, "dym", 75, 2, 5) == 2 and G.packed_total(tmp) == 5 + 250 + 500 + 2, "trzy woreczki po 5 g zajmują 15 miejsc; zabranie dwóch zostawia jeden")
 	var cb1: Dictionary = G.bag_combo([{"g": 5, "n": 1}, {"g": 2, "n": 2}, {"g": 1, "n": 3}], 8)
 	var cb2: Dictionary = G.bag_combo([{"g": 5, "n": 2}], 8)

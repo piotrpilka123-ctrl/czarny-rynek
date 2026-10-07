@@ -623,8 +623,8 @@ func entries(st: Dictionary) -> Array:
 				# paczka: jeden woreczek o wadze, jaką się zapakowało (woreczek do 199 g, kostka od 200 g, cegła od 500 g)
 				var pg := int(s.g)
 				var cnt := int(s.n)
-				out.append({"kind": kind, "p": s.p, "pur": int(s.pur), "g": pg, "id": "", "n": float(cnt), "name": "%s — %s %d g" % [pd.name, pack_kind(pg), pg],
-					"sub": "gotowe do sprzedaży" if pg < D.PACK_BLOCK else "na hurt", "icon": pack_icon(String(s.p), pg), "tier": tier(s.pur),
+				out.append({"kind": kind, "p": s.p, "pur": int(s.pur), "g": pg, "id": "", "n": float(cnt), "name": "%s %d g" % [pd.name, pg],
+					"sub": pack_kind(pg), "icon": pack_icon(String(s.p), pg), "tier": tier(s.pur),
 					"qty": ("%d szt." % cnt) if cnt != 1 else "1 szt.", "usize": D.SIZE_PACK * pg, "uw": D.W_PACK * pg, "step": 1.0,
 					"unit": "szt.", "size": half_up(float(cnt * pg) * D.SIZE_PACK), "weight": float(cnt * pg) * D.W_PACK,
 					"desc": "Towar zapakowany w %s po %d g (razem %d g). Klientowi podajesz całe paczki — muszą się złożyć na tyle gramów, ile zamówił." % [pack_kind(pg), pg, cnt * pg]})
