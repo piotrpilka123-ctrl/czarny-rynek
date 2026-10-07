@@ -3712,10 +3712,10 @@ func _build_story() -> void:
 			"done": func(): return flag("read_wiktor") or flag("got_first"), "on_done": _on_phone_done},
 		{"id": "drop1", "text": func(): return "Przy drzwiach kawalerki leży paczka od Wiktora. Otwórz ją [E] i przeciągnij towar do swoich kieszeni.",
 			"done": func(): return flag("got_first"), "marker": _starter_marker},
-		{"id": "pack1", "text": func(): return "Wróć do kawalerki i zaporcjuj towar na wadze. (%d/3 g)" % mini(3, int(S.stats.packed)),
-			"done": func(): return int(S.stats.packed) >= 3 or _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
-		{"id": "sell1", "text": func(): return "Odpisz Dominikowi (Wiadomości) i dostarcz mu towar. (%d/2 g)" % mini(2, int(S.stats.sold)),
-			"done": func(): return int(S.stats.sold) >= 2 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
+		{"id": "pack1", "text": func(): return "Zapakuj cały towar od Wiktora: podejdź do wagi na biurku [E], wybierz, ile gramów idzie do jednego woreczka, i pakuj. Klienci biorą po kilka gramów — z małych paczek (1–2 g) złożysz każde zamówienie. Luzem zostało: %d g." % loose_left(),
+			"done": func(): return _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
+		{"id": "sell1", "text": func(): return ("Odpisz Dominikowi: telefon [%s] → Wiadomości → Zgoda. Dopiero potem wyjdź z mieszkania." % kn("phone")) if _first_order_new() else "Zanieś Dominikowi towar — czeka w umówionym miejscu. Trasę włącza [%s]." % kn("nav"),
+			"done": func(): return int(S.stats.sold) >= 1 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
 		{"id": "repay1", "text": func(): return "Zanieś pierwsze pieniądze do skrzynki Wiktora — to stara skrzynka gazowa na tyłach pawilonu. Otwórz ją [E] i przeciągnij do niej gotówkę. (%s / %s)" % [money(minf(float(D.BOX_FIRST), float(S.stats.get("box_paid", 0.0)))), money(D.BOX_FIRST)],
 			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST), "marker": _box_marker, "on_done": _on_repay_done},
 		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów towar u Wiktora: telefon → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem.",
@@ -3747,6 +3747,62 @@ func _any_job() -> bool:
 		if S.hide.has(room) and not Prod.hide(room).jobs.is_empty():
 			return true
 	return false
+
+
+## ile gramów towaru luzem leży jeszcze w kieszeniach i w szafie kawalerki
+func loose_left() -> int:
+	var n := 0.0
+	for src in [S.inv, S.stash.safe]:
+		for p in src.bulk:
+			for k in src.bulk[p]:
+				n += float(src.bulk[p][k])
+	return int(n)
+
+
+## samouczek: Dominik napisał, a gracz jeszcze mu nie odpisał
+func _first_order_new() -> bool:
+	for o in S.orders:
+		if String(o.status) == "new":
+			return true
+	return false
+
+
+## Dlaczego nie wolno jeszcze wyjść z mieszkania ("" = wolno). Na samym początku gracz ma najpierw sam zapakować
+## cały towar od Wiktora i umówić się z pierwszym klientem — dopiero potem wychodzi w miasto.
+func exit_block(room: String) -> String:
+	if room != "safe" or prologue != null or not flag("got_first") or flag("tour_out") or int(S.stats.sold) > 0:
+		return ""
+	if loose_left() > 0:
+		if bags_at("safe") <= 0:
+			return ""
+		return "Najpierw zapakuj cały towar od Wiktora — waga stoi na biurku (zostało %d g luzem)." % loose_left()
+	if _first_order_new():
+		return "Dominik czeka na odpowiedź. Odpisz mu w telefonie [%s], zanim wyjdziesz." % kn("phone")
+	return ""
+
+
+## ile gramów zamówi pierwszy klient: tyle, żeby dało się to złożyć z paczek, które gracz właśnie zrobił
+func first_order_grams(p: String) -> int:
+	var sizes := {}
+	for src in [S.inv, S.stash.safe]:
+		for sx in stacks(src, "pack"):
+			if String(sx.p) == p:
+				sizes[int(sx.g)] = int(sizes.get(int(sx.g), 0)) + int(sx.n)
+	var arr := []
+	for g in sizes:
+		arr.append({"g": int(g), "n": int(sizes[g])})
+	arr.sort_custom(func(a, b): return int(a.g) > int(b.g))
+	if arr.is_empty():
+		return 2
+	var best := 0
+	for w in bag_sums(arr, 6):
+		# najchętniej 3 g, potem 2, 4…
+		if best == 0 or absf(float(w) - 3.0) < absf(float(best) - 3.0):
+			best = int(w)
+	if best > 0:
+		return best
+	# same duże paczki: bierze najmniejszą w całości
+	return int(arr.back().g)
 
 
 ## samouczek: pierwsza paczka odebrana, a towaru luzem już nie ma (zaporcjowany, rozsypany albo stracony)
@@ -3836,7 +3892,7 @@ func _on_pack_done() -> void:
 			if n > best:
 				best = n
 				have = String(p)
-	make_order(D.CLIENTS[0], 2, have)
+	make_order(D.CLIENTS[0], first_order_grams(have), have)
 
 
 func _on_repay_done() -> void:

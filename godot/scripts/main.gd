@@ -477,7 +477,41 @@ func prologue_act(what: String) -> void:
 		G.prologue.act(what)
 
 
+## Pierwszy telefon od Wiktora zastaje Kubę w łóżku: przez całą rozmowę leży (kamera patrzy w sufit, lekko „oddycha”),
+## dopiero po rozłączeniu siada i wstaje. Do tego czasu nie da się chodzić.
+func _bed_call() -> void:
+	if G.test_mode or player.loc != "safe":
+		return
+	var R: Dictionary = D.ROOMS.safe
+	var bx: float = float(R.cx) - float(R.w) * 0.5 + 0.62
+	var bz: float = -float(R.d) * 0.5 + 1.1
+	var head := Vector3(bx, 0.72, bz - 0.72)
+	G.busy = true
+	var t := 0.0
+	# rozmowa jeszcze się nie zaczęła w tej samej klatce — czekamy, aż telefon zadzwoni
+	await get_tree().process_frame
+	while ui.call_active():
+		t += get_process_delta_time()
+		var breathe := sin(t * 1.5) * 0.012
+		var look := head + Vector3(0.18 + sin(t * 0.31) * 0.1, 1.5, 1.25 + cos(t * 0.23) * 0.08)
+		cine_cam(head + Vector3(0, breathe, 0), look, 66.0)
+		await get_tree().process_frame
+	# koniec rozmowy: siada na brzegu łóżka i wstaje
+	var sit := Vector3(bx + 0.55, 1.05, bz + 0.1)
+	var stand := Vector3(bx + 0.95, 1.6, bz + 0.25)
+	var tw := create_tween()
+	tw.tween_method(func(k: float):
+		var e := smoothstep(0.0, 1.0, k)
+		var pos := head.lerp(sit, minf(1.0, e * 1.7)).lerp(stand, clampf(e * 1.7 - 0.7, 0.0, 1.0))
+		cine_cam(pos, pos + Vector3(1.0, -0.12 + 0.6 * (1.0 - e), 0.35 * (1.0 - e)), 66.0), 0.0, 1.0, 1.8)
+	await tw.finished
+	teleport("safe", Vector3(stand.x, 0.0, stand.z), -PI / 2.0)
+	cine_off()
+	G.busy = false
+
+
 func _intro() -> void:
+	_bed_call()
 	ui.call_start("Nieznany numer", [
 		"Kuba. Żyjesz. To dobrze. Tu Wiktor.",
 		"Wiem, co się stało w hucie i za garażami. Ktoś nas sprzedał — i to nie byłeś ty. Partia przepadła, trudno. Żalu do ciebie nie mam.",
@@ -595,6 +629,11 @@ func exit_room() -> void:
 	if G.prologue != null and not G.prologue.can_exit():
 		G.notify("Najpierw spakuj partię — torba leży przy stole.", "warn")
 		return
+	var why_not: String = G.exit_block(id)
+	if why_not != "":
+		G.notify(why_not, "warn")
+		Sfx.play("error")
+		return
 	G.busy = true
 	Sfx.play("door_close")
 	await ui.fade(true)
@@ -607,6 +646,122 @@ func exit_room() -> void:
 		G.prologue.on_outside()
 	await ui.fade(false)
 	G.busy = false
+	# pierwsze wyjście w miasto: bohater staje, kamera pokazuje miejsca, które już teraz się liczą
+	if id == "safe" and G.prologue == null and G.flag("got_first") and not G.flag("tour_out") and not G.test_mode:
+		city_tour()
+
+
+## Miejsca pokazywane przy pierwszym wyjściu z bloku: [{title, sub, text, at, from, to}] w metrach świata.
+## Kamera zaczyna dalej i wyżej, a kończy bliżej wejścia — spokojny najazd z lekkim łukiem.
+func tour_shots() -> Array:
+	var out := []
+	var add := func(title: String, sub: String, text: String, x: float, z: float, nx: float, nz: float) -> void:
+		var at := Vector3(x, world.height(x, z), z)
+		var n := Vector3(nx, 0.0, nz).normalized()
+		var r := Vector3(n.z, 0.0, -n.x)
+		var from := at + n * 10.0 + r * 4.0 + Vector3(0, 4.6, 0)
+		var to := at + n * 5.5 - r * 1.5 + Vector3(0, 2.3, 0)
+		# kamera nie może wejść w ścianę po drugiej stronie ulicy: w razie czego przysuwa się do celu
+		for i in range(8):
+			if world.in_building(from.x / D.SC, from.z / D.SC, 0.6):
+				from = at + (from - at) * 0.85
+				from.y = at.y + 4.6
+			if world.in_building(to.x / D.SC, to.z / D.SC, 0.6):
+				to = at + (to - at) * 0.85
+				to.y = at.y + 2.3
+		if from.distance_to(at) < to.distance_to(at) + 0.5:
+			from = at + (to - at) * 1.5 + Vector3(0, 1.6, 0)
+		out.append({"title": title, "sub": sub, "text": text, "at": at, "from": from, "to": to})
+	var sh: Dictionary = D.DOORS.shop
+	add.call("SKLEP U STASIA", "woreczki • dodatki do mieszanek", "Wujek Staś. Tu kupisz woreczki, kiedy się skończą, a także majeranek i cukier puder, jeśli zechcesz robić mieszanki. Później — doniczki, nasiona i nawóz.", float(sh.x), float(sh.z), 0.0, float(sh.dz))
+	var cl: Dictionary = D.DOORS.ciuchy
+	add.call("TANIA ODZIEŻ", "ubranie zmienia statystyki", "Każda rzecz coś daje: jedne przyspieszają bieg, inne dodają kieszeni albo mniej rzucają się w oczy patrolom. W kominiarce nikt Cię nie opisze — ale policja zauważy od razu.", float(cl.x), float(cl.z), 0.0, float(cl.dz))
+	add.call("SKRZYNKA WIKTORA", "zeszyt • wkład • awanse", "Stara skrzynka gazowa na tyłach pawilonu. Tu zanosisz pieniądze: najpierw schodzi zeszyt za towar, reszta to Twój wkład — a z wkładu biorą się awanse u Wiktora.", float(D.WIKTOR_BOX.x), float(D.WIKTOR_BOX.z), 0.0, -1.0)
+	add.call("LOMBARD", "skup znalezisk • lepsze wagi", "Zenek skupuje to, co znajdziesz w śmietnikach, i sprzedaje dokładniejsze wagi: pakujesz na nich szybciej i nic się nie rozsypuje.", float(D.PAWN_AT.x), float(D.PAWN_AT.z), 0.0, 1.0)
+	var o = G.next_meeting()
+	if o != null:
+		var t := _order_target(o)
+		var d := Vector2(player.global_position.x - float(t.x), player.global_position.z - float(t.z))
+		if d.length() < 1.0:
+			d = Vector2(0, 1)
+		d = d.normalized()
+		add.call("MIEJSCE SPOTKANIA", String(G.spot_def(o.spot).name), "Tu będzie czekał %s. Klient zjawia się godzinę po potwierdzeniu i poczeka kilka godzin — ale kto zdąży w godzinę, zastaje go w dobrym humorze." % String(G.cust_def(o.cust).name), float(t.x), float(t.z), d.x, d.y)
+	return out
+
+
+## strzałka nad pokazywanym miejscem: świecący stożek, który lekko się kołysze
+func _tour_marker(at: Vector3) -> Node3D:
+	var g := Node3D.new()
+	add_child(g)
+	g.global_position = at + Vector3(0, 3.6, 0)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(1.0, 0.82, 0.3)
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.34
+	cone.bottom_radius = 0.0
+	cone.height = 0.7
+	cone.radial_segments = 4
+	var mi := MeshInstance3D.new()
+	mi.mesh = cone
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	g.add_child(mi)
+	var li := OmniLight3D.new()
+	li.light_color = Color(1.0, 0.82, 0.4)
+	li.light_energy = 1.6
+	li.omni_range = 7.0
+	li.position = Vector3(0, -1.2, 0)
+	g.add_child(li)
+	return g
+
+
+## Pierwsze wyjście z bloku: bohater zatrzymuje się, a kamera odwiedza po kolei najważniejsze miejsca i je opisuje.
+## Spacja przewija do następnego miejsca, przytrzymana — kończy pokaz. Potem miasto jest otwarte.
+func city_tour() -> void:
+	if G.flag("tour_out") or G.prologue != null:
+		return
+	G.S.flags["tour_out"] = true
+	G.busy = true
+	ui.close_all()
+	ui.cut_begin()
+	var shots := tour_shots()
+	var held := 0.0
+	var quit := false
+	for sh in shots:
+		if quit:
+			break
+		ui.cut_title(String(sh.title), String(sh.sub))
+		ui.cut_line(String(sh.text))
+		var mark := _tour_marker(sh.at)
+		var t := 0.0
+		var dur := 8.5
+		var was_down := true
+		while t < dur:
+			var dt := get_process_delta_time()
+			t += dt
+			var e := smoothstep(0.0, 1.0, t / dur)
+			cine_cam((sh.from as Vector3).lerp(sh.to, e), (sh.at as Vector3) + Vector3(0, 1.5, 0), lerpf(60.0, 48.0, e))
+			mark.position.y = float(sh.at.y) + 3.6 + sin(t * 3.2) * 0.22
+			mark.rotation.y = t * 1.6
+			var down := Input.is_key_pressed(KEY_SPACE)
+			held = held + dt if down else 0.0
+			if held > 1.0:
+				quit = true
+				break
+			if down and not was_down and t > 0.5:
+				break
+			was_down = down
+			await get_tree().process_frame
+		mark.queue_free()
+		ui.cut_title("")
+	ui.cut_line("")
+	await get_tree().create_timer(0.35).timeout
+	cine_off()
+	ui.cut_end()
+	G.busy = false
+	G.notify("Miasto jest Twoje. [%s] włącza trasę do celu, [%s] otwiera mapę." % [G.kn("nav"), G.kn("map")], "good")
+	nav_force = true
 
 
 # ================================================================ klub, szpital, komenda

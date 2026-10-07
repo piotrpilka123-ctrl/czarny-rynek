@@ -8,6 +8,21 @@ static func run(T) -> void:
 	G.S = G.new_state()
 	var S: Dictionary = G.S
 
+	# --- pierwsze wyjście z bloku: przelot kamery po miejscach, które już się liczą (sklep, odzież, skrzynka, lombard)
+	var shots: Array = G.main.tour_shots()
+	var titles := []
+	var cam_ok := true
+	for sh0 in shots:
+		titles.append(String(sh0.title))
+		for cp in [sh0.from, sh0.to]:
+			if G.world.in_building(float(cp.x) / D.SC, float(cp.z) / D.SC, 0.3) or float(cp.y) < G.world.height(float(cp.x), float(cp.z)) + 1.0:
+				cam_ok = false
+		if String(sh0.text).length() < 40 or (sh0.from as Vector3).distance_to(sh0.at) < (sh0.to as Vector3).distance_to(sh0.at):
+			cam_ok = false
+	T.ok(shots.size() >= 4 and titles.has("SKLEP U STASIA") and titles.has("TANIA ODZIEŻ") and titles.has("SKRZYNKA WIKTORA") and titles.has("LOMBARD"), "przelot po mieście pokazuje sklep Stasia, odzież, skrzynkę Wiktora i lombard (%d ujęć)" % shots.size())
+	T.ok(cam_ok, "kamera przelotu nie wchodzi w budynki ani pod ziemię i zawsze najeżdża na cel")
+	T.ok(String(shots[0].text).contains("woreczki") and String(shots[0].text).contains("mieszanki") and String(shots[1].text).contains("kieszeni"), "opisy mówią, po co tam iść: woreczki i mieszanki u Stasia, statystyki ubrań")
+
 	# --- boisko przed blokiem: równa płyta, dwa kosze, piłka pod koszem, żadnych drzew na boisku ani przy chodniku
 	var CW = G.world
 	var c0x: float = CW.COURT[0]

@@ -277,8 +277,21 @@ func run() -> void:
 	G.pack("safe", "dym", 100, 2)
 	U.close_all()
 	G.story_tick()
+	ok(G.cur_step().id == "pack1" and S.orders.is_empty() and G.loose_left() > 0 and G.exit_block("safe").contains("zapakuj"), "dopóki część towaru leży luzem (%d g), samouczek czeka, a z mieszkania nie da się wyjść" % G.loose_left())
+	# reszta idzie w paczki: amfetamina w jedną paczkę 5 g, marihuana w woreczki po 1 g
+	var bags_b: int = G.bags_at("safe")
+	# na czas tej paczki waga bez strat, żeby rozsypany gram nie zmieniał rachunku
+	S["scale"] = 2
+	var pbag: Dictionary = G.pack_bag("safe", "szron", 100, 5)
+	S["scale"] = 0
+	ok(pbag.ok and G.bags_at("safe") == bags_b - 1 and G.packed_total(S.stash.safe, "szron") + G.packed_total(S.inv, "szron") == 5, "pięć gramów amfetaminy w jednej paczce: jeden woreczek mniej")
+	ok(not G.pack_bag("safe", "szron", 100, 3).ok, "na paczkę 3 g nie ma już towaru")
+	pack_all("safe")
 	G.story_tick()
-	ok(S.cust.dominik.unlocked and S.orders.size() == 1, "Dominik pisze pierwsze zamówienie")
+	G.story_tick()
+	ok(G.loose_left() == 0 and S.cust.dominik.unlocked and S.orders.size() == 1, "po zapakowaniu całego towaru Dominik pisze pierwsze zamówienie")
+	var fo: Dictionary = S.orders[0]
+	ok(int(fo.grams) >= 1 and int(fo.grams) <= 6 and G.exit_block("safe").contains("Dominik"), "prosi o tyle, ile da się złożyć z paczek (%d g); zanim mu nie odpiszesz, drzwi dalej są zamknięte" % int(fo.grams))
 
 	# --- mini-gra z wagą
 	var hits_got := [-1]
@@ -347,7 +360,7 @@ func run() -> void:
 		ok(U.deal.sold, "przytrzymanie do końca = towar podany, pieniądze w kieszeni")
 		await frames(3)
 	ok(S.cash > cash0 and int(S.stats.deals) == 1, "sprzedaż po umówionej cenie (+%d zł)" % int(S.cash - cash0))
-	ok(int(S.stats.sold) == 2, "pierwsze zamówienie Dominika to zawsze 2 g")
+	ok(int(S.stats.sold) == 3, "pierwsze zamówienie Dominika: 3 g złożone z woreczków po 1 g (sprzedane %d g)" % int(S.stats.sold))
 	U.close_all()
 	await frames(5)
 
@@ -962,6 +975,9 @@ func _sim_one(days: int, run_i: int) -> String:
 				G.pickup_drop(d)
 		# porcjowanie w domu
 		if not G.bench_bulk("safe").is_empty():
+			# woreczki: bot dokupuje paczkę u Stasia, gdy zapas spada (bez nich nic nie zapakuje)
+			if G.bags_at("safe") < 25:
+				G.shop_buy("woreczki")
 			pack_all("safe")
 		_stash_all()
 		# SMS-y

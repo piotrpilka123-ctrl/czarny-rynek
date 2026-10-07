@@ -277,6 +277,11 @@ func _first_time() -> void:
 		if shown:
 			drag_demo(true)
 	elif has_stash():
+		if G.item("notes") > 0 and room == "safe":
+			shown = G.tip("skrytka_notes", "Schowaj notes", "Po lewej masz kieszenie, po prawej szafę. Złap NOTES Z NUMERAMI lewym przyciskiem myszy, przeciągnij na prawą stronę i puść. Chodzi o notes, nie o gotówkę — pieniądze zostaw przy sobie, przydadzą się na mieście.")
+			if shown:
+				drag_demo(true)
+				return
 		shown = G.tip("skrytka_eq", "Przenoszenie rzeczy", "Po lewej masz plecak, po prawej skrytkę. Złap rzecz lewym przyciskiem myszy, przeciągnij na drugą stronę i puść — przy większej ilości wybierasz, ile przenosisz. Ubranie przeciągasz na pole przy postaci. Towar w skrytce jest bezpieczny, przy sobie — nie.")
 		if shown:
 			drag_demo(true)

@@ -78,7 +78,8 @@ static func run(T) -> void:
 	var info: Dictionary = P.plant_info(room, 0)
 	T.ok(not info.is_empty() and String(info.notes[0][1]) == "bad" and bool(info.fert) and bool(info.trim), "karta „Sprawdź” pokazuje stan krzaka i ostrzega o suszy")
 	var dry_fc: Dictionary = P.plant_forecast(room, 0)
-	T.ok(P.plant_water(room, 0) and float(j.water) == 100.0, "podlanie napełnia do pełna")
+	# podlanie przesuwa zegar o 2 minuty — jeśli akurat minie pełne 10 minut, krzak zdąży wypić odrobinę
+	T.ok(P.plant_water(room, 0) and float(j.water) >= 98.5, "podlanie napełnia do pełna (%d%%)" % int(j.water))
 	# 8 godzin, nie 9: postęp po suszy stoi na 69–70% i przy dziewięciu krzak potrafił dojrzeć co do minuty
 	_run(P, 8.0 * 60.0)
 	T.ok(float(j.prog) > stuck + 0.2, "po podlaniu znowu rośnie")
