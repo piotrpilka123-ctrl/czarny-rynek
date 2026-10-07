@@ -3253,7 +3253,7 @@ func _build_story() -> void:
 			"done": func(): return not S.get("outfits", {}).is_empty(), "marker": func(): return {"loc": "out", "x": D.DOORS.ciuchy.x, "z": D.DOORS.ciuchy.z}},
 		{"ch": "Rozdział 3: Kryjówka", "id": "garaz", "text": func(): return "Kup Garaż nr 14 (%s, poziom %d) — pierwszą własną kryjówkę." % [money(prop_def("garaz").price), int(prop_def("garaz").lvl)],
 			"done": func(): return owns("garaz"), "marker": _garage_marker},
-		{"id": "meble", "text": func(): return "Urządź garaż: kup w hurtowni budowlanej przy Hutniczej stół roboczy i regał, a potem w garażu naciśnij [B] i je ustaw.",
+		{"id": "meble", "text": func(): return "Urządź garaż: kup w hurtowni budowlanej przy Hutniczej (otwarta %d:00–%d:00) stół roboczy i regał, a potem w garażu naciśnij [B] i je ustaw." % [int(D.SUPPLY_OPEN[0]), int(D.SUPPLY_OPEN[1])],
 			"done": func(): return _has_furn("garage", "pack") and _has_furn("garage", "stash"), "marker": _furnish_marker},
 		{"id": "uprawa1", "text": func(): return "Czas znów produkować. Kup u Stasia doniczki i nasiona, postaw doniczki w kryjówce [B] (najlepiej pod lampą LED) i posadź pierwszy krzak — celujesz w doniczkę i wybierasz czynność.",
 			"done": func(): return _any_job() or Prod.plant_count("garage") + Prod.plant_count("basement") > 0 or int(S.stats.grown) > 0, "marker": _garage_marker},

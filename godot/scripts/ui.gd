@@ -2418,6 +2418,12 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 		cv.draw_rect(Rect2(dp - Vector2(3.5, 3.5), Vector2(7, 7)), dc)
 		if big:
 			cv.draw_string(font, dp + Vector2(-50, -7), {"safe": "Dom", "shop": "Sklep", "garage": "Garaż 14", "basement": "Piwnica"}.get(id, ""), HORIZONTAL_ALIGNMENT_CENTER, 100, 10, Color(0.99, 0.92, 0.6))
+	# sklepy „z okienkiem”: lombard (skup znalezisk, wagi) i hurtownia budowlana (sprzęt, meble)
+	for shop_e in [[D.PAWN_AT, "Lombard"], [D.SUPPLY_AT, "Hurtownia"]]:
+		var shp: Vector2 = tr.call(float(shop_e[0].x), float(shop_e[0].z))
+		cv.draw_rect(Rect2(shp - Vector2(3.5, 3.5), Vector2(7, 7)), K.C_WARN)
+		if big:
+			cv.draw_string(font, shp + Vector2(-50, -7), String(shop_e[1]), HORIZONTAL_ALIGNMENT_CENTER, 100, 10, Color(0.99, 0.92, 0.6))
 	if big:
 		for e in [[-181.0, -1.0, "Cop Corner"], [-26.0, 128.0, "Club Neon"], [70.0, -52.0, "Pawilon"], [-122.0, 104.0, "The Hill"], [74.0, 84.0, "Garage Row"], [190.0, -82.0, "Dead Mill"], [145.0, -110.0, "The Tracks"], [10.0, -110.0, "Steel Blocks"], [-30.0, 0.0, "Old Town"]]:
 			var lp: Vector2 = tr.call(e[0] * D.SC, e[1] * D.SC)
