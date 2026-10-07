@@ -2753,6 +2753,14 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "org")
 		"shop": ui.open_shop()
 		"wagi": ui.open_scales()
+		"paczka3d":
+			# zrzut: paczka od Wiktora na wycieraczce, widziana z góry oczami gracza
+			G.S.flags["wiktor_sms"] = true
+			G.S.flags["got_first"] = false
+			world.refresh_starter()
+			teleport("safe", Vector3(float(D.ROOMS.safe.cx) - 0.04, 0.0, float(D.ROOMS.safe.d) * 0.5 - 1.15), PI)
+			player.pitch = deg_to_rad(-62.0)
+			player.set_crouch(true)
 		"hurtownia":
 			G.S.owned = {"regal": 1}
 			ui.open_supply()
