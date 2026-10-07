@@ -2274,8 +2274,14 @@ func _lower_town() -> void:
 	_place(Props.bus_stop(), 66.2, 9.4, 0.0, 2.0, 0.3, 2.4)
 	rects.pop_back()
 	_sign("HUTNICZA ST. 02", Vector3(62.0, 2.2, 8.75), Color(0.9, 0.9, 0.9), 34, 0.0, 0.006, 6)
-	_place(Models.kiosk(), 52.5, -4.0, PI / 2.0, 1.1, 1.4, 2.4)
-	_sign("KIOSK", Vector3(53.6, 2.7, -4.0), Color(0.95, 0.9, 0.5), 60, PI / 2.0, 0.006, 8)
+	var km := Stations.model("kiosk")
+	if km != null:
+		# (blaszana budka z wystawą, markizą i szyldem zamiast zielonego pudełka)
+		_place(km, 52.5, -4.0, PI / 2.0, 1.3, 1.4, 2.4)
+		Props.set_range(km, 150.0)
+	else:
+		_place(Models.kiosk(), 52.5, -4.0, PI / 2.0, 1.1, 1.4, 2.4)
+		_sign("KIOSK", Vector3(53.6, 2.7, -4.0), Color(0.95, 0.9, 0.5), 60, PI / 2.0, 0.006, 8)
 	_bin(71.8, 10.2, 0.0)       # (stał w środku wiaty, przed ławką)
 	_bench(56.0, -13.0, 0.0)
 	# auta: prawie brak ruchu
