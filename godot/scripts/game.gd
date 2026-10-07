@@ -3147,7 +3147,7 @@ func mix(room: String, p: String, pur: int, g: float, filler_g: int) -> int:
 	var to_inv: float = minf(snappedf((tot + filler_g) * share, 0.5), floorf(inv_room * 2.0) / 2.0)
 	add_bulk(S.inv, p, np, to_inv)
 	add_bulk(S.stash[room], p, np, tot + filler_g - to_inv)
-	notify("Mieszanka: %s → %s, czystość %d%% (%s)." % [grams(tot), grams(tot + filler_g), np, tier_name(np)], "warn" if np < 60 else "good")
+	notify("Mieszanka: %s → %s, czystość %d%%." % [grams(tot), grams(tot + filler_g), np], "warn" if np < 60 else "good")
 	return np
 
 

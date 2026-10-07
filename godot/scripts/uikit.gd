@@ -386,9 +386,9 @@ static func col(text: String, c: Color) -> String:
 	return "[color=%s]%s[/color]" % [hexc(c), text]
 
 
+## opis jakości towaru: bez kolorów i nazw klas — zawsze ten sam szary napis z czystością w procentach
 static func tier_bb(pur) -> String:
-	var t: int = G.tier(pur)
-	return "[color=#%s]%s %d%%[/color]%s" % [D.TIER_COLOR[t], D.TIER_NAMES[t], int(pur), " [color=#c98a3a](mieszanka)[/color]" if G.is_mix(pur) else ""]
+	return "[color=#9aa3b2]czystość %d%%%s[/color]" % [int(pur), " • mieszanka" if G.is_mix(pur) else ""]
 
 
 static func icon_label(ic: String, text: String, size := 14, color := C_TXT, isize := 16.0) -> HBoxContainer:

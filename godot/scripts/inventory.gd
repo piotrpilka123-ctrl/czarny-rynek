@@ -588,8 +588,7 @@ func _is_sel(e: Dictionary, side: String) -> bool:
 
 
 func _ecolor(e: Dictionary) -> Color:
-	if int(e.tier) >= 0:
-		return Color("#" + String(D.TIER_COLOR[int(e.tier)]))
+	# towar nie ma już kolorów jakości: każda pozycja jest szara, a czystość stoi w opisie
 	return Color(0.62, 0.66, 0.74)
 
 
@@ -622,7 +621,7 @@ func _row(e: Dictionary, side: String) -> Control:
 	nv.add_child(nl)
 	var sub := String(e.sub)
 	if int(e.tier) >= 0:
-		sub = "%s %d%%%s  •  %s" % [D.TIER_NAMES[int(e.tier)], int(e.pur), " (mieszanka)" if (String(e.kind) != "item" and G.is_mix(e.pur)) else "", e.sub]
+		sub = "czystość %d%%%s  •  %s" % [int(e.pur), " • mieszanka" if (String(e.kind) != "item" and G.is_mix(e.pur)) else "", e.sub]
 	elif sub == "":
 		sub = "przedmiot"
 	nv.add_child(K.lbl(sub, 11, col if int(e.tier) >= 0 else K.C_DIM))
@@ -883,7 +882,7 @@ func ask_amount(e: Dictionary, from: String, to: String) -> void:
 	hv.add_child(K.head(e.name, 22, K.C_TXT))
 	var sub := String(e.sub)
 	if int(e.tier) >= 0:
-		sub = "%s %d%%  •  %s" % [D.TIER_NAMES[int(e.tier)], int(e.pur), e.sub]
+		sub = "czystość %d%%  •  %s" % [int(e.pur), e.sub]
 	hv.add_child(K.lbl(sub if sub != "" else "przedmiot", 12, col if int(e.tier) >= 0 else K.C_DIM))
 	hd.add_child(hv)
 	var route := K.hbox(6)

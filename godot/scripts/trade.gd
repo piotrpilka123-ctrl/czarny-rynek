@@ -31,7 +31,7 @@ static func _stack_tile(U, s: Dictionary, on: bool, fits: bool) -> Control:
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_child(K.lbl(String(D.PRODUCTS[s.p].name), 13, K.C_TXT if fits else K.C_DIM))
 	var pure: bool = not G.is_mix(s.pur) and int(s.pur) >= 95
-	v.add_child(K.lbl("czysty" if pure else "rozrobiony, %d%%" % int(s.pur), 11, K.C_ACC if pure else K.C_WARN))
+	v.add_child(K.lbl("czystość %d%%%s" % [int(s.pur), "" if pure or not G.is_mix(s.pur) else " • mieszanka"], 11, Color(0.6, 0.64, 0.7)))
 	h.add_child(v)
 	var cnt := K.head("×%d" % int(s.n), 18, K.C_TXT)
 	cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE

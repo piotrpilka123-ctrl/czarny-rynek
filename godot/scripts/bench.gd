@@ -280,7 +280,7 @@ static func _mix_ui(U, rv: VBoxContainer, view, sel: Dictionary) -> void:
 	var upd := func(f: int):
 		var eff := float(f) * (0.8 if G.has_skill("mieszanie") else 1.0)
 		var np: int = G.qmix(float(sel.pur) * have / (have + eff))
-		info.text = "%s: [b]%d g[/b]  →  razem [b]%s[/b], czystość %s\nCena uliczna: %s → %s za gram" % [fname, f, G.grams(have + f), K.tier_bb(np), G.money(G.market_price(sel.p, sel.pur)), G.money(G.market_price(sel.p, np))]
+		info.text = "%s: [b]%d g[/b]  →  razem [b]%s[/b], %s\nCena uliczna: %s → %s za gram" % [fname, f, G.grams(have + f), K.tier_bb(np), G.money(G.market_price(sel.p, sel.pur)), G.money(G.market_price(sel.p, np))]
 	upd.call(int(B.filler))
 	rv.add_child(info)
 	var sl := HSlider.new()
