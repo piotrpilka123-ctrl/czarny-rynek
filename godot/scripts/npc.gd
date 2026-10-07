@@ -37,6 +37,7 @@ func build() -> void:
 	# patrole dochodzą z czasem gry (G.cop_quota) — pierwszego dnia ulice są puste
 	_build_static()
 	_build_outskirts()
+	_build_edges()
 	_build_car()
 	_build_dog()
 
@@ -328,6 +329,22 @@ func _build_outskirts() -> void:
 		"look": COP_LOOK.merged({"seed": 905, "model": D.PEOPLE_COP[0]}), "cop": true,
 		"lines": ["Droga zamknięta. W tunelu trwają prace — zawalił się kanał wentylacyjny.", "Nie wiem, do kiedy. Miesiąc, może dwa. Proszę zawrócić.",
 			"Objazdu nie ma. Kto chce wyjechać z dzielnicy, ten poczeka jak wszyscy.", "Nie kręć się tu. Za barierki wstęp wzbroniony."]})
+
+
+## ludzie na krańcach dzielnicy: kierowca autobusu na pętli i stróż przy bramie huty
+func _build_edges() -> void:
+	var bus: Vector2 = G.world.BUS
+	_static({"x": bus.x + 8.6, "z": bus.y + 3.6, "rot": 2.6, "pose": "arms", "name": "Pan Zenek", "label": "Pan Zenek, kierowca", "hours": [5.0, 23.0],
+		"look": {"model": "m09", "kind": "jacket", "top": "2f3b4a", "bottom": "2a2a2e", "seed": 941, "build": 1.1},
+		"lines": ["Kurs skończony. Następny za czterdzieści minut — o ile ten grat odpali.", "Dwunastka jeździ tylko do pętli. Dalej jest mur i tyle.",
+			"Kiedyś woziłem całą zmianę do huty, trzy autobusy naraz. Teraz trzech emerytów i jeden pijany.", "Na postoju nie zabieram. Przepisy.",
+			"Wieczorem uważaj przy klubie. Raz mi tam szybę wybili, bo nie chciałem czekać."]})
+	var ge: Vector2 = G.world.GATE_E
+	_static({"x": ge.x - 4.3, "z": ge.y + 2.4, "rot": -PI / 2.0, "pose": "arms", "name": "Pan Bogdan", "label": "Pan Bogdan, stróż", "hours": [6.0, 22.0],
+		"look": {"model": "m12", "kind": "jacket", "top": "3d4438", "bottom": "2c2c2a", "seed": 953, "build": 1.0},
+		"lines": ["Brama zamknięta od dziewięćdziesiątego siódmego. Pilnuję złomu, żeby go do końca nie rozkradli.", "Wstęp wzbroniony. Tablicę widzisz?",
+			"Dostawy? Jakie dostawy. Tu od lat nic nie wjechało oprócz komornika.", "W nocy słychać, jak coś stuka w halach. Wiatr. Chyba.",
+			"Jak szukasz roboty, to nie tutaj. Tu już tylko ja i szczury."]})
 
 
 ## klub Neon od środka: barman, DJ i imprezowicze na parkiecie, którzy kupują od ręki

@@ -348,6 +348,7 @@ func _paint() -> void:
 	_pr(1, -7.0, 28.5, -3.5, 150.0)
 	_pr(1, 3.5, 28.5, 7.0, 150.0)
 	_pr(1, 7.0, 116.0, 14.0, 140.0)
+	_pr(1, LOOP[0] - 4.0, LOOP[1] - 3.0, LOOP[2] + 4.0, 168.6)
 	_pr(1, -102.5, -126.5, -99.5, 11.5)
 	_pr(1, -102.5, -126.5, 91.5, -123.5)
 	_pr(1, -109.5, -136.5, 98.5, -133.5)
@@ -391,6 +392,9 @@ func _paint() -> void:
 	_pr(0, 91.0, -126.0, 99.0, -60.0)
 	_pr(0, 71.5, 25.0, 78.5, 72.0)
 	_pr(0, 162.0, -100.0, 170.0, 15.0)
+	# pętla autobusowa na końcu Robotniczej: jezdnia dookoła wysepki z trawą
+	_pr(0, LOOP[0], LOOP[1], LOOP[2], LOOP[3])
+	_pr(5, ISLE[0], ISLE[1], ISLE[2], ISLE[3])
 	# --- oznakowanie
 	var x := -204.0
 	while x < 204.0:
@@ -641,6 +645,7 @@ func build(loader = null) -> void:
 	_lamps()
 	_backdrop()
 	_border_gates()
+	_bus_loop()
 	_curb_lines()
 	_hide_spots()
 	_build_grid()
@@ -2100,7 +2105,7 @@ func _lower_town() -> void:
 	for e in [[50.0, 140.0], [110.0, 135.0], [90.0, 160.0], [118.0, 155.0], [45.0, 160.0]]:
 		_bush(e[0], e[1], rng.randf_range(0.9, 1.6))
 	# drzewa przy ulicy (kilka ocalałych)
-	for e in [[-112.0, 10.5], [-100.0, 29.5], [78.0, 9.0], [-8.5, 54.0], [9.0, 100.0], [-12.0, 112.0], [20.0, 96.0], [-14.0, 148.0], [12.0, 150.0], [128.0, 9.0], [128.0, 31.0]]:
+	for e in [[-112.0, 10.5], [-100.0, 29.5], [78.0, 9.0], [-8.5, 54.0], [9.0, 100.0], [-12.0, 112.0], [20.0, 96.0], [-25.0, 146.0], [25.0, 152.0], [128.0, 9.0], [128.0, 31.0]]:
 		_tree(e[0], e[1], 1.0, 0.35)
 	# skarpa: krzaki i śmieci
 	for k in range(22):
@@ -2682,8 +2687,8 @@ func _curb_lines() -> void:
 	for seg in [[-208.0, -3.5], [3.5, 72.0], [78.0, 131.0], [159.0, 208.0]]:
 		_curb(seg[0], 24.6, seg[1], 24.6)
 	# Robotnicza, rampa, drogi osiedlowe
-	_curb(-3.6, 24.6, -3.6, 150.0)
-	_curb(3.6, 24.6, 3.6, 150.0)
+	_curb(-3.6, 24.6, -3.6, LOOP[1])
+	_curb(3.6, 24.6, 3.6, LOOP[1])
 	_curb(-109.6, -133.5, -109.6, 15.4)
 	_curb(-102.4, -126.5, -102.4, 15.4)
 	_curb(-109.6, -133.6, 98.6, -133.6)
@@ -2695,6 +2700,18 @@ func _curb_lines() -> void:
 	_curb(78.1, 24.6, 78.1, 72.0)
 	_curb(162.4, -100.0, 162.4, 15.4)
 	_curb(169.6, -100.0, 169.6, 15.4)
+	# pętla autobusowa: krawężnik dookoła jezdni i wysepki (własne losowanie, żeby reszta miasta została na miejscu)
+	var st := rng.state
+	_curb(LOOP[0] - 0.4, LOOP[1], LOOP[0] - 0.4, LOOP[3])
+	_curb(LOOP[2] + 0.4, LOOP[1], LOOP[2] + 0.4, LOOP[3])
+	_curb(LOOP[0], LOOP[3] + 0.4, LOOP[2], LOOP[3] + 0.4)
+	_curb(LOOP[0], LOOP[1] - 0.4, -3.6, LOOP[1] - 0.4)
+	_curb(3.6, LOOP[1] - 0.4, LOOP[2], LOOP[1] - 0.4)
+	_curb(ISLE[0], ISLE[1] - 0.2, ISLE[2], ISLE[1] - 0.2)
+	_curb(ISLE[0], ISLE[3] + 0.2, ISLE[2], ISLE[3] + 0.2)
+	_curb(ISLE[0] - 0.2, ISLE[1], ISLE[0] - 0.2, ISLE[3])
+	_curb(ISLE[2] + 0.2, ISLE[1], ISLE[2] + 0.2, ISLE[3])
+	rng.state = st
 
 
 ## ściółka z liści pod drzewami (warstwa w mapie nawierzchni) i trójwymiarowe kępy trawy
@@ -3021,6 +3038,33 @@ func _backdrop() -> void:
 			along += w2 + r2.randf_range(0.0, 3.0)
 
 
+## Pętla autobusowa na południowym końcu Robotniczej: ulica nie urywa się w trawie, tylko zawraca wokół wysepki.
+## Przy peronie pod murem stoi wiata, a obok autobus linii 12, który skończył kurs.
+const LOOP := [-17.0, 143.0, 17.0, 164.0]       # jezdnia pętli (plan miasta)
+const ISLE := [-8.0, 148.5, 8.0, 154.0]         # wysepka z trawą w środku
+const BUS := Vector2(-2.5, 161.2)
+
+func _bus_loop() -> void:
+	var st := rng.state
+	var bus := Stations.model("autobus")
+	if bus != null:
+		_place(bus, BUS.x, BUS.y, PI / 2.0, 5.55, 1.3, 3.0)
+		Props.set_range(bus, 220.0)
+	_place(Props.bus_stop(), 8.0, 166.9, PI, 2.0, 0.3, 2.4)
+	_sign("12  HUTNIK LOOP", Vector3(8.0, 2.62, 165.5), Color(0.95, 0.85, 0.35), 34, PI, 0.005, 8)
+	_bin(13.4, 166.8)
+	_bench(-9.0, 167.3, PI)
+	_lamp(-14.0, 167.6, PI)
+	_lamp(16.0, 167.6, PI, true)
+	_lamp(0.0, 151.2, PI / 2.0)
+	# wysepka: krzak, znak objazdu wokół i wydeptana na skróty ścieżka
+	_bush(-4.5, 151.6, 1.0)
+	_bush(4.8, 150.6, 0.8)
+	for e in [["plasticbarrier", 15.4, 145.0, 0.3, 0.9], ["old_tyre", -15.4, 162.6, 0.0, 0.16], ["cardboard_box_01", 10.8, 167.6, 0.4, 0.35]]:
+		_prop(String(e[0]), float(e[1]), float(e[2]), float(e[3]), float(e[4]), 0.0, false)
+	rng.state = st
+
+
 ## Zamknięcia granic mapy tam, gdzie coś dochodzi do muru. Tor kolejowy na obu końcach wchodzi w przepust pod wiaduktem
 ## drogowym (zamknięta brama z prętów, semafor na „stój”), a Hutnicza kończy się na wschodzie bramą główną huty
 ## z portiernią i opuszczonym szlabanem. Kolizja muru granicznego zostaje — to tylko to, co widać.
@@ -3132,7 +3176,7 @@ const LITTER_SPOTS := [[22.0, -69.0, 4.0, 16], [-14.5, -104.3, 2.5, 5], [4.0, -1
 	[53.0, -108.0, 5.0, 14], [-70.0, -110.0, 5.0, 14], [44.0, -121.0, 14.0, 14], [78.0, -44.5, 12.0, 22], [80.0, -59.5, 8.0, 12], [70.0, -58.8, 2.0, 3],
 	[66.0, 12.0, 4.0, 12], [-58.0, 12.4, 3.0, 6], [-84.0, -13.5, 5.0, 10], [5.4, 124.0, 6.0, 20], [-26.0, 142.5, 6.0, 10], [58.0, 84.0, 12.0, 18],
 	[108.0, 110.0, 5.0, 8], [-88.0, 66.0, 4.0, 10], [-70.0, 128.0, 10.0, 10], [126.0, 20.0, 6.0, 14], [100.0, 142.0, 7.5, 26], [8.0, -75.6, 3.0, 6],
-	[-60.0, -75.4, 3.0, 6], [-27.0, -16.5, 3.0, 6], [60.0, -16.5, 3.0, 6], [-193.0, 20.0, 5.0, 6], [-181.0, 11.0, 4.0, 3], [-181.0, 30.5, 4.0, 4], [172.0, 30.0, 6.0, 10]]
+	[-60.0, -75.4, 3.0, 6], [-27.0, -16.5, 3.0, 6], [60.0, -16.5, 3.0, 6], [-193.0, 20.0, 5.0, 6], [8.0, 165.6, 6.0, 12], [-10.0, 166.5, 5.0, 6], [200.0, 27.0, 5.0, 6], [-181.0, 11.0, 4.0, 3], [-181.0, 30.5, 4.0, 4], [172.0, 30.0, 6.0, 10]]
 
 func _litter() -> void:
 	var lr := RandomNumberGenerator.new()
@@ -3284,8 +3328,9 @@ func _graph() -> void:
 		[[-200.0, 13.5], [-150.0, 13.5], [-101.0, 13.5], [-58.0, 13.5], [-27.0, 13.5], [-6.0, 13.5], [13.0, 13.5], [60.0, 13.5], [75.0, 13.5], [126.0, 13.5], [145.0, 13.5], [166.0, 13.5], [200.0, 13.5]],
 		[[-200.0, 26.5], [-150.0, 26.5], [-96.0, 26.5], [-58.0, 26.5], [-5.3, 26.5], [5.3, 26.5], [60.0, 26.5], [75.0, 26.5], [126.0, 26.5], [145.0, 26.5], [172.0, 26.5], [200.0, 26.5]],
 		[[-101.0, 13.5], [-96.0, 26.5]], [[-58.0, 13.5], [-58.0, 26.5]], [[-6.0, 13.5], [-5.3, 26.5]], [[13.0, 13.5], [5.3, 26.5]], [[60.0, 13.5], [60.0, 26.5]], [[126.0, 13.5], [126.0, 26.5]], [[166.0, 13.5], [172.0, 26.5]],
-		[[-5.3, 26.5], [-5.3, 56.0], [-5.3, 84.0], [-5.3, 100.0], [-5.3, 124.0], [-5.3, 148.0]],
-		[[5.3, 26.5], [5.3, 56.0], [5.3, 84.0], [5.3, 124.0], [5.3, 148.0]],
+		[[-5.3, 26.5], [-5.3, 56.0], [-5.3, 84.0], [-5.3, 100.0], [-5.3, 124.0], [-5.3, 141.5]],
+		[[5.3, 26.5], [5.3, 56.0], [5.3, 84.0], [5.3, 124.0], [5.3, 141.5]],
+		[[-5.3, 141.5], [-19.0, 141.5], [-19.0, 166.4], [0.0, 166.4], [19.0, 166.4], [19.0, 141.5], [5.3, 141.5]],
 		[[-5.3, 84.0], [5.3, 84.0]], [[-5.3, 124.0], [5.3, 124.0]],
 		[[-101.0, 13.5], [-101.0, -12.0], [-101.0, -52.0], [-101.0, -66.0], [-101.0, -103.0], [-101.0, -125.0]],
 		[[-101.0, -125.0], [-60.0, -125.0], [-27.0, -125.0], [8.0, -125.0], [47.0, -125.0], [90.0, -125.0]],

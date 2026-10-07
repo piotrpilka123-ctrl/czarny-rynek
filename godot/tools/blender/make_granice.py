@@ -213,15 +213,15 @@ def brama_huty():
     h.append(rbox('szybka', (0.36, 0.02, 0.5), glass, 0.005, (5.7, y0 - 0.075, 1.55)))
     h.append(tube('klamka', [(5.36, y0 - 0.08, 1.02), (5.36, y0 - 0.14, 1.02), (5.5, y0 - 0.14, 1.02)], 0.012, st, 6))
     h.append(rbox('stopien', (1.3, 0.55, 0.12), con, 0.02, (5.7, y0 - 0.27, 0.06)))
-    h.append(rbox('rama_o', (1.66, 0.08, 1.16), white, 0.01, (3.55, y0 - 0.01, 1.75)))
-    h.append(rbox('szyba_o', (1.5, 0.04, 1.0), glass, 0.005, (3.55, y0 - 0.04, 1.75)))
-    h.append(rbox('szczeblina', (0.05, 0.05, 1.0), white, 0.005, (3.55, y0 - 0.05, 1.75)))
-    h.append(rbox('parapet', (1.8, 0.16, 0.05), con, 0.01, (3.55, y0 - 0.07, 1.15)))
+    h.append(rbox('rama_o', (1.5, 0.08, 1.16), white, 0.01, (4.25, y0 - 0.01, 1.75)))
+    h.append(rbox('szyba_o', (1.34, 0.04, 1.0), glass, 0.005, (4.25, y0 - 0.04, 1.75)))
+    h.append(rbox('szczeblina', (0.05, 0.05, 1.0), white, 0.005, (4.25, y0 - 0.05, 1.75)))
+    h.append(rbox('parapet', (1.62, 0.16, 0.05), con, 0.01, (4.25, y0 - 0.07, 1.15)))
     for i in range(7):
-        xk = 2.86 + i * 0.23
+        xk = 3.62 + i * 0.21
         h.append(tube('krata', [(xk, y0 - 0.1, 1.2), (xk, y0 - 0.1, 2.3)], 0.009, st, 5))
     for z in (1.4, 2.1):
-        h.append(tube('krata_p', [(2.8, y0 - 0.1, z), (4.3, y0 - 0.1, z)], 0.009, st, 5))
+        h.append(tube('krata_p', [(3.56, y0 - 0.1, z), (4.94, y0 - 0.1, z)], 0.009, st, 5))
     # bok od strony jezdni: okienko wartownika z półką
     h.append(rbox('rama_b', (0.08, 1.46, 1.06), white, 0.01, (x0 + 0.01, -1.7, 1.75)))
     h.append(rbox('szyba_b', (0.04, 1.3, 0.9), glass, 0.005, (x0 - 0.02, -1.7, 1.75)))
@@ -258,8 +258,8 @@ def brama_huty():
          text('t1', 'GATE 1', 0.24, ink, (RC + 1.2, yg - 0.115, 2.16)),
          text('t2', 'CLOSED', 0.2, red, (RC + 1.2, yg - 0.115, 1.9)),
          text('t3', 'DELIVERIES: GATE 3', 0.085, ink, (RC + 1.2, yg - 0.115, 1.66)),
-         rbox('szyld', (0.7, 0.02, 0.24), mat('granat', '1d2c4a', 0.5), 0.01, (4.85, y0 - 0.02, 2.0)),
-         text('szyld_t', 'SECURITY', 0.1, white, (4.85, y0 - 0.035, 2.0)),
+         rbox('szyld', (0.7, 0.02, 0.24), mat('granat', '1d2c4a', 0.5), 0.01, (2.66, y0 - 0.02, 1.9)),
+         text('szyld_t', 'SECURITY', 0.1, white, (2.66, y0 - 0.035, 1.9)),
          rbox('tabl_b', (0.02, 0.8, 0.3), white, 0.01, (x0 - 0.02, -1.7, 2.45)),
          text('tabl_bt', 'SHOW YOUR PASS', 0.075, ink, (x0 - 0.035, -1.7, 2.45), rot=(R90, 0, -R90))]
     tab = join('Tablice', t)

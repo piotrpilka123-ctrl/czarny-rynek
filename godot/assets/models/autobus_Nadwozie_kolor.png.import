@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://5uk1kn0mx6xk"
-path="res://.godot/imported/brama_huty_Tablice_kolor.png-52ed799fec2675cb5fb828e6df336565.ctex"
+uid="uid://bt6rnfpgpxxat"
+path="res://.godot/imported/autobus_Nadwozie_kolor.png-5283ce554eb0a48922a1ebb8325a07e3.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "b24a1cbbce078dd39e0168dd6dc84e70"
+"md5": "9d7d13a6b2ba20d9e851069fbf317057"
 }
 
 [deps]
 
-source_file="res://assets/models/brama_huty_Tablice_kolor.png"
-dest_files=["res://.godot/imported/brama_huty_Tablice_kolor.png-52ed799fec2675cb5fb828e6df336565.ctex"]
+source_file="res://assets/models/autobus_Nadwozie_kolor.png"
+dest_files=["res://.godot/imported/autobus_Nadwozie_kolor.png-5283ce554eb0a48922a1ebb8325a07e3.ctex"]
 
 [params]
 

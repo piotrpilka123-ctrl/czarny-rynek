@@ -444,6 +444,16 @@ static func run(T) -> void:
 	T.ok(portals == 2 and gates == 1, "tory wchodzą na obu końcach w zamknięty portal, a Hutnicza kończy się bramą huty (%d portale, %d brama)" % [portals, gates])
 	var ge: Vector2 = G.world.GATE_E
 	T.ok(not G.world.is_free((ge.x - 3.0) * D.SC, (ge.y + 8.0) * D.SC, 0.2) and G.world.is_free((ge.x - 14.0) * D.SC, 20.0 * D.SC, 0.5), "przy bramie huty stoi portiernia, a dojazd do szlabanu jest wolny")
+	var lp: Array = G.world.LOOP
+	var bus_n := 0
+	for ch2 in G.world.city.get_children():
+		if String(ch2.scene_file_path).contains("autobus"):
+			bus_n += 1
+	T.ok(bus_n == 1 and G.world.surface_at(0.0, (float(lp[3]) - 1.0) * D.SC) == "concrete" and G.world.surface_at(0.0, 151.0 * D.SC) == "grass" and not G.world.is_free(G.world.BUS.x * D.SC, G.world.BUS.y * D.SC, 0.2),
+		"Robotnicza kończy się pętlą: jezdnia dookoła wysepki i autobus przy peronie")
+	T.ok(G.world.is_free(-12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(0.0, 145.5 * D.SC, 0.8), "pętlę da się objechać: obok autobusu zostaje wolny pas")
+	T.ok(names.has("Pan Zenek") and names.has("Pan Bogdan") and names["Pan Zenek"].has("interact") and G.world.is_free(float(names["Pan Bogdan"].x), float(names["Pan Bogdan"].z), 0.3) and G.world.is_free(float(names["Pan Zenek"].x), float(names["Pan Zenek"].z), 0.3),
+		"na pętli stoi kierowca, a przy bramie huty stróż — z oboma da się pogadać")
 	T.ok(G.world.ring2 >= 40, "za murem stoi drugi rząd bloków, który zasłania przerwy w pierwszym (%d)" % G.world.ring2)
 	# --- radiowóz: jedzie prawym pasem, skręca stopniowo, na końcu trasy zawraca
 	var car: Dictionary = N.car
