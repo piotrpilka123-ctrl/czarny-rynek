@@ -831,6 +831,9 @@ func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
 			if ap.has_animation(an_name):
 				ap.play(an_name, 0.0)
 			ap.advance(float(glb_anim.get_slice("@", 1)) if glb_anim.contains("@") else 0.7)
+			if (glb_anim.begins_with("Sword") or glb_anim.begins_with("Overhand") or glb_anim.begins_with("Tree")) and not rig.has("_rurka"):
+				# podgląd zamachu: ta sama rurka w dłoni co u bandyty z prologu
+				rig["_rurka"] = G.main.npcs.Chars.hold(rig, "rurka", Transform3D(Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0)), Vector3(0.09, 0.03, 0.0)))
 			var pd: Node3D = (rig.root as Node3D).duplicate()
 			pd.visible = true
 			_glb_fix(pd)

@@ -743,8 +743,11 @@ func _boom() -> void:
 	var steps_at := [12.4, 12.85, 13.25]
 	var t_voice := 13.35
 	var t_turn := 13.55
-	var t_swing := 14.05
+	# cios: bandyta dochodzi krokiem, staje, unosi rurkę nad głowę (13,62 → 14,11), trzyma ją chwilę nad sobą
+	# i bije znad głowy — rurka dochodzi do twarzy dokładnie w hit_at
+	var t_swing := 13.62
 	var hit_at := 14.5
+	var strike_in := 0.075      # ile sekund trwa sam cios (od uniesionej rurki do twarzy)
 	var bi := 0
 	var fi := 0
 	var li := 0
@@ -758,6 +761,7 @@ func _boom() -> void:
 	var car_v := 0.0
 	var car_t := -1.0
 	var voiced := false
+	var over := false          # cios znad głowy (OverhandThrow) zamiast dawnego zamachu
 	var swung := false
 	var thud := false
 	var lunge_from := Vector3.ZERO
@@ -885,26 +889,48 @@ func _boom() -> void:
 			Sfx.step("gravel", false)
 			si += 1
 			arig.root.visible = true
+		# podchodzi od tyłu zwykłym krokiem i staje półtora metra za plecami
+		if not swung and arig.root.visible:
+			var wk := clampf((tm - float(steps_at[0])) / (t_voice - float(steps_at[0])), 0.0, 1.0)
+			var near_p := Vector3(eye.x + out_dir.x * 1.45, 0.0, eye.z + out_dir.y * 1.45)
+			var far_p := near_p + Vector3(out_dir.x, 0.0, out_dir.y) * 1.5
+			var ap_p := far_p.lerp(near_p, wk)
+			arig.root.position = Vector3(ap_p.x, W.height(ap_p.x, ap_p.z), ap_p.z)
+			arig.root.rotation.y = atan2(eye.x - ap_p.x, eye.z - ap_p.z)
+			Chars.animate(arig, dt, 1.35 if wk < 1.0 else 0.0, "")
 		if not voiced and tm >= t_voice:
 			voiced = true
 			Sfx.mumble(0.8)
 			M.ui.cut_line("— Kuba.")
 		if not swung and tm >= t_swing:
 			swung = true
-			# zamach rurką znad barku (z doskokiem), nie cios pięścią
-			Chars.one_shot(arig, "Sword_Attack" if (arig.anim as AnimationPlayer).has_animation("Sword_Attack") else "Melee_Hook")
-			(arig.anim as AnimationPlayer).speed_scale = 1.25
+			# cios znad głowy: postać zostaje w pionie i w kadrze (dawny zamach nurkował w dół i znikał z oczu)
+			over = (arig.anim as AnimationPlayer).has_animation("OverhandThrow")
+			if over:
+				(arig.anim as AnimationPlayer).play("OverhandThrow", 0.12)
+				arig.cur = "OverhandThrow"
+				(arig.anim as AnimationPlayer).speed_scale = 0.6
+			else:
+				Chars.one_shot(arig, "Sword_Attack" if (arig.anim as AnimationPlayer).has_animation("Sword_Attack") else "Melee_Hook")
+				(arig.anim as AnimationPlayer).speed_scale = 1.25
 			lunge_from = arig.root.position
 		if swung and not hit:
-			var lk := clampf((tm - t_swing) / maxf(0.05, hit_at - t_swing), 0.0, 1.0)
+			var apl := arig.anim as AnimationPlayer
+			var striking := tm >= hit_at - strike_in
+			if over:
+				# uniesienie → bezruch z rurką nad głową → błyskawiczny cios
+				apl.speed_scale = 1.0 if striking else (0.6 if apl.current_animation_position < 0.295 else 0.03)
+			var lk := clampf((tm - (hit_at - strike_in)) / strike_in, 0.0, 1.0) if over else clampf((tm - t_swing) / maxf(0.05, hit_at - t_swing), 0.0, 1.0)
 			var toward := Vector3(eye.x - lunge_from.x, 0.0, eye.z - lunge_from.z)
-			if toward.length() > 0.9:
-				arig.root.position = lunge_from + toward.normalized() * minf(0.55, toward.length() - 0.85) * lk * lk
+			var reach := 1.15 if over else 0.85
+			if toward.length() > reach + 0.05:
+				arig.root.position = lunge_from + toward.normalized() * minf(0.55, toward.length() - reach) * lk * lk
 		if not hit and tm >= hit_at:
 			hit = true
 			# głuche uderzenie w głowę i pisk w uszach (ten sam dźwięk co dawniej); świat głuchnie dopiero po chwili
 			Sfx.knock()
 			Sfx.stun(7.0, 1.4)
+			(arig.anim as AnimationPlayer).speed_scale = 1.0
 			M.ui.flash(0.7)
 			M.ui.cut_line("")
 			shake = 2.4
