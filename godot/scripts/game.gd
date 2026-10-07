@@ -1213,6 +1213,9 @@ func add_bulk(st: Dictionary, p: String, pur, g: float) -> void:
 		return
 	var k := str(qpur(pur))
 	st.bulk[p][k] = float(st.bulk[p].get(k, 0.0)) + g
+	# pierwszy własny gram mety albo kokainy (poza prologiem): od teraz klienci mogą je zamawiać
+	if prologue == null and not D.WHOLESALE_PRODUCTS.has(p) and S.has("flags") and not S.flags.get("had_" + p, false):
+		S.flags["had_" + p] = true
 
 
 func take_bulk(st: Dictionary, p: String, pur, g: float) -> float:
@@ -1938,8 +1941,11 @@ func make_order(c: Dictionary, force_g := 0, force_p := "") -> Dictionary:
 	var product: String = c.prod
 	var wants := []
 	for p0 in c.get("prods", [c.prod]):
-		if int(S.lvl) >= int(D.PRODUCTS[p0].lvl):
+		if int(S.lvl) >= int(D.PRODUCTS[p0].lvl) and can_supply(String(p0)):
 			wants.append(p0)
+	# metę i kokainę klienci zamawiają dopiero wtedy, gdy sam zaczniesz je robić; do tego czasu biorą amfetaminę
+	if wants.is_empty() and not can_supply(product):
+		product = "szron"
 	if not wants.is_empty():
 		# ulubiony towar zamawia dwa razy częściej niż drugi
 		product = String(wants[0]) if (wants.size() == 1 or randf() < 0.62) else String(wants[randi_range(1, wants.size() - 1)])
@@ -2403,6 +2409,11 @@ func gear_hint() -> String:
 	if want.is_empty():
 		return "Masz już porządny strój. Resztę wieszaka w „Taniej Odzieży” przejrzyj sam."
 	return "Kup w „Taniej Odzieży” przy Hutniczej dwie rzeczy (masz %d z 2). Teraz najbardziej opłaca się: %s." % [mini(2, gear_owned()), ";  ".join(want)]
+
+
+## Czy gracz ma skąd wziąć ten towar: zioło i amfetaminę sprzedaje Wiktor, resztę trzeba choć raz samemu wytworzyć.
+func can_supply(p: String) -> bool:
+	return D.WHOLESALE_PRODUCTS.has(p) or flag("had_" + p)
 
 
 ## co zamówił pierwszy klient, słownie: „3 g marihuany” (do celu samouczka)
