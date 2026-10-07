@@ -17,7 +17,7 @@ static func run(T) -> void:
 	M.start_prologue()
 	await T.frames(3)
 	var pr = G.prologue
-	T.ok(pr != null and P.loc == "lab" and M.cut_hour > 4.0 and M.cut_hour < 5.5, "prolog startuje w laboratorium, przed świtem")
+	T.ok(pr != null and P.loc == "lab" and M.cut_hour > 0.5 and M.cut_hour < 4.5, "prolog startuje w laboratorium, w środku nocy")
 	T.ok(W.mill_burnt != null and not W.mill_burnt.visible and not W.door_tape.visible, "w prologu huta jeszcze stoi nietknięta")
 	T.ok(pr.cop_a != null and pr.cop_b != null and pr.cop_b.beat != null and pr.flashes.size() == 4 + pr.SWAT_VANS.size(), "dwa patrole z latarkami, radiowozy i furgony AT z kogutami na miejscach")
 	var e0: Vector2 = pr.exit_pos()

@@ -2062,6 +2062,12 @@ func update_hud() -> void:
 	# cel: karta pokazuje się na chwilę, gdy treść się zmieni
 	var st := G.cur_step()
 	var txt: String = st.text.call() if not st.is_empty() else ""
+	var in_call := call_active() and G.prologue == null
+	if in_call:
+		if String(call.state) == "talk":
+			txt = "Rozmowa: %s. [Spacja] — następna kwestia." % String(call.get("voice_as", call.name))
+		else:
+			txt = "Dzwoni telefon. Naciśnij [%s], żeby odebrać." % G.kn("phone")
 	if txt != last_obj:
 		last_obj = txt
 		if txt != "":
@@ -2071,10 +2077,12 @@ func update_hud() -> void:
 	l_obj_t.text = G.chapter().to_upper()
 	l_obj.text = txt
 	var lines := ""
-	if not nav_info.is_empty():
+	# w scenie (kamera filmowa, rozmowa z łóżka) nie ma dokąd iść — odległość do celu znika
+	var staged: bool = G.main.cine_active() or in_call
+	if not nav_info.is_empty() and not staged:
 		lines = "%s  %s • %d m" % [K.col("◆", nav_info.get("color", K.C_ACC)), nav_info.label, int(round(nav_info.dist))]
 	var nm = G.next_meeting()
-	if nm != null:
+	if nm != null and not staged:
 		var left = float(nm.meet) - S.t
 		lines += ("\n" if lines != "" else "") + K.col("%s: %d g %s  •  %s — %s" % [String(G.cust_def(nm.cust).name), int(nm.grams), String(D.PRODUCT_GEN[nm.product]), G.clock(nm.meet), ("za %d min" % int(left)) if left > 0.0 else ("czeka od %d min" % int(-left))], K.C_ACC if left > 0.0 else K.C_WARN)
 	# zlecenie dnia: postęp pod celem; karta wraca na chwilę, gdy zlecenie się pojawi albo zostanie wykonane
@@ -2091,7 +2099,7 @@ func update_hud() -> void:
 	obj_t = maxf(0.0, obj_t - 0.1)
 	# cel zostaje na ekranie, dopóki gracz go nie wykona (tak samo niewykonane zlecenie dnia);
 	# tylko otwarta „wolna gra”, której nie da się skończyć, pokazuje się na chwilę i znika
-	var pinned: bool = txt != "" and (String(st.get("id", "")) != "free" or (G.job_active() and not S.job.get("done", false)))
+	var pinned: bool = txt != "" and (in_call or String(st.get("id", "")) != "free" or (G.job_active() and not S.job.get("done", false)))
 	obj_card.visible = txt != "" and (pinned or obj_t > 0.0)
 	obj_card.modulate.a = 1.0 if pinned else clampf(obj_t / 0.8, 0.0, 1.0)
 	sms_key.text = G.kn("phone")
@@ -2224,7 +2232,7 @@ func _call_ring() -> void:
 	Sfx.ring(true)
 
 
-## klawisz telefonu: odbiera, a w rozmowie przewija do następnej kwestii
+## odbiera połączenie (klawisz telefonu), a w rozmowie przewija do następnej kwestii (spacja)
 func call_answer() -> void:
 	if call.is_empty():
 		return
@@ -2261,7 +2269,7 @@ func _call_line() -> void:
 	call_text.text = ("[color=#7ee0a0][b]Ty:[/b][/color] " if me else "") + String(l.t)
 	call_text.visible_characters = 0
 	call_text.visible = true
-	call_hint.text = "[color=#8a93a6][%s] dalej[/color]" % G.kn("phone")
+	call_hint.text = "[color=#8a93a6][Spacja] dalej[/color]"
 
 
 func _call_next() -> void:
@@ -2512,7 +2520,7 @@ func _draw_way() -> void:
 	if M == null or not G.running or mode != "" or G.player == null:
 		return
 	_draw_hints(M)
-	if M.way.is_empty():
+	if M.way.is_empty() or M.cine_active():
 		return
 	var cam: Camera3D = G.player.cam
 	var pos: Vector3 = M.way.pos
@@ -2768,7 +2776,27 @@ func _input(event: InputEvent) -> void:
 			else:
 				used = false
 		"":
-			if not G.running or G.busy:
+			if not G.running:
+				return
+			# Telefon dzwoni albo trwa rozmowa: te klawisze działają zawsze — także gdy bohater leży w łóżku
+			# i reszta sterowania jest zablokowana. Odbiera klawisz telefonu, kwestie przewija spacja.
+			if call_active() and not G.main.build_active():
+				var took := true
+				if call.state == "ring" and (act == "phone" or kc == KEY_ENTER or kc == KEY_KP_ENTER):
+					call_answer()
+				elif call.state == "ring" and kc == KEY_BACKSPACE:
+					call_reject()
+				elif call.state == "talk" and (kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER):
+					call_answer()
+				elif call.state == "talk" and act == "phone":
+					# w rozmowie klawisz telefonu nic nie robi (kiedyś przewijał — teraz spacja)
+					pass
+				else:
+					took = false
+				if took:
+					get_viewport().set_input_as_handled()
+					return
+			if G.busy:
 				return
 			if G.main.build_active():
 				if act == "rotate":
@@ -2781,10 +2809,6 @@ func _input(event: InputEvent) -> void:
 					used = false
 			elif kc == KEY_ESCAPE:
 				show_pause()
-			elif call_active() and act == "phone":
-				call_answer()
-			elif call_active() and kc == KEY_BACKSPACE and call.state == "ring":
-				call_reject()
 			elif G.main.menu_active() and kc >= KEY_1 and kc <= KEY_4:
 				G.main.menu_pick(kc - KEY_1)
 			else:

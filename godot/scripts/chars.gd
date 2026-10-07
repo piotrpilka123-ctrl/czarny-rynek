@@ -1232,7 +1232,7 @@ const SH_GLARE := """
 shader_type spatial;
 render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
 uniform vec3 tint : source_color = vec3(0.9, 0.95, 1.0);
-uniform float size = 0.42;
+uniform float size = 0.3;
 varying float k;
 void vertex() {
 	vec3 org = MODEL_MATRIX[3].xyz;
@@ -1251,7 +1251,8 @@ void fragment() {
 	// krótkie promienie na krzyż, jak w prawdziwym obiektywie
 	float rays = pow(max(0.0, 1.0 - abs(d.y) * 26.0), 2.0) * r + pow(max(0.0, 1.0 - abs(d.x) * 34.0), 2.0) * r * 0.6;
 	ALBEDO = tint;
-	ALPHA = clamp(pow(r, 4.0) * (0.15 + k * 0.55) + pow(r, 16.0) * 1.2 + rays * k * 0.25, 0.0, 1.0);
+	// odblask szkła: wyraźny punkt, ale bez wielkiej białej plamy, gdy latarka świeci prosto w kamerę
+	ALPHA = clamp(pow(r, 4.0) * (0.1 + k * 0.28) + pow(r, 16.0) * 0.9 + rays * k * 0.14, 0.0, 1.0);
 }
 """
 

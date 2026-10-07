@@ -4579,6 +4579,27 @@ func _interiors() -> void:
 	# waga stoi obok radia, nie w nim (większe modele wag wchodziły w obudowę)
 	_scale_set(g, Vector3(tx - 0.1, 0.8, tz + 0.1))
 	_rp(g, "desk_lamp_arm_01", tx + 0.75, tz - 0.15, 0.6, 0.55, 0.8)
+	# lampka naprawdę świeci na blat, a łagodne światło wypełniające nisko nad podłogą wydobywa czarne meble
+	# (biurko, krzesło, telewizor) — bez tego z łóżka wyglądały jak wycięte z czerni
+	var desk_li := SpotLight3D.new()
+	desk_li.position = Vector3(tx + 0.55, 1.42, tz - 0.05)
+	desk_li.rotation = Vector3(-PI / 2.0 + 0.25, 0.6, 0.0)
+	desk_li.light_color = Color(1.0, 0.82, 0.58)
+	desk_li.light_energy = 3.2
+	desk_li.spot_range = 3.2
+	desk_li.spot_angle = 62.0
+	desk_li.spot_angle_attenuation = 0.7
+	desk_li.shadow_enabled = false
+	g.add_child(desk_li)
+	var fill_li := OmniLight3D.new()
+	fill_li.position = Vector3(tx - 1.2, 0.95, tz + 1.3)
+	fill_li.light_color = Color(0.92, 0.9, 0.86)
+	fill_li.light_energy = 0.55
+	fill_li.omni_range = 5.5
+	fill_li.omni_attenuation = 0.8
+	fill_li.light_specular = 0.25
+	fill_li.shadow_enabled = false
+	g.add_child(fill_li)
 	_rp(g, "cigarette_pack", tx + 0.08, tz + 0.26, 0.4, 0.09, 0.8)
 	Interior.ashtray(g, Vector3(tx + 0.22, 0.8, tz + 0.3))
 	Interior.mug(g, Vector3(tx - 0.3, 0.8, tz + 0.3), "8a3a2a")

@@ -119,6 +119,10 @@ func _wait(sec: float) -> void:
 		left -= get_process_delta_time()
 
 
+## godzina, która obowiązuje przez cały prolog: głęboka noc, niezależnie od zegara gry i pogody
+const PRO_HOUR := 2.5
+
+
 # ---------------------------------------------------------------- start
 func start() -> void:
 	M = G.main
@@ -126,7 +130,8 @@ func start() -> void:
 	G.busy = true
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	M.cut_skip = false
-	M.cut_hour = 4.8
+	# prolog zawsze dzieje się w środku nocy (wcześniej 4:48 — niebo już szarzało i z każdej strony wyglądało inaczej)
+	M.cut_hour = PRO_HOUR
 	_nav_was = bool(G.S.nav_on)
 	G.S.nav_on = false
 	Sfx.boom_prepare()

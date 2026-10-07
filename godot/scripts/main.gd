@@ -515,21 +515,23 @@ func _bed_call() -> void:
 	ui.cut_end()
 	if not rang:
 		Sfx.ring(true)
-	# oczy otwarte: teraz dopiero widać, kto dzwoni i czym odebrać
-	_intro_call()
+	# oczy otwarte: teraz dopiero widać, kto dzwoni i czym odebrać (karta celu podpowiada klawisz)
+	_intro_call(false)
 	await get_tree().process_frame
 	while ui.call_active():
 		t += get_process_delta_time()
 		bed_cam(t)
 		await get_tree().process_frame
-	# koniec rozmowy: siada na brzegu łóżka i wstaje
+	# koniec rozmowy: siada na brzegu łóżka, chwilę patrzy pod nogi i wstaje
 	var tw := create_tween()
-	tw.tween_method(bed_rise, 0.0, 1.0, 2.1)
+	tw.tween_method(bed_rise, 0.0, 1.0, 2.8)
 	await tw.finished
 	var stand := Vector3(bx + 0.95, 1.6, bz + 0.25)
 	teleport("safe", Vector3(stand.x, 0.0, stand.z), -PI / 2.0)
 	cine_off()
 	G.busy = false
+	# SMS od mamy i plansza ze sterowaniem dopiero teraz — wcześniej zasłaniałyby wstawanie
+	_intro_sms()
 
 
 const BED_WAKE := 5.4
@@ -552,7 +554,7 @@ func bed_lids(t: float) -> float:
 	return 1.0
 
 
-## kadr wstawania z łóżka: k = 0 leży na boku, ok. 0,6 siedzi na brzegu, 1 stoi przy łóżku
+## kadr wstawania z łóżka: k = 0 leży na boku, ok. 0,45 siedzi na brzegu (patrzy pod nogi), 1 stoi przy łóżku
 func bed_rise(k: float) -> void:
 	var R: Dictionary = D.ROOMS.safe
 	var bx: float = float(R.cx) - float(R.w) * 0.5 + 0.62
@@ -560,12 +562,17 @@ func bed_rise(k: float) -> void:
 	var head := bed_head()
 	var sit := Vector3(bx + 0.55, 1.05, bz + 0.1)
 	var stand := Vector3(bx + 0.95, 1.6, bz + 0.25)
-	var e := smoothstep(0.0, 1.0, k)
-	var pos := head.lerp(sit, minf(1.0, e * 1.7)).lerp(stand, clampf(e * 1.7 - 0.7, 0.0, 1.0))
-	# wzrok przechodzi z kadru „na boku” na pokój przed sobą, a głowa prostuje się w pierwszej połowie ruchu
-	var look := (head + BED_LOOK).lerp(pos + Vector3(1.0, -0.12, 0.0), smoothstep(0.0, 0.8, e))
+	# trzy fazy: podniesienie się do siadu, krótkie przysiedzenie, wstanie (z lekkim pochyleniem do przodu)
+	var up_k := smoothstep(0.0, 0.42, k)
+	var stand_k := smoothstep(0.58, 1.0, k)
+	var pos := head.lerp(sit, up_k).lerp(stand, stand_k)
+	pos.y -= sin(stand_k * PI) * 0.07
+	pos.x += sin(stand_k * PI) * 0.1
+	# wzrok: z kadru „na boku” na pokój przed sobą; w siadzie na chwilę opada na podłogę
+	var nod := sin(clampf((k - 0.3) / 0.42, 0.0, 1.0) * PI) * 0.42
+	var look := (head + BED_LOOK).lerp(pos + Vector3(1.0, -0.12 - nod, 0.0), smoothstep(0.0, 0.5, k))
 	cine_cam(pos, look, 64.0)
-	cine.look_at(look, BED_UP.normalized().slerp(Vector3.UP, smoothstep(0.0, 0.55, e)))
+	cine.look_at(look, BED_UP.normalized().slerp(Vector3.UP, smoothstep(0.0, 0.36, k)))
 
 
 ## gdzie leży głowa Kuby na łóżku w kawalerce
@@ -590,8 +597,8 @@ func _intro() -> void:
 	_bed_call()
 
 
-## pierwsza rozmowa z Wiktorem (po przebudzeniu)
-func _intro_call() -> void:
+## pierwsza rozmowa z Wiktorem (po przebudzeniu); `then_sms` = false, gdy SMS i sterowanie przyjdą dopiero po wstaniu
+func _intro_call(then_sms := true) -> void:
 	ui.call_start("Nieznany numer", [
 		"Kuba. Żyjesz. To dobrze. Tu Wiktor.",
 		"Wiem, co się stało w hucie i za garażami. Ktoś nas sprzedał — i to nie byłeś ty. Partia przepadła, trudno. Żalu do ciebie nie mam.",
@@ -599,7 +606,7 @@ func _intro_call() -> void:
 		"Masz głowę i nie sypnąłeś. Takich ludzi mi trzeba. Biorę cię do siebie — zaczynasz od dołu, jako chłopak od wszystkiego. Dostajesz Hutniczą i osiedle.",
 		"Pierwszą paczkę masz ode mnie za darmo, na rozruch. Następne idą na zeszyt. Co zarobisz ponad towar, odnoś do skrzynki — to twój wkład. Im większy, tym wyżej u mnie stoisz: plecak, większy zeszyt, tańszy hurt, garaż. A jak dobijesz do dwudziestu pięciu tysięcy, robimy to razem, jako wspólnicy.",
 		"Zaraz wyślę ci SMS-em, co dalej. I Kuba — tego, kto nas sprzedał, znajdziemy. Powoli.",
-	], _intro_sms, "Wiktor")
+	], _intro_sms if then_sms else Callable(), "Wiktor")
 
 
 func _intro_sms() -> void:
@@ -2314,6 +2321,11 @@ func cine_cam(pos: Vector3, target: Vector3, fov := 62.0) -> void:
 	if pos.distance_to(target) > 0.01:
 		cine.look_at(target, Vector3.UP if absf((target - pos).normalized().y) < 0.99 else Vector3.FORWARD)
 	cine.current = true
+
+
+## czy obraz idzie z kamery filmowej (przerywnik, scena w łóżku), a nie z oczu gracza
+func cine_active() -> bool:
+	return cine != null and cine.current
 
 
 func cine_off() -> void:

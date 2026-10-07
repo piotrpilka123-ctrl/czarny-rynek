@@ -36,8 +36,48 @@ static func run(T) -> void:
 	var lid_ok: bool = G.ui.lids != null and G.ui.lids.visible and (G.ui.lids.get_child(0) as Control).offset_bottom > 100.0 and G.ui.lids.get_index() < G.ui.cut.get_index()
 	G.ui.set_lids(0.0)
 	T.ok(lid_ok and not G.ui.lids.visible, "powieki: dwie zasłony pod napisami przerywnika, przy otwartych oczach znikają")
+	M0.bed_rise(0.45)
+	var sit_y: float = cam0.global_position.y
+	var sit_look: float = (-cam0.global_transform.basis.z).y
 	M0.bed_rise(1.0)
-	T.ok(absf(cam0.global_transform.basis.y.y) > 0.97 and cam0.global_position.y > 1.5, "wstawanie: na końcu głowa prosto, na wysokości stojącego")
+	T.ok(absf(cam0.global_transform.basis.y.y) > 0.97 and cam0.global_position.y > 1.5 and sit_y > 0.95 and sit_y < 1.2 and sit_look < -0.2,
+		"wstawanie: siad na brzegu łóżka ze wzrokiem w podłogę, na końcu głowa prosto na wysokości stojącego")
+	# telefon w łóżku: bohater jest „zajęty”, ale odebrać musi się dać; rozmowę przewija spacja, nie klawisz telefonu
+	var U0 = G.ui
+	G.test_mode = false
+	var busy0: bool = G.busy
+	G.busy = true
+	U0.call_start("Nieznany numer", ["Pierwsza kwestia.", "Druga kwestia."], Callable(), "Wiktor")
+	var key := func(code: int) -> void:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = code
+		ev.keycode = code
+		ev.pressed = true
+		U0._input(ev)
+	var ring_ok: bool = U0.call_active() and String(U0.call.state) == "ring"
+	U0.update_hud()
+	var hint_ring: String = U0.l_obj.text
+	key.call(KEY_SPACE)
+	var space_ring: bool = String(U0.call.state) == "ring"
+	key.call(int(G.keys.phone))
+	var talk_ok: bool = U0.call_active() and String(U0.call.state) == "talk" and int(U0.call.i) == 0
+	U0.update_hud()
+	var hint_talk: String = U0.l_obj.text
+	key.call(int(G.keys.phone))
+	var tab_noop: bool = int(U0.call.i) == 0 and int(U0.call.typed) == 0
+	key.call(KEY_SPACE)
+	key.call(KEY_SPACE)
+	var second: bool = U0.call_active() and int(U0.call.i) == 1
+	key.call(KEY_SPACE)
+	key.call(KEY_SPACE)
+	var ended: bool = not U0.call_active()
+	G.busy = busy0
+	G.test_mode = true
+	Sfx.ring(false)
+	T.ok(ring_ok and space_ring and talk_ok, "telefon w łóżku: mimo blokady sterowania klawisz telefonu odbiera połączenie (spacja nie odbiera)")
+	T.ok(tab_noop and second and ended, "rozmowę przewija spacja: kwestia po kwestii aż do końca; klawisz telefonu już jej nie przewija")
+	T.ok(hint_ring.contains("Dzwoni telefon") and hint_ring.contains("odebrać") and hint_talk.contains("Spacja"), "karta celu podpowiada to, co trzeba teraz zrobić: odebrać telefon, potem spacja")
+	U0.update_hud()
 	M0.cine_off()
 
 	# --- pierwsze wyjście z bloku: przelot kamery po miejscach, które już się liczą (sklep, odzież, skrzynka, lombard)

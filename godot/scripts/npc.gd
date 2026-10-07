@@ -191,9 +191,10 @@ func spawn_cop(at_station: bool) -> Dictionary:
 	torch.spot_angle_attenuation = 0.85
 	torch.spot_attenuation = 1.25
 	torch.light_color = Color(0.9, 0.95, 1.0)
-	torch.light_energy = 11.0
-	torch.light_specular = 0.6
-	torch.light_volumetric_fog_energy = 3.0
+	# latarka patrolu ma być widoczna i groźna, ale nie oślepiać: połowa dawnej mocy i dużo słabszy snop we mgle
+	torch.light_energy = TORCH_ENERGY
+	torch.light_specular = 0.3
+	torch.light_volumetric_fog_energy = 0.9
 	torch.shadow_enabled = false
 	torch.shadow_bias = 0.06
 	torch.shadow_blur = 1.4
@@ -858,6 +859,7 @@ static func sight(ang: float) -> float:
 const VIEW := 27.0          # zasięg wzroku patrolu: dzień, na wprost, gracz stoi
 const TORCH_ANG := 0.36     # połowa kąta snopu latarki patrolu
 const TORCH_RANGE := 15.0
+const TORCH_ENERGY := 5.5
 
 ## Jak wyraźnie patrzący z punktu (x, z) w kierunku `rot` widzi gracza: 0 = wcale, 1 = z bliska na wprost.
 ## Jedyna droga, którą policja „widzi”. Liczy się kierunek patrzenia, odległość, zasłony po drodze
