@@ -1696,6 +1696,7 @@ func refresh_starter() -> void:
 		Models.box(starter, Vector3(0.2, 0.016, 0.13), Vector3(0, 0.008, 0), Models.mat("4f6b2a", 0.9))
 	rooms.safe.add_child(starter)
 	starter.position = at
+	_mail_slot()
 	starter_rest(1.0)
 	inter.append({"loc": "safe", "x": at.x, "z": at.z, "y0": -0.1, "y1": 0.35, "r": 0.4, "reach": 2.4, "id": "starter",
 		"label": func(): return "Paczka od Wiktora — otwórz", "act": func():
@@ -1704,20 +1705,47 @@ func refresh_starter() -> void:
 				G.ui.open_loot({"kind": "starter"})})
 
 
-## ustawia dwa woreczki paczki: k = 0 jeszcze za drzwiami, k = 1 leżą w pokoju (drugi lekko na pierwszym)
-func starter_rest(k: float, k2 := -1.0) -> void:
+## szczelina na listy w drzwiach kawalerki: mosiężna ramka z klapką (jedna na cały pokój, dokładana raz)
+func _mail_slot() -> void:
+	if rooms.safe.has_node("SzczelinaNaListy"):
+		return
+	var R: Dictionary = D.ROOMS.safe
+	var g := Node3D.new()
+	g.name = "SzczelinaNaListy"
+	g.position = Vector3(float(R.cx) - 0.04, SLOT_Y, float(R.d) * 0.5 - 0.075)
+	rooms.safe.add_child(g)
+	var brass := Models.mat("a8894a", 0.35, 0.85)
+	Models.box(g, Vector3(0.27, 0.075, 0.012), Vector3.ZERO, brass)
+	Models.box(g, Vector3(0.22, 0.036, 0.016), Vector3(0, 0.0, -0.002), Models.mat("0b0b0c", 0.9))
+	Models.box(g, Vector3(0.225, 0.04, 0.006), Vector3(0, 0.012, -0.012), brass, Vector3(0.5, 0, 0))
+
+
+## Paczka wpada przez szczelinę na listy w drzwiach: k = 0 tkwi w szczelinie, do 0,3 jest przepychana,
+## potem spada, odbija się raz od wycieraczki i zostaje (k = 1). Drugi parametr zostaje dla starych wywołań.
+const SLOT_Y := 0.92
+func starter_rest(k: float, _k2 := -1.0) -> void:
 	if starter == null:
 		return
-	if k2 < 0.0:
-		k2 = k
 	var a := Stations._find(starter, "Ziolo") as Node3D
-	var b := Stations._find(starter, "Feta") as Node3D
-	if a != null:
-		a.position = Vector3(0.0, 0.0, lerpf(0.78, 0.0, k))
-		a.rotation.y = lerpf(0.0, 0.22, k)
-	if b != null:
-		b.position = Vector3(0.11, lerpf(0.0, 0.004, k2), lerpf(0.74, 0.07, k2))
-		b.rotation.y = lerpf(0.0, -0.5, k2)
+	if a == null:
+		return
+	k = clampf(k, 0.0, 1.0)
+	var z_door := 0.56
+	if k < 0.3:
+		# przepychanie przez szczelinę: paczka idzie na sztorc, wąskim bokiem naprzód
+		var p := k / 0.3
+		a.position = Vector3(0.0, SLOT_Y - 0.0135, lerpf(z_door + 0.12, z_door - 0.07, p))
+		a.rotation = Vector3(0.0, PI / 2.0, 0.0)
+	else:
+		var p2 := (k - 0.3) / 0.7
+		# spadek (do 0,55), odbicie i ułożenie
+		var fall := minf(1.0, p2 / 0.55)
+		var y := (SLOT_Y - 0.0135) * (1.0 - fall * fall)
+		if p2 > 0.55:
+			var b := (p2 - 0.55) / 0.45
+			y = sin(b * PI) * 0.06 * (1.0 - b)
+		a.position = Vector3(lerpf(0.0, 0.03, p2), y, lerpf(z_door - 0.07, 0.0, minf(1.0, p2 * 1.15)))
+		a.rotation = Vector3(lerpf(0.0, -TAU, fall) if p2 < 0.55 else 0.0, lerpf(PI / 2.0, 0.3, minf(1.0, p2 * 1.3)), 0.0)
 
 
 func refresh_ground() -> void:

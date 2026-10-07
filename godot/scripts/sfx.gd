@@ -658,6 +658,26 @@ func party_stop() -> void:
 		party_player.stop()
 	for p in party_fx:
 		p.stop()
+	party_solo(false)
+
+
+## Scena imprezy gra sama: na jej czas milkną szyny, które do niej nie należą (muzyka gry, otoczenie, radio z bloku,
+## klub, głosy, telefon) — wcześniej potrafiły się przebijać dźwięki spoza prologu.
+const PARTY_QUIET := ["Muzyka", "Otoczenie", "Blok", "Klub", "Glosy", "Telefon"]
+var _party_solo := false
+
+func party_solo(on: bool) -> void:
+	if on == _party_solo:
+		return
+	_party_solo = on
+	for nm in PARTY_QUIET:
+		var bi := AudioServer.get_bus_index(nm)
+		if bi >= 0:
+			AudioServer.set_bus_mute(bi, on)
+	if on:
+		ring(false)
+		if intro_player != null and intro_player.playing:
+			intro_player.stop()
 
 
 ## telefon: wibracja w kieszeni (nagranie), zapętlana, dopóki ktoś nie odbierze

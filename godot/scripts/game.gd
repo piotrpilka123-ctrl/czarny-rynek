@@ -3948,7 +3948,7 @@ func _build_story() -> void:
 			"done": func(): return int(store_items(S.stash.safe).get("notes", 0)) >= 1 or (flag("tut_stash") and item("notes") <= 0), "marker": _stash_marker},
 		{"id": "room_bench", "text": func(): return "Na stole stoi waga kuchenna. Kiedyś robili to za Ciebie inni — teraz porcjujesz sam. Obejrzyj ją [E].",
 			"done": func(): return flag("tut_bench"), "marker": _bench_marker, "on_done": _on_tour_done},
-		{"id": "phone", "text": func(): return "Ktoś wsunął paczkę pod drzwi. Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
+		{"id": "phone", "text": func(): return "Przez klapkę na listy wpadła paczka. Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
 			"done": func(): return flag("read_wiktor") or flag("got_first"), "on_done": _on_phone_done},
 		{"id": "drop1", "text": func(): return "Przy drzwiach kawalerki leży paczka od Wiktora. Otwórz ją [E] i przeciągnij towar do swoich kieszeni.",
 			"done": func(): return flag("got_first"), "marker": _starter_marker},
@@ -4093,7 +4093,7 @@ func _on_tour_done() -> void:
 	var parts := []
 	for e in D.STARTER_PACK:
 		parts.append("%d g %s" % [int(e[1]), String(D.PRODUCT_GEN[e[0]])])
-	chat("wiktor", "Wsunąłem ci pod drzwi paczkę na start: %s. Czyste, nierozrabiane. Ta jedna jest ode mnie, za darmo — na rozruch, bo wiem, że zaczynasz od zera. Za następne płacisz. Zaporcjuj na wadze i czekaj na klienta. Co zarobisz ponad towar, wrzucaj do mojej skrzynki gazowej na tyłach pawilonu — pierwsze trzy stówy i przestajesz być przydupasem: robię z ciebie gońca i dostajesz plecak." % " i ".join(parts), false, true)
+	chat("wiktor", "Wrzuciłem ci przez drzwi paczkę na start: %s. Czyste, nierozrabiane. Ta jedna jest ode mnie, za darmo — na rozruch, bo wiem, że zaczynasz od zera. Za następne płacisz. Zaporcjuj na wadze i czekaj na klienta. Co zarobisz ponad towar, wrzucaj do mojej skrzynki gazowej na tyłach pawilonu — pierwsze trzy stówy i przestajesz być przydupasem: robię z ciebie gońca i dostajesz plecak." % " i ".join(parts), false, true)
 	if main != null:
 		main.door_package()
 

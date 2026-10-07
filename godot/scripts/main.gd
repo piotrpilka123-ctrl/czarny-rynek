@@ -1397,16 +1397,19 @@ func door_cam(k: float) -> Array:
 	var R: Dictionary = D.ROOMS.safe
 	var cx := float(R.cx)
 	var ez := float(R.d) * 0.5
-	var from := Vector3(cx + 0.46, 0.13, ez - 1.38)
-	var to := Vector3(cx + 0.27, 0.085, ez - 1.02)
-	var look := Vector3(cx + 0.03, 0.03, ez - 0.52)
+	# pierwsze ujęcie: z boku na drzwi, na wysokości szczeliny na listy — widać, jak paczka się przeciska i spada
+	var from := Vector3(cx + 0.95, 0.8, ez - 1.55)
+	var to := Vector3(cx + 0.7, 0.55, ez - 1.25)
+	var look := Vector3(cx - 0.04, 0.8, ez - 0.2)
+	var look2 := Vector3(cx - 0.02, 0.12, ez - 0.5)
 	if k <= 1.0:
-		return [from.lerp(to, k), look, lerpf(34.0, 30.0, k)]
+		return [from.lerp(to, k), look.lerp(look2, smoothstep(0.35, 0.9, k)), lerpf(40.0, 36.0, k)]
 	var k2 := clampf(k - 1.0, 0.0, 1.0)
 	k2 = k2 * k2 * (3.0 - 2.0 * k2)
-	var top := Vector3(cx + 0.2, 0.33, ez - 0.93)
-	var bags := Vector3(cx + 0.02, 0.02, ez - 0.59)
-	return [to.lerp(top, k2), look.lerp(bags, k2), lerpf(30.0, 27.0, k2)]
+	# drugie ujęcie: kamera schodzi nad paczkę leżącą na wycieraczce
+	var top := Vector3(cx + 0.24, 0.36, ez - 0.98)
+	var bags := Vector3(cx - 0.02, 0.03, ez - 0.6)
+	return [to.lerp(top, k2), look2.lerp(bags, k2), lerpf(36.0, 28.0, k2)]
 
 
 func door_package() -> void:
@@ -1432,18 +1435,15 @@ func door_package() -> void:
 	tw.tween_method(func(k: float):
 		var ck := door_cam(k)
 		cine_cam(ck[0], ck[1], ck[2]), 0.0, 1.0, 3.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	# pierwszy wsuwa się worek z ziołem — dwoma pchnięciami, jak ręką spod drzwi
-	tw.tween_method(func(k: float): world.starter_rest(k * 0.55, 0.0), 0.0, 1.0, 0.4).set_delay(0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(0.5)
-	tw.tween_method(func(k: float): world.starter_rest(0.55 + k * 0.45, 0.0), 0.0, 1.0, 0.35).set_delay(1.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(1.15)
-	# za nim woreczek strunowy z amfetaminą
-	tw.tween_method(func(k: float): world.starter_rest(1.0, k), 0.0, 1.0, 0.45).set_delay(1.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(1.9)
-	ui.cut_line("Ktoś puka. Kiedy podchodzisz, pod drzwiami leży już paczka.")
+	# klapka szczeliny na listy uchyla się, paczka przeciska się na sztorc i spada na wycieraczkę
+	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(0.7)
+	tw.tween_method(func(k: float): world.starter_rest(k * 0.3), 0.0, 1.0, 0.9).set_delay(0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_method(func(k: float): world.starter_rest(0.3 + k * 0.7), 0.0, 1.0, 0.75).set_delay(1.7)
+	tw.tween_callback(func(): Sfx.play("thud", -4.0)).set_delay(2.1)
+	ui.cut_line("Ktoś puka. Klapka na listy uchyla się i na wycieraczkę spada paczka.")
 	await get_tree().create_timer(3.9).timeout
 	# drugie ujęcie: kamera unosi się i zbliża — worek zielonego i strunowy woreczek białego
-	ui.cut_line("Paczka w szarym papierze, oklejona taśmą. W środku towar na rozruch — od Wiktora.")
+	ui.cut_line("Czarna folia, szara taśma. W środku towar na rozruch — od Wiktora.")
 	var tw2 := create_tween()
 	tw2.tween_method(func(k: float):
 		var ck2 := door_cam(1.0 + k)

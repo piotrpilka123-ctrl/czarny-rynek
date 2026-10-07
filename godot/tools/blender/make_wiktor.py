@@ -156,72 +156,101 @@ def _smugi(np, rs, arr, n, sila, dlug=(0.25, 0.8), gr=(1.2, 3.0)):
 
 
 def paczka_start():
-    """Paczka od Wiktora, tak jak chodzi po mieście: zwarty pakunek 19 × 12 × 2 cm zawinięty w szary papier
-    pakowy — pognieciony, z zakładkami na końcach — i okręcony brązową taśmą na krzyż; na wierzchu dopisek markerem.
-    Co jest w środku, widać dopiero po otwarciu (okno paczki). Węzeł „Ziolo” to cały pakunek (wsuwa się pod drzwi)."""
+    """Paczka od Wiktora: towar ciasno owinięty czarną folią stretch (błyszczące, pomarszczone zwoje)
+    i okręcony szarą taśmą naprawczą — dwa pasy w poprzek, jeden wzdłuż. Zwarta kostka 17 × 11 × 4,5 cm,
+    która mieści się w szczelinie na listy. Węzeł „Ziolo” to cały pakunek (gra nim porusza)."""
     import numpy as np
     reset()
-    rs = np.random.default_rng(23)
-    W, Dd, Hh = 0.19, 0.12, 0.021
-    # --- tekstura papieru: szarobrązowy, z włóknami, zagnieceniami (jasne grzbiety, ciemne doliny) i przetarciami
-    wp, hp = 760, 480
+    rs = np.random.default_rng(31)
+    W, Dd, Hh = 0.17, 0.11, 0.045
+    wp, hp = 768, 512
     ys, xs = np.mgrid[0:hp, 0:wp].astype(np.float32)
-    base = np.zeros((hp, wp, 3), dtype=np.float32) + np.array([0.60, 0.50, 0.37], dtype=np.float32)
-    base *= (1.0 + 0.018 * np.sin(xs * 0.9 + np.sin(ys * 0.05) * 3.0))[..., None]            # prążki papieru pakowego
-    base *= rs.uniform(0.93, 1.05, (hp, wp, 1)).astype(np.float32)                          # włókna
-    for _i in range(34):                                                                   # zagniecenia: jasna i ciemna kreska obok siebie
+    uu, vv = xs / wp * 2 - 1, ys / hp * 2 - 1
+    # --- czarna folia: prawie czerń, z jaśniejszymi smugami naciągniętych warstw i zmarszczkami w poprzek
+    base = np.zeros((hp, wp, 3), dtype=np.float32) + np.array([0.035, 0.036, 0.04], dtype=np.float32)
+    for _i in range(70):
+        y0 = rs.random() * hp
+        a = rs.uniform(-0.12, 0.12)
+        wd = rs.uniform(0.8, 3.5)
+        dist = (ys - y0) - (xs - wp / 2) * a + np.sin(xs * rs.uniform(0.01, 0.04) + rs.random() * 6) * rs.uniform(1, 5)
+        base += (np.exp(-(dist / wd) ** 2) * rs.uniform(0.02, 0.09))[..., None]
+    for _i in range(8):                                                # granice kolejnych warstw folii (skośne)
+        x0 = rs.random() * wp
+        dist = (xs - x0) + (ys - hp / 2) * rs.uniform(-0.5, 0.5)
+        base += (np.exp(-(dist / 1.5) ** 2) * 0.06)[..., None]
+        base -= (np.clip(dist, 0, 40) / 40 * 0.012 * (dist > 0))[..., None]
+    # --- szara taśma: matowa, z drobnym splotem, zagnieceniami i jaśniejszym brzegiem
+    tape = np.array([0.46, 0.47, 0.48], dtype=np.float32)
+    weave = 1.0 + 0.035 * np.sin(xs * 1.9) * np.sin(ys * 1.9)
+    def pas(mask, edge):
+        k = (0.9 + 0.08 * np.sin(xs * 0.05 + ys * 0.031)) * weave
+        base[mask] = tape * k[mask][..., None]
+        base[edge] = base[edge] * 0.75 + np.array([0.6, 0.61, 0.62]) * 0.25
+    for u0, hw in ((-0.5, 0.11), (0.46, 0.1)):
+        d = np.abs(uu - u0 - vv * 0.04)
+        pas(d < hw, np.abs(d - hw) < 0.012)
+    d2 = np.abs(vv - 0.08 - uu * 0.03)
+    pas(d2 < 0.14, np.abs(d2 - 0.14) < 0.012)
+    for _i in range(26):                                               # zmarszczki na taśmie
         x0, y0 = rs.random() * wp, rs.random() * hp
         a = rs.random() * math.pi
-        ln = rs.uniform(0.12, 0.6) * wp
-        dx, dy = math.cos(a), math.sin(a)
-        t = (xs - x0) * dx + (ys - y0) * dy
-        dist = (xs - x0) * -dy + (ys - y0) * dx
-        k = np.clip(1.0 - np.abs(t) / (ln / 2), 0.0, 1.0)
-        base += (np.exp(-((dist - 1.2) / 1.3) ** 2) * k * 0.10)[..., None]
-        base -= (np.exp(-((dist + 1.4) / 1.8) ** 2) * k * 0.09)[..., None]
-    for _i in range(9):                                                                    # tłustsze plamy i przetarcia
-        cx, cy, rr = rs.random() * wp, rs.random() * hp, rs.uniform(18, 60)
-        base *= (1.0 - 0.10 * np.exp(-(((xs - cx) ** 2 + (ys - cy) ** 2) / (rr * rr))))[..., None]
-    base[:4, :4] = np.array([0.5, 0.42, 0.31])
-    uu, vv = xs / wp * 2 - 1, ys / hp * 2 - 1
-    # zakładki na końcach: papier złożony „w kopertę” — dwie skośne krawędzie schodzące się do środka krótszego boku
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            # prosta od rogu (sx, sy) do punktu (sx·0.62, 0)
-            d = np.abs((vv - sy) * (0.62 - 1.0) * sx - (uu - sx) * (0.0 - sy)) / math.hypot(0.38, 1.0)
-            on = (np.abs(uu) > 0.6) & (vv * sy > 0)
-            base -= (np.exp(-(d / 0.012) ** 2) * 0.16 * on)[..., None]
-            base += (np.exp(-((d - 0.02) / 0.012) ** 2) * 0.07 * on)[..., None]
-    # brązowa taśma pakowa: dwa pasy wzdłuż i jeden w poprzek; lekko prześwituje papier, brzegi łapią światło
-    tape = np.array([0.42, 0.27, 0.12], dtype=np.float32)
-    def pas(mask, edge):
-        k = 0.9 + 0.05 * np.sin(xs * 0.07 + ys * 0.045)
-        base[mask] = (base[mask] * 0.25 + tape * 0.75) * k[mask][..., None]
-        base[edge] = base[edge] * 0.55 + np.array([0.75, 0.62, 0.42]) * 0.45
-    for v0 in (-0.42, 0.46):
-        m = (np.abs(vv - v0) < 0.15) & (np.abs(uu) < 0.985)
-        e = (np.abs(np.abs(vv - v0) - 0.15) < 0.012) & (np.abs(uu) < 0.985)
-        pas(m, e)
-    m2 = (np.abs(uu - 0.3) < 0.1) & (np.abs(vv) < 0.985)
-    e2 = (np.abs(np.abs(uu - 0.3) - 0.1) < 0.008) & (np.abs(vv) < 0.985)
-    pas(m2, e2)
-    _smugi(np, rs, base, 10, 0.05, (0.1, 0.4), (1.0, 2.0))
-    base[:4, :4] = np.array([0.5, 0.42, 0.31])
-    papier = _mat_obraz('papier_pakowy', _obraz('paczka_papier_kolor', base), 0.6)
+        t = (xs - x0) * math.cos(a) + (ys - y0) * math.sin(a)
+        dist = (xs - x0) * -math.sin(a) + (ys - y0) * math.cos(a)
+        k = np.clip(1.0 - np.abs(t) / 60.0, 0.0, 1.0)
+        istape = (base.mean(axis=2) > 0.25)
+        base += (np.exp(-(dist / 1.4) ** 2) * k * 0.07 * istape)[..., None]
+    base = np.clip(base, 0.0, 1.0)
+    folia = _mat_obraz('folia_stretch', _obraz('paczka_folia_kolor', base), 0.32)
 
-    def hz(u, v):
-        # poduszka o stromych bokach, lekko wybrzuszona; nierówna, bo w środku leżą woreczki
-        edge = (1.0 - abs(u) ** 34) * (1.0 - abs(v) ** 26)
-        x, y = u * W / 2, v * Dd / 2
-        bump = 0.5 + 0.5 * noise.noise(Vector((x * 34, y * 34, 2.1)))
-        fine = noise.noise(Vector((x * 150, y * 150, 5.5)))
-        return 0.0008 + edge * (Hh * 0.78 + Hh * 0.22 * bump + 0.0006 * fine)
-
-    paczka = _poduszka('PaczkaPapier', W, Dd, 60, 38, hz, papier)
-    nap = join('PaczkaNapis', [text('dopisek', 'K.', 0.024, mat('marker', '15161a', 0.6), (-0.035, 0.001, hz(-0.37, 0.02) + 0.0009), (0, 0, 0.12), 0.0002)])
+    # obła bryła zaokrąglona ze wszystkich stron (superelipsoida) — leży na podłodze jak zawiniątko, nie „rozlewa się”
+    nu, nv = 72, 36
+    def sp(c, e):
+        return math.copysign(abs(c) ** e, c)
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new('UVMap')
+    grid = []
+    for j in range(nv + 1):
+        ph = -math.pi / 2 + math.pi * j / nv
+        row = []
+        for i in range(nu):
+            th = 2 * math.pi * i / nu
+            x = W / 2 * sp(math.cos(ph), 0.5) * sp(math.cos(th), 0.62)
+            y = Dd / 2 * sp(math.cos(ph), 0.5) * sp(math.sin(th), 0.62)
+            zz = Hh / 2 * sp(math.sin(ph), 0.72)
+            k = 1.0 + 0.035 * noise.noise(Vector((x * 30, y * 30, zz * 30))) + 0.012 * noise.noise(Vector((x * 26, y * 190, zz * 190)))
+            u, v = x / (W / 2), y / (Dd / 2)
+            if abs(u + 0.5) < 0.11 or abs(u - 0.46) < 0.1 or abs(v - 0.08) < 0.14:
+                k -= 0.03                                           # taśma ściska folię
+            row.append(bm.verts.new((x * k, y * k, zz * k + Hh / 2)))
+        grid.append(row)
+    for j in range(nv):
+        for i in range(nu):
+            a_, b_, c_, d_ = grid[j][i], grid[j][(i + 1) % nu], grid[j + 1][(i + 1) % nu], grid[j + 1][i]
+            if j == 0:
+                vs = (a_, c_, d_) if False else (grid[0][0], c_, d_)
+                if c_ is d_ or len({grid[0][0], c_, d_}) < 3:
+                    continue
+            elif j == nv - 1:
+                vs = (a_, b_, grid[nv][0])
+                if len({a_, b_, grid[nv][0]}) < 3:
+                    continue
+            else:
+                vs = (a_, b_, c_, d_)
+            try:
+                f = bm.faces.new(vs)
+            except ValueError:
+                continue
+            f.smooth = True
+            for lp in f.loops:
+                lp[uvl].uv = (lp.vert.co.x / (W * 1.06) + 0.5, lp.vert.co.y / (Dd * 1.06) + 0.5)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0004)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new('PaczkaFolia')
+    bm.to_mesh(me)
+    bm.free()
+    paczka = _finish(me, 'PaczkaFolia', folia, True, None)
     z = empty('Ziolo')
-    for o in (paczka, nap):
-        o.parent = z
+    paczka.parent = z
     export('paczka_start')
 
 

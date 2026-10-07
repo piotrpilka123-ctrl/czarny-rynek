@@ -83,7 +83,7 @@ func build(_noise_tex: Texture2D) -> void:
 	env.tonemap_white = 6.0
 	env.tonemap_exposure = 0.95
 	env.glow_enabled = true
-	env.glow_intensity = 0.65
+	env.glow_intensity = 0.45
 	env.glow_bloom = 0.05
 	env.glow_hdr_threshold = 1.1
 	env.ssao_enabled = true
@@ -97,7 +97,7 @@ func build(_noise_tex: Texture2D) -> void:
 	env.volumetric_fog_enabled = true
 	env.volumetric_fog_density = 0.01
 	env.volumetric_fog_albedo = Color(0.86, 0.88, 0.92)
-	env.volumetric_fog_anisotropy = 0.7
+	env.volumetric_fog_anisotropy = 0.45
 	env.volumetric_fog_length = 90.0
 	env.volumetric_fog_detail_spread = 2.2
 	env.volumetric_fog_ambient_inject = 0.35
@@ -116,8 +116,9 @@ func build(_noise_tex: Texture2D) -> void:
 	sun.directional_shadow_max_distance = 110.0
 	sun.directional_shadow_blend_splits = true
 	sun.shadow_blur = 1.0
-	sun.shadow_bias = 0.035
-	sun.shadow_normal_bias = 1.4
+	sun.shadow_bias = 0.03
+	# mniejsze odsunięcie cienia: cienkie rzeczy (słupy, latarnie, znaki) znów rzucają cień
+	sun.shadow_normal_bias = 0.6
 	sun.light_angular_distance = 0.8
 	sun.light_volumetric_fog_energy = 1.6
 	add_child(sun)
@@ -355,14 +356,15 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		sun.look_at_from_position(sun_dir * 100.0, Vector3.ZERO, Vector3.UP)
 		sun.light_color = sun_c.lerp(Color(0.8, 0.84, 0.9), ov * 0.7)
 		sun.light_energy = sun_e * (1.0 - ov * 0.8)
-		sun.light_volumetric_fog_energy = lerpf(1.25, 0.6, night)
+		# słońce nisko nad ulicą zalewało kadr białą łuną — snop we mgle jest teraz dużo słabszy
+		sun.light_volumetric_fog_energy = lerpf(0.45, 0.6, night)
 		# nocą do światła nieba dochodzi słabe, niebieskawe wypełnienie — cienie nie są smoliście czarne
 		env.ambient_light_sky_contribution = lerpf(1.0, 0.5, night)
 		# (dawniej mocno niebieskie i jasne: dalekie budynki świeciły granatem na tle brunatnego nieba)
 		env.ambient_light_color = Color(0.15, 0.17, 0.23)
 		env.ambient_light_energy = lerpf(0.9, 1.05, night)
 		env.tonemap_exposure = lerpf(0.92, 1.2, night) * bright
-		env.glow_hdr_threshold = lerpf(1.2, 0.85, night)
+		env.glow_hdr_threshold = lerpf(1.6, 0.85, night)
 		env.fog_light_color = (sun_c * 0.5 + Color(0.4, 0.45, 0.5) * 0.5) * lerpf(1.0, 0.08, night)
 		env.fog_light_energy = lerpf(0.8, 0.3, night)
 		# Nocą mgła bierze kolor z samego nieba i gęstnieje: dalekie bloki wtapiają się w łunę miasta,

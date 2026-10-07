@@ -190,6 +190,7 @@ func _party() -> void:
 	_party_fx.material = sm
 	U.cut.add_child(_party_fx)
 	U.cut.move_child(_party_fx, 0)
+	Sfx.party_solo(true)
 	Sfx.party_play()
 	Sfx.party_sfx("gwar_baru", -6.0)
 	# [czas, co, …] — "T:tekst" = napis; "P" = wycinek nagrania [nazwa, od, długość, dB, wysokość]; reszta to zdarzenia.
