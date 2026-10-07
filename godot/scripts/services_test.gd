@@ -480,6 +480,7 @@ static func run(T) -> void:
 	CarsT.lamps_on(parked, true)
 	T.ok(((parked.get_meta("lamps")[0] as MeshInstance3D).material_override) == null, "jadący radiowóz zapala klosze świateł")
 	parked.free()
+	T.ok(G.world.road_signs >= 25, "przy przejściach i na skrzyżowaniach stoją znaki drogowe (%d)" % G.world.road_signs)
 	T.ok(G.world.drains >= 40, "w jezdniach są kratki ściekowe przy krawężnikach (%d)" % G.world.drains)
 	T.ok(G.world.ring2 >= 40, "za murem stoi drugi rząd bloków, który zasłania przerwy w pierwszym (%d)" % G.world.ring2)
 	# --- radiowóz: jedzie prawym pasem, skręca stopniowo, na końcu trasy zawraca

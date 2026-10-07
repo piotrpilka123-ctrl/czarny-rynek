@@ -966,6 +966,7 @@ func build(loader = null) -> void:
 	_markers()
 	_litter()
 	_street_details()
+	_road_signs()
 
 
 func _facade_mats() -> void:
@@ -3735,6 +3736,38 @@ func _street_details() -> void:
 	for e in [[-150.0, 20.6], [-60.0, 19.4], [100.0, 20.5], [150.0, 19.5], [0.6, 70.0], [-0.5, 120.0], [-106.0, -60.0], [-106.4, -110.0], [-40.0, -130.0], [40.0, -130.6], [95.0, -95.0],
 			[-27.0, -90.0], [60.0, -50.0], [8.0, -66.0], [-5.3, 45.0], [75.0, 50.0], [166.0, -30.0], [10.0, 157.0]]:
 		_prop("water_manhole_cover", float(e[0]), float(e[1]), float(e[0]) * 0.7, 0.0, 0.0, false, 0.01)
+
+
+## Znaki drogowe: przy każdym przejściu dla pieszych, na wylotach bocznych ulic (STOP / ustąp), ograniczenie prędkości
+## za tunelem i bramą huty, ślepe uliczki oraz tabliczki z nazwami na rogach. Tarcza modelu patrzy na +z przy obrocie 0;
+## znak stoi po prawej stronie jezdni i patrzy na nadjeżdżających.
+var road_signs := 0
+
+func _road_signs() -> void:
+	var list: Array = []          # [model, x, z, obrót]
+	var E := -PI / 2.0            # dla jadących na wschód (tarcza na zachód)
+	var W := PI / 2.0
+	for zx in [-98.0, -11.0, 9.0, 64.0, 124.0]:
+		list.append(["znak_przejscie", zx - 1.0, 25.15, E])
+		list.append(["znak_przejscie", zx + 4.0, 14.85, W])
+	list.append(["znak_przejscie", -4.15, 111.0, PI])
+	list.append(["znak_przejscie", 4.15, 116.0, 0.0])
+	list += [["znak_stop", 4.3, 27.4, 0.0], ["znak_ustap", -110.7, 13.4, PI], ["znak_ustap", 79.2, 27.4, 0.0], ["znak_stop", 161.3, 13.3, PI],
+		["znak_slepa", 90.3, -124.2, PI], ["znak_slepa", 170.7, 12.2, 0.0], ["znak_slepa", 4.2, 132.0, PI],
+		["znak_40", -172.0, 25.15, E], ["znak_40", 192.0, 14.85, W], ["znak_40", -3.9, 34.0, PI],
+		["znak_zakaz", -160.0, 14.85, W], ["znak_zakaz", -176.0, 25.15, E], ["znak_zakaz", 58.0, 14.85, W],
+		["znak_ulica_a", 6.3, 29.4, 0.0], ["znak_ulica_b", -101.0, 13.9, 0.0], ["znak_ulica_c", 171.2, 13.9, 0.0], ["znak_ulica_d", -101.2, -125.1, 0.0]]
+	for e in list:
+		var m := Stations.model(String(e[0]))
+		if m == null:
+			continue
+		var x := float(e[1])
+		var z := float(e[2])
+		_place(m, x, z, float(e[3]))
+		Props.set_range(m, 95.0)
+		add_col(x - 0.1 * INV, x + 0.1 * INV, z - 0.1 * INV, z + 0.1 * INV, 2.6)
+		rects.pop_back()
+		road_signs += 1
 
 
 ## Znaki skrytek: mały biały szablon sprejem (liść, czaszka, woreczek…) u stóp najbliższej ściany albo grata.
