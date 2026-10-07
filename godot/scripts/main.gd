@@ -3108,10 +3108,10 @@ func _test_ui(what: String) -> void:
 		"skill": ui.skill_check("Ważenie: 5 g marihuany", 1.0, func(_h): pass)
 		"dialog": talk_stasiu()
 		"property": ui.open_property("garaz")
-		"deal", "deal2", "deal3":
+		"deal", "deal2", "deal3", "deal4", "deal5", "deal6":
 			G.add_pack(G.S.inv, "dym", 100, 6)
 			G.add_pack(G.S.inv, "szron", 100, 2)
-			if what == "deal3":
+			if what != "deal" and what != "deal2":
 				# zrzut: paczki różnej wagi przy kliencie (woreczki 1, 2 i 5 g, inna czystość, drugi towar)
 				G.add_pack(G.S.inv, "dym", 100, 2, 2)
 				G.add_pack(G.S.inv, "dym", 100, 1, 5)
@@ -3128,10 +3128,70 @@ func _test_ui(what: String) -> void:
 			var who: Dictionary = n.def.duplicate()
 			who["st"] = G.S.cust[n.def.id]
 			ui.open_deal({"who": who, "product": "dym", "grams": int(o.grams), "order": o, "street": true, "npc": n, "agreed": null})
+			# deal — pusta taca; deal3 — część towaru na tacy (mniej, niż zamówił); deal4 — z górką; deal2 — po odmowie ceny
+			if what == "deal3" and not ui.deal.is_empty():
+				G.deal_offer_add(ui.deal, "dym", 100, 2, 1)
+				G.deal_offer_add(ui.deal, "dym", 100, 1, 1)
+				ui._render_deal()
+			if what == "deal4" and not ui.deal.is_empty():
+				G.deal_offer_add(ui.deal, "dym", 100, 5, 1)
+				G.deal_offer_add(ui.deal, "dym", 100, 1, 1)
+				ui._render_deal()
+			if what == "deal5" and not ui.deal.is_empty():
+				ui.Trade.place(ui, "dym", 100, 1)
+			if what == "deal6" and not ui.deal.is_empty():
+				_test_drag()
 			if what == "deal2" and not ui.deal.is_empty():
+				G.deal_autofill(ui.deal)
 				G.deal_set(ui.deal, 15)
 				G.deal_hand(ui.deal)
 				ui._render_deal()
+
+
+## zrzut/test: prawdziwe przeciągnięcie myszą pierwszej paczki z listy „przy sobie” na tacę (sztuczne zdarzenia wejścia)
+func _test_drag() -> void:
+	for i in range(6):
+		await get_tree().process_frame
+	var row: Control = null
+	for c in ui.deal_side_body.get_child(1).get_child(0).get_children():
+		if c is PanelContainer and (c as Control).modulate.a > 0.9:
+			row = c
+			break
+	if row == null or ui.deal_zone == null:
+		print("DRAG brak wiersza albo tacy")
+		return
+	var a: Vector2 = row.get_global_rect().get_center()
+	var b: Vector2 = ui.deal_zone.get_global_rect().get_center() - Vector2(120, 0)
+	var k: Vector2 = Vector2(get_window().size) / get_viewport().get_visible_rect().size
+	var send := func(ev: InputEvent) -> void:
+		Input.parse_input_event(ev)
+	var mb := InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_LEFT
+	mb.pressed = true
+	mb.position = a * k
+	mb.global_position = a * k
+	mb.button_mask = MOUSE_BUTTON_MASK_LEFT
+	send.call(mb)
+	await get_tree().process_frame
+	for i in range(1, 13):
+		var mm := InputEventMouseMotion.new()
+		var pos := a.lerp(b, i / 12.0) * k
+		mm.position = pos
+		mm.global_position = pos
+		mm.relative = (b - a) * k / 12.0
+		mm.button_mask = MOUSE_BUTTON_MASK_LEFT
+		send.call(mm)
+		await get_tree().process_frame
+	print("DRAG w trakcie: przeciąganie=%s taca_podświetlona=%s" % [str(get_viewport().gui_is_dragging()), str(ui.deal_zone_hot)])
+	var mu := InputEventMouseButton.new()
+	mu.button_index = MOUSE_BUTTON_LEFT
+	mu.pressed = false
+	mu.position = b * k
+	mu.global_position = b * k
+	send.call(mu)
+	for i in range(4):
+		await get_tree().process_frame
+	print("DRAG po upuszczeniu: okienko=%s na_tacy=%d g" % [str(not ui.deal_ask.is_empty()), int(ui.deal.qty)])
 
 
 ## seria kadrów kamery filmowej w jednym uruchomieniu (do wybierania ujęć zwiastuna)

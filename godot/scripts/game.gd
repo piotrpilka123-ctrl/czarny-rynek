@@ -2308,6 +2308,7 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 	# dobór paczek: najlepiej dokładnie tyle gramów, ile klient chce, z czystości, którą jeszcze lubi (najsłabszej z takich)
 	d["give"] = []
 	d["ask"] = int(d.want)
+	d["caught"] = false
 	var groups: Array = deal_groups()
 	var pick = null
 	var pick_score := -1.0
@@ -2363,29 +2364,62 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 	return d
 
 
-## cena za gram przy danym podbiciu / opuście (w procentach od ceny wyjściowej)
 ## cena za gram przy danym odchyleniu od ceny wyjściowej (w procentach)
 func deal_price_at(d: Dictionary, pct: float) -> int:
 	return maxi(1, int(round(float(d.base) * (1.0 + float(pct) / 100.0))))
 
 
-## suma wyjściowa: umówiona (albo uliczna) cena razy liczba gramów
+## ile gramów leży na tacy (to, co za chwilę podasz klientowi)
+func deal_given(d: Dictionary) -> int:
+	var g := 0
+	for b in d.get("give", []):
+		g += int(b.g) * int(b.n)
+	return g
+
+
+## umówiona suma: cena wyjściowa razy tyle gramów, ile klient zamówił
+func deal_ref_sum(d: Dictionary) -> int:
+	return maxi(1, int(round(float(d.base) * int(d.want))))
+
+
+## Suma wyjściowa za to, co leży na tacy. Mniej niż zamówił — liczy się tylko to, co dajesz;
+## więcej — nadwyżka liczy się w połowie (klient jej nie zamawiał). Pusta taca = umówiona suma.
 func deal_base_sum(d: Dictionary) -> int:
-	return maxi(1, int(round(float(d.base) * int(d.qty))))
+	var given := int(d.qty)
+	var want := int(d.want)
+	if given <= 0:
+		return deal_ref_sum(d)
+	var eff := float(mini(given, want)) + 0.5 * float(maxi(0, given - want))
+	return maxi(1, int(round(float(d.base) * eff)))
 
 
-## Cena to SUMA za całość. Ustawia ją wprost; d.pct (odchylenie w %) i d.price (zł/g) wynikają z sumy.
+## d.pct — o ile procent suma odbiega od tego, za co klient MYŚLI, że płaci; d.price — faktyczne zł za gram.
+## Gdy dajesz mniej, a liczysz jak za więcej, klient ocenia cenę tak, jakby dostał tyle, za ile płaci
+## (czy zauważy brak — to osobny rzut: deal_short_chance).
+func _deal_price(d: Dictionary) -> void:
+	var given := int(d.qty)
+	var want := int(d.want)
+	var value := float(deal_base_sum(d))
+	if given > 0 and given < want:
+		var paid_g := clampf(float(d.sum) / maxf(0.01, float(d.base)), float(given), float(want))
+		value = maxf(1.0, round(float(d.base) * paid_g))
+	d.pct = (float(d.sum) / value - 1.0) * 100.0
+	if absf(float(d.pct)) < 0.3:
+		d.pct = 0.0
+	d.price = float(d.sum) / float(maxi(1, given))
+
+
+## Cena to SUMA za całość. Ustawia ją wprost; d.pct i d.price wynikają z sumy i z tego, co leży na tacy.
 ## Po jednej odmowie klienta nie da się już prosić o więcej, niż wtedy zostało.
 func deal_set_sum(d: Dictionary, sum: int) -> bool:
 	if d.over:
 		return false
 	var bs := deal_base_sum(d)
-	sum = clampi(sum, maxi(1, int(round(bs * 0.5))), int(round(bs * 1.6)))
+	sum = clampi(sum, maxi(1, int(round(bs * 0.5))), int(round(maxi(bs, deal_ref_sum(d)) * 1.6)))
 	if d.pushed and sum > int(d.sum):
 		return false
 	d.sum = sum
-	d.pct = (float(sum) / float(bs) - 1.0) * 100.0
-	d.price = float(sum) / float(maxi(1, int(d.qty)))
+	_deal_price(d)
 	return true
 
 
@@ -2405,10 +2439,146 @@ func deal_set(d: Dictionary, pct: float) -> bool:
 	return ok
 
 
-## zmiana liczby gramów (handel uliczny): suma idzie za nią, odchylenie od ceny zostaje
+## zmiana liczby gramów (bot, testy): paczki dobierają się same, suma idzie za nimi, odchylenie od ceny zostaje
 func deal_qty(d: Dictionary, q: int) -> void:
 	d["ask"] = maxi(1, q)
 	deal_choose(d, String(d.sel.p), int(d.sel.pur))
+
+
+# ---------------------------------------------------------------- taca: to, co kładziesz klientowi
+## ile paczek danej wagi i czystości masz jeszcze w kieszeni poza tym, co już leży na tacy
+func deal_have(d: Dictionary, p: String, pur: int, g: int) -> int:
+	var n := 0
+	for sx in stacks(S.inv, "pack"):
+		if String(sx.p) == p and int(sx.pur) == pur and int(sx.g) == g:
+			n += int(sx.n)
+	if String(d.sel.get("p", "")) == p:
+		for b in d.get("give", []):
+			if int(b.pur) == pur and int(b.g) == g:
+				n -= int(b.n)
+	return maxi(0, n)
+
+
+## po każdej zmianie na tacy: gramy, najsłabsza czystość (tę klient może wyczuć) i cena w dozwolonych widełkach
+func _deal_sync(d: Dictionary) -> void:
+	d.qty = deal_given(d)
+	var worst := 101
+	for b in d.give:
+		worst = mini(worst, int(b.pur))
+	if worst <= 100:
+		d.sel.pur = worst
+	if d.has("base") and float(d.base) > 0.0 and not d.get("over", false):
+		var keep: bool = d.pushed
+		d.pushed = false
+		deal_set_sum(d, int(d.sum))
+		d.pushed = keep
+
+
+## kładzie na tacę `n` paczek (towar p, czystość pur, waga g). Zwraca "" albo powód odmowy.
+func deal_offer_add(d: Dictionary, p: String, pur: int, g: int, n: int) -> String:
+	if d.over:
+		return "Już po wymianie."
+	var sting: bool = d.ctx.get("sting", false)
+	if p != String(d.ctx.product) and not sting:
+		return "%s chce %s — tego nie weźmie." % [String(d.who.name), String(D.PRODUCT_GEN[d.ctx.product])]
+	if not (d.give as Array).is_empty() and p != String(d.sel.p):
+		return "Jedna wymiana — jeden towar. Najpierw zdejmij to, co leży."
+	if p != String(d.sel.get("p", "")):
+		d.sel = {"p": p, "pur": pur, "n": 0.0, "g": 1, "sizes": []}
+		if d.ctx.get("agreed") == null:
+			d.base = round(market_price(p))
+	n = mini(n, deal_have(d, p, pur, g))
+	if n <= 0:
+		return "Nie masz więcej takich paczek."
+	var done := false
+	for b in d.give:
+		if int(b.pur) == pur and int(b.g) == g:
+			b.n = int(b.n) + n
+			done = true
+	if not done:
+		d.give.append({"pur": pur, "g": g, "n": n})
+		d.give.sort_custom(func(x, y): return int(x.g) * 1000 + int(x.pur) > int(y.g) * 1000 + int(y.pur))
+	_deal_sync(d)
+	return ""
+
+
+## zdejmuje z tacy `n` paczek (wracają do kieszeni)
+func deal_offer_take(d: Dictionary, pur: int, g: int, n: int) -> void:
+	if d.over:
+		return
+	for b in d.give:
+		if int(b.pur) == pur and int(b.g) == g:
+			b.n = int(b.n) - n
+	d.give = (d.give as Array).filter(func(b): return int(b.n) > 0)
+	_deal_sync(d)
+
+
+## pusta taca, suma wraca do umówionej (tak zaczyna się wymiana w oknie gracza)
+func deal_offer_clear(d: Dictionary) -> void:
+	d.give = []
+	d.qty = 0
+	if not d.over:
+		var keep: bool = d.pushed
+		d.pushed = false
+		deal_set_sum(d, deal_ref_sum(d))
+		d.pushed = keep
+
+
+## „dobierz sam”: gra układa z paczek tyle gramów, ile klient zamówił (albo najwięcej, ile się da), i liczy uczciwie
+func deal_autofill(d: Dictionary) -> void:
+	var pick = null
+	var pick_score := -1.0
+	for gr in deal_groups():
+		if String(gr.p) != String(d.ctx.product) and not d.ctx.get("sting", false):
+			continue
+		var cb: Dictionary = bag_combo(gr.sizes, int(d.want))
+		var sc := float(cb.sum) * 10.0 + (5.0 if int(gr.pur) >= int(d.who.get("minpur", 0)) else 0.0) + (100.0 if int(cb.sum) == int(d.want) else 0.0) - float(gr.pur) * 0.01
+		if sc > pick_score:
+			pick_score = sc
+			pick = gr
+	if pick == null:
+		return
+	d["ask"] = int(d.want)
+	var pct := float(d.get("pct", 0.0))
+	d.pct = 0.0
+	deal_choose(d, String(pick.p), int(pick.pur))
+	d.pct = pct
+	_deal_price(d)
+
+
+## Szansa (0–1), że klient weźmie to, co leży na tacy, bez słowa o ilości.
+## Tyle, ile zamówił, albo więcej — zawsze. Mniej, ale liczysz tylko za to, co dajesz — też (uczciwy układ).
+## Mniej, a liczysz jak za więcej: szansa = dane gramy / gramy, za które każesz płacić (3 g z 4 g = 75%).
+## Kto raz Cię na tym złapał, patrzy Ci na ręce: każda dawna wpadka u tego klienta zdejmuje 15% szansy,
+## a po wpadce w tej samej rozmowie nie ma już o czym mówić.
+func deal_short_chance(d: Dictionary) -> float:
+	var given := int(d.qty)
+	var want := int(d.want)
+	if d.ctx.get("sting", false) or given >= want:
+		return 1.0
+	if given <= 0:
+		return 0.0
+	if float(d.sum) <= round(float(d.base) * given) + 0.5:
+		return 1.0
+	if d.get("caught", false):
+		return 0.0
+	var paid_g := clampf(float(d.sum) / maxf(0.01, float(d.base)), float(given), float(want))
+	var ch := float(given) / paid_g * pow(0.85, float(int(d.st.get("shorted", 0))))
+	return clampf(ch, 0.05, 0.95)
+
+
+## suma, przy której brak towaru przestaje być oszustwem (płaci tylko za to, co dostaje)
+func deal_fair_sum(d: Dictionary) -> int:
+	return maxi(1, int(round(float(d.base) * int(d.qty))))
+
+
+## ile gramów ponad zamówienie klient dostaje w prezencie (0, gdy każesz sobie za nie zapłacić w całości)
+func deal_gift(d: Dictionary) -> float:
+	var extra := int(d.qty) - int(d.want)
+	if extra <= 0:
+		return 0.0
+	var paid_extra := maxf(0.0, (float(d.sum) - float(deal_ref_sum(d))) / maxf(0.01, float(d.base)))
+	return maxf(0.0, float(extra) - paid_extra)
 
 
 ## paczki z plecaka pogrupowane po towarze i czystości: [{p, pur, grams, sizes: [{g, n}], text}]
@@ -2471,7 +2641,7 @@ func bag_sums(sizes: Array, limit: int) -> Array:
 	return out
 
 
-## wybiera, z której czystości podajesz, i dobiera paczki na d.ask gramów (d.give, d.qty)
+## dobiera paczki z jednej czystości na d.ask gramów (d.give, d.qty); suma idzie za tym, co leży na tacy
 func deal_choose(d: Dictionary, p: String, pur: int) -> void:
 	var sizes: Array = []
 	var total := 0
@@ -2553,13 +2723,39 @@ func deal_hand(d: Dictionary) -> void:
 		return
 	d.hold = 0.0
 	var who: Dictionary = d.who
-	if int(d.qty) <= 0 and String(d.sel.p) == String(d.ctx.product):
-		d.speech = "„%d g chciałem, a ty masz same wielkie paczki? Rozpakuj to w domu.”" % int(d.want)
+	if int(d.qty) <= 0:
+		d.speech = ["„No? Gdzie towar?”", "„Pustą rękę mi podajesz?”", "„%d g. Czekam.”" % int(d.want)].pick_random()
 		Sfx.play("error")
 		return
 	if d.sel.p != d.ctx.product and not d.ctx.get("sting", false):
 		d.speech = "„To nie to. Chciałem %s.”" % String(D.PRODUCT_GEN[d.ctx.product])
 		return
+	# --- ilość: mniej, niż zamówił, a liczysz jak za więcej — rzut, czy się zorientuje
+	var short_ok := false
+	var short_fair := false
+	if int(d.qty) < int(d.want) and not d.ctx.get("sting", false):
+		var ch := deal_short_chance(d)
+		var miss := int(d.want) - int(d.qty)
+		if ch >= 0.999:
+			short_fair = true
+		elif randf() >= ch:
+			var again: bool = d.get("caught", false)
+			d["caught"] = true
+			if not again:
+				if d.st.has("sat"):
+					d.st.sat = maxf(0.0, float(d.st.sat) - (4.0 + 8.0 * float(miss) / float(maxi(1, int(d.want)))))
+					d.st.loy = maxf(0.0, float(d.st.get("loy", 0.0)) - 2.0)
+				d.st["shorted"] = int(d.st.get("shorted", 0)) + 1
+				S.stats["short_caught"] = int(S.stats.get("short_caught", 0)) + 1
+				d.notes.append("Zorientował się, że brakuje %d g. Dołóż towar albo zejdź z ceny do %s." % [miss, money(deal_fair_sum(d))])
+				d.speech = ["„Ej, tu jest mniej. Mówiłem %d g.”" % int(d.want), "„Chwila… to nie jest %d g. Dokładaj albo opuść.”" % int(d.want), "„Za kogo ty mnie masz? Brakuje %d g.”" % miss].pick_random()
+			else:
+				d.speech = ["„Mówiłem: dokładaj albo taniej.”", "„Dalej brakuje. Nie jestem ślepy.”"].pick_random()
+			Sfx.play("error")
+			return
+		else:
+			short_ok = true
+			S.stats["short_won"] = int(S.stats.get("short_won", 0)) + 1
 	var q := deal_quality(d)
 	if q == "no":
 		d.over = true
@@ -2582,7 +2778,9 @@ func deal_hand(d: Dictionary) -> void:
 		# wraca do sumy, którą jeszcze przełknie (najwyżej wyjściowej); od tej chwili w górę już się nie da
 		var back: float = clampf(floorf(float(d.tol) / 5.0) * 5.0, -10.0, 0.0)
 		d.pushed = false
-		deal_set_sum(d, int(round(deal_base_sum(d) * (1.0 + back / 100.0))))
+		# nie zauważył braku — targuje się o sumę za tyle, ile zamówił; inaczej o to, co leży na tacy
+		var back_from: int = deal_ref_sum(d) if short_ok else deal_base_sum(d)
+		deal_set_sum(d, mini(int(d.sum), int(round(back_from * (1.0 + back / 100.0)))))
 		d.pushed = true
 		if d.st.has("sat"):
 			d.st.sat = maxf(0.0, float(d.st.sat) - (3.0 if was >= 15.0 else 1.5))
@@ -2608,6 +2806,27 @@ func deal_hand(d: Dictionary) -> void:
 			d.st.loy = minf(100.0, float(d.st.get("loy", 0.0)) + 1.5)
 	elif float(d.pct) > 0.5:
 		line = ["„…Niech ci będzie.”", "„Drogo, ale biorę.”"].pick_random()
+	# więcej, niż zamówił, i nie każesz sobie za to dopłacić: zadowolenie rośnie z każdym gramem gratis
+	var gift := deal_gift(d)
+	if gift > 0.01 and q != "meh":
+		line = ["„O, dosypałeś? Szanuję.”", "„Więcej, niż mówiłem. Z tobą to się opłaca.”", "„No proszę, z górką. Zapamiętam.”"].pick_random()
+		d.notes.append("Dostał %s g ponad zamówienie — jest wyraźnie zadowolony." % units(gift))
+		if d.st.has("sat"):
+			var gk := clampf(gift / float(maxi(1, int(d.want))), 0.0, 1.0)
+			d.st.sat = minf(100.0, float(d.st.sat) + clampf(16.0 * gk, 1.5, 9.0))
+			d.st.loy = minf(100.0, float(d.st.get("loy", 0.0)) + clampf(8.0 * gk, 0.8, 4.5))
+		elif d.ctx.get("npc") != null and d.ctx.npc is Dictionary and d.ctx.npc.has("loyalty"):
+			d.ctx.npc.loyalty += 1
+		S.stats["gifts"] = int(S.stats.get("gifts", 0)) + 1
+	elif short_fair:
+		line = ["„Miało być %d g… dobra, biorę, co jest.”" % int(d.want), "„Mniej? No trudno. Następnym razem całość.”"].pick_random()
+		if d.st.has("sat") and d.ctx.get("order") != null:
+			d.st.sat = maxf(0.0, float(d.st.sat) - 1.5)
+	elif short_ok:
+		d.notes.append("Nie zauważył, że brakuje %d g." % (int(d.want) - int(d.qty)))
+	# uczciwa, pełna wymiana powoli zaciera dawne wpadki z wagą
+	if not short_ok and not short_fair and int(d.st.get("shorted", 0)) > 0 and randf() < 0.5:
+		d.st["shorted"] = int(d.st.shorted) - 1
 	# zdążyłeś w godzinę od umówionej pory: klient to docenia
 	if d.get("early", false):
 		S.stats["early"] = int(S.stats.get("early", 0)) + 1
@@ -2620,7 +2839,20 @@ func deal_hand(d: Dictionary) -> void:
 
 func deal_sell(d: Dictionary, price: float, line: String) -> void:
 	var ref: float = float(d.base) * (1.0 + maxf(0.0, float(d.tol)) / 100.0)
-	var res := complete_sale(d.ctx, d.sel.p, int(d.sel.pur), int(d.qty), price, ref, d.credit, d.get("give", []))
+	# klient ocenia cenę tak, jak ją odczuł (d.pct), a nie według faktycznych złotych za gram
+	var feel := float(d.base) * (1.0 + float(d.pct) / 100.0)
+	if feel > 0.01 and price > 0.01:
+		ref *= price / feel
+	# czystość do rozliczenia: średnia ważona z tego, co leży na tacy
+	var pur_sum := 0.0
+	for b in d.get("give", []):
+		pur_sum += float(b.pur) * float(int(b.g) * int(b.n))
+	var pur_avg := int(round(pur_sum / float(maxi(1, int(d.qty))))) if pur_sum > 0.0 else int(d.sel.pur)
+	var o_before = d.ctx.get("order")
+	var res := complete_sale(d.ctx, d.sel.p, pur_avg, int(d.qty), price, ref, d.credit, d.get("give", []))
+	# zgodził się na mniej — zamówienie jest załatwione, nie zostaje „reszta do dowiezienia”
+	if o_before != null and find_order(o_before.id) != null:
+		drop_order(o_before)
 	d.over = true
 	d.sold = true
 	d.speech = "%s\n[b][color=#4ade80]+%s[/color][/b] za %d g %s." % [line, money(res.paid), int(d.qty), D.PRODUCT_GEN[d.sel.p]]
@@ -2637,7 +2869,7 @@ func deal_max(d: Dictionary) -> float:
 	return float(d.base) * (1.0 + float(d.tol) / 100.0)
 
 
-## „Zaraz wracam”: klient zostaje na miejscu i czeka, zamówienie nie przepada.
+## „Poczekaj chwilę”: klient zostaje na miejscu i czeka, zamówienie nie przepada.
 ## Rozmowa zostaje zapamiętana (nastrój trochę siada), więc wyjście nie resetuje targów.
 func deal_pause(d: Dictionary) -> void:
 	var o = d.ctx.get("order")

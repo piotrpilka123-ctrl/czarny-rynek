@@ -101,6 +101,15 @@ var deal_fill: ColorRect = null      # pasek przytrzymania przy podawaniu towaru
 var deal_watch_l: Label = null
 var deal_cop_l: Control = null
 var deal_holding := false
+var modal_hrow: HBoxContainer
+var modal_head: HBoxContainer
+var modal_inner: VBoxContainer
+var deal_side: PanelContainer          # lewa strona okna wymiany: to, co masz przy sobie
+var deal_side_body: VBoxContainer
+var deal_zone: Control = null          # taca — pole zrzutu
+var deal_zone_hot := false
+var deal_ask := {}                     # okienko „ile paczek położyć”
+var deal_ask_box: Control = null
 var tip_box: Control = null          # karta „pierwszy raz” (najwyżej jedna naraz)
 var waymark: Control
 var mini_card: PanelContainer
@@ -934,15 +943,24 @@ func _build_modal() -> void:
 	modal_v = K.vbox(0)
 	modal_v.alignment = BoxContainer.ALIGNMENT_CENTER
 	mg.add_child(modal_v)
-	var hrow := K.hbox(0)
+	var hrow := K.hbox(14)
 	hrow.alignment = BoxContainer.ALIGNMENT_CENTER
 	modal_v.add_child(hrow)
+	modal_hrow = hrow
+	deal_side = K.panel(K.sb(Color(0.045, 0.055, 0.08, 0.97), 14, Color(1, 1, 1, 0.1), 1, 10))
+	deal_side.custom_minimum_size = Vector2(232, 0)
+	deal_side.visible = false
+	hrow.add_child(deal_side)
+	deal_side_body = K.vbox(6)
+	deal_side.add_child(deal_side_body)
 	modal_box = K.panel(K.sb(Color(0.045, 0.055, 0.08, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20))
 	modal_box.custom_minimum_size = Vector2(900, 0)
 	hrow.add_child(modal_box)
 	var v := K.vbox(10)
 	modal_box.add_child(v)
+	modal_inner = v
 	var head := K.hbox()
+	modal_head = head
 	var hv := K.vbox(0)
 	modal_title = K.head("", 26)
 	modal_sub = K.lbl("", 12, K.C_DIM)
@@ -978,15 +996,15 @@ func _modal_close() -> void:
 	close_all()
 
 
-## przyciski wyjścia z rozmowy: przy zamówieniu „Zaraz wracam” i „Rezygnuję”, na ulicy samo „Odejdź”
+## przyciski wyjścia z rozmowy: przy zamówieniu „Poczekaj chwilę” i „Odwołaj”, na ulicy samo „Odejdź”
 func _deal_exit_buttons(parent: Node, small := false) -> void:
 	if deal.ctx.get("order") != null and not deal.over:
-		var bw := K.btn("Zaraz wracam", func(): G.deal_pause(deal); close_all(), "", small)
+		var bw := K.btn("Poczekaj chwilę", func(): G.deal_pause(deal); close_all(), "", small)
 		bw.icon = K.tex("clock")
 		bw.add_theme_constant_override("icon_max_width", 15)
 		bw.tooltip_text = "Klient poczeka na miejscu. Zamówienie nie przepada."
 		parent.add_child(bw)
-		var bx := K.btn("Rezygnuję", func(): G.deal_cancel(deal); close_all(), "bad", small)
+		var bx := K.btn("Odwołaj", func(): G.deal_cancel(deal); close_all(), "bad", small)
 		bx.tooltip_text = "Odwołujesz transakcję. Klient będzie zły."
 		parent.add_child(bx)
 	else:
@@ -999,10 +1017,23 @@ func _open_modal(title: String, sub := "", dock := "center", width := 900.0) -> 
 	phone.visible = false
 	modal.visible = true
 	modal_dock = dock
-	modal_v.alignment = BoxContainer.ALIGNMENT_END if dock == "bottom" else BoxContainer.ALIGNMENT_CENTER
-	(modal as ColorRect).color = Color(0, 0, 0, 0.16 if dock == "bottom" else 0.6)
+	# "bottom" — okno przy dolnej krawędzi; "deal" — to samo plus lista „przy sobie” po lewej
+	var low := dock == "bottom" or dock == "deal"
+	modal_v.alignment = BoxContainer.ALIGNMENT_END if low else BoxContainer.ALIGNMENT_CENTER
+	(modal as ColorRect).color = Color(0, 0, 0, 0.16 if low else 0.6)
+	deal_side.visible = dock == "deal"
+	K.clear(deal_side_body)
+	Trade.ask_close(self)
+	deal_zone = null
+	# okno wymiany jest ciasne: bez dużego tytułu, z wąskimi marginesami i mniejszymi odstępami
+	var tight := dock == "deal"
+	modal_head.visible = not tight
+	modal_box.add_theme_stylebox_override("panel", K.sb(Color(0.045, 0.055, 0.08, 0.97), 14 if tight else 16, Color(1, 1, 1, 0.1), 1, 12 if tight else 20))
+	modal_inner.add_theme_constant_override("separation", 0 if tight else 10)
+	modal_body.add_theme_constant_override("separation", 6 if tight else 8)
+	modal_hrow.add_theme_constant_override("separation", 10 if tight else 14)
 	modal_box.custom_minimum_size.x = width
-	modal_scroll.custom_minimum_size.x = width - 44.0
+	modal_scroll.custom_minimum_size.x = width - (28.0 if dock == "deal" else 44.0)
 	modal_title.text = title
 	modal_sub.text = sub
 	modal_sub.visible = sub != ""
@@ -1390,9 +1421,11 @@ func open_deal(ctx: Dictionary) -> bool:
 		return false
 	deal = d
 	deal_said = ""
+	# gracz sam kładzie towar na tacę — zaczyna z pustą, suma stoi na umówionej
+	G.deal_offer_clear(deal)
 	_deal_stage(ctx)
 	_render_deal()
-	G.tip("wymiana", "Wymiana z ręki do ręki", "Na środku widzisz sumę za całość. Małe przyciski po bokach zmieniają ją o złotówkę albo dziesięć: w lewo taniej (−10, −1), w prawo drożej (+1, +10). Potem przytrzymaj „Podaj towar” (myszą, [%s] albo spacją). Czas płynie: pasek u góry pokazuje, ilu ludzi jest w pobliżu i czy patrzy patrol. Za wysoka suma może nie przejść — wtedy wraca wyjściowa i drugi raz już jej nie podbijesz. Kto zdąży w godzinę od umówionej pory, zastaje klienta w dobrym humorze." % G.kn("use"))
+	G.tip("wymiana", "Wymiana z ręki do ręki", "Przeciągnij paczki z listy na tacę. Więcej, niż zamówił — doceni; mniej — taca pokaże szansę, że i tak zapłaci całość. Potem przytrzymaj POTWIERDŹ albo [%s]." % G.kn("use"), 12.0)
 	return true
 
 
@@ -1473,8 +1506,9 @@ func _render_deal() -> void:
 	var wants := "chce %d g %s" % [int(saved.want), String(D.PRODUCT_GEN[saved.product])]
 	if ctx.get("agreed") != null:
 		wants += " • umówione %s za całość" % G.money(round(float(ctx.agreed) * int(saved.want)))
-	_open_modal(String(who.name), wants, "bottom", 860.0)
+	_open_modal("", "", "deal", 610.0)
 	deal = saved
+	deal_side.visible = not saved.over
 	deal_npc = ctx.get("npc") if (ctx.get("npc") is Dictionary and ctx.get("npc").get("node") != null) else null
 	deal_fill = null
 	deal_watch_l = null
@@ -1503,17 +1537,32 @@ func _render_deal() -> void:
 		deal_said = String(deal.speech)
 		var fem: bool = who.get("look", {}).get("female", false)
 		_mumble_burst(String(who.name), clampi(int(deal_said.length() / 14.0), 1, 3))
+	# nagłówek w jednej linii: kto, czego chce, kto patrzy, zamknięcie
+	var hd := K.hbox(8)
+	hd.add_child(K.head(String(who.name), 19))
+	var wl := K.lbl(wants, 12, K.C_DIM)
+	wl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hd.add_child(wl)
+	hd.add_child(K.spacer())
 	if not deal.over:
-		modal_body.add_child(Trade.watch_row(self))
-	# jedno zdanie klienta — bez rozmowy
-	var sp := K.panel(K.sb(Color(0.06, 0.08, 0.125), 10, K.C_LINE, 1, 10))
+		hd.add_child(Trade.watch_row(self))
+	var xb := K.btn("", _modal_close, "flat", true)
+	xb.icon = K.tex("x")
+	xb.add_theme_constant_override("icon_max_width", 13)
+	xb.tooltip_text = "Zamknij [Esc] — klient poczeka" if ctx.get("order") != null else "Odejdź [Esc]"
+	hd.add_child(xb)
+	modal_body.add_child(hd)
+	# jedno zdanie klienta — bez rozmowy; pod nim najwyżej dwie ostatnie uwagi
+	var sp := K.panel(K.sb(Color(0.06, 0.08, 0.125), 9, K.C_LINE, 1, 7))
 	modal_body.add_child(sp)
-	sp.add_child(K.rich(deal.speech, 15))
-	for n in deal.notes:
-		modal_body.add_child(K.lbl("• " + String(n), 11, K.C_DIM))
+	sp.add_child(K.rich(deal.speech, 13))
+	var notes: Array = deal.notes
+	if not notes.is_empty():
+		var last: Array = notes.slice(maxi(0, notes.size() - 2))
+		modal_body.add_child(K.wrap("• " + "  • ".join(last), 11, K.C_DIM, 570.0))
 	if deal.over:
 		deal_holding = false
-		modal_body.add_child(K.btn("Zamknij", close_all, "go"))
+		modal_body.add_child(K.btn("Zamknij", close_all, "go", true))
 		# po udanej wymianie nie ma na co czekać: okno samo znika
 		if deal.sold:
 			var me := deal
@@ -1526,19 +1575,14 @@ func _render_deal() -> void:
 	Trade.build(self)
 
 
-func _deal_pick(s: Dictionary) -> void:
-	if deal.ctx.get("agreed") == null:
-		deal.base = round(G.market_price(String(s.p)))
-	G.deal_choose(deal, String(s.p), int(s.pur))
-	_render_deal()
-
-
 ## Wymiana trwa: przytrzymany przycisk napełnia pasek podania, a patrol, który patrzy, napełnia swój.
 func _deal_tick(dt: float) -> void:
 	if deal.is_empty() or deal.over or mode != "modal":
 		deal_holding = false
 		return
-	var holding: bool = deal_holding or G.key_down("use") or Input.is_physical_key_pressed(KEY_SPACE)
+	Trade.tick(self)
+	# z otwartym okienkiem „ile” albo pustą tacą niczego się nie podaje
+	var holding: bool = (deal_holding or G.key_down("use") or Input.is_physical_key_pressed(KEY_SPACE)) and deal_ask.is_empty() and int(deal.qty) > 0
 	var t: float = G.deal_hand_time()
 	deal.hold = clampf(float(deal.hold) + (dt / t if holding else -dt * 2.5), 0.0, 1.0)
 	if deal_fill != null and is_instance_valid(deal_fill):
@@ -2641,7 +2685,19 @@ func _input(event: InputEvent) -> void:
 			else:
 				used = false
 		"modal":
-			if kc == KEY_ESCAPE:
+			if not deal_ask.is_empty():
+				# okienko „ile paczek”: Esc zamyka, Enter kładzie, strzałki zmieniają liczbę
+				if kc == KEY_ESCAPE:
+					Trade.ask_close(self)
+				elif kc == KEY_ENTER or kc == KEY_KP_ENTER:
+					Trade.ask_ok(self)
+				elif kc == KEY_LEFT or kc == KEY_DOWN or kc == KEY_MINUS or kc == KEY_KP_SUBTRACT:
+					Trade.ask_step(self, -1)
+				elif kc == KEY_RIGHT or kc == KEY_UP or kc == KEY_EQUAL or kc == KEY_KP_ADD:
+					Trade.ask_step(self, 1)
+				else:
+					used = false
+			elif kc == KEY_ESCAPE:
 				_modal_close()
 			else:
 				used = false

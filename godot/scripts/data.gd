@@ -625,6 +625,8 @@ var WIKTOR_BOX := {"x": 70.0, "z": -57.9, "ry": 3.14159}
 const HINTS := [
 	"Cenę podbijasz w wiadomości. Kilka procent klient zwykle przełknie, przy większej podwyżce odbije kontrofertą albo zerwie rozmowę.",
 	"Przy wymianie możesz jeszcze podbić cenę. Jeśli przesadzisz, klient jej nie przyjmie, wróci do swojej i zapamięta, że próbowałeś.",
+	"Dosyp klientowi gram ponad zamówienie, a zapamięta to na długo. Zadowolony klient zamawia więcej i mniej się targuje.",
+	"Możesz dać mniej, niż klient zamówił, i liczyć jak za całość — ale jak się zorientuje, drugi raz patrzy Ci na ręce.",
 	"Nie handluj na oczach policji. Nocą jest mniej świadków, ale patrole są czujniejsze.",
 	"Towar w skrytce jest bezpieczny podczas zatrzymania. Noś przy sobie tylko tyle, ile sprzedasz.",
 	"Stara waga kuchenna zawsze coś rozsypie. Porządniejszą ma Zenek w lombardzie — zwraca się szybciej, niż myślisz.",

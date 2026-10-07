@@ -343,6 +343,13 @@ func run() -> void:
 	if not U.deal.is_empty():
 		U.deal.cop = null
 		U.deal.cop_t = 0.0
+		ok(int(U.deal.qty) == 0 and (U.deal.give as Array).is_empty() and int(U.deal.sum) == G.deal_ref_sum(U.deal) and U.deal_side.visible, "okno wymiany: pusta taca, suma umówiona, po lewej lista tego, co masz przy sobie")
+		U.deal_holding = true
+		await frames(8)
+		U.deal_holding = false
+		ok(float(U.deal.hold) <= 0.001 and not U.deal.over, "z pustą tacą nie da się niczego podać")
+		G.deal_autofill(U.deal)
+		U._render_deal()
 		ok(int(U.deal.base) == int(o.agreed) and int(U.deal.pct) == 0 and G.deal_read(U.deal, 0) == "sure", "wymiana zaczyna się od umówionej ceny — bez przywitań i gadek")
 		ok(not G.deal_set(U.deal, 15) == false and int(U.deal.price) > int(o.agreed) and G.deal_set(U.deal, 0), "cenę można lekko podbić albo wrócić do umówionej")
 		# podanie towaru: przytrzymanie napełnia pasek, puszczenie go cofa
@@ -701,6 +708,9 @@ func run() -> void:
 
 	# --- skradanie: widoczność, wzrok i słuch patroli, odciąganie, przeczesywanie, kryjówki
 	await load("res://scripts/stealth_test.gd").run(self)
+
+	# --- wymiana: taca, mniej/więcej towaru, szansa w procentach
+	load("res://scripts/trade_test.gd").run(self)
 
 	# --- doświadczony klient rozpoznaje mieszankę
 	var rejected := 0

@@ -604,6 +604,7 @@ func s8_ready() -> void:
 	if not U.deal.is_empty():
 		U.deal.cop = null
 		U.deal.cop_t = 0.0
+		G.deal_autofill(U.deal)
 		U._render_deal()
 
 

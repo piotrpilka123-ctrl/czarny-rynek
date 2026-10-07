@@ -60,9 +60,13 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
   jeśli klientowi nie pasuje, sam proponuje porę obok. „Inny towar” proponuje zamianę na to, co masz zaporcjowane.
   Po potwierdzeniu klient jest na miejscu ok. godzinę później i czeka około 5 godzin — nie zraża się czekaniem,
   a jeśli zdążysz w godzinę od umówionej pory, jest wyraźnie zadowolony i łatwiej coś u niego ugrać.
-  Na spotkaniu nie ma gadania: wybierasz porcję, ewentualnie zmieniasz sumę tymi samymi przyciskami i przytrzymujesz „Podaj towar”.
+  Na spotkaniu nie ma gadania: po lewej masz listę tego, co niesiesz, i przeciągasz paczki na tacę (małe okienko pyta,
+  ile ich położyć). Możesz dać więcej, niż klient zamówił — rośnie jego zadowolenie i lojalność — albo mniej:
+  jeśli liczysz tylko za to, co dajesz, bierze bez słowa; jeśli liczysz jak za komplet, taca pokazuje szansę w procentach
+  (3 g z 4 g = 75%). Uda się — płaci całość; nie uda — zadowolenie spada, a on już do końca rozmowy liczy każdy gram.
+  Sumę zmieniasz przyciskami −10 / −1 / +1 / +10 i przytrzymujesz „Potwierdź”.
   Świat się wtedy nie zatrzymuje — pasek pokazuje, ilu ludzi patrzy i czy widzi Was patrol.
-  „Zaraz wracam” zostawia klienta na miejscu, „Rezygnuję” odwołuje transakcję.
+  „Poczekaj chwilę” zostawia klienta na miejscu, „Odwołaj” kończy transakcję.
 - **Ekwipunek** (I): rzeczy mają rozmiar i wagę, układają się w stosy. Przeciągasz je między plecakiem a skrytką,
   a ilość wybierasz suwakiem albo wpisujesz. Sztuki są całe, gramy liczone w połówkach.
 - **Zapis gry**: tylko przy laptopie w kryjówce (w kawalerce stoi na stole; do garażu i piwnicy kupisz stolik z laptopem).
