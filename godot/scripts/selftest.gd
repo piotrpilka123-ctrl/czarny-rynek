@@ -102,6 +102,10 @@ func run() -> void:
 	U.close_all()
 	G.story_tick()
 	ok(G.cur_step().id == "room_bench" and G.carry_total() < 0.01, "krok ze skrytką zaliczony, kieszenie puste")
+	# cel w lewym górnym rogu zostaje na ekranie, dopóki zadanie nie jest wykonane (nie gaśnie po kilku sekundach)
+	U.obj_t = 0.0
+	U.update_hud()
+	ok(U.obj_card.visible and U.obj_card.modulate.a > 0.99 and U.l_obj.text.contains("waga"), "karta celu jest przypięta do końca zadania")
 	U.open_pack("safe")
 	await frames(2)
 	U.close_all()

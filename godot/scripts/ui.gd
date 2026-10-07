@@ -1923,8 +1923,11 @@ func update_hud() -> void:
 			obj_t = maxf(obj_t, 6.0)
 	l_nav.text = lines
 	obj_t = maxf(0.0, obj_t - 0.1)
-	obj_card.visible = obj_t > 0.0 and txt != ""
-	obj_card.modulate.a = clampf(obj_t / 0.8, 0.0, 1.0)
+	# cel zostaje na ekranie, dopóki gracz go nie wykona (tak samo niewykonane zlecenie dnia);
+	# tylko otwarta „wolna gra”, której nie da się skończyć, pokazuje się na chwilę i znika
+	var pinned: bool = txt != "" and (String(st.get("id", "")) != "free" or (G.job_active() and not S.job.get("done", false)))
+	obj_card.visible = txt != "" and (pinned or obj_t > 0.0)
+	obj_card.modulate.a = 1.0 if pinned else clampf(obj_t / 0.8, 0.0, 1.0)
 	sms_key.text = G.kn("phone")
 	var mm: bool = bool(G.main.settings.get("minimap", false))
 	mini_card.visible = mm

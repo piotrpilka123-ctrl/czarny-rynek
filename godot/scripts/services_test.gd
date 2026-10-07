@@ -8,6 +8,27 @@ static func run(T) -> void:
 	G.S = G.new_state()
 	var S: Dictionary = G.S
 
+	# --- latarnie: słup poza budynkiem i jezdnią, oprawa nad drogą albo alejką, nigdy w ścianie
+	var W0 = G.world
+	var lamp_bad := []
+	var over_road := 0
+	for l0 in W0.lamp_list:
+		var hp: Vector2 = W0.lamp_head(float(l0.x), float(l0.z), float(l0.ry))
+		if W0.in_building(float(l0.x), float(l0.z), 0.2) or W0.in_building(hp.x, hp.y, 0.3) or W0.is_asphalt(float(l0.x), float(l0.z)):
+			lamp_bad.append("%d,%d" % [int(l0.x), int(l0.z)])
+		if W0.is_asphalt(hp.x, hp.y):
+			over_road += 1
+		elif not W0.is_paved(hp.x, hp.y):
+			# oprawa nad trawnikiem jest w porządku tylko wtedy, gdy między słupem a punktem 2 m za oprawą biegnie alejka albo jezdnia
+			var near := false
+			for st0 in range(1, 14):
+				var q0: Vector2 = Vector2(float(l0.x), float(l0.z)) + Vector2(sin(float(l0.ry)), cos(float(l0.ry))) * st0 * 0.5
+				if W0.is_paved(q0.x, q0.y) or W0.is_asphalt(q0.x, q0.y):
+					near = true
+			if not near:
+				lamp_bad.append("%d,%d (świeci w trawnik)" % [int(l0.x), int(l0.z)])
+	T.ok(W0.lamp_list.size() >= 28 and lamp_bad.is_empty() and over_road >= 18, "latarnie: %d sztuk, %d z oprawą nad jezdnią, żadna w ścianie ani tyłem do drogi %s" % [W0.lamp_list.size(), over_road, str(lamp_bad)])
+
 	# --- tarcza zegara do umawiania godziny: kliknięty punkt → pora, tylko w dozwolonym łuku (dziś, od teraz)
 	var dial = load("res://scripts/clock_dial.gd").new()
 	G.ui.add_child(dial)

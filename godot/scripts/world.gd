@@ -597,6 +597,42 @@ func audit() -> void:
 	for r in rows:
 		print(r)
 	print("AUDYT razem: %d" % rows.size())
+	# latarnie: słup nie może stać w budynku ani na jezdni, a oprawa ma wisieć nad drogą albo placem — nie w ścianie
+	for l in lamp_list:
+		var hp := lamp_head(float(l.x), float(l.z), float(l.ry))
+		var why := ""
+		if in_building(float(l.x), float(l.z), 0.2):
+			why += " SLUP_W_BUDYNKU"
+		if in_building(hp.x, hp.y, 0.3):
+			why += " OPRAWA_W_BUDYNKU"
+		if is_asphalt(float(l.x), float(l.z)):
+			why += " SLUP_NA_JEZDNI"
+		var best := ""
+		for k in range(4):
+			var a := k * PI * 0.5
+			var q := lamp_head(float(l.x), float(l.z), a)
+			if is_asphalt(q.x, q.y) and not in_building(q.x, q.y, 0.3):
+				best += " %d°" % int(rad_to_deg(a))
+		if not is_asphalt(hp.x, hp.y) and not is_paved(hp.x, hp.y):
+			why += " NIE_NAD_JEZDNIA(jezdnia w stronę:%s)" % (best if best != "" else " brak")
+		# dla latarni z dala od jezdni: jak daleko w każdą stronę jest ściana budynku i asfalt (do 30 jednostek)
+		var rays := ""
+		if why.contains("brak"):
+			for k in range(4):
+				var a2 := k * PI * 0.5
+				var db := 30.0
+				var da := 30.0
+				var dp := 30.0
+				for st in range(1, 61):
+					var q2 := Vector2(float(l.x) + sin(a2) * st * 0.5, float(l.z) + cos(a2) * st * 0.5)
+					if db >= 30.0 and in_building(q2.x, q2.y):
+						db = st * 0.5
+					if da >= 30.0 and is_asphalt(q2.x, q2.y):
+						da = st * 0.5
+					if dp >= 30.0 and is_paved(q2.x, q2.y):
+						dp = st * 0.5
+				rays += "  %d°: bud %.0f asf %.0f płyty %.1f" % [int(rad_to_deg(a2)), db, da, dp]
+		print("AUDYT-LATARNIA x=%7.1f z=%7.1f obrót=%4d°%s%s" % [float(l.x), float(l.z), int(round(rad_to_deg(float(l.ry)))), why if why != "" else "  ok", rays])
 	# stojące postacie: żadna nie może tkwić w przeszkodzie (siedzące mają prawo — siedzą na czymś)
 	if G.main != null and G.main.npcs != null:
 		for st0 in G.main.npcs.statics:
@@ -1815,7 +1851,43 @@ func _bush(x: float, z: float, s := 1.0) -> void:
 	b.set_meta("green", Vector2(x, z))
 
 
+var lamp_list: Array = []        # latarnie uliczne: {x, z, ry, broken} w układzie projektu (do przeglądu i testów)
+
+
+## czy w tym punkcie (układ projektu) leży asfalt jezdni
+func is_asphalt(xd: float, zd: float) -> bool:
+	var px := clampi(int((xd - X0) * 2.0), 0, MAP_W - 1)
+	var pz := clampi(int((zd - Z0) * 2.0), 0, MAP_H - 1)
+	return img1.get_pixel(px, pz).r > 0.5
+
+
+## czy w tym punkcie jest utwardzona nawierzchnia dla pieszych (płyty chodnikowe albo beton)
+func is_paved(xd: float, zd: float) -> bool:
+	var px := clampi(int((xd - X0) * 2.0), 0, MAP_W - 1)
+	var pz := clampi(int((zd - Z0) * 2.0), 0, MAP_H - 1)
+	var c := img1.get_pixel(px, pz)
+	return c.g > 0.5 or c.b > 0.5
+
+
+## czy punkt (układ projektu) wypada w obrysie któregoś budynku
+func in_building(xd: float, zd: float, margin := 0.0) -> bool:
+	for b in blds:
+		if xd > float(b.x0) - margin and xd < float(b.x1) + margin and zd > float(b.z0) - margin and zd < float(b.z1) + margin:
+			return true
+	return false
+
+
+## gdzie wisi oprawa latarni: 1,6 m od słupa w stronę, w którą patrzy wysięgnik
+func lamp_head(x: float, z: float, ry: float) -> Vector2:
+	return Vector2(x + sin(ry) * 1.6 * INV, z + cos(ry) * 1.6 * INV)
+
+
 func _lamp(x: float, z: float, ry: float, broken := false) -> void:
+	# zabezpieczenie: oprawa nigdy nie wchodzi w ścianę — jeśli wypadłaby w budynku, latarnia odwraca się tyłem
+	var hp0 := lamp_head(x, z, ry)
+	if in_building(hp0.x, hp0.y, 0.3):
+		ry += PI
+	lamp_list.append({"x": x, "z": z, "ry": ry, "broken": broken})
 	var g := Node3D.new()
 	g.position = Vector3(x, hd(x, z), z)
 	g.rotation.y = ry
@@ -3355,9 +3427,11 @@ func _lamps() -> void:
 			_lamp(x, 12.2 if k % 2 == 0 else 27.8, 0.0 if k % 2 == 0 else PI, k % 5 == 3)
 		x += 34.0
 		k += 1
-	for e in [[6.7, 62.0, PI / 2.0, false], [-6.7, 98.0, -PI / 2.0, true], [6.7, 134.0, PI / 2.0, false], [-99.3, -30.0, -PI / 2.0, false], [-99.3, -80.0, -PI / 2.0, true],
-			[-70.0, -123.6, PI, false], [-10.0, -123.6, PI, false], [50.0, -123.6, PI, true], [88.7, -90.0, -PI / 2.0, false], [-25.4, -68.0, PI / 2.0, false],
-			[30.0, -67.6, 0.0, false], [-60.0, -101.5, 0.0, true], [20.0, -101.5, 0.0, false], [61.7, -40.0, PI, false], [76.7, 76.0, PI, false], [170.2, -30.0, PI / 2.0, true], [175.8, 33.0, 0.0, false]]:
+	# wysięgnik patrzy zawsze nad jezdnię albo alejkę (sprawdza to przegląd: --przeglad, wiersze AUDYT-LATARNIA);
+	# wcześniej kilka latarni przy Robotniczej i w osiedlu świeciło w ścianę albo w trawnik za plecami
+	for e in [[6.7, 62.0, -PI / 2.0, false], [-6.7, 98.0, PI / 2.0, true], [6.7, 134.0, -PI / 2.0, false], [-99.3, -30.0, -PI / 2.0, false], [-99.3, -80.0, -PI / 2.0, true],
+			[-70.0, -123.6, PI, false], [-10.0, -123.6, PI, false], [50.0, -123.6, PI, true], [88.7, -90.0, PI / 2.0, false], [-25.4, -68.0, -PI / 2.0, false],
+			[30.0, -67.6, 0.0, false], [-60.0, -101.5, PI, true], [20.0, -101.5, PI, false], [61.7, -40.0, PI, false], [76.7, 76.0, PI, false], [170.2, -30.0, -PI / 2.0, true], [175.8, 33.0, PI, false]]:
 		_lamp(e[0], e[1], e[2], e[3])
 
 
@@ -3568,7 +3642,7 @@ func _bus_loop() -> void:
 	_bench(-9.0, 167.7, PI)
 	_lamp(-14.0, 168.0, PI)
 	_lamp(16.0, 168.0, PI, true)
-	_lamp(0.0, 151.2, PI / 2.0)
+	_lamp(0.0, 151.2, 0.0)
 	# wysepka: krzak, znak objazdu wokół i wydeptana na skróty ścieżka
 	_bush(-4.5, 151.6, 1.0)
 	_bush(4.8, 150.6, 0.8)
