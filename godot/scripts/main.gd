@@ -664,31 +664,104 @@ func exit_room() -> void:
 
 ## Miejsca pokazywane przy pierwszym wyjściu z bloku: [{title, sub, text, at, from, to}] w metrach świata.
 ## Kamera zaczyna dalej i wyżej, a kończy bliżej wejścia — spokojny najazd z lekkim łukiem.
+## ile przeszkód (budynki, pnie, słupy, korony drzew) zasłania widok z punktu `cam` na miejsce `at`
+func _view_hits(cam: Vector3, at: Vector3, near: Array, crowns: Array) -> int:
+	if world.in_building(cam.x / D.SC, cam.z / D.SC, 0.6):
+		return 9
+	var tgt := at + Vector3(0, 1.5, 0)
+	var flat := Vector2(tgt.x - cam.x, tgt.z - cam.z)
+	var ln := maxf(flat.length(), 0.01)
+	# sam cel (ściana z drzwiami, skrzynka) zasłoną nie jest: promień kończy się półtora metra przed nim
+	var k_end := clampf(1.0 - 1.6 / ln, 0.1, 1.0)
+	var ex := cam.x + flat.x * k_end
+	var ez := cam.z + flat.y * k_end
+	var hits := 0
+	for b in near:
+		if not world._seg_box(cam.x, cam.z, ex, ez, float(b.x0), float(b.x1), float(b.z0), float(b.z1)):
+			continue
+		var cx := (float(b.x0) + float(b.x1)) * 0.5
+		var cz := (float(b.z0) + float(b.z1)) * 0.5
+		var t := clampf(Vector2(cx - cam.x, cz - cam.z).dot(flat) / (ln * ln), 0.0, 1.0)
+		if lerpf(cam.y, tgt.y, t) < world.height(cx, cz) + float(b.h) + 0.2:
+			hits += 1
+	for c in crowns:
+		var v := Vector2(float(c.x) - cam.x, float(c.y) - cam.z)
+		var t2 := clampf(v.dot(flat) / (ln * ln), 0.0, k_end)
+		var y := lerpf(cam.y, tgt.y, t2)
+		var g = world.height(float(c.x), float(c.y))
+		if (v - flat * t2).length() < 2.1 and y > g + 2.3 and y < g + 9.0:
+			hits += 1
+	return hits
+
+
+## Ujęcie na miejsce `at`: kamera zaczyna dalej i wyżej, kończy bliżej. `n` to kierunek „sprzed" miejsca,
+## `turn` — o ile stopni wolno go obrócić w poszukiwaniu kąta, którego nic nie zasłania, `k` — skala odległości.
+func _tour_view(at: Vector3, n: Vector3, turn: float, k: float) -> Dictionary:
+	var near := []
+	for b in world.blocks:
+		if float(b.h) >= 1.0 and float(b.x1) > at.x - 18.0 and float(b.x0) < at.x + 18.0 and float(b.z1) > at.z - 18.0 and float(b.z0) < at.z + 18.0:
+			near.append(b)
+	var crowns := []
+	for tp in world.tree_pos:
+		var w := Vector2(float(tp.x) * D.SC, float(tp.y) * D.SC)
+		if absf(w.x - at.x) < 18.0 and absf(w.y - at.z) < 18.0:
+			crowns.append(w)
+	var best := {}
+	var best_score := 999.0
+	for deg in [0.0, 18.0, -18.0, 36.0, -36.0, 54.0, -54.0, 80.0, -80.0, 110.0, -110.0, 145.0, -145.0, 180.0]:
+		if absf(deg) > turn + 0.1:
+			continue
+		var d := n.rotated(Vector3.UP, deg_to_rad(deg))
+		var r := Vector3(d.z, 0.0, -d.x)
+		var from := at + d * 10.0 * k + r * 4.0 * k + Vector3(0, 2.2 + 2.4 * k, 0)
+		var to := at + d * 5.5 * k - r * 1.5 * k + Vector3(0, 1.5 + 0.8 * k, 0)
+		var score := float(_view_hits(from, at, near, crowns) + _view_hits(to, at, near, crowns) + _view_hits(from.lerp(to, 0.5), at, near, crowns)) + absf(deg) * 0.004
+		if score < best_score:
+			best_score = score
+			best = {"from": from, "to": to}
+		if score < 0.9:
+			break
+	var from: Vector3 = best.from
+	var to: Vector3 = best.to
+	# kamera nie może wejść w ścianę po drugiej stronie ulicy: w razie czego przysuwa się do celu
+	for i in range(8):
+		if world.in_building(from.x / D.SC, from.z / D.SC, 0.6):
+			from = at + (from - at) * 0.85
+			from.y = at.y + 2.2 + 2.4 * k
+		if world.in_building(to.x / D.SC, to.z / D.SC, 0.6):
+			to = at + (to - at) * 0.85
+			to.y = at.y + 1.5 + 0.8 * k
+	if from.distance_to(at) < to.distance_to(at) + 0.5:
+		from = at + (to - at) * 1.5 + Vector3(0, 1.6, 0)
+	return {"from": from, "to": to, "clear": best_score < 0.9}
+
+
 func tour_shots() -> Array:
 	var out := []
-	var add := func(title: String, sub: String, text: String, x: float, z: float, nx: float, nz: float) -> void:
+	var add := func(title: String, sub: String, text: String, x: float, z: float, nx: float, nz: float, turn: float, k: float, cards: Array) -> void:
 		var at := Vector3(x, world.height(x, z), z)
-		var n := Vector3(nx, 0.0, nz).normalized()
-		var r := Vector3(n.z, 0.0, -n.x)
-		var from := at + n * 10.0 + r * 4.0 + Vector3(0, 4.6, 0)
-		var to := at + n * 5.5 - r * 1.5 + Vector3(0, 2.3, 0)
-		# kamera nie może wejść w ścianę po drugiej stronie ulicy: w razie czego przysuwa się do celu
-		for i in range(8):
-			if world.in_building(from.x / D.SC, from.z / D.SC, 0.6):
-				from = at + (from - at) * 0.85
-				from.y = at.y + 4.6
-			if world.in_building(to.x / D.SC, to.z / D.SC, 0.6):
-				to = at + (to - at) * 0.85
-				to.y = at.y + 2.3
-		if from.distance_to(at) < to.distance_to(at) + 0.5:
-			from = at + (to - at) * 1.5 + Vector3(0, 1.6, 0)
-		out.append({"title": title, "sub": sub, "text": text, "at": at, "from": from, "to": to})
+		var v := _tour_view(at, Vector3(nx, 0.0, nz).normalized(), turn, k)
+		out.append({"title": title, "sub": sub, "text": text, "at": at, "from": v.from, "to": v.to, "clear": v.clear, "cards": cards})
 	var sh: Dictionary = D.DOORS.shop
-	add.call("SKLEP U STASIA", "woreczki • dodatki do mieszanek", "Wujek Staś. Tu kupisz woreczki, kiedy się skończą, a także majeranek i cukier puder, jeśli zechcesz robić mieszanki. Później — doniczki, nasiona i nawóz.", float(sh.x), float(sh.z), 0.0, float(sh.dz))
+	add.call("SKLEP U STASIA", "woreczki • dodatki do mieszanek", "Wujek Staś. Tu kupisz woreczki, kiedy się skończą, a także majeranek i cukier puder, jeśli zechcesz robić mieszanki. Później — doniczki, nasiona i nawóz.", float(sh.x), float(sh.z), 0.0, float(sh.dz), 54.0, 1.0, [
+		{"icon": "woreczki", "name": "Woreczki strunowe", "sub": "%d szt. za %d zł" % [int(D.SHOP[0].n), int(D.SHOP[0].price)]},
+		{"icon": "majeranek", "name": "Majeranek", "sub": "domieszka do marihuany"},
+		{"icon": "cukier", "name": "Cukier puder", "sub": "domieszka do proszków"},
+		{"icon": "doniczka", "name": "Doniczki i nasiona", "sub": "własna uprawa — później"}])
 	var cl: Dictionary = D.DOORS.ciuchy
-	add.call("TANIA ODZIEŻ", "ubranie zmienia statystyki", "Każda rzecz coś daje: jedne przyspieszają bieg, inne dodają kieszeni albo mniej rzucają się w oczy patrolom. W kominiarce nikt Cię nie opisze — ale policja zauważy od razu.", float(cl.x), float(cl.z), 0.0, float(cl.dz))
-	add.call("SKRZYNKA WIKTORA", "zeszyt • wkład • awanse", "Stara skrzynka gazowa na tyłach pawilonu. Tu zanosisz pieniądze: najpierw schodzi zeszyt za towar, reszta to Twój wkład — a z wkładu biorą się awanse u Wiktora.", float(D.WIKTOR_BOX.x), float(D.WIKTOR_BOX.z), 0.0, -1.0)
-	add.call("LOMBARD", "skup znalezisk • lepsze wagi", "Zenek skupuje to, co znajdziesz w śmietnikach, i sprzedaje dokładniejsze wagi: pakujesz na nich szybciej i nic się nie rozsypuje.", float(D.PAWN_AT.x), float(D.PAWN_AT.z), 0.0, 1.0)
+	add.call("TANIA ODZIEŻ", "ubranie zmienia statystyki", "Każda rzecz coś daje: jedne przyspieszają bieg, inne dodają kieszeni albo mniej rzucają się w oczy patrolom. W kominiarce nikt Cię nie opisze — ale policja zauważy od razu.", float(cl.x), float(cl.z), 0.0, float(cl.dz), 54.0, 1.0, [
+		{"icon": "ub_buty_bieg", "name": "Buty do biegania", "sub": "szybszy bieg, więcej tchu"},
+		{"icon": "ub_bojowki", "name": "Bojówki", "sub": "trzy miejsca więcej w kieszeniach"},
+		{"icon": "ub_czapka_daszek", "name": "Czapka z daszkiem", "sub": "trudniej Cię opisać"},
+		{"icon": "ub_kominiarka", "name": "Kominiarka", "sub": "nikt Cię nie rozpozna — patrol tak"}])
+	add.call("SKRZYNKA WIKTORA", "zeszyt • wkład • awanse", "Stara skrzynka gazowa na tyłach pawilonu. Tu zanosisz pieniądze: najpierw schodzi zeszyt za towar, reszta to Twój wkład — a z wkładu biorą się awanse u Wiktora.", float(D.WIKTOR_BOX.x), float(D.WIKTOR_BOX.z), 0.0, -1.0, 180.0, 0.55, [
+		{"icon": "notes", "name": "Zeszyt", "sub": "najpierw spłata za wzięty towar"},
+		{"icon": "cash", "name": "Wkład", "sub": "reszta zostaje na Twoim koncie"},
+		{"icon": "award", "name": "Awans", "sub": "%s od %d zł wkładu" % [String(D.RANKS[1].name), int(D.RANKS[1].at)]}])
+	add.call("LOMBARD", "skup znalezisk • lepsze wagi", "Zenek skupuje to, co znajdziesz w śmietnikach, i sprzedaje dokładniejsze wagi: pakujesz na nich szybciej i nic się nie rozsypuje.", float(D.PAWN_AT.x), float(D.PAWN_AT.z), 0.0, 1.0, 54.0, 1.0, [
+		{"icon": "scale", "name": String(D.SCALES[1].name), "sub": "%d zł • od poziomu %d" % [int(D.SCALES[1].price), int(D.SCALES[1].lvl)]},
+		{"icon": "coins", "name": "Skup znalezisk", "sub": "Zenek płaci gotówką od ręki"},
+		{"icon": "clock", "name": "Otwarte %d:00–%d:00" % [int(D.PAWN_OPEN[0]), int(D.PAWN_OPEN[1])], "sub": "w nocy zamknięte na kratę"}])
 	var o = G.next_meeting()
 	if o != null:
 		var t := _order_target(o)
@@ -696,7 +769,10 @@ func tour_shots() -> Array:
 		if d.length() < 1.0:
 			d = Vector2(0, 1)
 		d = d.normalized()
-		add.call("MIEJSCE SPOTKANIA", String(G.spot_def(o.spot).name), "Tu będzie czekał %s. Klient zjawia się godzinę po potwierdzeniu i poczeka kilka godzin — ale kto zdąży w godzinę, zastaje go w dobrym humorze." % String(G.cust_def(o.cust).name), float(t.x), float(t.z), d.x, d.y)
+		add.call("MIEJSCE SPOTKANIA", String(G.spot_def(o.spot).name), "Tu będzie czekał %s. Klient zjawia się godzinę po potwierdzeniu i poczeka kilka godzin — ale kto zdąży w godzinę, zastaje go w dobrym humorze." % String(G.cust_def(o.cust).name), float(t.x), float(t.z), d.x, d.y, 180.0, 0.8, [
+		{"icon": "clock", "name": "Spotkanie o %s" % G.clock(o.meet), "sub": "klient poczeka do %s" % G.clock(o.deadline)},
+		{"icon": "smile", "name": "Zdążysz w godzinę?", "sub": "klient jest w dobrym humorze"},
+		{"icon": "navigation", "name": "[%s] trasa do celu" % G.kn("nav"), "sub": "strzałki poprowadzą Cię na miejsce"}])
 	return out
 
 
@@ -737,6 +813,9 @@ func city_tour() -> void:
 	ui.close_all()
 	ui.cut_begin()
 	var shots := tour_shots()
+	# zrzuty ekranu: --tourshot=N zaczyna pokaz od N-tego miejsca
+	if args.has("tourshot"):
+		shots = shots.slice(clampi(int(args.tourshot), 0, shots.size() - 1))
 	var held := 0.0
 	var quit := false
 	for sh in shots:
@@ -756,6 +835,7 @@ func city_tour() -> void:
 			if title_on and t > 2.3:
 				title_on = false
 				ui.cut_title("")
+				ui.cut_cards(sh.cards)
 			var e := smoothstep(0.0, 1.0, t / dur)
 			cine_cam((sh.from as Vector3).lerp(sh.to, e), (sh.at as Vector3) + Vector3(0, 1.5, 0), lerpf(60.0, 48.0, e))
 			mark.position.y = float(sh.at.y) + 4.4 + sin(t * 3.2) * 0.22
@@ -771,6 +851,7 @@ func city_tour() -> void:
 			await get_tree().process_frame
 		mark.queue_free()
 		ui.cut_title("")
+		ui.cut_cards([])
 	ui.cut_line("")
 	await get_tree().create_timer(0.35).timeout
 	cine_off()
@@ -2968,6 +3049,8 @@ func _test_ui(what: String) -> void:
 		"tour":
 			G.S.flags["got_first"] = true
 			G.S.flags["tour_out"] = false
+			if G.next_meeting() == null:
+				_test_order("dominik")
 			teleport("out", Vector3(float(D.DOORS.safe.x), 0.0, float(D.DOORS.safe.z) + 1.2), PI)
 			city_tour()
 		"paczki":
@@ -3013,9 +3096,15 @@ func _test_ui(what: String) -> void:
 		"skill": ui.skill_check("Ważenie: 5 g marihuany", 1.0, func(_h): pass)
 		"dialog": talk_stasiu()
 		"property": ui.open_property("garaz")
-		"deal", "deal2":
+		"deal", "deal2", "deal3":
 			G.add_pack(G.S.inv, "dym", 100, 6)
 			G.add_pack(G.S.inv, "szron", 100, 2)
+			if what == "deal3":
+				# zrzut: paczki różnej wagi przy kliencie (woreczki 1, 2 i 5 g, inna czystość, drugi towar)
+				G.add_pack(G.S.inv, "dym", 100, 2, 2)
+				G.add_pack(G.S.inv, "dym", 100, 1, 5)
+				G.add_pack(G.S.inv, "dym", 70, 3, 3)
+				G.add_pack(G.S.inv, "szron", 100, 1, 4)
 			var o := _test_order("dominik")
 			var n: Dictionary = npcs.customers[0]
 			if n.node == null:

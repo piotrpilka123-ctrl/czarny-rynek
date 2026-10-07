@@ -49,6 +49,7 @@ var chase: PanelContainer
 var build_hint: PanelContainer
 var l_build: RichTextLabel
 var toasts: VBoxContainer
+var toast_wrap: Control
 var dialog_box: PanelContainer
 var d_name: Label
 var d_text: RichTextLabel
@@ -61,6 +62,7 @@ var cut_tbox: VBoxContainer
 var cut_title_l: Label
 var cut_tsub_l: Label
 var cut_tw: Tween = null
+var cut_cards_box: VBoxContainer
 var cross: Control
 var aim_on := false
 var aim_t := 0.0
@@ -433,7 +435,10 @@ func _build_hud() -> void:
 	tcc.offset_top = -230.0
 	tcc.offset_bottom = -110.0
 	tcc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# powiadomienia rysują się nad oknami (sprzedaż, plecak) — inaczej okno by je zasłoniło
+	tcc.z_index = 55
 	root.add_child(tcc)
+	toast_wrap = tcc
 	toasts = K.vbox(5)
 	toasts.alignment = BoxContainer.ALIGNMENT_END
 	toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -588,6 +593,15 @@ func _build_cut() -> void:
 	cut_tsub_l.add_theme_color_override("font_color", Color(0.75, 0.79, 0.84))
 	cut_tsub_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cut_tbox.add_child(cut_tsub_l)
+	cut_cards_box = K.vbox(8)
+	cut_cards_box.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	cut_cards_box.offset_left = 48.0
+	cut_cards_box.offset_right = 340.0
+	cut_cards_box.offset_top = 86.0
+	cut_cards_box.offset_bottom = -108.0
+	cut_cards_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	cut_cards_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cut.add_child(cut_cards_box)
 	var skip := K.lbl("Spacja — pomiń", 12, Color(1, 1, 1, 0.38))
 	skip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	skip.offset_left = -150.0
@@ -601,6 +615,9 @@ func _build_cut() -> void:
 func cut_begin() -> void:
 	cut.visible = true
 	hud.visible = false
+	# powiadomienia nie zasłaniają kadru — to, co ważne, i tak trafia do telefonu
+	toasts.visible = false
+	cut_cards([])
 	cut_sub.modulate.a = 0.0
 	cut_sub.text = ""
 	cut_tbox.modulate.a = 0.0
@@ -608,6 +625,8 @@ func cut_begin() -> void:
 
 func cut_end() -> void:
 	cut.visible = false
+	toasts.visible = true
+	cut_cards([])
 	if G.running and not G.test_hide_hud:
 		hud.visible = true
 
@@ -622,6 +641,53 @@ func cut_line(text: String) -> void:
 	if text != "":
 		cut_tw.tween_callback(func(): cut_sub.text = text)
 		cut_tw.tween_property(cut_sub, "modulate:a", 1.0, 0.5)
+
+
+## Karty z boku kadru: co w pokazywanym miejscu kupisz albo załatwisz. Wjeżdżają jedna po drugiej;
+## pusta lista = wygaszenie poprzednich. Karta: {"icon", "name", "sub"}.
+func cut_cards(cards: Array) -> void:
+	for old in cut_cards_box.get_children():
+		var tw0 := old.create_tween()
+		tw0.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw0.tween_property(old, "modulate:a", 0.0, 0.25)
+		tw0.tween_callback(old.queue_free)
+	var i := 0
+	for c in cards:
+		var slot := Control.new()
+		slot.custom_minimum_size = Vector2(292, 62)
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cut_cards_box.add_child(slot)
+		var p := K.panel(K.sb(Color(0.035, 0.045, 0.065, 0.9), 10, Color(1, 1, 1, 0.14), 1, 10))
+		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.size = Vector2(292, 62)
+		p.position = Vector2(-70, 0)
+		p.modulate.a = 0.0
+		slot.add_child(p)
+		var h := K.hbox(12)
+		p.add_child(h)
+		var ic := String(c.get("icon", "info"))
+		var ibox := CenterContainer.new()
+		ibox.custom_minimum_size = Vector2(42, 42)
+		ibox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ibox.add_child(K.icon(ic, 42.0 if K.is_item(ic) else 28.0, K.C_ACC))
+		h.add_child(ibox)
+		var v := K.vbox(1)
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(v)
+		var nl := K.lbl(String(c.get("name", "")), 16, Color(0.96, 0.96, 0.94))
+		nl.clip_text = true
+		v.add_child(nl)
+		var sl := K.lbl(String(c.get("sub", "")), 12, Color(0.72, 0.77, 0.84))
+		sl.clip_text = true
+		v.add_child(sl)
+		var tw := p.create_tween()
+		tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw.tween_interval(0.3 + 0.55 * i)
+		tw.set_parallel(true)
+		tw.tween_property(p, "position:x", 0.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(p, "modulate:a", 1.0, 0.3)
+		i += 1
 
 
 ## plansza na środku ekranu; pusty tekst = wygaszenie
@@ -1825,6 +1891,15 @@ func _process(dt: float) -> void:
 
 func _process_ui(dt: float) -> void:
 	_call_tick(dt)
+	# okno przyklejone do dołu ekranu (wymiana, rozmowa): powiadomienia wędrują tuż nad nie
+	var lift := 110.0
+	if modal != null and modal.visible and modal_box != null and modal_box.is_visible_in_tree():
+		var vh := root.size.y
+		if modal_box.global_position.y + modal_box.size.y > vh - 150.0 and modal_box.global_position.y > 170.0:
+			lift = vh - modal_box.global_position.y + 10.0
+	if absf(toast_wrap.offset_bottom + lift) > 0.5:
+		toast_wrap.offset_bottom = -lift
+		toast_wrap.offset_top = -lift - 120.0
 	if mode == "dialog" and not dlg.is_empty() and not dlg.done:
 		dlg.typed = float(dlg.typed) + dt * 55.0
 		d_text.visible_characters = int(dlg.typed)
