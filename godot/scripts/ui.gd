@@ -89,7 +89,7 @@ var screen_box: VBoxContainer
 var dlg := {}
 var deal := {}
 var sk := {}
-var bench := {"room": "", "sel": {}, "g": 5, "mixing": false, "filler": 1, "mode": 1}
+var bench := {"room": "", "sel": {}, "g": 5, "mixing": false, "filler": 1}
 var station := {}
 var hud_t := 0.0
 var nav_info := {}
@@ -1175,6 +1175,32 @@ func open_shop() -> void:
 		var b2 := K.btn(("Kup — %s" % G.money(it.price)) if why == "" else why, func(): G.upgrade_buy(id2); open_shop(), "go", true)
 		b2.disabled = why != "" or S.cash < float(it.price)
 		_row(c2, "[b]%s[/b]\n%s" % [it.name, K.col(it.desc, K.C_DIM)], [b2], 13)
+
+
+## lombard: wagi. Każda następna jest szybsza i gubi mniej towaru; stara idzie w rozliczeniu, więc płacisz tylko raz.
+func open_scales() -> void:
+	_open_modal("Lombard — wagi", "„Dokładna waga to uczciwy interes. Dla obu stron.”")
+	var S: Dictionary = G.S
+	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
+	var c := K.card(modal_body)
+	c.add_child(K.lbl("WAGI", 10, K.C_DIM))
+	for i in range(D.SCALES.size()):
+		var sc: Dictionary = D.SCALES[i]
+		var idx := i
+		var stats := "gram w %s min • %s" % [("%.1f" % float(sc.min)).replace(".", ","), "bez strat" if float(sc.waste) <= 0.0 else "straty ok. %d%%" % int(round(float(sc.waste) * 100.0))]
+		var txt := "[b]%s[/b]  %s\n%s" % [sc.name, K.col(stats, K.C_BLUE), K.col(sc.desc, K.C_DIM)]
+		if i == G.scale():
+			_row(c, txt + "\n" + K.col("stoi na Twoim stole", K.C_ACC), [], 13)
+		elif i < G.scale():
+			_row(c, txt + "\n" + K.col("oddana w rozliczeniu", K.C_DIM), [], 13)
+		else:
+			var why := ""
+			if int(S.lvl) < int(sc.lvl):
+				why = "poziom %d" % int(sc.lvl)
+			var b := K.btn(("Kup — %s" % G.money(sc.price)) if why == "" else why, func(): G.scale_buy(idx); open_scales(), "go", true)
+			b.disabled = G.scale_block(i) != ""
+			_row(c, txt, [b], 13)
+	modal_body.add_child(K.wrap("Wagi nie trzeba nosić ani ustawiać: po zakupie stoi na każdym Twoim stole roboczym.", 12, K.C_DIM))
 
 
 # ---------------------------------------------------------------- namiot uprawowy

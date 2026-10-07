@@ -1,5 +1,5 @@
 extends Control
-## Animowany blat stołu roboczego: tacka z towarem, waga, łyżka i rząd gotowych woreczków.
+## Animowany blat stołu roboczego: tacka z towarem, waga, łyżka i rząd gotowych porcji.
 ## Widok sam niczego nie liczy — co woreczek woła `step` (logika w game.gd) i rysuje to, co z tego wyszło.
 
 const K = preload("res://scripts/uikit.gd")
@@ -7,10 +7,10 @@ const K = preload("res://scripts/uikit.gd")
 var product := "dym"
 var pile_g := 0.0          # ile towaru leży na tacce
 var pile_max := 1.0
-var packs: Array = []      # woreczki zrobione w tej sesji: {t} (t = postęp lotu z wagi na miejsce)
-var packs_before := 0      # woreczki, które leżały tu już wcześniej
+var packs: Array = []      # porcje zrobione w tej sesji: {t} (t = postęp lotu z wagi na miejsce)
+var packs_before := 0      # porcje, które leżały tu już wcześniej
 var spills: Array = []     # rozsypane okruchy: {p, r}
-var bags_left := 0         # puste woreczki
+var scale_name := "Waga kuchenna"
 var job := {}              # {left, mode, sec, t, stepped, res, tgt, step, done, good, lost}
 var reading := 0.0         # wskazanie wagi
 var filler := ""           # ikona dodatku (majeranek / cukier), "" = brak słoika
@@ -102,7 +102,6 @@ func _process(dt: float) -> void:
 				queue_redraw()
 				return
 			pile_g = maxf(0.0, pile_g - 1.0)
-			bags_left = maxi(0, bags_left - 1)
 			if r == 1:
 				job.good = int(job.good) + 1
 				packs.append({"t": 0.0})
@@ -216,12 +215,7 @@ func _draw() -> void:
 	K.circle(self, Vector2.ZERO, 72.0, Color(0.82, 0.83, 0.86))
 	K.circle(self, Vector2(-14, -10), 46.0, Color(0.9, 0.91, 0.93, 0.6))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	_text(sp + Vector2(0, -78), "WAGA", 12, K.C_DIM)
-
-	# --- pudełko pustych woreczków
-	var bp := Vector2(w * 0.46 + 150.0, h * 0.2)
-	_tex(K.tex("woreczki"), bp, 46.0, Color(1, 1, 1, 1.0 if bags_left > 0 else 0.3))
-	_text(bp + Vector2(0, 38), "×%d" % bags_left, 16, K.C_TXT if bags_left > 0 else K.C_BAD, 80.0)
+	_text(sp + Vector2(0, -78), scale_name.to_upper(), 12, K.C_DIM, 200.0)
 
 	# --- rozsypane okruchy
 	var pcol := Color.html(String(D.PRODUCTS[product].color))
@@ -257,7 +251,7 @@ func _draw() -> void:
 		if loaded:
 			K.circle(self, pos + Vector2(0, -2), 8.5, pcol)
 
-	# --- gotowe woreczki
+	# --- gotowe porcje
 	var x0 := w * 0.635
 	_box(Rect2(x0, h * 0.12, w - x0 - 12.0, h * 0.8), Color(0, 0, 0, 0.2), 10, Color(1, 1, 1, 0.05), 1)
 	_text(Vector2(x0 + 12, h * 0.12 + 20), "GOTOWE WORECZKI", 12, K.C_DIM, 200.0, HORIZONTAL_ALIGNMENT_LEFT)

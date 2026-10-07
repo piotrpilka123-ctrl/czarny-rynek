@@ -1082,7 +1082,7 @@ func _bag() -> void:
 		c2.add_child(K.rich("%s  %s   [b]%s[/b]" % [D.PRODUCTS[s.p].name, K.tier_bb(s.pur), G.grams(s.n)], 13))
 	var c3 := K.card(body)
 	c3.add_child(K.lbl("RZECZY", 10, K.C_DIM))
-	c3.add_child(K.rich("Woreczki strunowe: [b]%d[/b]\nMajeranek: [b]%d g[/b] • cukier puder: [b]%d g[/b]\nNasiona: [b]%d[/b]\nTelefony na kartę: [b]%d[/b]" % [G.item("woreczki"), G.item("majeranek"), G.item("cukier"), G.item("nasiona"), G.item("burner")], 13))
+	c3.add_child(K.rich("Waga: [b]%s[/b]\nMajeranek: [b]%d g[/b] • cukier puder: [b]%d g[/b]\nNasiona: [b]%d[/b]\nTelefony na kartę: [b]%d[/b]" % [String(G.scale_def().name), G.item("majeranek"), G.item("cukier"), G.item("nasiona"), G.item("burner")], 13))
 	if G.item("burner") > 0:
 		c3.add_child(K.btn("Zmień numer (śledztwo −25)", func(): G.use_burner(); render(), "", true))
 	body.add_child(K.wrap("Przy zatrzymaniu tracisz cały towar z plecaka i część gotówki. To, co w skrytkach, jest bezpieczne.", 11, K.C_DIM))

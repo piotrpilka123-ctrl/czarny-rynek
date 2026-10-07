@@ -53,7 +53,7 @@ func pack_all(room: String, mode := 0) -> void:
 	for s in G.bench_bulk(room):
 		var left := int(floor(float(s.n) + 0.001))
 		var guard := 0
-		while left > 0 and G.item_at(room, "woreczki") > 0 and guard < 60:
+		while left > 0 and guard < 60:
 			guard += 1
 			var n: int = mini(left, 20)
 			var r: Dictionary = G.pack(room, s.p, int(s.pur), n, mode)
@@ -125,12 +125,12 @@ func run() -> void:
 	for e in D.STARTER_PACK:
 		start_g += float(e[1])
 	ok(G.goods_total(S.inv) == start_g and float(S.credit) == 0.0 and float(S.inv.bulk["szron"].get("100", 0.0)) > 0.0, "na start czysta marihuana i amfetamina — pierwsza paczka jest za darmo (zeszyt %d zł)" % int(S.credit))
-	ok(absf(G.carry_total() - (start_g + 0.5)) < 0.01 and G.carry_total() <= float(G.capacity()), "paczka mieści się w kieszeniach (%s / %d)" % [str(G.carry_total()), G.capacity()])
+	ok(absf(G.carry_total() - start_g) < 0.01 and G.carry_total() <= float(G.capacity()) and G.capacity() >= 30, "paczka mieści się w kieszeniach (%s / %d)" % [str(G.carry_total()), G.capacity()])
 	ok(G.credit_days() >= 7, "na początku Wiktor daje tydzień na spłatę zeszytu (%d dni)" % G.credit_days())
 	# dalej test idzie jak dawniej z 5 g marihuany przy sobie — reszta paczki ląduje w szafie
 	G.add_bulk(S.stash.safe, "szron", 100, G.take_bulk(S.inv, "szron", 100, 99.0))
 	G.add_bulk(S.stash.safe, "dym", 100, G.take_bulk(S.inv, "dym", 100, start_g - 10.0 if start_g > 15.0 else maxf(0.0, float(S.inv.bulk["dym"].get("100", 0.0)) - 5.0)))
-	ok(absf(G.carry_total() - 5.5) < 0.01, "zajęte miejsce: 5 g + 10 woreczków = 5,5")
+	ok(absf(G.carry_total() - 5.0) < 0.01, "zajęte miejsce: 5 g luzem = 5")
 
 	# --- stół: porcjowanie
 	M.enter("safe")
@@ -152,26 +152,50 @@ func run() -> void:
 	ok(U.mode == "modal", "stół roboczy otwarty")
 	# stół roboczy: animowana robota gram po gramie (w teście przyspieszona)
 	var t_before: float = S.t
-	S.upg["waga"] = true
-	ok(G.pack_waste(2) == 0.0, "pierwsze gramy w życiu zawsze się udają (samouczek nie może stracić towaru)")
+	ok(G.scale() == 0 and G.pack_waste() == 0.0, "pierwsze gramy w życiu zawsze się udają (samouczek nie może stracić towaru)")
 	var packed_keep: int = S.stats.packed
 	S.stats.packed = 50
-	ok(G.pack_waste(0) == 0.0 and G.pack_waste(2) > G.pack_waste(1) and G.pack_waste(1) > 0.0, "waga jubilerska: spokojna robota bez strat, pośpiech kosztuje towar")
-	S.upg.erase("waga")
-	ok(G.pack_waste(0) > 0.0 and G.pack_waste(0) < G.pack_waste(1), "bez wagi jubilerskiej nawet spokojna robota gubi odrobinę")
-	S.upg["waga"] = true
+	var w0: float = G.pack_waste()
+	var pm0: float = G.pack_minutes()
+	ok(w0 > 0.0 and w0 < 0.12, "waga kuchenna: zawsze coś się rozsypie (%.0f%%)" % (w0 * 100.0))
+	var cash_keep: float = S.cash
+	var lvl_keep: int = S.lvl
+	S.cash = 100.0
+	ok(G.scale_block(1) != "" and not G.scale_buy(1), "na wagę jubilerską trzeba mieć pieniądze i poziom")
+	S.cash = 20000.0
+	S.lvl = 2
+	ok(G.scale_buy(1) and G.scale() == 1 and absf(S.cash - (20000.0 - 650.0)) < 0.01, "lombard: waga jubilerska kupiona za 650 zł")
+	ok(G.pack_waste() < w0 and G.pack_minutes() < pm0, "lepsza waga: mniej strat i szybsza robota")
+	ok(not G.scale_buy(1) and not G.scale_buy(0) and not G.scale_buy(3), "tej samej, gorszej ani za wysokiej poziomem wagi nie kupisz")
+	S.lvl = 8
+	ok(G.scale_buy(3) and G.pack_waste() == 0.0 and G.pack_minutes() <= 0.11, "waga z dozownikiem: bez strat, sześć sekund gry na gram")
+	var prev_w := 1.0
+	var prev_m := 99.0
+	var mono := true
+	for sc in D.SCALES:
+		if float(sc.waste) > prev_w or float(sc.min) >= prev_m:
+			mono = false
+		prev_w = float(sc.waste)
+		prev_m = float(sc.min)
+	ok(mono, "każda następna waga jest szybsza i nie gubi więcej niż poprzednia")
+	S["scale"] = 0
+	S.cash = cash_keep
+	S.lvl = lvl_keep
 	S.stats.packed = packed_keep
+	var lim0: int = G.pack_limit("safe", "dym", 100)
+	G.add_bulk(S.stash.safe, "dym", 100, 4.0)
+	ok(G.pack_limit("safe", "dym", 100) == lim0 + 4, "stół liczy towar z kieszeni i ze skrytki razem (%d → %d g)" % [lim0, lim0 + 4])
+	G.add_bulk(S.inv, "dym", 100, G.take_bulk(S.stash.safe, "dym", 100, 4.0) - 4.0)
 	var bv = U.bench.view
 	var got := [-1, -1]
-	bv.start(3, 0, 0.9, func() -> int: return G.pack_one("safe", "dym", 100, 0), func(a: int, b: int): got[0] = a; got[1] = b)
+	bv.start(3, 0, 0.9, func() -> int: return G.pack_one("safe", "dym", 100), func(a: int, b: int): got[0] = a; got[1] = b)
 	var bg := 0
 	while got[0] < 0 and bg < 400:
 		bg += 1
 		await frames(1)
-	S.upg.erase("waga")
-	ok(got[0] == 3 and got[1] == 0 and G.item("woreczki") == 7, "zaporcjowane 3 g, ubyło 3 woreczków")
-	ok(S.t - t_before >= 5.9, "porcjowanie zabiera czas gry (%.0f min)" % (S.t - t_before))
-	ok(G.pack_one("safe", "dym", 35, 1) == -1, "nie da się porcjować towaru, którego nie ma")
+	ok(got[0] == 3 and got[1] == 0 and G.item("woreczki") == 0, "zaporcjowane 3 g — bez woreczków i bez wybierania trybu")
+	ok(S.t - t_before >= 3.5, "porcjowanie zabiera czas gry (%.0f min)" % (S.t - t_before))
+	ok(G.pack_one("safe", "dym", 35) == -1, "nie da się porcjować towaru, którego nie ma")
 	U.close_all()
 	G.story_tick()
 	G.story_tick()
@@ -337,17 +361,15 @@ func run() -> void:
 			pack_i = i
 		if String(G.story[i].get("id", "")) == "sell1":
 			sell_i = i
-	ok(pack_i >= 0 and G.story[pack_i].done.call(), "krok „zaporcjuj 3 g” zalicza się, gdy z pierwszej paczki zostały tylko 2 woreczki")
-	ok(not G.story[sell_i].done.call(), "krok sprzedaży czeka, dopóki są woreczki do sprzedania")
+	ok(pack_i >= 0 and G.story[pack_i].done.call(), "krok „zaporcjuj 3 g” zalicza się, gdy z pierwszej paczki zostały tylko 2 porcje")
+	ok(not G.story[sell_i].done.call(), "krok sprzedaży czeka, dopóki są porcje do sprzedania")
 	G.take_pack(G.S.inv, "dym", 80, 2)
 	ok(G.story[sell_i].done.call(), "…a gdy towar przepadł całkiem, samouczek idzie dalej")
 	G.on_hour()
 	ok(G.flag("hurt_on"), "bez towaru i bez Hurtu Wiktor sam otwiera zamówienia")
-	G.S.items["woreczki"] = 0
 	G.S.cash = 0.0
 	G.add_bulk(G.S.inv, "dym", 80, 5.0)
-	ok(G.shop_buy("woreczki") and G.item("woreczki") == 10, "spłukany i bez woreczków: Staś daje paczkę na krechę")
-	ok(not G.shop_buy("woreczki"), "…ale tylko wtedy, gdy naprawdę nie ma w co porcjować")
+	ok(G.pack_limit("safe", "dym", 80) == 5 and G.pack_one("safe", "dym", 80) >= 0, "spłukany też porcjuje: do roboty wystarcza waga, niczego nie trzeba dokupować")
 	G.S = tut_S
 
 	# --- mieszanki nigdy nie układają się w jeden stos z czystym towarem
@@ -358,7 +380,6 @@ func run() -> void:
 	S.stash.safe = G.new_store()
 	var both: Array = [S.inv, S.stash.safe]
 	S.items["majeranek"] = 400
-	S.items["woreczki"] = 60
 	var mix_ok := true
 	var mix_seen := 0
 	for base in [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50]:
@@ -389,8 +410,8 @@ func run() -> void:
 	var again: int = G.mix("safe", "dym", anyk, 6.0, 2)
 	ok(anyk > 0 and G.is_mix(again) and again < anyk, "rozrobiona mieszanka dalej jest mieszanką (%d%% → %d%%)" % [anyk, again])
 	# porcjowanie zachowuje znacznik, a woreczki z mieszanki nie mieszają się z czystymi
-	G.pack("safe", "dym", again, 3, 0)
-	G.pack("safe", "dym", 75, 3, 0)
+	G.pack("safe", "dym", again, 3)
+	G.pack("safe", "dym", 75, 3)
 	var packs_pure := 0
 	var packs_mix := 0
 	var stack_n := 0
@@ -401,7 +422,7 @@ func run() -> void:
 			else:
 				packs_pure += int(st2.n)
 		stack_n += G.stacks(st0, "pack").size() + G.stacks(st0, "bulk").size()
-	ok(packs_mix >= 1 and packs_pure >= 1 and packs_mix + packs_pure <= 6, "woreczki: mieszanka (%d) i czysty (%d) w osobnych stosach" % [packs_mix, packs_pure])
+	ok(packs_mix >= 1 and packs_pure >= 1 and packs_mix + packs_pure <= 6, "porcje: mieszanka (%d) i czysty (%d) w osobnych stosach" % [packs_mix, packs_pure])
 	var labels := 0
 	for st0 in both:
 		for e2 in G.entries(st0):
@@ -749,10 +770,7 @@ func _sim_one(days: int, run_i: int) -> String:
 				G.pickup_drop(d)
 		# porcjowanie w domu
 		if not G.bench_bulk("safe").is_empty():
-			if G.item_at("safe", "woreczki") < 25 and (S.cash >= 12.0 or G.item_at("safe", "woreczki") <= 0):
-				G.shop_buy("woreczki")
-			if G.item_at("safe", "woreczki") > 0:
-				pack_all("safe", 0 if randf() < skill else 1)
+			pack_all("safe")
 		_stash_all()
 		# SMS-y
 		for o in S.orders.duplicate():
@@ -899,6 +917,9 @@ func _sim_one(days: int, run_i: int) -> String:
 					break
 		if int(S.lvl) >= 2 and not G.upg("plecak1") and S.cash > 380.0 + 150.0:
 			G.upgrade_buy("plecak1")
+		# lepsza waga z lombardu, gdy już na nią stać (bez ruszania pieniędzy odłożonych na ratę)
+		if G.scale() + 1 < D.SCALES.size() and G.scale_block(G.scale() + 1) == "" and S.cash > float(D.SCALES[G.scale() + 1].price) * 1.6 + 400.0 + float(S.credit):
+			G.scale_buy(G.scale() + 1)
 		if invest:
 			if int(S.lvl) >= 3 and not G.upg("szafka") and S.cash > 2200.0:
 				G.upgrade_buy("szafka")

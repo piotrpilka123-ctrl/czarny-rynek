@@ -764,8 +764,10 @@ func pawn_talk() -> void:
 		G.notify("Lombard otwarty od %d:00 do %d:00." % [int(D.PAWN_OPEN[0]), int(D.PAWN_OPEN[1])], "warn")
 		return
 	var list: Array = G.pawn_list()
+	# wagi: Zenek trzyma je pod ladą — to jedyny sklep w mieście, który sprzedaje coś dokładniejszego niż kuchenna
+	var scales := {"label": "Masz jakąś wagę?", "kind": "go", "act": func(): ui.open_scales()}
 	if list.is_empty():
-		ui.dialog({"name": "Pan Zenek", "lines": [["Z pustymi rękami? Przynieś coś, to pogadamy. Biorę wszystko, co ludzie wyrzucają.", "Telefony, zegarki, miedź, butelki. Co znajdziesz, to przynoś.", "Dziś nic? Poszukaj po śmietnikach, młody. Ludzie wyrzucają skarby."].pick_random()]})
+		ui.dialog({"name": "Pan Zenek", "lines": [["Z pustymi rękami? Przynieś coś, to pogadamy. Biorę wszystko, co ludzie wyrzucają.", "Telefony, zegarki, miedź, butelki. Co znajdziesz, to przynoś.", "Dziś nic? Poszukaj po śmietnikach, młody. Ludzie wyrzucają skarby."].pick_random()], "choices": [scales, {"label": "Na razie nic."}]})
 		return
 	var total := 0.0
 	var choices := []
@@ -776,7 +778,7 @@ func pawn_talk() -> void:
 		Sfx.play("good")
 		G.notify("Lombard: +%s." % G.money(got), "good")})
 	for e in list:
-		if choices.size() >= 5:
+		if choices.size() >= 4:
 			break
 		var iid: String = e.id
 		choices.append({"label": "%s × %d — %s" % [String(D.ITEMS[iid].name), int(e.n), G.money(e.total)], "act": func():
@@ -784,6 +786,7 @@ func pawn_talk() -> void:
 			Sfx.play("good")
 			G.notify("Lombard: +%s." % G.money(got2), "good")
 			pawn_talk()})
+	choices.append(scales)
 	choices.append({"label": "Na razie nic."})
 	ui.dialog({"name": "Pan Zenek", "lines": [["Pokaż, co tam masz. Dziś płacę uczciwie — jak na mnie.", "No, no. Ktoś miał dobry dzień na śmietnikach.", "Ceny mam inne co dzień. Jak ci nie pasuje, przyjdź jutro."].pick_random()], "choices": choices})
 
@@ -830,7 +833,7 @@ func talk_stasiu() -> void:
 	if not G.flag("met_stasiu"):
 		ui.dialog({"name": "Wujek Staś", "lines": [
 			"Kuba! Chłopcze… Słyszałem, co się stało w hucie. Dobrze, że żyjesz. U mnie nikt nic nie widział i nic nie słyszał.",
-			"Wiem, w czym siedzisz, i nie będę cię pouczał. U mnie kupisz woreczki, plecak, porządną wagę — a o nic nie pytam.",
+			"Wiem, w czym siedzisz, i nie będę cię pouczał. U mnie kupisz plecak, doniczki, nasiona — a o nic nie pytam. Po porządną wagę idź do Zenka, do lombardu.",
 			"Jedna rada od starego: nie noś przy sobie więcej, niż sprzedasz. I nie handluj pod nosem policji — radiowóz kręci się po Hutniczej i po osiedlu.",
 		], "on_end": _stasiu_met})
 		return
@@ -853,8 +856,6 @@ func talk_clothes() -> void:
 
 func _stasiu_met() -> void:
 	G.S.flags["met_stasiu"] = true
-	G.S.items["woreczki"] = G.item("woreczki") + 10
-	G.notify("Staś dorzucił Ci 10 woreczków „na dobry początek”.", "good")
 	G.add_xp(10.0)
 	ui.open_shop()
 
@@ -2650,7 +2651,10 @@ func _test_ui(what: String) -> void:
 			if what == "gielda2":
 				ui.phone.shop.tab = "sell"
 				ui.phone.render()
-		"bench": ui.open_pack(player.loc if player.loc != "out" else "safe")
+		"bench":
+			if G.pack_limit("safe", "dym", 100) <= 0:
+				G.add_bulk(G.S.inv, "dym", 100, 8.0)
+			ui.open_pack(player.loc if player.loc != "out" else "safe")
 		"station0", "station1", "station2", "station3", "station4", "station9": ui.open_station("garage", int(what.trim_prefix("station")))
 		"hideout": ui.open_hideout("garage")
 		"bench_work", "bench_mix":
@@ -2714,6 +2718,7 @@ func _test_ui(what: String) -> void:
 			_test_order("dominik")
 			ui.open_inventory("", "org")
 		"shop": ui.open_shop()
+		"wagi": ui.open_scales()
 		"build": ui.open_build("garage")
 		"ghost": build_begin("regal")
 		"pause": ui.show_pause()

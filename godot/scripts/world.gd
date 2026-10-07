@@ -4348,7 +4348,7 @@ func _interiors() -> void:
 	dl.shadow_enabled = false
 	_rp(g, "painted_wooden_chair_01", tx - 0.15, tz + 0.95, PI + 0.35, 1.02)
 	inter.append({"loc": "safe", "x": tx - 0.38, "z": tz, "y0": 0.6, "y1": 1.05, "r": 0.5, "reach": 2.5, "id": "pack_safe",
-		"label": func(): return "Waga i woreczki — porcjowanie towaru", "act": func(): G.ui.open_pack("safe")})
+		"label": func(): return "Waga — porcjowanie towaru", "act": func(): G.ui.open_pack("safe")})
 	Interior.wall_shelf(g, Vector3(tx + 0.1, 1.72, -d * 0.5 + 0.01), 0.0, 1.0, 7)
 	_rp(g, "wall_clock", cx + 2.35, -d * 0.5 + 0.04, 0.0, 0.3, 1.82)
 	# skrytka: szafa

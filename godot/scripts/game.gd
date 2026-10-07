@@ -107,14 +107,14 @@ func new_state() -> Dictionary:
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store()},
-		"items": {"woreczki": 10, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
+		"items": {"woreczki": 0, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
 		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0, "hospital": 0, "box_paid": 0.0},
-		"pos": null, "mom_day": 0,
+		"pos": null, "mom_day": 0, "scale": 0, "owned": {},
 	}
 
 
@@ -622,7 +622,7 @@ func entries(st: Dictionary) -> Array:
 			var us: float = D.SIZE_PACK if kind == "pack" else D.SIZE_BULK
 			var uw: float = D.W_PACK if kind == "pack" else D.W_BULK
 			out.append({"kind": kind, "p": s.p, "pur": int(s.pur), "id": "", "n": float(s.n), "name": pd.name,
-				"sub": ("woreczki 1 g" if kind == "pack" else ("cegła" if float(s.n) >= 100.0 else "luzem")),
+				"sub": ("gotowe porcje" if kind == "pack" else ("cegła" if float(s.n) >= 100.0 else "luzem")),
 				"icon": ("pack_" if kind == "pack" else ("brick_" if float(s.n) >= 100.0 else "bulk_")) + String(s.p), "tier": tier(s.pur),
 				"qty": ("%d szt." % int(s.n)) if kind == "pack" else grams(s.n), "usize": us, "uw": uw, "step": 1.0 if kind == "pack" else 0.5,
 				"unit": "szt." if kind == "pack" else "g", "size": half_up(float(s.n) * us), "weight": float(s.n) * uw,
@@ -2542,52 +2542,72 @@ func bench_bulk(room: String) -> Array:
 	return m.values()
 
 
-## Tryby pracy przy stole. Nie ma tu zręcznościówki: wybierasz, czy wolisz stracić czas, czy towar.
-## min = minuty gry na jeden woreczek, waste = szansa, że gram się rozsypie, sec = czas animacji.
-const PACK_MODES := [
-	{"id": "dokladnie", "name": "Dokładnie", "min": 2.0, "waste": 0.02, "sec": 0.9, "desc": "Każdy gram dwa razy na wagę. Wolno, prawie bez strat."},
-	{"id": "normalnie", "name": "Normalnie", "min": 1.0, "waste": 0.06, "sec": 0.58, "desc": "Zwykłe tempo. Czasem coś się rozsypie."},
-	{"id": "szybko", "name": "Na szybko", "min": 0.5, "waste": 0.14, "sec": 0.34, "desc": "Na oko i do woreczka. Szybko, ale sporo ląduje na podłodze."},
-]
+## Porcjowanie zależy tylko od wagi, którą masz (D.SCALES): im lepsza, tym szybciej i z mniejszą stratą.
+## Nie ma trybów pracy ani woreczków do kupowania — towar po zważeniu jest po prostu gotowy do sprzedaży.
+func scale() -> int:
+	return clampi(int(S.get("scale", 0)), 0, D.SCALES.size() - 1)
 
 
-func pack_waste(mode: int) -> float:
+func scale_def() -> Dictionary:
+	return D.SCALES[scale()]
+
+
+## dlaczego nie da się kupić tej wagi ("" = można)
+func scale_block(i: int) -> String:
+	if i < 0 or i >= D.SCALES.size():
+		return "Nie ma takiej wagi."
+	if i <= scale():
+		return "Masz już taką albo lepszą."
+	var sc: Dictionary = D.SCALES[i]
+	if int(S.lvl) < int(sc.lvl):
+		return "Od poziomu %d." % int(sc.lvl)
+	if S.cash < float(sc.price):
+		return "Brakuje %s." % money(float(sc.price) - S.cash)
+	return ""
+
+
+func scale_buy(i: int) -> bool:
+	if scale_block(i) != "":
+		return false
+	var sc: Dictionary = D.SCALES[i]
+	S.cash -= float(sc.price)
+	S.stats.spent = float(S.stats.spent) + float(sc.price)
+	S["scale"] = i
+	Sfx.play("good")
+	notify("Kupiono: %s. Stoi już na Twoim stole." % String(sc.name), "good")
+	return true
+
+
+func pack_waste(_mode := 1) -> float:
 	if int(S.stats.packed) + int(S.stats.wasted) < 5:
 		return 0.0
-	var w := float(PACK_MODES[clampi(mode, 0, 2)].waste)
-	if upg("waga"):
-		w *= 0.4
-	if has_skill("reka"):
-		w *= 0.6
-	# na wadze jubilerskiej spokojna robota jest bezstratna
-	return 0.0 if (mode <= 0 and upg("waga")) else w
+	return float(scale_def().waste) * (0.6 if has_skill("reka") else 1.0)
 
 
-func pack_minutes(mode: int) -> float:
-	return float(PACK_MODES[clampi(mode, 0, 2)].min) * (0.5 if has_skill("paczki") else 1.0)
+func pack_minutes(_mode := 1) -> float:
+	return float(scale_def().min) * (0.5 if has_skill("paczki") else 1.0)
 
 
-## ile gramów danego towaru da się teraz zaporcjować przy tym stole
+## ile gramów danego towaru da się teraz zaporcjować przy tym stole (towar z plecaka i ze skrytki liczy się razem)
 func pack_limit(room: String, p: String, pur: int) -> int:
 	var have := 0.0
 	for src in [S.inv, S.stash[room]]:
 		have += float(src.bulk[p].get(str(pur), 0.0))
-	return mini(int(floor(have + 0.001)), item_at(room, "woreczki"))
+	return int(floor(have + 0.001))
 
 
-## porcjuje JEDEN gram: 1 = woreczek gotowy, 0 = gram rozsypany, -1 = nie ma z czego / w co
-func pack_one(room: String, p: String, pur: int, mode: int) -> int:
+## porcjuje JEDEN gram: 1 = porcja gotowa, 0 = gram rozsypany, -1 = nie ma z czego
+func pack_one(room: String, p: String, pur: int, _mode := 1) -> int:
 	if pack_limit(room, p, pur) <= 0:
 		return -1
 	var from_inv: float = take_bulk(S.inv, p, pur, 1.0)
 	if from_inv < 0.999:
 		take_bulk(S.stash[room], p, pur, 1.0 - from_inv)
-	take_item(room, "woreczki", 1)
-	add_minutes(pack_minutes(mode))
-	if randf() < pack_waste(mode):
+	add_minutes(pack_minutes())
+	if randf() < pack_waste():
 		S.stats.wasted = int(S.stats.wasted) + 1
 		return 0
-	# woreczek wraca tam, skąd wzięto towar (plecak albo skrytka)
+	# porcja wraca tam, skąd wzięto towar (plecak albo skrytka)
 	add_pack(S.inv if from_inv >= 0.5 else S.stash[room], p, pur, 1)
 	S.stats.packed = int(S.stats.packed) + 1
 	add_xp(0.3)
@@ -2595,11 +2615,11 @@ func pack_one(room: String, p: String, pur: int, mode: int) -> int:
 
 
 ## porcjuje `g` gramów naraz (testy, symulacje); przy stole robi to animacja, gram po gramie
-func pack(room: String, p: String, pur: int, g: int, mode: int) -> Dictionary:
+func pack(room: String, p: String, pur: int, g: int, _mode := 1) -> Dictionary:
 	var good := 0
 	var lost := 0
 	for i in range(g):
-		var r := pack_one(room, p, pur, mode)
+		var r := pack_one(room, p, pur)
 		if r < 0:
 			break
 		if r == 1:
@@ -2704,12 +2724,6 @@ func move_cash(room: String, deposit: bool, amount: float) -> void:
 func shop_buy(id: String) -> bool:
 	for it in D.SHOP:
 		if it.id == id:
-			if id == "woreczki" and S.cash < float(it.price) and item_at("safe", "woreczki") <= 0 and packed_total(S.inv) + packed_total(S.stash.safe) <= 0:
-				# bez woreczków i bez grosza gra by stanęła — Staś daje paczkę „na krechę”
-				S.items[id] = item(id) + 10
-				notify("Staś: „Masz dziesięć woreczków, oddasz, jak staniesz na nogi.”", "good")
-				Sfx.play("pickup")
-				return true
 			if S.cash < float(it.price) or int(S.lvl) < int(it.lvl):
 				notify("Nie stać Cię albo to jeszcze nie ten poziom.", "warn")
 				return false
@@ -2912,7 +2926,7 @@ func _build_story() -> void:
 			"done": func(): return flag("tut_save"), "marker": _laptop_marker},
 		{"id": "room_stash", "text": func(): return "Szafa pod ścianą to Twoja skrytka — towar i gotówka są w niej bezpieczne. Otwórz ją [E].",
 			"done": func(): return flag("tut_stash"), "marker": _stash_marker},
-		{"id": "room_bench", "text": func(): return "Na stole stoi waga i woreczki. Kiedyś robili to za Ciebie inni — teraz porcjujesz sam. Obejrzyj ją [E].",
+		{"id": "room_bench", "text": func(): return "Na stole stoi waga kuchenna. Kiedyś robili to za Ciebie inni — teraz porcjujesz sam. Obejrzyj ją [E].",
 			"done": func(): return flag("tut_bench"), "marker": _bench_marker, "on_done": _on_tour_done},
 		{"id": "phone", "text": func(): return "Ktoś wsunął paczkę pod drzwi. Przeczytaj wiadomość od Wiktora: [Tab] → Wiadomości.",
 			"done": func(): return flag("read_wiktor") or flag("got_first"), "on_done": _on_phone_done},
@@ -3181,6 +3195,14 @@ func load_game() -> bool:
 		if int(base.step) >= TOUR_STEPS:
 			base.flags[k] = true
 	base.wanted = false
+	# woreczków do kupowania już nie ma, a „ulepszenie” wagi stało się po prostu lepszą wagą
+	base.items["woreczki"] = 0
+	for st0 in base.stash.values():
+		if st0 is Dictionary and st0.has("items") and st0.items is Dictionary:
+			st0.items.erase("woreczki")
+	if bool(base.upg.get("waga", false)):
+		base["scale"] = maxi(int(base.get("scale", 0)), 1)
+	base.upg.erase("waga")
 	# stare umiejętności „gadane” zamieniają się na nowe z tej samej gałęzi
 	for pair in [["gadka", "reka2"], ["oko2", "kieszenie"], ["rekin", "klientela"]]:
 		if base.skills.has(pair[0]):

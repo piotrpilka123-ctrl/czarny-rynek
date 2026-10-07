@@ -434,7 +434,7 @@ func _tab_inv() -> void:
 		var iv := K.vbox(8)
 		info.add_child(iv)
 		_title(iv, "info", "JAK TO DZIAŁA")
-		iv.add_child(K.rich("• Każda rzecz zajmuje [b]miejsce[/b] — porcja i gram luzem po 1, woreczki prawie nic, telefon na kartę aż 2.\n• Rzeczy tego samego rodzaju [b]układają się w stos[/b].\n• W kryjówce podejdź do [b]skrytki[/b] — otworzy się po prawej i przeciągniesz do niej towar oraz gotówkę.\n• Podczas pościgu przytrzymaj [b][X][/b], żeby wyrzucić cały towar. Przepada, ale przy kontroli jesteś czysty.", 13))
+		iv.add_child(K.rich("• Każda rzecz zajmuje [b]miejsce[/b] — porcja i gram luzem po 1, telefon na kartę aż 2.\n• Rzeczy tego samego rodzaju [b]układają się w stos[/b].\n• W kryjówce podejdź do [b]skrytki[/b] — otworzy się po prawej i przeciągniesz do niej towar oraz gotówkę.\n• Podczas pościgu przytrzymaj [b][X][/b], żeby wyrzucić cały towar. Przepada, ale przy kontroli jesteś czysty.", 13))
 		iv.add_child(K.spacer())
 		var nb := _nearest_stash()
 		if nb != "":

@@ -60,7 +60,6 @@ const PURITY_HIGH := 90
 
 ## sklep Wujka Stasia
 const SHOP := [
-	{"id": "woreczki", "name": "Woreczki strunowe (20 szt.)", "price": 12, "n": 20, "lvl": 1, "desc": "Bez nich nie zaporcjujesz towaru. 1 woreczek = 1 g."},
 	{"id": "majeranek", "name": "Majeranek (20 g)", "price": 6, "n": 20, "lvl": 1, "desc": "Przyprawa z półki. Domieszany do marihuany podbija wagę, ale obniża czystość — powstaje mieszanka."},
 	{"id": "cukier", "name": "Cukier puder (20 g)", "price": 5, "n": 20, "lvl": 4, "desc": "Do rozrabiania proszków. Więcej gramów, gorszy towar."},
 	{"id": "doniczka", "name": "Doniczka z ziemią", "price": 40, "n": 1, "lvl": 4, "desc": "Stawiasz ją w kryjówce [B] i sadzisz w niej jeden krzak. Każdy krzak doglądasz osobno."},
@@ -70,10 +69,17 @@ const SHOP := [
 	{"id": "burner", "name": "Telefon na kartę", "price": 420, "n": 1, "lvl": 2, "use": true, "desc": "Nowy numer: śledztwo policji spada o 25."},
 	{"id": "kastet", "name": "Kastet (spod lady)", "price": 350, "n": 1, "lvl": 3, "desc": "Dłużnicy „na zeszyt” oddają o wiele chętniej. Nielegalny: nie wejdziesz z nim do klubu, a policja doliczy zarzut."},
 ]
+## Wagi: jedyne, co decyduje o porcjowaniu — ile minut gry schodzi na gram (min), jaka część towaru się rozsypuje (waste)
+## i jak szybko idzie sama robota przy stole (sec na gram). Kuchenna stoi w kawalerce od początku, lepsze sprzedaje lombard.
+const SCALES := [
+	{"id": "kuchenna", "name": "Waga kuchenna", "price": 0, "lvl": 1, "min": 1.2, "waste": 0.07, "sec": 0.6, "desc": "Stara waga z kuchni, dokładna do grama z hakiem. Wolno i zawsze coś się rozsypie."},
+	{"id": "jubilerska", "name": "Waga jubilerska", "price": 650, "lvl": 2, "min": 0.7, "waste": 0.02, "sec": 0.42, "desc": "Dokładna do setnej grama. Robota idzie prawie dwa razy szybciej i mało co ląduje na blacie."},
+	{"id": "laboratoryjna", "name": "Waga laboratoryjna", "price": 2600, "lvl": 5, "min": 0.3, "waste": 0.0, "sec": 0.27, "desc": "Z osłoną przeciwwiatrową i tarowaniem. Bez strat, cztery razy szybciej niż na kuchennej."},
+	{"id": "dozownik", "name": "Waga z dozownikiem", "price": 7500, "lvl": 8, "min": 0.1, "waste": 0.0, "sec": 0.15, "desc": "Półautomat z lejkiem: sypiesz towar, a ona sama odmierza porcje. Do dużych partii."},
+]
 const UPGRADES := [
 	{"id": "plecak1", "name": "Plecak szkolny (40 miejsc)", "price": 380, "lvl": 2, "cap": 40, "desc": "Zamiast upychać towar po kieszeniach."},
 	{"id": "plecak2", "name": "Plecak turystyczny (90 miejsc)", "price": 1500, "lvl": 5, "cap": 90, "req": "plecak1", "desc": "Na poważniejsze kursy."},
-	{"id": "waga", "name": "Waga jubilerska", "price": 650, "lvl": 2, "desc": "Dużo mniej strat przy porcjowaniu, a spokojna robota jest całkiem bezstratna."},
 	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 150 miejsc zamiast 60."},
 ]
 ## Dostawca jest jeden: Wiktor. Czysty towar, zamówienie SMS-em, paczka w skrytce oznaczonej sprejem, zapłata „na zeszyt”
@@ -220,7 +226,7 @@ const PEOPLE_COP := ["pm3", "pm6", "pm4", "pm3"]
 const SIWY_LOOK := {"model": "m18", "kind": "hoodie", "seed": 51, "tall": 1.02, "walk": "Walk_Stiff"}
 
 const PLAYER_LOOK := {"model": "m10", "kind": "dres", "top": "14161a", "top2": "e8e6e0", "bottom": "14161a", "stripes": true, "shoes": "e4e4e0", "hair": "hair_buzzed", "seed": 77, "skin": 0.25}
-const CAP_BASE := 15
+const CAP_BASE := 30
 const STASH_BASE := 60
 
 # ---------------------------------------------------------------- klienci
