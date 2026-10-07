@@ -4638,7 +4638,8 @@ func _interiors() -> void:
 	var tx := cx + 0.9
 	var tz := -d * 0.5 + 0.62
 	_rp(g, "painted_wooden_table", tx, tz, 0.0, 0.8, 0.0, 1.0, 0.5)
-	_scale_set(g, Vector3(tx - 0.35, 0.8, tz))
+	# waga stoi obok radia, nie w nim (większe modele wag wchodziły w obudowę)
+	_scale_set(g, Vector3(tx - 0.1, 0.8, tz + 0.1))
 	_rp(g, "desk_lamp_arm_01", tx + 0.75, tz - 0.15, 0.6, 0.55, 0.8)
 	_rp(g, "cigarette_pack", tx + 0.08, tz + 0.26, 0.4, 0.09, 0.8)
 	Interior.ashtray(g, Vector3(tx + 0.22, 0.8, tz + 0.3))
