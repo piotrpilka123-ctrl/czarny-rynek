@@ -145,16 +145,25 @@ static func run(T) -> void:
 			on_court += 1
 		if tp.x > -30.0 and tp.x < 46.0 and ((tp.y > -72.0 and tp.y < -68.5) or (tp.y > -64.5 and tp.y < -58.0)):
 			by_walk += 1
-	T.ok(flat and D.DOORS.safe.x > c0x - 6.0 and D.DOORS.safe.x < c1x and c0z - float(D.DOORS.safe.z) < 20.0, "boisko leży na równej płycie tuż przed klatką bloku 7")
-	T.ok(hoops == 2 and CW.court_ball != null and absf(CW.court_ball.position.y - CW.COURT_H) < 0.1 and CW.court_ball.position.x > c1x - 8.0, "dwa kosze i piłka zostawiona pod wschodnim (%d)" % hoops)
+	T.ok(flat and D.DOORS.safe.x > c0x - 10.0 and D.DOORS.safe.x < c1x and c0z - float(D.DOORS.safe.z) < 20.0, "boisko leży na równej płycie tuż przed klatką bloku 7")
+	T.ok(hoops == 1 and CW.court_ball != null and absf(CW.court_ball.position.y - CW.COURT_H) < 0.1 and CW.court_ball.position.x > c1x - 8.0, "połowa boiska: jeden kosz i piłka zostawiona pod nim (%d)" % hoops)
 	T.ok(on_court == 0 and by_walk == 0 and CW.surface_at((c0x + c1x) * 0.5 * D.SC, (c0z + c1z) * 0.5 * D.SC) == "concrete", "na boisku i przy chodniku przed blokiem nie rosną drzewa; płyta jest twarda")
 	var cm: StandardMaterial3D = CW.court_material()
 	var cimg: Image = cm.albedo_texture.get_image()
 	if cimg.is_compressed():
 		cimg.decompress()
-	var mid: Color = cimg.get_pixel(int(cimg.get_width() * 0.12), cimg.get_height() / 2)
-	var ln_px: Color = cimg.get_pixel(cimg.get_width() / 2, cimg.get_height() / 3)
-	T.ok(mid.r > 0.5 and mid.g < 0.35 and ln_px.r > 0.85 and ln_px.g > 0.85, "nawierzchnia jest czerwona, a linia środkowa biała")
+	var rr := 0.0
+	var gg := 0.0
+	for sy in range(30):
+		for sx in range(30):
+			var cpx: Color = cimg.get_pixel(int(cimg.get_width() * 0.12) + sx * 3, int(cimg.get_height() * 0.12) + sy * 3)
+			rr += cpx.r
+			gg += cpx.g
+	var edge_max := 0.0
+	for sx2 in range(int(cimg.get_width() * 0.08)):
+		for sy2 in [0.3, 0.4, 0.6, 0.7]:
+			edge_max = maxf(edge_max, cimg.get_pixel(sx2, int(cimg.get_height() * sy2)).g)
+	T.ok(rr > gg * 1.35 and rr / 900.0 < 0.62 and edge_max > 0.6, "nawierzchnia: wypłowiała czerwień (nie nowy tartan) i jasna linia obrysu")
 
 	# --- dym z kominów: kotłownia i trzy kominy huty; smuga zaczyna się u wylotu, nie w połowie komina
 	var sm_n: int = G.world.smokes.size()

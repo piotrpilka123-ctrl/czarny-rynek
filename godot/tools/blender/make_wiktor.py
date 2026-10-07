@@ -162,18 +162,25 @@ def paczka_start():
     import numpy as np
     reset()
     rs = np.random.default_rng(31)
-    W, Dd, Hh = 0.17, 0.11, 0.045
+    W, Dd, Hh = 0.2, 0.125, 0.048
     wp, hp = 768, 512
     ys, xs = np.mgrid[0:hp, 0:wp].astype(np.float32)
     uu, vv = xs / wp * 2 - 1, ys / hp * 2 - 1
     # --- czarna folia: prawie czerń, z jaśniejszymi smugami naciągniętych warstw i zmarszczkami w poprzek
     base = np.zeros((hp, wp, 3), dtype=np.float32) + np.array([0.035, 0.036, 0.04], dtype=np.float32)
-    for _i in range(70):
-        y0 = rs.random() * hp
-        a = rs.uniform(-0.12, 0.12)
-        wd = rs.uniform(0.8, 3.5)
-        dist = (ys - y0) - (xs - wp / 2) * a + np.sin(xs * rs.uniform(0.01, 0.04) + rs.random() * 6) * rs.uniform(1, 5)
-        base += (np.exp(-(dist / wd) ** 2) * rs.uniform(0.02, 0.09))[..., None]
+    for _i in range(230):
+        # fałda: krótki, lekko wygięty odcinek; większość biegnie w poprzek kostki, część skosem od rogów
+        x0, y0 = rs.random() * wp, rs.random() * hp
+        a = rs.normal(math.pi / 2, 0.35) if rs.random() < 0.7 else rs.uniform(0, math.pi)
+        ln = rs.uniform(40, 260)
+        wd = rs.uniform(0.6, 2.2)
+        t = (xs - x0) * math.cos(a) + (ys - y0) * math.sin(a)
+        dist = (xs - x0) * -math.sin(a) + (ys - y0) * math.cos(a) + np.sin(t * rs.uniform(0.01, 0.05)) * rs.uniform(0, 4)
+        k = np.clip(1.0 - np.abs(t) / (ln / 2), 0.0, 1.0)
+        amp = rs.uniform(0.03, 0.2)
+        base += (np.exp(-(dist / wd) ** 2) * k * amp)[..., None]
+        base -= (np.exp(-((dist - wd * 2.2) / (wd * 1.6)) ** 2) * k * amp * 0.25)[..., None]
+    base = np.clip(base, 0.012, 1.0)
     for _i in range(8):                                                # granice kolejnych warstw folii (skośne)
         x0 = rs.random() * wp
         dist = (xs - x0) + (ys - hp / 2) * rs.uniform(-0.5, 0.5)
@@ -186,11 +193,11 @@ def paczka_start():
         k = (0.9 + 0.08 * np.sin(xs * 0.05 + ys * 0.031)) * weave
         base[mask] = tape * k[mask][..., None]
         base[edge] = base[edge] * 0.75 + np.array([0.6, 0.61, 0.62]) * 0.25
-    for u0, hw in ((-0.5, 0.11), (0.46, 0.1)):
+    for u0, hw in ((0.18, 0.12),):
         d = np.abs(uu - u0 - vv * 0.04)
         pas(d < hw, np.abs(d - hw) < 0.012)
-    d2 = np.abs(vv - 0.08 - uu * 0.03)
-    pas(d2 < 0.14, np.abs(d2 - 0.14) < 0.012)
+    d2 = np.abs(vv + 0.35 - uu * 0.03)
+    pas(d2 < 0.1, np.abs(d2 - 0.1) < 0.012)
     for _i in range(26):                                               # zmarszczki na taśmie
         x0, y0 = rs.random() * wp, rs.random() * hp
         a = rs.random() * math.pi
@@ -200,7 +207,7 @@ def paczka_start():
         istape = (base.mean(axis=2) > 0.25)
         base += (np.exp(-(dist / 1.4) ** 2) * k * 0.07 * istape)[..., None]
     base = np.clip(base, 0.0, 1.0)
-    folia = _mat_obraz('folia_stretch', _obraz('paczka_folia_kolor', base), 0.32)
+    folia = _mat_obraz('folia_stretch', _obraz('paczka_folia_kolor', base), 0.24)
 
     # obła bryła zaokrąglona ze wszystkich stron (superelipsoida) — leży na podłodze jak zawiniątko, nie „rozlewa się”
     nu, nv = 72, 36
@@ -214,12 +221,12 @@ def paczka_start():
         row = []
         for i in range(nu):
             th = 2 * math.pi * i / nu
-            x = W / 2 * sp(math.cos(ph), 0.5) * sp(math.cos(th), 0.62)
-            y = Dd / 2 * sp(math.cos(ph), 0.5) * sp(math.sin(th), 0.62)
-            zz = Hh / 2 * sp(math.sin(ph), 0.72)
-            k = 1.0 + 0.035 * noise.noise(Vector((x * 30, y * 30, zz * 30))) + 0.012 * noise.noise(Vector((x * 26, y * 190, zz * 190)))
+            x = W / 2 * sp(math.cos(ph), 0.3) * sp(math.cos(th), 0.34)
+            y = Dd / 2 * sp(math.cos(ph), 0.3) * sp(math.sin(th), 0.34)
+            zz = Hh / 2 * sp(math.sin(ph), 0.42)
+            k = 1.0 + 0.022 * noise.noise(Vector((x * 30, y * 30, zz * 30))) + 0.016 * noise.noise(Vector((x * 240, y * 40, zz * 200)))
             u, v = x / (W / 2), y / (Dd / 2)
-            if abs(u + 0.5) < 0.11 or abs(u - 0.46) < 0.1 or abs(v - 0.08) < 0.14:
+            if abs(u - 0.18) < 0.12 or abs(v + 0.35) < 0.1:
                 k -= 0.03                                           # taśma ściska folię
             row.append(bm.verts.new((x * k, y * k, zz * k + Hh / 2)))
         grid.append(row)

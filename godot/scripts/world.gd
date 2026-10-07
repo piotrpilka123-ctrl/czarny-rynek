@@ -2388,7 +2388,8 @@ func _stairs(sx: float) -> void:
 ## drabinka łukowa, kolorowy płotek z wejściem od chodnika, ławki, kosz i „klasy” narysowane kredą.
 const PLAY := [-16.5, -119.6, 8.5, -105.4]      # x0, z0, x1, z1 (plan miasta)
 ## boisko do kosza przed blokiem 7 (za alejką, na wprost klatki): x0, z0, x1, z1 w planie miasta i wysokość płyty
-const COURT := [9.0, -60.0, 37.0, -43.0]
+## połowa boiska do rzutów: jeden kosz przy wschodniej krawędzi
+const COURT := [13.0, -60.0, 31.0, -43.0]
 const COURT_H := 4.9
 ## pasy, z których znika zieleń: samo boisko z obejściem, wejście przez żywopłot i trawnik tuż przy chodniku przed blokiem
 const GREEN_FREE := [[7.0, -61.4, 39.0, -41.0], [19.6, -63.2, 26.2, -61.0], [-32.0, -72.4, 48.0, -68.4], [-32.0, -61.0, 48.0, -57.5]]
@@ -2409,10 +2410,17 @@ func _court() -> void:
 	var cz := (z0 + z1) * 0.5
 	# obejście z betonu i płyta boiska odrobinę nad nim
 	Models.box(city, Vector3(x1 - x0 + 3.0, 0.1, z1 - z0 + 3.0), Vector3(cx, COURT_H - 0.035, cz), Props.pbr("concrete_wall_008", 0.25, Color(0.74, 0.73, 0.7)))
-	var top := Models.box(city, Vector3(x1 - x0, 0.05, z1 - z0), Vector3(cx, COURT_H + 0.02, cz), court_material())
+	# nawierzchnia jako płaszczyzna (tekstura ma kosz po wschodniej stronie: u rośnie na wschód, v na południe)
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(x1 - x0, z1 - z0)
+	var top := MeshInstance3D.new()
+	top.mesh = pm
+	top.material_override = court_material()
+	top.position = Vector3(cx, COURT_H + 0.046, cz)
 	top.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# kosze na obu końcach: tablice patrzą na środek boiska
-	for side in [-1.0, 1.0]:
+	city.add_child(top)
+	# jeden kosz, przy wschodniej linii końcowej: tablica patrzy w głąb boiska
+	for side in [1.0]:
 		var hoop := Stations.model("boisko_kosz")
 		if hoop != null:
 			# tablica 1,2 m w głąb boiska od linii końcowej, słup stoi za linią
@@ -2427,16 +2435,17 @@ func _court() -> void:
 		var fn := _place(Props.fence((z1 - z0) * SC, 3.6, "mesh"), fx, cz, PI / 2.0, 0.08, (z1 - z0) * SC * 0.5, 3.6)
 		fn.position.y = COURT_H - 0.02
 	# ławki przy linii bocznej od strony alejki i kosz na śmieci
-	_bench(cx - 6.0, z0 - 0.9, 0.0)
-	_bench(cx + 6.0, z0 - 0.9, 0.0)
-	_bin(cx + 9.6, z0 - 0.9, 0.3)
+	_bench(cx - 4.0, z0 - 0.9, 0.0)
+	_bench(cx + 4.0, z0 - 0.9, 0.0)
+	_bin(cx + 7.4, z0 - 0.9, 0.3)
 	# piłka zostawiona pod wschodnim koszem
 	var ball := Stations.model("boisko_pilka")
 	if ball != null:
 		court_ball = _place(ball, x1 - 4.4, cz + 2.3, 0.7)
 		court_ball.position.y = COURT_H + 0.045
 		Props.set_range(court_ball, 60.0)
-	_prop("plastic_bottle_gallon", cx - 5.2, z0 - 0.5, 0.4, 0.28, 0.0, false)
+	_prop("plastic_bottle_gallon", cx - 3.2, z0 - 0.5, 0.4, 0.28, 0.0, false)
+	_prop("can_rusted", x0 + 2.0, cz + 6.0, 1.1, 0.13, 0.0, false)
 	rng.state = st
 
 
