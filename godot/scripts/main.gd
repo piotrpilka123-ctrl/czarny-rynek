@@ -197,6 +197,10 @@ func _ready() -> void:
 			print("HD %s = %.2f" % [pt, world.hd(float(xz[0]), float(xz[1]))])
 		get_tree().quit()
 		return
+	if args.has("uiaudit"):
+		# przegląd układu okna bez rysowania: --uiaudit=nazwa (te same nazwy co --ui=)
+		_ui_audit(String(args.uiaudit))
+		return
 	if args.has("glb"):
 		# wycinek świata do pliku GLB: --glb=ścieżka --at=x,z [--r=promień]
 		var at := String(args.get("at", "0,0")).split(",")
@@ -2435,6 +2439,101 @@ func _test_order(cid: String, accept := true) -> Dictionary:
 	return o
 
 
+## Przegląd układu interfejsu bez okna. Silnik liczy rozmiary i pozycje kontrolek także bez karty graficznej, więc
+## da się sprawdzić, czy coś nie wychodzi poza ekran, nie wystaje z panelu albo czy tekst nie jest ucięty.
+func _ui_audit(what: String) -> void:
+	# bez okna ekran bywa kwadratowy — układ ma być liczony dla zwykłego 16:9
+	var res := String(args.get("res", "1280x720")).split("x")
+	get_window().size = Vector2i(int(res[0]), int(res[1]))
+	for i in range(8):
+		await get_tree().process_frame
+	_test_ui(what)
+	for i in range(int(args.get("frames", "10"))):
+		await get_tree().process_frame
+	var vp := get_viewport().get_visible_rect()
+	var out: Array = []
+	var stats := {"n": 0, "text": 0}
+	_ui_walk(ui, vp, out, false, stats)
+	for l in out:
+		print("UI %s: %s" % [what, l])
+	if args.has("uitekst"):
+		_ui_list(ui, 0)
+	print("UI %s: %d uwag (%d kontrolek, %d z tekstem, ekran %dx%d, otwarte: %s)" % [what, out.size(), stats.n, stats.text, int(vp.size.x), int(vp.size.y), str(ui.is_open())])
+	get_tree().quit()
+
+
+## wypisuje wszystkie widoczne napisy okna z pozycjami (--uitekst) — tak „czyta się” interfejs bez ekranu
+func _ui_list(n: Node, depth: int) -> void:
+	if n is CanvasItem and not (n as CanvasItem).visible:
+		return
+	if n is Control:
+		var c := n as Control
+		var txt := _ui_text(c).strip_edges().replace("\n", " / ")
+		if txt != "":
+			var r := c.get_global_rect()
+			print("UI-L %4d,%4d %4dx%-3d %s: %s" % [int(r.position.x), int(r.position.y), int(r.size.x), int(r.size.y), c.get_class(), txt.left(90)])
+	for ch in n.get_children():
+		_ui_list(ch, depth + 1)
+
+
+func _ui_text(c: Control) -> String:
+	if c is Label:
+		return (c as Label).text
+	if c is Button:
+		return (c as Button).text
+	if c is RichTextLabel:
+		return (c as RichTextLabel).get_parsed_text()
+	if c is LineEdit:
+		return (c as LineEdit).text
+	return ""
+
+
+func _ui_walk(n: Node, vp: Rect2, out: Array, scrolled: bool, stats: Dictionary) -> void:
+	if n is CanvasItem and not (n as CanvasItem).visible:
+		return
+	if n is Control:
+		var c := n as Control
+		if c.modulate.a < 0.05 or c.self_modulate.a < 0.02 and c.get_child_count() == 0:
+			return
+		stats.n = int(stats.n) + 1
+		var r := c.get_global_rect()
+		var txt := _ui_text(c).strip_edges().replace("\n", " / ")
+		var name_s := "%s „%s”" % [c.get_class(), txt.left(40)] if txt != "" else "%s %s" % [c.get_class(), String(c.name)]
+		var where := "(%d,%d %dx%d)" % [int(r.position.x), int(r.position.y), int(r.size.x), int(r.size.y)]
+		if txt != "":
+			stats.text = int(stats.text) + 1
+			if not scrolled and r.size.x > 0.0 and (r.position.x < vp.position.x - 2.0 or r.end.x > vp.end.x + 2.0 or r.position.y < vp.position.y - 2.0 or r.end.y > vp.end.y + 2.0):
+				out.append("POZA EKRANEM %s %s" % [name_s, where])
+			if c is Label:
+				var lb := c as Label
+				if lb.autowrap_mode == TextServer.AUTOWRAP_OFF and not lb.clip_text and lb.get_minimum_size().x > lb.size.x + 1.5:
+					out.append("TEKST SZERSZY NIŻ POLE %s %s potrzeba %d" % [name_s, where, int(lb.get_minimum_size().x)])
+				if lb.get_line_count() > lb.get_visible_line_count() and lb.max_lines_visible < 0:
+					out.append("TEKST UCIĘTY (%d z %d wierszy) %s %s" % [lb.get_visible_line_count(), lb.get_line_count(), name_s, where])
+			elif c is Button:
+				var bt := c as Button
+				var f := bt.get_theme_font("font")
+				var fs := bt.get_theme_font_size("font_size")
+				var widest := 0.0
+				for line in bt.text.split("\n"):
+					widest = maxf(widest, f.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+				if widest > bt.size.x - 4.0 and bt.autowrap_mode == TextServer.AUTOWRAP_OFF:
+					out.append("NAPIS NIE MIEŚCI SIĘ W PRZYCISKU %s %s napis %d" % [name_s, where, int(widest)])
+			elif c is RichTextLabel:
+				var rt := c as RichTextLabel
+				if not rt.scroll_active and not rt.fit_content and rt.get_content_height() > rt.size.y + 2.0:
+					out.append("TEKST WYŻSZY NIŻ POLE %s %s treść %d" % [name_s, where, rt.get_content_height()])
+		# zawartość wystająca z panelu z tłem
+		var par := c.get_parent()
+		if not scrolled and par is PanelContainer and r.size.x > 0.0:
+			var pr := (par as Control).get_global_rect()
+			if r.position.x < pr.position.x - 3.0 or r.end.x > pr.end.x + 3.0 or r.position.y < pr.position.y - 3.0 or r.end.y > pr.end.y + 3.0:
+				out.append("WYSTAJE Z PANELU %s %s, panel (%d,%d %dx%d)" % [name_s, where, int(pr.position.x), int(pr.position.y), int(pr.size.x), int(pr.size.y)])
+	var sc := scrolled or n is ScrollContainer or (n is Control and (n as Control).clip_contents)
+	for ch in n.get_children():
+		_ui_walk(ch, vp, out, sc, stats)
+
+
 func _test_ui(what: String) -> void:
 	if what == "call" or what == "call2":
 		G.test_mode = false
@@ -2532,6 +2631,11 @@ func _test_ui(what: String) -> void:
 				bv.job.t = 0.22
 				bv.reading = 0.0
 		"stash": ui.open_stash("safe")
+		"skrzynka":
+			# skrzynka Wiktora: gotówka w kieszeni, dług na zeszycie
+			G.S.cash = 640.0
+			G.S.credit = 420.0
+			open_box()
 		"inv": ui.open_inventory("")
 		"gear":
 			# podgląd pól ubioru: część ubrań na postaci, część w plecaku, gotówka w skrytce
@@ -2574,6 +2678,8 @@ func _test_ui(what: String) -> void:
 		"dialog": talk_stasiu()
 		"property": ui.open_property("garaz")
 		"deal", "deal2":
+			G.add_pack(G.S.inv, "dym", 100, 6)
+			G.add_pack(G.S.inv, "szron", 100, 2)
 			var o := _test_order("dominik")
 			var n: Dictionary = npcs.customers[0]
 			if n.node == null:
