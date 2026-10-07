@@ -1,6 +1,6 @@
 #!/bin/sh
 # kadr scenki z paczką pod drzwiami, bez okna: ./tools/widok_paczka.sh wynik.png [worek=1] [strunowy=1] [najazd=1]
-# worek / strunowy: 0 = jeszcze za drzwiami, 1 = leży w pokoju; najazd: postęp ruchu kamery 0…1
+# worek / strunowy: 0 = jeszcze za drzwiami, 1 = leży w pokoju; najazd: postęp ruchu kamery 0…1 (dojazd do drzwi), 1…2 (zbliżenie z góry)
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SP="${CR_OUT:-${TMPDIR:-/tmp}/czarny-rynek}"
 mkdir -p "$SP"

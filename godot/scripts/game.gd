@@ -2434,7 +2434,8 @@ func pickup_drop(d: Dictionary) -> bool:
 	return true
 
 
-## Paczka na start, wsunięta pod drzwi kawalerki: czysta marihuana i amfetamina, wszystko na zeszyt.
+## Paczka na start, wsunięta pod drzwi kawalerki: czysta marihuana i amfetamina. Wiktor daje ją za darmo, na rozruch —
+## na zeszyt idą dopiero następne zamówienia. (Ile byłaby warta w hurcie — do komunikatów.)
 func starter_cost() -> float:
 	var n := 0.0
 	for e in D.STARTER_PACK:
@@ -2449,11 +2450,10 @@ func starter_pickup() -> bool:
 	for e in D.STARTER_PACK:
 		add_bulk(S.inv, String(e[0]), D.PURITY_STD, float(e[1]))
 		parts.append("%d g %s" % [int(e[1]), String(D.PRODUCT_GEN[e[0]])])
-	_credit_add(starter_cost())
 	S.flags["got_first"] = true
 	S.stats.pickups = int(S.stats.pickups) + 1
 	Sfx.play("pickup")
-	notify("Paczka od Wiktora: %s — czysty towar. Na zeszycie: %s." % [" i ".join(parts), money(S.credit)], "good")
+	notify("Paczka od Wiktora: %s — czysty towar. Ta pierwsza jest za darmo." % " i ".join(parts), "good")
 	add_xp(6.0)
 	nav_dirty.emit()
 	return true
@@ -2915,7 +2915,7 @@ func _build_story() -> void:
 		{"id": "sell1", "text": func(): return "Odpisz Dominikowi (Wiadomości) i dostarcz mu towar. (%d/2 g)" % mini(2, int(S.stats.sold)),
 			"done": func(): return int(S.stats.sold) >= 2 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
 		{"id": "repay1", "text": func(): return "Zanieś pierwsze pieniądze do skrzynki Wiktora — to stara skrzynka gazowa na tyłach pawilonu. Otwórz ją [E] i przeciągnij do niej gotówkę. (%s / %s)" % [money(minf(float(D.BOX_FIRST), float(S.stats.get("box_paid", 0.0)))), money(D.BOX_FIRST)],
-			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST) or (flag("got_first") and float(S.credit) <= 0.0), "marker": _box_marker, "on_done": _on_repay_done},
+			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST), "marker": _box_marker, "on_done": _on_repay_done},
 		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów towar u Wiktora: telefon → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem.",
 			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
 		{"id": "lvl2", "text": func(): return "Zdobądź poziom 2. Zadowolony Dominik poleci Cię dalej. (%d/%d PD)" % [int(S.xp), int(D.XP_LEVELS[1])],
@@ -2986,7 +2986,7 @@ func _on_tour_done() -> void:
 	var parts := []
 	for e in D.STARTER_PACK:
 		parts.append("%d g %s" % [int(e[1]), String(D.PRODUCT_GEN[e[0]])])
-	chat("wiktor", "Wsunąłem ci pod drzwi paczkę na start: %s. Czyste, nierozrabiane. To na zeszyt — %s. Nie śpiesz się, wiem, że zaczynasz od zera. Zaporcjuj na wadze i czekaj na klienta. Kasę wrzucasz do mojej skrzynki gazowej na tyłach pawilonu, nigdzie indziej." % [" i ".join(parts), money(starter_cost())])
+	chat("wiktor", "Wsunąłem ci pod drzwi paczkę na start: %s. Czyste, nierozrabiane. Ta jedna jest ode mnie, za darmo — na rozruch, bo wiem, że zaczynasz od zera. Za następne płacisz. Zaporcjuj na wadze i czekaj na klienta. A dług brata sam się nie spłaci: pierwszą stówę wrzuć do mojej skrzynki gazowej na tyłach pawilonu, nigdzie indziej." % " i ".join(parts), false, true)
 	if main != null:
 		main.door_package()
 

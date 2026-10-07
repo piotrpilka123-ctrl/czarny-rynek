@@ -124,9 +124,9 @@ func run() -> void:
 	var start_g := 0.0
 	for e in D.STARTER_PACK:
 		start_g += float(e[1])
-	ok(G.goods_total(S.inv) == start_g and float(S.credit) == G.starter_cost() and float(S.inv.bulk["szron"].get("100", 0.0)) > 0.0, "na start czysta marihuana i amfetamina, wszystko na zeszyt (%d zł)" % int(S.credit))
+	ok(G.goods_total(S.inv) == start_g and float(S.credit) == 0.0 and float(S.inv.bulk["szron"].get("100", 0.0)) > 0.0, "na start czysta marihuana i amfetamina — pierwsza paczka jest za darmo (zeszyt %d zł)" % int(S.credit))
 	ok(absf(G.carry_total() - (start_g + 0.5)) < 0.01 and G.carry_total() <= float(G.capacity()), "paczka mieści się w kieszeniach (%s / %d)" % [str(G.carry_total()), G.capacity()])
-	ok(float(S.credit_due) - S.t > 6.0 * 1440.0, "na początku Wiktor daje tydzień na spłatę")
+	ok(G.credit_days() >= 7, "na początku Wiktor daje tydzień na spłatę zeszytu (%d dni)" % G.credit_days())
 	# dalej test idzie jak dawniej z 5 g marihuany przy sobie — reszta paczki ląduje w szafie
 	G.add_bulk(S.stash.safe, "szron", 100, G.take_bulk(S.inv, "szron", 100, 99.0))
 	G.add_bulk(S.stash.safe, "dym", 100, G.take_bulk(S.inv, "dym", 100, start_g - 10.0 if start_g > 15.0 else maxf(0.0, float(S.inv.bulk["dym"].get("100", 0.0)) - 5.0)))

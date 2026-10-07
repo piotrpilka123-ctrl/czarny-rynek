@@ -451,7 +451,7 @@ func _intro() -> void:
 		"Partia, za którą zapłaciłem z góry, wyparowała. Czy spłonęła z twoją hutą, czy ktoś ci ją zabrał zza garaży — mało mnie to obchodzi. Dwadzieścia pięć tysięcy. Wisisz mi je.",
 		{"n": "Ty", "t": "Ktoś mnie tam czekał, Wiktor. Wiedział, którędy pójdę. Nie mam laboratorium, nie mam ludzi, nie mam nic. Siwy siedzi."},
 		"Masz głowę i parę numerów do detalistów z osiedla, którzy brali od twoich chłopaków. Zaczniesz od nich — sam, na ulicy, jak wszyscy.",
-		"Towar na start dam ci na zeszyt. Pierwsza rata za pięć dni. Zaraz wyślę ci SMS-em, co dalej. I Kuba — tym razem się wychylisz.",
+		"Pierwszą paczkę dostaniesz ode mnie za darmo, na rozruch. Następne idą na zeszyt. Pierwsza rata za pięć dni. Zaraz wyślę ci SMS-em, co dalej. I Kuba — tym razem się wychylisz.",
 	], _intro_sms)
 
 
@@ -1010,13 +1010,22 @@ func close_box() -> void:
 ## dwa woreczki — zioło i strunowy z amfetaminą. Potem paczka leży i czeka, aż gracz ją podniesie.
 ## kamera scenki z paczką pod drzwiami: [skąd, na co patrzy, kąt] dla postępu najazdu k = 0…1
 ## (osobno, bo tym samym kadrem podgląd bez okna sprawdza, czy paczkę w ogóle widać)
+## k = 0…1: kamera przy podłodze dojeżdża do drzwi, spod których wysuwają się woreczki;
+## k = 1…2: unosi się i powoli zbliża z góry, żeby było widać, co w nich jest.
 func door_cam(k: float) -> Array:
 	var R: Dictionary = D.ROOMS.safe
 	var cx := float(R.cx)
 	var ez := float(R.d) * 0.5
 	var from := Vector3(cx + 0.46, 0.13, ez - 1.38)
 	var to := Vector3(cx + 0.27, 0.085, ez - 1.02)
-	return [from.lerp(to, k), Vector3(cx + 0.03, 0.03, ez - 0.52), lerpf(34.0, 30.0, k)]
+	var look := Vector3(cx + 0.03, 0.03, ez - 0.52)
+	if k <= 1.0:
+		return [from.lerp(to, k), look, lerpf(34.0, 30.0, k)]
+	var k2 := clampf(k - 1.0, 0.0, 1.0)
+	k2 = k2 * k2 * (3.0 - 2.0 * k2)
+	var top := Vector3(cx + 0.2, 0.33, ez - 0.93)
+	var bags := Vector3(cx + 0.02, 0.02, ez - 0.59)
+	return [to.lerp(top, k2), look.lerp(bags, k2), lerpf(30.0, 27.0, k2)]
 
 
 func door_package() -> void:
@@ -1051,7 +1060,14 @@ func door_package() -> void:
 	tw.tween_method(func(k: float): world.starter_rest(1.0, k), 0.0, 1.0, 0.45).set_delay(1.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func(): Sfx.play("cloth")).set_delay(1.9)
 	ui.cut_line("Ktoś puka. Kiedy podchodzisz, pod drzwiami leży już paczka.")
-	await get_tree().create_timer(4.0).timeout
+	await get_tree().create_timer(3.9).timeout
+	# drugie ujęcie: kamera unosi się i zbliża — worek zielonego i strunowy woreczek białego
+	ui.cut_line("Worek marihuany i woreczek amfetaminy. Na rozruch, od Wiktora.")
+	var tw2 := create_tween()
+	tw2.tween_method(func(k: float):
+		var ck2 := door_cam(1.0 + k)
+		cine_cam(ck2[0], ck2[1], ck2[2]), 0.0, 1.0, 3.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await get_tree().create_timer(4.6).timeout
 	ui.cut_line("")
 	world.starter_rest(1.0)
 	cine_off()
