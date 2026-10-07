@@ -687,7 +687,9 @@ func export_room_glb(path: String, id: String) -> void:
 	var err := doc.append_from_scene(root, st)
 	if err == OK:
 		err = doc.write_to_filesystem(st, path)
+	var R: Dictionary = D.ROOMS.get(id, {})
 	print("GLB %s: pokój %s, błąd=%d" % [path, id, err])
+	print("ROOM %.3f %.3f %.3f" % [float(R.get("cx", 0.0)), float(R.get("w", 0.0)), float(R.get("d", 0.0))])
 	root.free()
 
 
