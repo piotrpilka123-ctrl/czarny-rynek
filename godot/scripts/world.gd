@@ -3434,6 +3434,7 @@ func _bus_loop() -> void:
 	if bus != null:
 		_place(bus, BUS.x, BUS.y, PI / 2.0, 5.55, 1.3, 3.0)
 		Props.set_range(bus, 220.0)
+		Models.Cars.dim(bus)
 	_place(Props.bus_stop(), 8.0, 167.2, PI, 2.0, 0.3, 2.4)
 	_sign("12  HUTNIK LOOP", Vector3(8.0, 2.62, 165.8), Color(0.95, 0.85, 0.35), 34, PI, 0.005, 8)
 	_bin(13.4, 167.6)

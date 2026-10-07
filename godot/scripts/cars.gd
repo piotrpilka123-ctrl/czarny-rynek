@@ -340,8 +340,60 @@ static func car(type := "", color = null, police := false) -> Node3D:
 		root.set_meta("siren", lights)
 	for ch in root.find_children("*", "GeometryInstance3D", true, false):
 		(ch as GeometryInstance3D).visibility_range_end = 150.0
+	# reflektory i lampy tylne: model ma je lekko świecące, a zaparkowane auto stoi ciemne — zapala je dopiero jadący radiowóz
+	var lamps: Array = []
+	for ch in root.find_children("*", "MeshInstance3D", true, false):
+		var nm := String(ch.name)
+		if nm.begins_with("Reflektor") or nm.begins_with("LampaTyl"):
+			lamps.append(ch)
+	root.set_meta("lamps", lamps)
+	lamps_on(root, false)
 	root.set_meta("car", T)
 	return root
+
+
+static var _lamp_off := {}
+
+## gasi wszystko, co w modelu świeci samo z siebie (zaparkowany autobus, wrak) — materiały z wyłączoną emisją
+static func dim(root: Node) -> void:
+	for ch in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := ch as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		for i in range(mi.mesh.get_surface_count()):
+			var src := mi.mesh.surface_get_material(i) as StandardMaterial3D
+			if src == null or not src.emission_enabled:
+				continue
+			var id := src.get_instance_id()
+			if not _lamp_off.has(id):
+				var m := src.duplicate() as StandardMaterial3D
+				m.emission_enabled = false
+				_lamp_off[id] = m
+			mi.set_surface_override_material(i, _lamp_off[id])
+
+## zapala albo gasi klosze świateł auta (same klosze — snopy światła to osobne lampy)
+static func lamps_on(car_node: Node, on: bool) -> void:
+	var list: Array = car_node.get_meta("lamps", [])
+	if list.is_empty():
+		for ch in car_node.find_children("*", "MeshInstance3D", true, false):
+			if String(ch.name).begins_with("Reflektor") or String(ch.name).begins_with("LampaTyl"):
+				list.append(ch)
+	for l in list:
+		var mi := l as MeshInstance3D
+		if mi == null or mi.mesh == null:
+			continue
+		if on:
+			mi.material_override = null
+			continue
+		var src := mi.mesh.surface_get_material(0) as StandardMaterial3D
+		if src == null:
+			continue
+		var id := src.get_instance_id()
+		if not _lamp_off.has(id):
+			var m := src.duplicate() as StandardMaterial3D
+			m.emission_enabled = false
+			_lamp_off[id] = m
+		mi.material_override = _lamp_off[id]
 
 
 ## dawna bryła z przekrojów — zostaje jako zapas, gdyby zabrakło modeli

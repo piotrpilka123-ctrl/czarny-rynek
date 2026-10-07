@@ -486,6 +486,8 @@ func _talk_meet(id: String) -> void:
 func _build_car() -> void:
 	var node: Node3D = Models.car("sedan", "d9dde2", true)
 	add_child(node)
+	# radiowóz jeździ na światłach przez cały dzień; zaparkowane auta mają klosze zgaszone
+	Models.Cars.lamps_on(node, true)
 	var blue := OmniLight3D.new()
 	blue.light_color = Color(0.2, 0.4, 1.0)
 	blue.light_energy = 3.0
