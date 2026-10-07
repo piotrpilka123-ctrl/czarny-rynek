@@ -4391,9 +4391,16 @@ func _interiors() -> void:
 	add_col(sx2 - 2.6, sx2 + 2.6, -1.6, -0.8, 1.1, true, -1.0)
 	rects.pop_back()
 	_rp(g2, "cashregister_01", sx2 + 1.3, -1.2, PI, 0.45, 1.05)
-	Models.box(g2, Vector3(1.3, 0.32, 0.5), Vector3(sx2 - 1.4, 1.21, -1.2), Models.mat("cfe6ee", 0.08, 0.0, 0.0, 0.25), Vector3.ZERO, false)
-	for k in range(9):
-		Models.box(g2, Vector3(0.1, 0.05 + (k % 3) * 0.03, 0.14), Vector3(sx2 - 1.92 + k * 0.13, 1.08 + (k % 3) * 0.015, -1.2), Models.mat(["c8322a", "e8c22a", "2a6ac8", "3a8a4a"][k % 4], 0.6), Vector3(0, k * 0.2, 0), false)
+	var has_shop := ResourceLoader.exists("res://assets/models/sklep_gablota.glb")
+	if has_shop:
+		# szklana gablota ze słodyczami (wcześniej szklane pudełko z kolorowymi klockami)
+		var gab := Stations.model("sklep_gablota")
+		gab.position = Vector3(sx2 - 1.4, 1.045, -1.2)
+		g2.add_child(gab)
+	else:
+		Models.box(g2, Vector3(1.3, 0.32, 0.5), Vector3(sx2 - 1.4, 1.21, -1.2), Models.mat("cfe6ee", 0.08, 0.0, 0.0, 0.25), Vector3.ZERO, false)
+		for k in range(9):
+			Models.box(g2, Vector3(0.1, 0.05 + (k % 3) * 0.03, 0.14), Vector3(sx2 - 1.92 + k * 0.13, 1.08 + (k % 3) * 0.015, -1.2), Models.mat(["c8322a", "e8c22a", "2a6ac8", "3a8a4a"][k % 4], 0.6), Vector3(0, k * 0.2, 0), false)
 	_scale_set(g2, Vector3(sx2 + 0.35, 1.045, -1.15))
 	Interior.papers(g2, Vector3(sx2 - 0.3, 1.045, -1.05), 0.2, 3)
 	Interior.mug(g2, Vector3(sx2 + 2.1, 1.045, -1.3), "3a5a8a")
@@ -4407,6 +4414,14 @@ func _interiors() -> void:
 				var cxs := shx + (cell - 1) * 0.438
 				var y0 := 0.03 + row * 0.633
 				var kind := (k * 7 + row * 3 + cell) % 4
+				if has_shop:
+					# każda przegródka dostaje jeden zestaw towaru: pudełka, puszki, słoiki albo chemię
+					var tm := Stations.model(["sklep_polka_pudelka", "sklep_polka_puszki", "sklep_polka_sloiki", "sklep_polka_chemia", "sklep_polka_puszki"][(k * 7 + row * 3 + cell * 2) % 5])
+					if tm != null:
+						tm.position = Vector3(cxs, y0, -d2 * 0.5 + 0.3)
+						tm.rotation.y = 0.04 * float((k + cell) % 3 - 1)
+						g2.add_child(tm)
+					continue
 				var n_items := 3 if kind != 3 else 2
 				for i in range(n_items):
 					var px := cxs - 0.12 + i * (0.24 / maxi(1, n_items - 1))
@@ -4424,18 +4439,30 @@ func _interiors() -> void:
 	add_col(sx2 - 4.4, sx2 + 4.4, -d2 * 0.5, -d2 * 0.5 + 0.6, 2.0, true, -1.0)
 	rects.pop_back()
 	# stojak z papierosami i tablica z cenami nad ladą
-	Models.box(g2, Vector3(1.6, 0.6, 0.12), Vector3(sx2 + 1.5, 2.25, -d2 * 0.5 + 0.08), Models.mat("2a2c30", 0.6), Vector3.ZERO, false)
-	for k in range(24):
-		Models.box(g2, Vector3(0.055, 0.085, 0.02), Vector3(sx2 + 0.78 + (k % 12) * 0.13, 2.12 + int(k / 12.0) * 0.26, -d2 * 0.5 + 0.15), Models.mat(["d9d4c8", "b0382c", "1d4ed8", "e8c22a"][k % 4], 0.6), Vector3.ZERO, false)
+	if has_shop:
+		var cig := Stations.model("sklep_papierosy")
+		cig.position = Vector3(sx2 + 1.5, 1.92, -d2 * 0.5 + 0.09)
+		g2.add_child(cig)
+	else:
+		Models.box(g2, Vector3(1.6, 0.6, 0.12), Vector3(sx2 + 1.5, 2.25, -d2 * 0.5 + 0.08), Models.mat("2a2c30", 0.6), Vector3.ZERO, false)
+		for k in range(24):
+			Models.box(g2, Vector3(0.055, 0.085, 0.02), Vector3(sx2 + 0.78 + (k % 12) * 0.13, 2.12 + int(k / 12.0) * 0.26, -d2 * 0.5 + 0.15), Models.mat(["d9d4c8", "b0382c", "1d4ed8", "e8c22a"][k % 4], 0.6), Vector3.ZERO, false)
 	# chłodziarka z napojami pod zachodnią ścianą
 	var fx := sx2 - w2 * 0.5 + 0.42
-	Models.box(g2, Vector3(0.7, 1.95, 1.2), Vector3(fx, 0.975, 1.2), Models.mat("d8d8d4", 0.4, 0.2))
-	Models.box(g2, Vector3(0.03, 1.6, 1.08), Vector3(fx + 0.35, 0.95, 1.2), Models.mat("bfe0ee", 0.08, 0.0, 0.35, 0.3), Vector3.ZERO, false)
-	Models.box(g2, Vector3(0.6, 0.22, 1.16), Vector3(fx + 0.02, 1.82, 1.2), Models.mat("c8322a", 0.5, 0.0, 0.6), Vector3.ZERO, false)
-	for sy in range(4):
-		Models.box(g2, Vector3(0.56, 0.015, 1.06), Vector3(fx, 0.22 + sy * 0.38, 1.2), Models.mat("9aa0a6", 0.4, 0.6), Vector3.ZERO, false)
-		for k in range(7):
-			Interior.bottle(g2, Vector3(fx + 0.12, 0.228 + sy * 0.38, 0.75 + k * 0.15), ["3a6a3a", "c8322a", "e8a22a", "2a6ac8"][(k + sy) % 4])
+	if has_shop:
+		# chłodziarka z przeszklonymi drzwiami, napojami na czterech półkach i napisem
+		var frz := Stations.model("sklep_lodowka")
+		frz.position = Vector3(fx, 0.0, 1.2)
+		frz.rotation.y = PI / 2.0
+		g2.add_child(frz)
+	else:
+		Models.box(g2, Vector3(0.7, 1.95, 1.2), Vector3(fx, 0.975, 1.2), Models.mat("d8d8d4", 0.4, 0.2))
+		Models.box(g2, Vector3(0.03, 1.6, 1.08), Vector3(fx + 0.35, 0.95, 1.2), Models.mat("bfe0ee", 0.08, 0.0, 0.35, 0.3), Vector3.ZERO, false)
+		Models.box(g2, Vector3(0.6, 0.22, 1.16), Vector3(fx + 0.02, 1.82, 1.2), Models.mat("c8322a", 0.5, 0.0, 0.6), Vector3.ZERO, false)
+		for sy in range(4):
+			Models.box(g2, Vector3(0.56, 0.015, 1.06), Vector3(fx, 0.22 + sy * 0.38, 1.2), Models.mat("9aa0a6", 0.4, 0.6), Vector3.ZERO, false)
+			for k in range(7):
+				Interior.bottle(g2, Vector3(fx + 0.12, 0.228 + sy * 0.38, 0.75 + k * 0.15), ["3a6a3a", "c8322a", "e8a22a", "2a6ac8"][(k + sy) % 4])
 	var cool := _room_light(g2, fx + 0.5, 1.2, 1.6, 0.5, Color(0.75, 0.9, 1.0), 2.4)
 	cool.shadow_enabled = false
 	add_col(fx - 0.38, fx + 0.38, 0.58, 1.82, 2.0, true, -1.0)
@@ -4448,8 +4475,14 @@ func _interiors() -> void:
 	_rp(g2, "cardboard_box_01", sx2 + 3.5, 1.5, 1.4, 0.34)
 	_rp(g2, "plastic_container", sx2 + 3.7, -0.4, PI / 2.0, 0.42, 0.0, 0.35, 0.5)
 	Models.box(g2, Vector3(1.3, 0.014, 0.7), Vector3(sx2, 0.008, d2 * 0.5 - 0.55), Models.mat("2f3a2f", 0.95), Vector3.ZERO, false)
-	Models.box(g2, Vector3(0.5, 0.9, 0.3), Vector3(sx2 + 1.5, 0.45, d2 * 0.5 - 0.25), Models.mat("3a3d42", 0.6, 0.4))
-	Interior.papers(g2, Vector3(sx2 + 1.45, 0.9, d2 * 0.5 - 0.27), 0.1, 4)
+	if has_shop:
+		var nst := Stations.model("sklep_stojak_gazety")
+		nst.position = Vector3(sx2 + 1.5, 0.0, d2 * 0.5 - 0.32)
+		nst.rotation.y = PI
+		g2.add_child(nst)
+	else:
+		Models.box(g2, Vector3(0.5, 0.9, 0.3), Vector3(sx2 + 1.5, 0.45, d2 * 0.5 - 0.25), Models.mat("3a3d42", 0.6, 0.4))
+		Interior.papers(g2, Vector3(sx2 + 1.45, 0.9, d2 * 0.5 - 0.27), 0.1, 4)
 	# reklamy i ogłoszenia na ścianach
 	Interior.picture(g2, Vector3(sx2 + w2 * 0.5 - 0.01, 1.7, 0.6), -PI / 2.0, 0.9, "poster_01")
 	Interior.picture(g2, Vector3(sx2 + w2 * 0.5 - 0.01, 1.75, 1.6), -PI / 2.0, 0.7, "poster_07")
