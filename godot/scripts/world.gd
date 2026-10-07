@@ -54,6 +54,7 @@ var hides: Array = []           # kryjówki na czas pościgu (altanki śmietniko
 var _lamp_pts: PackedVector3Array = PackedVector3Array()
 var lamp_mat: StandardMaterial3D
 var smoke_mats: Array = []       # materiały dymu z kominów — env.gd przyciemnia je po zmroku
+var okolica := ""                # --okolica=x0,z0,x1,z1: przegląd wypisuje wszystko z tego prostokąta
 var smokes: Array = []           # kolumny dymu z kominów (do testów): GPUParticles3D
 var sirens: Array = []
 var rooms := {}
@@ -218,7 +219,14 @@ func _ha(x: float, z: float) -> float:
 	var e := 5.7 * (1.0 - _ss(4.0, 13.0, absf(x - 145.0)))
 	if z > 12.0 and z < 28.0:
 		e = 0.0
-	return maxf(h + und, e + und * 0.4)
+	var out := maxf(h + und, e + und * 0.4)
+	# boisko przed blokiem leży na równej płycie (teren dochodzi do niej łagodnie na dwóch metrach)
+	var cdx := maxf(maxf(COURT[0] - x, x - COURT[2]), 0.0)
+	var cdz := maxf(maxf(COURT[1] - z, z - COURT[3]), 0.0)
+	var cw := 1.0 - _ss(0.8, 4.0, maxf(cdx, cdz))
+	if cw > 0.0:
+		out = lerpf(out, COURT_H, cw)
+	return out
 
 
 func _heights() -> void:
@@ -408,6 +416,8 @@ func _paint() -> void:
 	# pętla autobusowa na końcu Robotniczej: jezdnia dookoła wysepki z trawą
 	_pr(0, LOOP[0], LOOP[1], LOOP[2], LOOP[3])
 	_pr(5, ISLE[0], ISLE[1], ISLE[2], ISLE[3])
+	# betonowe obejście boiska przed blokiem (pod czerwoną płytą)
+	_pr(2, COURT[0] - 1.5, COURT[1] - 1.5, COURT[2] + 1.5, COURT[3] + 1.5)
 	# --- oznakowanie
 	var x := -204.0
 	while x < 204.0:
@@ -599,6 +609,20 @@ func audit() -> void:
 	for r in rows:
 		print(r)
 	print("AUDYT razem: %d" % rows.size())
+	# --okolica=x0,z0,x1,z1 (układ projektu): wszystko, co stoi w tym prostokącie — do planowania przebudów
+	if okolica != "":
+		var bx := okolica.split(",")
+		for n2 in city.get_children():
+			if not (n2 is Node3D) or n2.is_queued_for_deletion():
+				continue
+			var p2: Vector3 = (n2 as Node3D).position
+			if p2.x < float(bx[0]) or p2.x > float(bx[2]) or p2.z < float(bx[1]) or p2.z > float(bx[3]):
+				continue
+			var kind2 := _audit_kind(n2)
+			if kind2 == "" and n2.has_meta("green"):
+				kind2 = "zieleń"
+			if kind2 != "":
+				print("OKOLICA %-26s x=%7.1f z=%7.1f" % [kind2, p2.x, p2.z])
 	# latarnie: słup nie może stać w budynku ani na jezdni, a oprawa ma wisieć nad drogą albo placem — nie w ścianie
 	for l in lamp_list:
 		var hp := lamp_head(float(l.x), float(l.z), float(l.ry))
@@ -2277,6 +2301,136 @@ func _stairs(sx: float) -> void:
 ## Plac zabaw za blokiem: wydeptana ziemia z piaskiem, piaskownica, huśtawka, karuzela, ważka, zjeżdżalnia,
 ## drabinka łukowa, kolorowy płotek z wejściem od chodnika, ławki, kosz i „klasy” narysowane kredą.
 const PLAY := [-16.5, -119.6, 8.5, -105.4]      # x0, z0, x1, z1 (plan miasta)
+## boisko do kosza przed blokiem 7 (za alejką, na wprost klatki): x0, z0, x1, z1 w planie miasta i wysokość płyty
+const COURT := [9.0, -60.0, 37.0, -43.0]
+const COURT_H := 4.9
+## pasy, z których znika zieleń: samo boisko z obejściem, wejście przez żywopłot i trawnik tuż przy chodniku przed blokiem
+const GREEN_FREE := [[7.0, -61.4, 39.0, -41.0], [19.6, -63.2, 26.2, -61.0], [-32.0, -72.4, 48.0, -68.4], [-32.0, -61.0, 48.0, -57.5]]
+## tu znikają tylko drzewa (żywopłot wzdłuż alejki zostaje)
+const TREE_FREE := [[-32.0, -64.6, 48.0, -60.9]]
+var court_ball: Node3D = null
+
+
+## Boisko: czerwona nawierzchnia z białymi liniami (tekstura rysowana tutaj), dwa kosze, piłkochwyty za koszami,
+## ławki przy linii bocznej i piłka zostawiona pod koszem.
+func _court() -> void:
+	var st := rng.state
+	var x0: float = COURT[0]
+	var z0: float = COURT[1]
+	var x1: float = COURT[2]
+	var z1: float = COURT[3]
+	var cx := (x0 + x1) * 0.5
+	var cz := (z0 + z1) * 0.5
+	# obejście z betonu i płyta boiska odrobinę nad nim
+	Models.box(city, Vector3(x1 - x0 + 3.0, 0.1, z1 - z0 + 3.0), Vector3(cx, COURT_H - 0.035, cz), Props.pbr("concrete_wall_008", 0.25, Color(0.74, 0.73, 0.7)))
+	var top := Models.box(city, Vector3(x1 - x0, 0.05, z1 - z0), Vector3(cx, COURT_H + 0.02, cz), court_material())
+	top.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# kosze na obu końcach: tablice patrzą na środek boiska
+	for side in [-1.0, 1.0]:
+		var hoop := Stations.model("boisko_kosz")
+		if hoop != null:
+			# tablica 1,2 m w głąb boiska od linii końcowej, słup stoi za linią
+			_place(hoop, cx + side * ((x1 - x0) * 0.5 - 1.2 * INV), cz, -side * PI / 2.0)
+			hoop.position.y = COURT_H + 0.04
+			Props.set_range(hoop, 140.0)
+			var px: float = cx + side * ((x1 - x0) * 0.5 + 0.05 * INV)
+			add_col(px - 0.2 * INV, px + 0.2 * INV, cz - 0.2 * INV, cz + 0.2 * INV, 3.5)
+			rects.pop_back()
+		# piłkochwyt: wysoka siatka za koszem
+		var fx: float = cx + side * ((x1 - x0) * 0.5 + 1.1)
+		var fn := _place(Props.fence((z1 - z0) * SC, 3.6, "mesh"), fx, cz, PI / 2.0, 0.08, (z1 - z0) * SC * 0.5, 3.6)
+		fn.position.y = COURT_H - 0.02
+	# ławki przy linii bocznej od strony alejki i kosz na śmieci
+	_bench(cx - 6.0, z0 - 0.9, 0.0)
+	_bench(cx + 6.0, z0 - 0.9, 0.0)
+	_bin(cx + 9.6, z0 - 0.9, 0.3)
+	# piłka zostawiona pod wschodnim koszem
+	var ball := Stations.model("boisko_pilka")
+	if ball != null:
+		court_ball = _place(ball, x1 - 4.4, cz + 2.3, 0.7)
+		court_ball.position.y = COURT_H + 0.045
+		Props.set_range(court_ball, 60.0)
+	_prop("plastic_bottle_gallon", cx - 5.2, z0 - 0.5, 0.4, 0.28, 0.0, false)
+	rng.state = st
+
+
+var _court_mat: StandardMaterial3D = null
+
+
+## nawierzchnia boiska: czerwony tartan z drobnym ziarnem i białe linie — obrys, linia środkowa z kołem,
+## pola trzech sekund, półkola rzutów wolnych i łuki rzutów za trzy punkty
+func court_material() -> StandardMaterial3D:
+	if _court_mat != null:
+		return _court_mat
+	var w := 1120
+	var h := 680
+	var img := Image.create(w, h, true, Image.FORMAT_RGB8)
+	var r2 := RandomNumberGenerator.new()
+	r2.seed = 4107
+	for y in range(h):
+		for x in range(w):
+			var n := r2.randf_range(-0.035, 0.035) + 0.02 * sin(x * 0.011) * cos(y * 0.013)
+			img.set_pixel(x, y, Color(0.62 + n, 0.2 + n * 0.5, 0.15 + n * 0.4))
+	# wytarte, jaśniejsze place pod koszami i w środku
+	for sp in [[0.1, 0.5, 150.0], [0.9, 0.5, 150.0], [0.5, 0.5, 110.0]]:
+		var c0 := Vector2(float(sp[0]) * w, float(sp[1]) * h)
+		var rad: float = sp[2]
+		for y in range(int(c0.y - rad), int(c0.y + rad)):
+			for x in range(int(c0.x - rad), int(c0.x + rad)):
+				if x < 0 or y < 0 or x >= w or y >= h:
+					continue
+				var k := 1.0 - Vector2(x, y).distance_to(c0) / rad
+				if k > 0.0:
+					img.set_pixel(x, y, img.get_pixel(x, y).lerp(Color(0.7, 0.33, 0.27), k * 0.35))
+	var ppm := float(w) / ((float(COURT[2]) - float(COURT[0])) * SC)      # pikseli na metr
+	var white := Color(0.93, 0.92, 0.88)
+	var lw := 0.06 * ppm
+	var line := func(a: Vector2, b: Vector2) -> void:
+		var steps := int(a.distance_to(b)) + 1
+		for i in range(steps + 1):
+			var q: Vector2 = a.lerp(b, float(i) / steps)
+			for oy in range(-int(lw), int(lw) + 1):
+				for ox in range(-int(lw), int(lw) + 1):
+					var px := int(q.x) + ox
+					var py := int(q.y) + oy
+					if px >= 0 and py >= 0 and px < w and py < h and r2.randf() < 0.93:
+						img.set_pixel(px, py, white)
+	var arc := func(c1: Vector2, rad1: float, a0: float, a1: float) -> void:
+		var n1 := int(rad1 * absf(a1 - a0)) + 2
+		var prev := c1 + Vector2(cos(a0), sin(a0)) * rad1
+		for i in range(1, n1 + 1):
+			var aa := lerpf(a0, a1, float(i) / n1)
+			var cur := c1 + Vector2(cos(aa), sin(aa)) * rad1
+			line.call(prev, cur)
+			prev = cur
+	var m := 0.35 * ppm                     # odstęp obrysu od krawędzi płyty
+	line.call(Vector2(m, m), Vector2(w - m, m))
+	line.call(Vector2(w - m, m), Vector2(w - m, h - m))
+	line.call(Vector2(w - m, h - m), Vector2(m, h - m))
+	line.call(Vector2(m, h - m), Vector2(m, m))
+	line.call(Vector2(w * 0.5, m), Vector2(w * 0.5, h - m))
+	arc.call(Vector2(w * 0.5, h * 0.5), 1.5 * ppm, 0.0, TAU)
+	for side in [0, 1]:
+		var ex: float = m if side == 0 else w - m
+		var dirx := 1.0 if side == 0 else -1.0
+		var key_l := 4.6 * ppm
+		var key_w := 1.8 * ppm
+		line.call(Vector2(ex, h * 0.5 - key_w), Vector2(ex + dirx * key_l, h * 0.5 - key_w))
+		line.call(Vector2(ex, h * 0.5 + key_w), Vector2(ex + dirx * key_l, h * 0.5 + key_w))
+		line.call(Vector2(ex + dirx * key_l, h * 0.5 - key_w), Vector2(ex + dirx * key_l, h * 0.5 + key_w))
+		arc.call(Vector2(ex + dirx * key_l, h * 0.5), key_w, -PI * 0.5 if side == 0 else PI * 0.5, PI * 0.5 if side == 0 else PI * 1.5)
+		# łuk za trzy punkty: środek pod obręczą
+		var hoop_c := Vector2(ex + dirx * 1.35 * ppm, h * 0.5)
+		var r3 := minf(4.3 * ppm, h * 0.5 - m - 0.25 * ppm)
+		arc.call(hoop_c, r3, -PI * 0.5 if side == 0 else PI * 0.5, PI * 0.5 if side == 0 else PI * 1.5)
+		line.call(Vector2(ex, h * 0.5 - r3), Vector2(hoop_c.x, h * 0.5 - r3))
+		line.call(Vector2(ex, h * 0.5 + r3), Vector2(hoop_c.x, h * 0.5 + r3))
+	img.generate_mipmaps()
+	_court_mat = StandardMaterial3D.new()
+	_court_mat.albedo_texture = ImageTexture.create_from_image(img)
+	_court_mat.roughness = 0.92
+	_court_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	return _court_mat
 
 func _playground() -> void:
 	var x0: float = PLAY[0]
@@ -2378,6 +2532,7 @@ func _estate() -> void:
 	_prop("cardboard_box_01", 56.0, -110.6, 0.8, 0.34, 0.0, false)
 	# plac zabaw i trzepak
 	_playground()
+	_court()
 	_place(Props.trzepak(), -33.0, -108.5, 0.1, 1.3, 0.1, 2.0)
 	_prop("plastic_monobloc_chair_01", -31.0, -106.5, 2.2, 0.86, 0.0, false)
 	# ławki pod klatkami, śmietniki, krzesła
@@ -2419,7 +2574,7 @@ func _yard() -> void:
 	var tr := RandomNumberGenerator.new()
 	tr.seed = 20261
 	# dwa drzewa zostają przy samym chodniku, reszta rośnie w głębi trawników
-	var spots := [[16.5, -70.6], [-47.0, -70.8], [-22.0, -98.5], [16.0, -98.0], [-44.0, -117.0], [-64.0, -98.0]]
+	var spots := [[-47.0, -70.8], [-22.0, -98.5], [16.0, -98.0], [-44.0, -117.0], [-64.0, -98.0]]
 	for i in range(90):
 		spots.append([tr.randf_range(-96.0, 70.0), tr.randf_range(-124.0, -52.0)])
 	var by_path := 0
@@ -3637,6 +3792,15 @@ func _evict_greens() -> void:
 			continue
 		var g: Vector2 = n.get_meta("green")
 		var hit := false
+		for gf in GREEN_FREE:
+			if g.x > float(gf[0]) and g.x < float(gf[2]) and g.y > float(gf[1]) and g.y < float(gf[3]):
+				hit = true
+				break
+		if not hit and tree_pos.has(g):
+			for tf in TREE_FREE:
+				if g.x > float(tf[0]) and g.x < float(tf[2]) and g.y > float(tf[1]) and g.y < float(tf[3]):
+					hit = true
+					break
 		for b in blds:
 			if g.x > float(b.x0) - 0.7 and g.x < float(b.x1) + 0.7 and g.y > float(b.z0) - 0.7 and g.y < float(b.z1) + 0.7:
 				hit = true

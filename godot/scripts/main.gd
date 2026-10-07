@@ -257,6 +257,7 @@ func _ready() -> void:
 		get_tree().quit()
 		return
 	if args.has("przeglad"):
+		world.okolica = String(args.get("okolica", ""))
 		world.audit()
 		get_tree().quit()
 		return

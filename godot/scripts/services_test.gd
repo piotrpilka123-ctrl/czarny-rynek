@@ -8,6 +8,37 @@ static func run(T) -> void:
 	G.S = G.new_state()
 	var S: Dictionary = G.S
 
+	# --- boisko przed blokiem: równa płyta, dwa kosze, piłka pod koszem, żadnych drzew na boisku ani przy chodniku
+	var CW = G.world
+	var c0x: float = CW.COURT[0]
+	var c0z: float = CW.COURT[1]
+	var c1x: float = CW.COURT[2]
+	var c1z: float = CW.COURT[3]
+	var flat := true
+	for fx0 in [0.0, 0.5, 1.0]:
+		for fz0 in [0.0, 0.5, 1.0]:
+			if absf(CW.hd(lerpf(c0x, c1x, fx0), lerpf(c0z, c1z, fz0)) - CW.COURT_H) > 0.03:
+				flat = false
+	var hoops := 0
+	for cn in CW.city.get_children():
+		if cn is Node3D and String(cn.scene_file_path).contains("boisko_kosz"):
+			hoops += 1
+	var on_court := 0
+	var by_walk := 0
+	for tp in CW.tree_pos:
+		if tp.x > c0x - 1.0 and tp.x < c1x + 1.0 and tp.y > c0z - 1.0 and tp.y < c1z + 1.0:
+			on_court += 1
+		if tp.x > -30.0 and tp.x < 46.0 and ((tp.y > -72.0 and tp.y < -68.5) or (tp.y > -64.5 and tp.y < -58.0)):
+			by_walk += 1
+	T.ok(flat and D.DOORS.safe.x > c0x - 6.0 and D.DOORS.safe.x < c1x and c0z - float(D.DOORS.safe.z) < 20.0, "boisko leży na równej płycie tuż przed klatką bloku 7")
+	T.ok(hoops == 2 and CW.court_ball != null and absf(CW.court_ball.position.y - CW.COURT_H) < 0.1 and CW.court_ball.position.x > c1x - 8.0, "dwa kosze i piłka zostawiona pod wschodnim (%d)" % hoops)
+	T.ok(on_court == 0 and by_walk == 0 and CW.surface_at((c0x + c1x) * 0.5 * D.SC, (c0z + c1z) * 0.5 * D.SC) == "concrete", "na boisku i przy chodniku przed blokiem nie rosną drzewa; płyta jest twarda")
+	var cm: StandardMaterial3D = CW.court_material()
+	var cimg: Image = cm.albedo_texture.get_image()
+	var mid: Color = cimg.get_pixel(cimg.get_width() / 4, cimg.get_height() / 5)
+	var ln_px: Color = cimg.get_pixel(cimg.get_width() / 2, cimg.get_height() / 3)
+	T.ok(mid.r > 0.5 and mid.g < 0.35 and ln_px.r > 0.85 and ln_px.g > 0.85, "nawierzchnia jest czerwona, a linia środkowa biała")
+
 	# --- dym z kominów: kotłownia i trzy kominy huty; smuga zaczyna się u wylotu, nie w połowie komina
 	var sm_n: int = G.world.smokes.size()
 	var boiler_ok := false
