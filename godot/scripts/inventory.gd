@@ -242,6 +242,9 @@ func _process(dt: float) -> void:
 
 # ---------------------------------------------------------------- otwieranie
 func open(room_id := "", start_tab := "inv") -> void:
+	# otwarty pojemnik „z ręki” (paczka, skrytka Wiktora, ziemia) rozlicza się, zanim okno pokaże coś innego
+	if room == "loot" and room_id != "loot":
+		G.loot_close()
 	room = room_id
 	tab = start_tab
 	sel = {}
