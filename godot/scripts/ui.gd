@@ -962,7 +962,7 @@ func open_phone(app := "") -> void:
 	if mode != "phone":
 		Sfx.play("open")
 	set_mode("phone")
-	G.tip("telefon", "Telefon", "[%s] otwiera i chowa telefon. W Wiadomościach piszą klienci i Wiktor — pod rozmową są duże kafle odpowiedzi (klawisze 1–4). [Esc] cofa o ekran. Uwaga: świat się nie zatrzymuje, kiedy patrzysz w telefon." % G.kn("phone"))
+	G.tip("telefon", "Telefon", "[%s] otwiera i chowa telefon. W Wiadomościach piszą klienci i Wiktor — pod rozmową są duże kafle odpowiedzi (klawisze 1–5): zgoda, negocjacja sumy, inna godzina na zegarze, inny towar, odmowa. [Esc] cofa o ekran. Uwaga: świat się nie zatrzymuje, kiedy patrzysz w telefon." % G.kn("phone"))
 	phone.open(app)
 
 
@@ -1325,7 +1325,7 @@ func open_deal(ctx: Dictionary) -> bool:
 	deal_said = ""
 	_deal_stage(ctx)
 	_render_deal()
-	G.tip("wymiana", "Wymiana z ręki do ręki", "Wybierz woreczek, ewentualnie zmień cenę i przytrzymaj „Podaj towar” (myszą, [%s] albo spacją). Czas płynie: pasek u góry pokazuje, ilu ludzi jest w pobliżu i czy patrzy patrol. Podbicie ceny może nie przejść — wtedy wraca cena wyjściowa i drugi raz już nie spróbujesz." % G.kn("use"))
+	G.tip("wymiana", "Wymiana z ręki do ręki", "Na środku widzisz sumę za całość. Małe przyciski po bokach zmieniają ją o złotówkę albo dziesięć: w lewo taniej (−10, −1), w prawo drożej (+1, +10). Potem przytrzymaj „Podaj towar” (myszą, [%s] albo spacją). Czas płynie: pasek u góry pokazuje, ilu ludzi jest w pobliżu i czy patrzy patrol. Za wysoka suma może nie przejść — wtedy wraca wyjściowa i drugi raz już jej nie podbijesz. Kto zdąży w godzinę od umówionej pory, zastaje klienta w dobrym humorze." % G.kn("use"))
 	return true
 
 

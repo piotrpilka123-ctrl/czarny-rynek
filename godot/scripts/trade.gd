@@ -1,5 +1,5 @@
 extends RefCounted
-## Okno wymiany przy sprzedaży — bez gadania. Wybierasz woreczek, ewentualnie cenę (−10%, wyjściowa, +5/+10/+15%)
+## Okno wymiany przy sprzedaży — bez gadania. Wybierasz porcję, ewentualnie zmieniasz SUMĘ za całość (−10 / −1 / +1 / +10 zł)
 ## i PODAJESZ towar: przytrzymujesz przycisk (albo [E] / spację). Świat się w tym czasie nie zatrzymuje,
 ## więc pasek u góry pokazuje, ilu ludzi może Was widzieć i czy patrzy patrol.
 ## Logika (próg klienta, ocena towaru, sprzedaż) siedzi w game.gd: deal_start / deal_set / deal_hand.

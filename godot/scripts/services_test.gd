@@ -8,6 +8,25 @@ static func run(T) -> void:
 	G.S = G.new_state()
 	var S: Dictionary = G.S
 
+	# --- tarcza zegara do umawiania godziny: kliknięty punkt → pora, tylko w dozwolonym łuku (dziś, od teraz)
+	var dial = load("res://scripts/clock_dial.gd").new()
+	G.ui.add_child(dial)
+	dial.size = Vector2(216, 216)
+	var day0: float = floorf(S.t / 1440.0) * 1440.0
+	dial.setup(day0 + 540.0, day0 + 560.0, day0 + 1435.0, day0 + 600.0)
+	var pt := func(minute: float) -> Vector2:
+		var a: float = dial.angle_of(minute)
+		return Vector2(108, 108) + Vector2(cos(a), sin(a)) * 80.0
+	T.ok(absf(dial.time_at(pt.call(900.0)) - (day0 + 900.0)) < 0.01 and absf(dial.time_at(pt.call(1325.0)) - (day0 + 1330.0)) < 5.1, "zegar: punkt na godzinie 15:00 daje 15:00, wskazówka skacze co 10 minut")
+	T.ok(absf(dial.time_at(pt.call(720.0)) - (day0 + 720.0)) < 0.01 and dial.time_at(pt.call(720.0)) > dial.time_at(pt.call(700.0)), "zegar: południe na dole tarczy, czas rośnie zgodnie z ruchem wskazówek")
+	var early_pt: float = dial.time_at(pt.call(180.0))
+	T.ok(early_pt >= day0 + 560.0 and early_pt <= day0 + 1435.0 and dial.time_at(pt.call(550.0)) == day0 + 560.0, "zegar: pory, która już minęła, nie da się wskazać — wskazówka staje na brzegu dozwolonego łuku")
+	dial.set_value(day0 + 2000.0)
+	T.ok(dial.value == day0 + 1435.0, "zegar: następnego dnia wybrać się nie da")
+	dial.nudge(-30.0)
+	T.ok(dial.value == day0 + 1405.0, "zegar: przyciski pod tarczą przesuwają porę o podane minuty")
+	dial.queue_free()
+
 	# --- stary zapis sprzed zmian w pakowaniu i meblach wczytuje się i przelicza
 	var old_save := {"cash": 1234.0, "lvl": 3, "items": {"woreczki": 37, "majeranek": 5}, "upg": {"waga": true, "plecak1": true},
 		"stash": {"safe": {"bulk": {"dym": {"100": 12.0}}, "pack": {"dym": {"100": 4}}, "cash": 50.0, "items": {"woreczki": 20, "cukier": 3}}},
