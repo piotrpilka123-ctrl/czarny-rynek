@@ -2239,10 +2239,11 @@ func _buildings() -> void:
 	hl.distance_fade_begin = 45.0
 	hl.distance_fade_length = 15.0
 	city.add_child(hl)
-	var ne := _sign("NEON", Vector3(-7.85, 8.0, 128.0), Color(1.0, 0.3, 0.85), 330, PI / 2.0, 0.01, 10)
+	var ne := _sign("NEON", Vector3(-7.3, 8.0, 128.0), Color(1.0, 0.3, 0.85), 330, PI / 2.0, 0.01, 10)
 	ne.shaded = false
-	var ne2 := _sign("CLUB • DISCO • BAR", Vector3(-7.85, 5.6, 128.0), Color(0.3, 0.95, 1.0), 70, PI / 2.0, 0.008, 6)
+	var ne2 := _sign("CLUB • DISCO • BAR", Vector3(-7.3, 5.6, 128.0), Color(0.3, 0.95, 1.0), 70, PI / 2.0, 0.008, 6)
 	ne2.shaded = false
+	_club_facade()
 	# wejście do klubu: stalowy portal z neonowym łukiem, chodnik i słupki z liną
 	if Stations.model("klub_drzwi") != null:
 		Props.set_range(_place(Stations.model("klub_drzwi"), -8.0, 128.0, PI / 2.0), 120.0)
@@ -4364,6 +4365,83 @@ func _wp_link(a: int, b: int) -> void:
 
 
 # ================================================================ dźwięk klubu, linia wzroku
+## Bryła klubu nie jest już gładkim klocem: pilastry dzielą ściany, na górze biegnie gzyms ze schodkową attyką,
+## nad wejściem wisi markiza z rzędami żarówek, po bokach szyldu świecą okna z luksferów, przy drzwiach stoją gabloty
+## z plakatami, a na dachu widać klimatyzatory i zbiornik. Wymiary w poprzek ściany liczone w metrach (× INV).
+func _club_facade() -> void:
+	var x0 := -44.0
+	var x1 := -8.0
+	var z0 := 116.0
+	var z1 := 140.0
+	var top := 10.0
+	var gy := hd(-8.0, 128.0)
+	var pier := Models.mat("1a1722", 0.75, 0.1)
+	var trim := Models.mat("2d2838", 0.6, 0.2)
+	var brick := Props.pbr("factory_brick", 0.35, Color(0.3, 0.26, 0.32))
+	var grp := Node3D.new()
+	city.add_child(grp)
+	# cokół z ciemnej cegły i gzyms dookoła
+	for e in [[x1 + 0.12 * INV, (z0 + z1) * 0.5, 0.25 * INV, z1 - z0 + 0.3], [x0 - 0.12 * INV, (z0 + z1) * 0.5, 0.25 * INV, z1 - z0 + 0.3],
+			[(x0 + x1) * 0.5, z0 - 0.12 * INV, x1 - x0 + 0.3, 0.25 * INV], [(x0 + x1) * 0.5, z1 + 0.12 * INV, x1 - x0 + 0.3, 0.25 * INV]]:
+		Models.box(grp, Vector3(e[2], 1.15, e[3]), Vector3(e[0], gy + 0.55, e[1]), brick)
+		Models.box(grp, Vector3(float(e[2]) + 0.5 * INV, 0.45, float(e[3]) + 0.5 * INV), Vector3(e[0], gy + top + 0.1, e[1]), trim)
+	# pilastry: wschodnia ściana (od ulicy) i południowa (od Hutniczej)
+	for pz in [116.6, 120.4, 124.2, 131.8, 135.6, 139.4]:
+		Models.box(grp, Vector3(0.32 * INV, top, 1.0), Vector3(x1 + 0.16 * INV, gy + top * 0.5, pz), pier)
+	for px in [-43.4, -37.4, -31.4, -25.4, -19.4, -13.4, -8.6]:
+		Models.box(grp, Vector3(1.0, top, 0.32 * INV), Vector3(px, gy + top * 0.5, z0 - 0.16 * INV), pier)
+		Models.box(grp, Vector3(1.0, top, 0.32 * INV), Vector3(px, gy + top * 0.5, z1 + 0.16 * INV), pier)
+	# schodkowa attyka nad wejściem (jak w starym kinie, które tu było przed klubem)
+	for k in range(3):
+		Models.box(grp, Vector3(0.5 * INV, 0.7, 11.0 - k * 3.2), Vector3(x1 + 0.05 * INV, gy + top + 0.65 + k * 0.7, 128.0), trim)
+	# markiza: płyta na wspornikach, od spodu dwa rzędy żarówek, na czole różowa listwa
+	var mq := Models.mat("15131b", 0.5, 0.4)
+	Models.box(grp, Vector3(2.6 * INV, 0.3, 7.6), Vector3(x1 + 1.3 * INV, gy + 3.5, 128.0), mq)
+	for sz in [-1.0, 1.0]:
+		Models.box(grp, Vector3(2.4 * INV, 0.08, 0.1), Vector3(x1 + 1.2 * INV, gy + 4.1, 128.0 + sz * 3.3), mq, Vector3(0, 0, -0.42))
+	var bulb := Models.mat("ffe1a0", 0.4, 0.0, 3.2)
+	for row in [0.7, 1.9]:
+		for k in range(9):
+			Models.box(grp, Vector3(0.09 * INV, 0.06, 0.16), Vector3(x1 + row * INV, gy + 3.33, 124.8 + k * 0.8), bulb, Vector3.ZERO, false)
+	Models.box(grp, Vector3(0.06 * INV, 0.12, 7.6), Vector3(x1 + 2.62 * INV, gy + 3.5, 128.0), Models.mat("ff3bd0", 0.4, 0.0, 4.5), Vector3.ZERO, false)
+	var ml := OmniLight3D.new()
+	ml.position = Vector3(x1 + 1.3 * INV, gy + 2.9, 128.0)
+	ml.light_color = Color(1.0, 0.85, 0.6)
+	ml.light_energy = 1.2
+	ml.omni_range = 6.5
+	ml.shadow_enabled = false
+	ml.distance_fade_enabled = true
+	ml.distance_fade_begin = 50.0
+	ml.distance_fade_length = 15.0
+	grp.add_child(ml)
+	lamps.append(ml)
+	# okna z luksferów po bokach szyldu: wieczorem żarzą się kolorem sali
+	var glass := Models.mat("2f7f8a", 0.25, 0.1, 1.1)
+	var frame := Models.mat("0e0d12", 0.6, 0.3)
+	for wz in [118.5, 122.3, 133.7, 137.5]:
+		Models.box(grp, Vector3(0.1 * INV, 2.0, 2.4), Vector3(x1 + 0.03 * INV, gy + 6.6, wz), frame)
+		Models.box(grp, Vector3(0.1 * INV, 1.8, 2.2), Vector3(x1 + 0.06 * INV, gy + 6.6, wz), glass, Vector3.ZERO, false)
+		for k in range(1, 4):
+			Models.box(grp, Vector3(0.1 * INV, 1.8, 0.05), Vector3(x1 + 0.08 * INV, gy + 6.6, wz - 1.1 + k * 0.55), frame, Vector3.ZERO, false)
+		for k in range(1, 3):
+			Models.box(grp, Vector3(0.1 * INV, 0.05, 2.2), Vector3(x1 + 0.08 * INV, gy + 5.7 + k * 0.6, wz), frame, Vector3.ZERO, false)
+	# gabloty z plakatami przy drzwiach
+	var paper := Models.mat("d9d2c0", 0.8, 0.0, 0.5)
+	for pz2 in [122.3, 133.7]:
+		Models.box(grp, Vector3(0.12 * INV, 1.7, 1.9), Vector3(x1 + 0.06 * INV, gy + 2.0, pz2), frame)
+		for k in range(2):
+			Models.box(grp, Vector3(0.06 * INV, 1.25, 0.66), Vector3(x1 + 0.14 * INV, gy + 2.0, pz2 - 0.42 + k * 0.84), paper if k == 0 else Models.mat("c23a8a", 0.7, 0.0, 0.6), Vector3.ZERO, false)
+	# dach: klimatyzatory, zbiornik, maszt
+	var metal := Models.mat("6d7078", 0.5, 0.6)
+	for e2 in [[-36.0, 121.0], [-28.0, 134.0], [-16.0, 122.0]]:
+		Models.box(grp, Vector3(2.6, 1.1, 2.0), Vector3(e2[0], gy + top + 0.9, e2[1]), metal)
+		Models.box(grp, Vector3(2.2, 0.08, 1.6), Vector3(e2[0], gy + top + 1.5, e2[1]), Models.mat("2a2c30", 0.6, 0.4))
+	Models.cyl(grp, 1.1, 1.1, 2.2, Vector3(-22.0, gy + top + 1.45, 131.0), Models.mat("5a5148", 0.8, 0.3), Vector3.ZERO, 14)
+	Models.cyl(grp, 0.05, 0.07, 5.0, Vector3(-40.0, gy + top + 2.8, 137.0), metal, Vector3.ZERO, 6)
+	Props._no_shadow(grp)
+	Props.set_range(grp, 170.0)
+
+
 func _club_audio() -> void:
 	club_player = AudioStreamPlayer3D.new()
 	club_player.position = club_door
@@ -5291,13 +5369,67 @@ void fragment() {
 """
 
 
+## Ściany sali: pikowana boazeria w kolorze wina do wysokości barku, nad nią listwa, co dwa i pół metra pionowa
+## listwa LED (na zmianę róż i turkus), przy podłodze świecąca cokołowa kreska, pod sufitem belki i cztery miękkie
+## światła po kątach — widać, gdzie kończy się sala.
+func _club_walls(g: Node3D, cx: float, w: float, d: float, h: float) -> void:
+	var velvet := Models.mat("3a1830", 0.9)
+	var rail := Models.mat("0f0d14", 0.5, 0.4)
+	var stud := Models.mat("b08a3c", 0.35, 0.9)
+	var leds := [Models.mat("ff3bd0", 0.4, 0.0, 3.0), Models.mat("3be8ff", 0.4, 0.0, 3.0)]
+	var base_led := Models.mat("7a3bff", 0.4, 0.0, 2.2)
+	var walls := Node3D.new()
+	g.add_child(walls)
+	# [oś wzdłuż ściany: 0 = x, 1 = z; stała współrzędna; kierunek do środka sali; długość]
+	for wd in [[0, -d * 0.5, 1.0, w], [0, d * 0.5, -1.0, w], [1, cx - w * 0.5, 1.0, d], [1, cx + w * 0.5, -1.0, d]]:
+		var along_x: bool = int(wd[0]) == 0
+		var fixed: float = wd[1]
+		var inw: float = wd[2]
+		var ln: float = wd[3]
+		var n := int(round(ln / 2.5))
+		for i in range(n):
+			var t := -ln * 0.5 + (i + 0.5) * ln / n
+			# przy drzwiach wejściowych (środek ściany od strony ulicy) boazerii nie ma
+			if along_x and fixed > 0.0 and absf(t) < 1.5:
+				continue
+			var mid := Vector3(cx + t, 0.0, fixed + inw * 0.02) if along_x else Vector3(fixed + inw * 0.02, 0.0, t)
+			var sz := Vector3(ln / n - 0.14, 1.05, 0.03) if along_x else Vector3(0.03, 1.05, ln / n - 0.14)
+			Models.box(walls, sz, mid + Vector3(0, 0.72, 0), velvet)
+			for sy in [0.45, 0.98]:
+				for sk in [-0.28, 0.0, 0.28]:
+					var off := Vector3(sk * (ln / n), sy, inw * 0.02) if along_x else Vector3(inw * 0.02, sy, sk * (ln / n))
+					Models.sphere(walls, 0.018, mid + off, stud, Vector3.ONE, false)
+		for i in range(n + 1):
+			var t2 := -ln * 0.5 + i * ln / n
+			var pos := Vector3(cx + t2, h * 0.5 + 0.2, fixed + inw * 0.035) if along_x else Vector3(fixed + inw * 0.035, h * 0.5 + 0.2, t2)
+			var lsz := Vector3(0.045, h - 1.9, 0.02) if along_x else Vector3(0.02, h - 1.9, 0.045)
+			Models.box(walls, lsz, pos + Vector3(0, 0.55, 0), leds[i % 2], Vector3.ZERO, false)
+		var cpos := Vector3(cx, 0.0, fixed + inw * 0.03) if along_x else Vector3(fixed + inw * 0.03, 0.0, 0.0)
+		var rsz := Vector3(ln, 0.06, 0.05) if along_x else Vector3(0.05, 0.06, ln)
+		Models.box(walls, rsz, cpos + Vector3(0, 1.28, 0), rail)
+		var bsz := Vector3(ln, 0.03, 0.02) if along_x else Vector3(0.02, 0.03, ln)
+		Models.box(walls, bsz, cpos + Vector3(0, 0.06, 0), base_led, Vector3.ZERO, false)
+	for bz in [-d * 0.33, -d * 0.11, d * 0.11, d * 0.33]:
+		Models.box(walls, Vector3(w, 0.16, 0.22), Vector3(cx, h - 0.08, bz), rail)
+	for e in [[-1.0, -1.0, Color(0.75, 0.3, 1.0)], [1.0, -1.0, Color(0.25, 0.85, 1.0)], [-1.0, 1.0, Color(1.0, 0.3, 0.75)], [1.0, 1.0, Color(0.6, 0.4, 1.0)]]:
+		var fl := OmniLight3D.new()
+		fl.position = Vector3(cx + float(e[0]) * (w * 0.5 - 1.2), 2.9, float(e[1]) * (d * 0.5 - 1.2))
+		fl.light_color = e[2]
+		fl.light_energy = 0.55
+		fl.omni_range = 6.5
+		fl.shadow_enabled = false
+		walls.add_child(fl)
+	Props._no_shadow(walls)
+
+
 func _club_room() -> void:
 	var R: Dictionary = D.ROOMS.club
 	var cx: float = R.cx
 	var w: float = R.w
 	var d: float = R.d
 	var h: float = R.h
-	var g := _room("club", "concrete_floor_worn_001", "concrete_wall_008", "08080b", Color(0.2, 0.17, 0.26), 0.5)
+	var g := _room("club", "concrete_floor_worn_001", "concrete_wall_008", "1a1420", Color(0.2, 0.17, 0.26), 0.5)
+	_club_walls(g, cx, w, d, h)
 	# bramka z wykrywaczem tuż za drzwiami
 	_lm(g, "klub_bramka", cx, d * 0.5 - 2.4, 0.0)
 	for sx in [-1.0, 1.0]:

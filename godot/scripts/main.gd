@@ -3112,6 +3112,12 @@ func _test_ui(what: String) -> void:
 			G.S.cash = 1840.0
 			G.S.stash.safe.cash = 600.0
 			ui.open_inventory("safe")
+			# --tab=wear|char: większy podgląd postaci (do oceny ubrań)
+			if args.has("tab"):
+				ui.inv.tab = String(args.tab)
+				ui.inv.render()
+				if ui.tip_box != null and is_instance_valid(ui.tip_box):
+					ui.tip_box.queue_free()
 		"invsel":
 			ui.open_stash("safe")
 			ui.inv.sel = {"side": "bag", "kind": "pack", "p": "dym", "pur": 80, "id": ""}

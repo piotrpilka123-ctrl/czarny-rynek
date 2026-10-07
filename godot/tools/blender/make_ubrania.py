@@ -103,7 +103,41 @@ def clear(B, bm, gap):
             v.co = loc + nrm * gap
 
 
-def shell(B, pick, offset, smooth=2, cuts=1, skip=('opacity',), rim=0.006, gap=0.003):
+def folds(B, bm, amp=1.0):
+    """Fałdy materiału: ubranie nie jest balonem. Zmarszczki zbierają się przy zgięciach (łokcie, kolana, pachy, krok),
+    tułów poniżej klatki układa się w pionowe draperie, nogawki mają podłużne załamania, a całość lekko faluje."""
+    from mathutils import noise
+    J = []
+    for sd in ('L', 'R'):
+        J.append((B.H['Bip01 %s Forearm' % sd], 0.105, 0.0042, 92.0))
+        J.append((B.H['Bip01 %s Calf' % sd], 0.12, 0.0046, 80.0))
+        J.append((B.H['Bip01 %s UpperArm' % sd] + Vector((0, 0, -0.07)), 0.1, 0.0036, 100.0))
+        J.append((B.H['Bip01 %s Thigh' % sd] + Vector((0, -0.05, -0.02)), 0.12, 0.004, 88.0))
+    for v in bm.verts:
+        if v.is_boundary:
+            continue
+        co = v.co
+        d = 0.0026 * noise.noise(co * 11.0) + 0.0012 * noise.noise(co * 37.0)
+        for j, rad, a, fq in J:
+            r = (co - j).length
+            k = math.exp(-(r / rad) ** 2)
+            if k > 0.03:
+                d += k * a * math.sin(r * fq + 2.0 * noise.noise(co * 14.0))
+        if abs(co.x) < 0.24 and 0.86 < co.z < 1.3:
+            # draperia tułowia: pionowe fale, mocniejsze ku dołowi i po bokach
+            ang = math.atan2(co.x, -co.y)
+            low = min(1.0, (1.3 - co.z) / 0.3)
+            d += 0.0042 * low * math.sin(ang * 7.0 + 3.0 * noise.noise(Vector((co.x * 6.0, co.y * 6.0, co.z * 2.0))))
+        elif co.z < 0.86 and abs(co.x) < 0.3:
+            # nogawki: podłużne załamania i zbieranie się materiału nad butem
+            ang = math.atan2(co.x - (0.09 if co.x > 0 else -0.09), -co.y)
+            d += 0.0026 * math.sin(ang * 5.0 + co.z * 9.0 + 2.0 * noise.noise(co * 5.0))
+            if co.z < 0.24:
+                d += 0.0045 * math.sin(co.z * 150.0) * (1.0 - co.z / 0.24)
+        v.co += v.normal * max(-0.0025, d * amp * 1.5)
+
+
+def shell(B, pick, offset, smooth=2, cuts=1, skip=('opacity',), rim=0.006, gap=0.003, wrinkle=0.0):
     """powierzchnia ciała tam, gdzie pick(co, w) — wygładzona, odsunięta o offset(co, w), zagęszczona, z brzegiem zawiniętym do środka"""
     bm = B.bm.copy()
     dl = bm.verts.layers.deform.verify()
@@ -121,6 +155,9 @@ def shell(B, pick, offset, smooth=2, cuts=1, skip=('opacity',), rim=0.006, gap=0
     if cuts:
         bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=cuts, smooth=0.35, use_grid_fill=True)
         bmesh.ops.smooth_vert(bm, verts=[v for v in bm.verts if not v.is_boundary], factor=0.35, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    if wrinkle > 0.0:
+        bm.normal_update()
+        folds(B, bm, wrinkle)
     if gap > 0.0:
         clear(B, bm, gap)
     bm.normal_update()
@@ -441,7 +478,7 @@ def _top(B, hem, off, smooth):
         if abs(co.x) < 0.3 and co.z < 1.0:
             o = max(o, 0.012 + 0.02 * min(1.0, (1.0 - co.z) / 0.06))
         return o
-    bm, lps = shell(B, pick, off2, smooth)
+    bm, lps = shell(B, pick, off2, smooth, wrinkle=1.0)
     neck = pick_loops(lps, lambda c: c.z > 1.42 and abs(c.x) < 0.1)
     cuffs = pick_loops(lps, lambda c: abs(c.x) > 0.4)
     hems = pick_loops(lps, lambda c: c.z < 1.0 and abs(c.x) < 0.15)
@@ -460,8 +497,8 @@ def _cuff(B, co, t0=0.82):
 def bluza_kaptur():
     """bluza z kapturem: luźna dzianina, ściągacze na mankietach i dole, kieszeń-kangurka, kaptur ze sznurkami"""
     B = Body()
-    knit = mat('dzianina_bluza', '5b6f8c', 0.95)
-    rib = mat('sciagacz_bluza', '4d5f7a', 0.95)
+    knit = mat('dzianina_bluza', '4d5563', 0.95)
+    rib = mat('sciagacz_bluza', '434a57', 0.95)
     cord = mat('plotno_sznurek', 'd8d6cf', 0.9)
 
     def off(co, w):
@@ -508,8 +545,8 @@ def bluza_kaptur():
 def kurtka_kieszenie():
     """kurtka polowa: sztywne płótno, stójka, zamek pod plisą, cztery kieszenie z patkami na zatrzask, ściągacz w pasie, patki na mankietach"""
     B = Body()
-    cloth = mat('plotno_kurtka', '5a6b4a', 0.9)
-    dark = mat('plotno_kurtka_c', '4a593d', 0.9)
+    cloth = mat('plotno_kurtka', '4f5a44', 0.9)
+    dark = mat('plotno_kurtka_c', '434d3a', 0.9)
     metal = mat('metal_zamek', '6f7378', 0.4, 0.9)
 
     def off(co, w):
@@ -548,7 +585,7 @@ def kurtka_kieszenie():
 def koszula():
     """koszula w kratę: cienkie płótno, kołnierzyk z rogami, plisa z guzikami, kieszonka na piersi, mankiety"""
     B = Body()
-    plaid = mat('krata_koszula', 'a8433a', 0.9)
+    plaid = mat('krata_koszula', '8f3a33', 0.9)
     btn = mat('guzik_koszula', 'e6dfcf', 0.4)
 
     def off(co, w):
@@ -581,7 +618,7 @@ def _legs(B, off, smooth, tight=0.86):
     def off2(co, w):
         # w pasie spodnie przylegają, żeby schować się pod bluzą czy koszulą
         return min(off(co, w), 0.009) if co.z > 0.88 else off(co, w)
-    bm, lps = shell(B, pick, off2, smooth)
+    bm, lps = shell(B, pick, off2, smooth, wrinkle=1.0)
     waist = pick_loops(lps, lambda c: c.z > 0.8)
     ankles = pick_loops(lps, lambda c: c.z < 0.3)
     return bm, BVHTree.FromBMesh(bm), waist, ankles
@@ -633,8 +670,8 @@ def dresy():
 def jeansy():
     """jeansy: sztywny dżins, pasek ze szlufkami i guzikiem, rozporek, tylne kieszenie z przeszyciem, żółte szwy boczne, podwinięte nogawki"""
     B = Body()
-    denim = mat('dzins_jeansy', '40608f', 0.85)
-    light = mat('dzins_podwiniecie', '7d95b8', 0.85)
+    denim = mat('dzins_jeansy', '34486a', 0.85)
+    light = mat('dzins_podwiniecie', '6f84a3', 0.85)
     thread = mat('plotno_nic', 'c99a3e', 0.8)
     metal = mat('metal_guzik', 'b08a4a', 0.35, 0.9)
 
@@ -670,8 +707,8 @@ def jeansy():
 def bojowki():
     """bojówki: luźne płótno, kieszenie cargo z patkami na udach, wzmocnione kolana, pasek ze szlufkami, ściągacz sznurkiem przy kostkach"""
     B = Body()
-    cloth = mat('plotno_bojowki', '777a52', 0.92)
-    dark = mat('plotno_bojowki_c', '63663f', 0.92)
+    cloth = mat('plotno_bojowki', '6a6a4c', 0.92)
+    dark = mat('plotno_bojowki_c', '58583e', 0.92)
     metal = mat('metal_napa', '5a5d52', 0.4, 0.8)
 
     def off(co, w):

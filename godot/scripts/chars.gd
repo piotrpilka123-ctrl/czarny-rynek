@@ -1065,9 +1065,11 @@ static func dress(rig: Dictionary, gear: Dictionary, tints := {}) -> void:
 	# uszyte ubrania i dodatki z plików; czego nie ma w plikach, to po staremu (przebarwienie i proste bryły)
 	var made := {}
 	for slot in look:
-		var gid := String(gear[slot])
+		# wariant kolorystyczny korzysta z wykroju innej rzeczy (look.model) i barwi tkaninę (look.tint)
+		var gid := String(look[slot].get("model", gear[slot]))
 		var bone := String(look[slot].get("bone", ""))
-		made[slot] = _wear_rigid(rig, gid, bone) if bone != "" else _wear_skinned(rig, gid, tints.get(slot, Color.WHITE))
+		var tn: Color = tints.get(slot, col(look[slot].tint) if look[slot].has("tint") else Color.WHITE)
+		made[slot] = _wear_rigid(rig, gid, bone) if bone != "" else _wear_skinned(rig, gid, tn)
 	_hair_cards(rig, not made.get("glowa", false))
 	var hide := Vector4(1.0 if made.get("gora", false) else 0.0, 1.0 if made.get("spodnie", false) else 0.0,
 		1.0 if made.get("buty", false) else 0.0, 1.0 if made.get("dlonie", false) else 0.0)
