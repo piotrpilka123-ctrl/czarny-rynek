@@ -411,7 +411,7 @@ func run() -> void:
 	await frames(2)
 	ok(U.phone.app == "sklep" and U.phone._landscape, "„Zamów towar” obraca telefon na bok i otwiera sklep")
 	var cat: Array = G.Market.catalog()
-	ok(cat.size() == 4 and cat[0].open and cat[1].open and not cat[2].open and not cat[3].open, "w sklepie od początku marihuana i amfetamina, reszta odblokuje się z poziomem")
+	ok(cat.size() == 2 and cat[0].open and cat[1].open and String(cat[0].p) == "dym" and String(cat[1].p) == "szron", "w sklepie Wiktora są tylko marihuana i amfetamina — metę i kokainę robi się samemu")
 	G.Market.cart_add(U.phone.shop.cart, "dym", 5)
 	G.Market.cart_add(U.phone.shop.cart, "szron", 5)
 	U.phone.render()

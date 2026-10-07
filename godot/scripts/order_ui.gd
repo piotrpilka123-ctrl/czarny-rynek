@@ -50,7 +50,9 @@ static func render(PH) -> void:
 	if not D.PRODUCTS.has(String(st.get("p", ""))) or int(S.lvl) < int(D.PRODUCTS[st.p].lvl):
 		st.p = "dym"
 	var max_g: int = G.wholesale_max()
-	st.g = clampi(int(st.get("g", 5)), 1, max_g)
+	# pierwsze zamówienie z samouczka: 10 g marihuany i 10 g amfetaminy — pole startuje od dziesiątki
+	var first_order: bool = String(G.cur_step().get("id", "")) == "order1" and S.drops.is_empty()
+	st.g = clampi(int(st.get("g", 10 if first_order else 5)), 1, max_g)
 	# --- nagłówek: powrót, tytuł, zakładki, stan zeszytu
 	var head := K.hbox(8)
 	root.add_child(head)
@@ -66,6 +68,10 @@ static func render(PH) -> void:
 	tv.add_child(K.lbl("czysty towar • na zeszyt • odbiór ze skrytki", 10, K.C_DIM))
 	head.add_child(tv)
 	head.add_child(K.spacer())
+	if first_order:
+		var tip := K.icon_label("hand", "Zadanie: dodaj do koszyka 10 g marihuany i 10 g amfetaminy, potem wyślij zamówienie.", 12, Color(1.0, 0.86, 0.35), 16.0)
+		root.add_child(tip)
+		root.move_child(tip, 0)
 	for e in [["buy", "Zamów"], ["sell", "Skup"]]:
 		var tab_id: String = e[0]
 		var tb := K.btn(String(e[1]), func(): st.tab = tab_id; render(PH), "go" if String(st.get("tab", "buy")) == tab_id else "", true)

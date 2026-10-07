@@ -52,6 +52,7 @@ static func run(T) -> void:
 	var W = G.world
 	var S: Dictionary = G.S
 	var back_loc: String = P.loc
+	G.strict_stealth = true
 	var back_pos: Vector3 = P.global_position
 	var back_yaw: float = P.yaw
 	M.teleport("out", Vector3(DARK.x, 0.0, DARK.y), 0.0)
@@ -350,5 +351,11 @@ static func run(T) -> void:
 	P.moving = false
 	P.sprinting = false
 	M.hide_at = {}
+	G.strict_stealth = false
+	P.sprinting = true
+	P.moving = true
+	T.ok(absf(P.noise() - 3.2 * (1.0 + G.night * 0.25 - G.rain * 0.4) * G.outfit_stat("noise", 1.0)) < 1.6 or P.loc != "out", "w zwykłej grze bieg nie robi więcej hałasu niż chód — patrole nie reagują na bieganie")
+	P.sprinting = false
+	P.moving = false
 	M.teleport(back_loc, back_pos, back_yaw)
 	await T.frames(2)

@@ -919,6 +919,8 @@ func _wiktor_footer() -> void:
 	var sub := "zeszyt czysty" if owed <= 0.0 else ("zeszyt: %s — PO TERMINIE" % G.money(owed) if G.credit_overdue() else "zeszyt: %s, do dnia %d" % [G.money(owed), int(float(S.credit_due) / 1440.0) + 1])
 	var t1 := _tile("package", "Zamów towar", "czysty, na zeszyt" if G.flag("hurt_on") else "Wiktor jeszcze Ci nie ufa", Color(0.85, 0.62, 0.2), shop_open, 1)
 	t1.disabled = not G.flag("hurt_on")
+	if String(G.cur_step().get("id", "")) == "order1" and G.flag("hurt_on") and G.S.drops.is_empty():
+		K.point_hand(t1, Vector2(6, -22))
 	var t2 := _tile("banknote", "Skrzynka Wiktora", sub, Color(0.3, 0.75, 0.45), func():
 		G.main.set_track("box")
 		ui.close_all()

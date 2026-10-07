@@ -54,7 +54,7 @@ static func price(_vid: String, p: String, g: int, _method := "drop") -> float:
 ## produkty, które Wiktor w ogóle pokazuje w sklepie (zablokowane też — z poziomem, od którego będą)
 static func catalog() -> Array:
 	var out := []
-	for p in D.PRODUCTS:
+	for p in D.WHOLESALE_PRODUCTS:
 		out.append({"p": p, "name": String(D.PRODUCTS[p].name), "lvl": int(D.PRODUCTS[p].lvl), "open": int(G.S.lvl) >= int(D.PRODUCTS[p].lvl),
 			"unit": int(round(G.wholesale_unit(p, false) * (1.0 - trust_discount(VID))))})
 	return out

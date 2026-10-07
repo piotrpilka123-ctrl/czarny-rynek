@@ -508,7 +508,62 @@ func tip_show(title: String, text: String, secs := 11.0) -> void:
 	tw.chain().tween_callback(cc.queue_free)
 
 
+## Powiadomienia idą po kolei, jedno naraz: ważniejsze wcześniej, a każde wisi tyle, ile trzeba na przeczytanie
+## (dłuższy tekst — dłużej). Powtórki nie wchodzą do kolejki; gdy robi się tłok, wypadają najmniej ważne.
+const TOAST_RANK := {"bad": 4, "level": 3, "warn": 2, "good": 1, "": 0}
+var toast_q: Array = []
+var toast_t := 0.0
+var toast_now := ""
+
 func toast_add(text: String, kind: String) -> void:
+	if text == toast_now:
+		return
+	for q in toast_q:
+		if String(q.text) == text:
+			return
+	toast_q.append({"text": text, "kind": kind})
+	# kolejka ma najwyżej cztery pozycje: wypada najstarsza z najmniej ważnych
+	while toast_q.size() > 4:
+		var worst := 0
+		for i in range(toast_q.size()):
+			if int(TOAST_RANK.get(String(toast_q[i].kind), 0)) < int(TOAST_RANK.get(String(toast_q[worst].kind), 0)):
+				worst = i
+		toast_q.remove_at(worst)
+	if kind == "bad":
+		Sfx.play("bad")
+
+
+func _toast_tick(dt: float) -> void:
+	if toast_t > 0.0:
+		toast_t -= dt
+		if toast_t <= 0.0:
+			for c in toasts.get_children():
+				c.queue_free()
+			toast_now = ""
+			toast_t = -0.25
+		return
+	if toast_t < 0.0:
+		# krótki oddech między powiadomieniami
+		toast_t = minf(0.0, toast_t + dt)
+		return
+	if toast_q.is_empty() or not toasts.visible:
+		return
+	var best := 0
+	for i in range(toast_q.size()):
+		if int(TOAST_RANK.get(String(toast_q[i].kind), 0)) > int(TOAST_RANK.get(String(toast_q[best].kind), 0)):
+			best = i
+	var t: Dictionary = toast_q[best]
+	toast_q.remove_at(best)
+	_toast_show(String(t.text), String(t.kind))
+	toast_now = String(t.text)
+	var secs := clampf(1.5 + String(t.text).length() * 0.05, 2.4, 7.0)
+	if String(t.kind) == "bad" or String(t.kind) == "level":
+		secs *= 1.2
+	# gdy czekają następne, bieżące schodzi trochę szybciej
+	toast_t = secs * (0.8 if not toast_q.is_empty() else 1.0)
+
+
+func _toast_show(text: String, kind: String) -> void:
 	var border := Color(1, 1, 1, 0.12)
 	var fc := K.C_TXT
 	var ic := "info"
@@ -527,13 +582,10 @@ func toast_add(text: String, kind: String) -> void:
 	h.add_child(l)
 	p.add_child(h)
 	toasts.add_child(p)
-	while toasts.get_child_count() > 4:
-		var old := toasts.get_child(0)
-		toasts.remove_child(old)
-		old.queue_free()
-	if kind == "bad":
-		Sfx.play("bad")
-	get_tree().create_timer(5.0 if kind == "level" else 4.2).timeout.connect(p.queue_free)
+	p.modulate.a = 0.0
+	var tw := p.create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(p, "modulate:a", 1.0, 0.18)
 
 
 func _on_sms(cid: String, text: String) -> void:
@@ -1967,6 +2019,7 @@ func _process(dt: float) -> void:
 
 func _process_ui(dt: float) -> void:
 	_call_tick(dt)
+	_toast_tick(dt)
 	# okno przyklejone do dołu ekranu (wymiana, rozmowa): powiadomienia wędrują tuż nad nie
 	var lift := 110.0
 	var t_left := 0.0
@@ -1985,7 +2038,10 @@ func _process_ui(dt: float) -> void:
 		if hud.visible and obj_card.visible:
 			left = obj_card.position.x + obj_card.size.x + 14.0
 		tip_box.offset_left = left
-	if absf(toast_wrap.offset_left - t_left) > 0.5:
+	# otwarty telefon zajmuje prawą stronę — powiadomienia przesuwają się na lewą część ekranu
+	if mode == "phone" and t_left == 0.0:
+		t_right = -430.0
+	if absf(toast_wrap.offset_left - t_left) > 0.5 or absf(toast_wrap.offset_right - t_right) > 0.5:
 		toast_wrap.offset_left = t_left
 		toast_wrap.offset_right = t_right
 	if absf(toast_wrap.offset_bottom + lift) > 0.5:

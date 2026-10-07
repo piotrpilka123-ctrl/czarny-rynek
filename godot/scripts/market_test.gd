@@ -37,7 +37,7 @@ static func run(T) -> void:
 	S.lvl = 9
 	var lim9: float = G.credit_limit()
 	S.lvl = 1
-	T.ok(lim1 >= 700.0 and lim1 < 1200.0 and lim9 > G.wholesale_price("snieg", 250), "limit zeszytu: %d zł na 1. poziomie, %d zł na 9." % [int(lim1), int(lim9)])
+	T.ok(lim1 >= 700.0 and lim1 < 1200.0 and lim9 > G.wholesale_price("szron", 100), "limit zeszytu: %d zł na 1. poziomie, %d zł na 9." % [int(lim1), int(lim9)])
 	# koszyk: kilka towarów w jednej paczce, wszystko na zeszyt, towar czysty
 	var cart := []
 	M.cart_add(cart, "dym", 5)
@@ -83,7 +83,8 @@ static func run(T) -> void:
 	var bonus_r: float = float(D.RANKS[1].bonus) if G.day() <= int(D.RANKS[1].day) else 0.0
 	T.ok(int(S.rank) == 1 and G.rank_def().name == "Goniec" and G.has_perk("plecak") and not G.has_perk("limit") and absf(S.cash - (cash_r - 100.0 + 380.0 + bonus_r)) < 0.01,
 		"300 zł wkładu: awans na Gońca, plecak (albo jego równowartość) i premia za tempo %d zł" % int(bonus_r))
-	T.ok((S.chats.wiktor as Array).back().text.contains("Awans"), "Wiktor pisze o awansie")
+	var wch: Array = S.chats.wiktor
+	T.ok(String(wch[wch.size() - 2].text).contains("Awans") and String(wch.back().text).contains("więcej ludzi") and G.client_cap() >= int(D.MAX_CLIENTS[mini(int(S.lvl), D.MAX_CLIENTS.size() - 1)]) + 2, "Wiktor pisze o awansie i o nowych klientach; Goniec ma dwa miejsca więcej na stałych klientów")
 	var unit_r: float = G.wholesale_unit("dym")
 	var gar_r: float = float(G.prop_def("garaz").price)
 	var paid_keep: float = S.paid

@@ -43,6 +43,9 @@ const PRODUCTS := {
 	"snieg": {"name": "Kokaina", "base": 330, "cost": 195, "color": "f3f6fb", "lvl": 8, "form": "proszek", "desc": "Najdroższy towar w mieście. Tylko dla klientów z grubym portfelem."},
 }
 ## dopełniacz do zdań typu „5 g marihuany”
+## U Wiktora kupisz tylko zioło i amfetaminę. Metamfetaminę i kokainę robi się samemu — w laboratorium,
+## gdy przygotujesz pod nie lokal.
+const WHOLESALE_PRODUCTS := ["dym", "szron"]
 const PRODUCT_GEN := {"dym": "marihuany", "szron": "amfetaminy", "krysztal": "metamfetaminy", "snieg": "kokainy"}
 const PRODUCT_ACC := {"dym": "marihuanę", "szron": "amfetaminę", "krysztal": "metamfetaminę", "snieg": "kokainę"}
 
@@ -580,7 +583,7 @@ const START_CASH := 200
 const START_DEBT := 25000     # pełny wkład: po nim jesteś wspólnikiem (w zapisie zostaje pod dawną nazwą „debt”)
 const RANKS := [
 	{"at": 0, "name": "Przydupas", "perk": "", "day": 0, "bonus": 0, "desc": "Chłopak od wszystkiego. Towar dostajesz na zeszyt."},
-	{"at": 300, "name": "Goniec", "perk": "plecak", "day": 6, "bonus": 60, "desc": "Wiktor daje Ci plecak szkolny — koniec z upychaniem towaru po kieszeniach."},
+	{"at": 300, "name": "Goniec", "perk": "plecak", "day": 6, "bonus": 60, "desc": "Wiktor daje Ci plecak szkolny i puszcza o Tobie słowo: odezwie się więcej klientów."},
 	{"at": 1200, "name": "Detalista", "perk": "limit", "day": 14, "bonus": 150, "desc": "Zeszyt większy o połowę: bierzesz naraz więcej towaru."},
 	{"at": 3500, "name": "Dealer", "perk": "rabat1", "day": 22, "bonus": 350, "desc": "Hurt tańszy o 5%."},
 	{"at": 8000, "name": "Zaufany", "perk": "garaz", "day": 30, "bonus": 700, "desc": "Garaż 14 za pół ceny — Wiktor dogadał się z właścicielem."},

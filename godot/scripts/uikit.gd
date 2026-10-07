@@ -391,6 +391,21 @@ static func tier_bb(pur) -> String:
 	return "[color=#9aa3b2]czystość %d%%%s[/color]" % [int(pur), " • mieszanka" if G.is_mix(pur) else ""]
 
 
+## „Łapka” samouczka: kołysząca się dłoń przy kontrolce, którą trzeba teraz kliknąć (znika razem z nią)
+static func point_hand(target: Control, offset := Vector2(-34, 4)) -> void:
+	var hnd := icon("hand", 26.0, Color(1.0, 0.86, 0.35))
+	hnd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hnd.z_index = 30
+	hnd.position = offset
+	hnd.rotation = -0.5
+	target.add_child(hnd)
+	var tw := hnd.create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.set_loops()
+	tw.tween_property(hnd, "position:x", offset.x + 9.0, 0.45).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(hnd, "position:x", offset.x, 0.45).set_trans(Tween.TRANS_SINE)
+
+
 static func icon_label(ic: String, text: String, size := 14, color := C_TXT, isize := 16.0) -> HBoxContainer:
 	var h := hbox(5)
 	h.add_child(icon(ic, isize, color))

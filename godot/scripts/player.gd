@@ -283,7 +283,8 @@ func visibility() -> float:
 	var v := 1.0
 	if crouching:
 		v *= 0.6
-	if sprinting:
+	# bieg nie przyciąga wzroku patroli — liczy się tylko w prologu, gdzie trzeba się przekraść
+	if sprinting and G.run_alerts():
 		v *= 1.25
 	elif Vector2(velocity.x, velocity.z).length() < 0.3:
 		v *= 0.85
@@ -303,7 +304,7 @@ func visibility() -> float:
 func noise() -> float:
 	if hidden or not moving or crouching or loc != "out":
 		return 0.0
-	var r := 9.0 if sprinting else 3.2
+	var r := 9.0 if (sprinting and G.run_alerts()) else 3.2
 	if G.world != null:
 		var surf := String(G.world.surface_at(global_position.x, global_position.z))
 		if surf == "grass":

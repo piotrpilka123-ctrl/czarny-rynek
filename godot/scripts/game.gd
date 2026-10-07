@@ -16,6 +16,11 @@ var S := {}                 # cały stan gry (zapisywany do JSON)
 var running := false
 var busy := false           # przejścia (drzwi, sen, areszt)
 var arresting := false
+## bieg zwraca uwagę patroli tylko w prologu (i w testach skradania, które włączają to ręcznie)
+var strict_stealth := false
+func run_alerts() -> bool:
+	return prologue != null or strict_stealth
+
 var prologue = null         # reżyser prologu (scripts/prologue.gd), gdy trwa
 var now := 0.0              # sekundy rozgrywki
 var night := 0.0            # 0..1, ustawia env.gd
@@ -1386,7 +1391,6 @@ func compute_susp() -> float:
 	if S.wanted:
 		return 3.0
 	if carry and eh >= 45.0: m = 0.9
-	if carry and player.sprinting: m = maxf(m, 0.5)
 	if eh >= 80.0: m = maxf(m, 1.2)
 	if S.invest >= 85.0: m = maxf(m, 0.7)
 	if carry and S.invest >= 60.0: m = maxf(m, 0.3)
@@ -2204,13 +2208,15 @@ func client_count() -> int:
 
 
 func client_cap() -> int:
-	return int(D.MAX_CLIENTS[mini(int(S.lvl), D.MAX_CLIENTS.size() - 1)]) + (2 if has_skill("siec") else 0)
+	# od Gońca Wiktor puszcza o Tobie słowo: dwa miejsca więcej na stałych klientów
+	return int(D.MAX_CLIENTS[mini(int(S.lvl), D.MAX_CLIENTS.size() - 1)]) + (2 if has_skill("siec") else 0) + (2 if rank() >= 1 else 0)
 
 
 func check_unlocks() -> void:
 	for c in D.CLIENTS:
 		var st: Dictionary = S.cust[c.id]
-		if st.unlocked or int(S.lvl) < int(c.lvl) or S.t < float(st.lost_until) or client_count() >= client_cap():
+		# Goniec i wyżej: nowi ludzie odzywają się o poziom wcześniej
+		if st.unlocked or int(S.lvl) + (1 if rank() >= 1 else 0) < int(c.lvl) or S.t < float(st.lost_until) or client_count() >= client_cap():
 			continue
 		var via: String = c.via
 		if via.begins_with("ref:"):
@@ -2219,6 +2225,8 @@ func check_unlocks() -> void:
 			var need := int(parts[2])
 			if has_skill("slowo"):
 				need = maxi(1, int(ceil(need * 0.65)))
+			if rank() >= 1:
+				need = maxi(1, need - 1)
 			if src.unlocked and int(src.deals) >= need and float(src.sat) >= 55.0:
 				unlock_client(c.id, "Cześć. Mam numer od: %s — podobno można na tobie polegać. Odezwę się." % cust_def(parts[1]).name)
 	for c in D.CLIENTS:
@@ -3017,7 +3025,7 @@ func wholesale_max() -> int:
 ## (z zapasem). Rośnie z poziomem, bo rosną paczki i towar.
 func credit_limit() -> float:
 	var top := 0.0
-	for p in D.PRODUCTS:
+	for p in D.WHOLESALE_PRODUCTS:
 		if int(S.lvl) >= int(D.PRODUCTS[p].lvl):
 			top = maxf(top, float(D.PRODUCTS[p].cost) * wholesale_max() * (1.0 - wholesale_disc(wholesale_max())))
 	return maxf(float(D.CREDIT_BASE), round(top * 1.35 / 50.0) * 50.0) * (1.5 if has_skill("kredyt") else 1.0) * (1.5 if has_perk("limit") else 1.0)
@@ -3347,6 +3355,9 @@ func _promote(rd: Dictionary) -> void:
 	Sfx.play("good")
 	chat("wiktor", "Awans. Od dziś jesteś u mnie: %s. %s%s" % [String(rd.name), String(rd.desc), extra])
 	notify("AWANS: %s. %s%s" % [String(rd.name), String(rd.desc), extra], "level")
+	if String(rd.perk) == "plecak":
+		chat("wiktor", "Puściłem o tobie słowo na osiedlu. Odezwie się więcej ludzi — nie zawiedź ich.")
+		check_unlocks()
 
 
 func pay_credit(amount: float) -> void:
@@ -3958,7 +3969,7 @@ func _build_story() -> void:
 			"done": func(): return int(S.stats.sold) >= 1 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
 		{"id": "repay1", "text": func(): return "Zanieś pierwsze pieniądze do skrzynki Wiktora — to stara skrzynka gazowa na tyłach pawilonu. Otwórz ją [E] i przeciągnij do niej gotówkę. (%s / %s)" % [money(minf(float(D.BOX_FIRST), float(S.stats.get("box_paid", 0.0)))), money(D.BOX_FIRST)],
 			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST), "marker": _box_marker, "on_done": _on_repay_done},
-		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów towar u Wiktora: telefon → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem.",
+		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów u Wiktora 10 g marihuany i 10 g amfetaminy: telefon [%s] → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem." % kn("phone"),
 			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
 		{"id": "lvl2", "text": func(): return "Zdobądź poziom 2. Zadowolony Dominik poleci Cię dalej. (%d/%d PD)" % [int(S.xp), int(D.XP_LEVELS[1])],
 			"done": func(): return int(S.lvl) >= 2},
