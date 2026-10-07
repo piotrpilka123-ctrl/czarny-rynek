@@ -3166,6 +3166,11 @@ func _test_ui(what: String) -> void:
 			teleport("safe", Vector3(float(D.ROOMS.safe.cx) - 0.04, 0.0, float(D.ROOMS.safe.d) * 0.5 - 1.15), PI)
 			player.pitch = deg_to_rad(-62.0)
 			player.set_crouch(true)
+			# --drop=0..1: kadr scenki z klapką na listy (paczka w szczelinie, w locie, na wycieraczce)
+			if args.has("drop"):
+				world.starter_rest(float(args.drop))
+				var dc := door_cam(clampf(float(args.drop) * 1.4, 0.0, 1.0))
+				cine_cam(dc[0], dc[1], dc[2])
 		"hurtownia":
 			G.S.owned = {"regal": 1}
 			ui.open_supply()
