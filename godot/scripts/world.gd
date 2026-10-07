@@ -743,6 +743,13 @@ func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
 		_glb_fix(d)
 		c2.add_child(d)
 		n_out += 1
+	if glb_train_x > -9000.0 and not train.is_empty():
+		# kolejka ustawiona na estakadzie w podanym miejscu planu (do obejrzenia; w grze przejeżdża sama)
+		var td: Node3D = (train.node as Node3D).duplicate()
+		_glb_fix(td)
+		td.visible = true
+		td.position = Vector3(glb_train_x * SC, float(train.y), float(train.z))
+		root.add_child(td)
 	var doc := GLTFDocument.new()
 	var st := GLTFState.new()
 	var err := doc.append_from_scene(root, st)
@@ -3113,8 +3120,21 @@ func _viaduct() -> void:
 	glass.emission_enabled = true
 	glass.emission = Color(1.0, 0.86, 0.6)
 	glass.emission_energy_multiplier = 0.0
+	var have_cars := ResourceLoader.exists("res://assets/models/kolejka_czolo.glb") and ResourceLoader.exists("res://assets/models/kolejka_srodek.glb")
 	for i in range(3):
 		var cx := (i - 1) * 13.4
+		if have_cars:
+			# zespół trakcyjny z modeli: wagon czołowy, środkowy z pantografem i drugi czołowy tyłem
+			var car := Stations.model("kolejka_srodek" if i == 1 else "kolejka_czolo")
+			car.position = Vector3(cx, 0.0, 0.0)
+			car.rotation.y = PI / 2.0 if i >= 1 else -PI / 2.0
+			tr.add_child(car)
+			var win := Stations._find(car, "Okna") as MeshInstance3D
+			if win != null:
+				# okna świecą po zmroku jednym, wspólnym materiałem
+				win.material_override = glass
+				win.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			continue
 		Models.box(tr, Vector3(13.0, 2.9, 2.7), Vector3(cx, 2.05, 0), body)
 		Models.box(tr, Vector3(13.02, 0.5, 2.72), Vector3(cx, 1.2, 0), stripe, Vector3.ZERO, false)
 		Models.box(tr, Vector3(11.6, 0.95, 2.74), Vector3(cx, 2.55, 0), glass, Vector3.ZERO, false)
@@ -3132,7 +3152,7 @@ func _viaduct() -> void:
 	head.spot_range = 30.0
 	head.spot_angle = 24.0
 	head.light_volumetric_fog_energy = 2.0
-	head.position = Vector3(20.2, 2.0, 0)
+	head.position = Vector3(20.2, 1.6, 0)
 	head.rotation.y = -PI / 2.0
 	tr.add_child(head)
 	tr.visible = false
@@ -3316,6 +3336,7 @@ func _backdrop() -> void:
 ## Zieleń sadzona jest, zanim stanie zabudowa uzupełniająca i garaże, więc część drzew i krzaków lądowała w środku
 ## budynków (pień przez dach garażu). Po postawieniu wszystkiego takie rośliny znikają razem z kolizją i kryjówką.
 var args_debug := false
+var glb_train_x := -9999.0           # podgląd: gdzie postawić kolejkę (plan miasta)
 var greens_evicted := 0
 var passages: Array = []            # przejścia w płotach: [x, z, czy płot biegnie wschód–zachód, rodzaj]
 
