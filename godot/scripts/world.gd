@@ -713,10 +713,10 @@ func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
 				continue
 			if mi.material_override is ShaderMaterial:
 				root.add_child(_glb_plain(mi, Color.WHITE, ptex))
-			else:
+			elif mi.visible:
 				root.add_child(mi.duplicate())
 			n_out += 1
-		elif n is MultiMeshInstance3D:
+		elif n is MultiMeshInstance3D and (n as Node3D).visible:
 			var mm := n as MultiMeshInstance3D
 			var ab2 := mm.transform * mm.get_aabb()
 			var c0 := ab2.get_center()
@@ -3226,6 +3226,9 @@ func _backdrop() -> void:
 			mi2.set_instance_shader_parameter("b_accent", Color(0.65, 0.58, 0.48))
 			mi2.set_instance_shader_parameter("b_seed", rng.randf() * 10.0)
 			mi2.set_instance_shader_parameter("b_dead", rng.randf_range(0.0, 0.4))
+			# za portalem kolejowym ciągnie się przepust — blok nie może w niego wchodzić
+			if px < 156.0 and px + w > 134.0:
+				mi2.visible = false
 		px += rng.randf_range(34.0, 46.0)
 	var pz := -190.0
 	while pz < 190.0:
@@ -3237,6 +3240,9 @@ func _backdrop() -> void:
 			var mi3 := Models.box(city, Vector3(16.0, hh2, d2), Vector3(bx3, hd(xx2 * 0.9, pz) + hh2 * 0.5 - 0.5, pz + d2 * 0.5), fac[kk2])
 			# korytarz estakady zostaje wolny: tam stoi hala, w którą wjeżdża kolejka
 			mi3.visible = pz + d2 < -46.0 or pz > -2.0
+			# tak samo rura tunelu na zachodnim końcu Hutniczej
+			if xx2 < 0.0 and pz < 33.0 and pz + d2 > 7.0:
+				mi3.visible = false
 			mi3.set_instance_shader_parameter("b_origin", Vector3((bx3 - 8.0) * SC, hd(xx2 * 0.9, pz), pz * SC))
 			mi3.set_instance_shader_parameter("b_wall", Color(0.74, 0.72, 0.68) * rng.randf_range(0.85, 1.1))
 			mi3.set_instance_shader_parameter("b_accent", Color(0.65, 0.58, 0.48))
