@@ -65,7 +65,7 @@ def huta_brama():
     for k in range(16):
         s.append(rbox('pas%d' % k, (0.1, 0.004, 0.36), mat('zolty' if k % 2 == 0 else 'czarny', 'c8a21a' if k % 2 == 0 else '17181a', 0.7), 0.0, (-W / 2 + 0.12 + k * 0.2, -0.176, 0.3), (0, math.radians(35), 0), segs=1))
     so = join('Pasy', s)
-    weather([so], 512, 0.8, 0.9, RUST)
+    weather([so], 1024, 0.5, 0.6, RUST)
     t = [text('napis', 'HALL 2', 0.26, mat('szablon', 'd8d4c8', 0.8), (-W / 4, -0.176, 2.2), (R90, 0, 0), 0.0008)]
     t.append(text('napis2', 'KEEP CLEAR', 0.1, mat('szablon', 'd8d4c8', 0.8), (-W / 4, -0.176, 1.95), (R90, 0, 0), 0.0008))
     join('Napisy', t)
@@ -115,10 +115,37 @@ def huta_drzwi():
     p.append(rbox('kaseton', (0.46, 0.07, 0.2), frame, 0.008, (0, -0.06, 2.92)))
     ob = join('Drzwi', p)
     weather([ob], 2048, 0.7, 0.35, RUST)
+    # taśma ostrzegawcza na ościeżnicy i nadprożu: ciągłe żółto-czarne ukośne pasy (wcześniej osobne romby — nieczytelne)
+    yel = mat('zolty', 'd2aa1c', 0.7)
+    blk = mat('czarny', '17181a', 0.7)
     s = []
+    from lib import profile as _pf
     for sx in (-1, 1):
-        for k in range(9):
-            s.append(rbox('szewron', (0.1, 0.003, 0.07), mat('zolty' if k % 2 == 0 else 'czarny', 'c8a21a' if k % 2 == 0 else '17181a', 0.7), 0.0, (sx * 0.64, -0.1515, 0.14 + k * 0.245), (0, math.radians(30 * sx), 0), segs=1))
+        s.append(rbox('tasma', (0.1, 0.003, 2.2), yel, 0.0, (sx * 0.64, -0.1515, 1.1), segs=1))
+        z = 0.0
+        while z < 2.2:
+            z1, z2 = z, min(2.2, z + 0.1)
+            # równoległobok pasa: po lewej stronie drzwi pochylony w jedną stronę, po prawej w drugą
+            lo_a, lo_b = (z1, min(2.2, z1 + 0.1)) if sx < 0 else (min(2.2, z1 + 0.1), z1)
+            hi_a, hi_b = (z2, min(2.2, z2 + 0.1)) if sx < 0 else (min(2.2, z2 + 0.1), z2)
+            pr = _pf('pas', [(-0.05, lo_a), (0.05, lo_b), (0.05, hi_b), (-0.05, hi_a)], 0.002, blk, 0.0004)
+            pr.location = (sx * 0.64, -0.154, 0.0)
+            s.append(pr)
+            z += 0.2
+    s.append(rbox('tasma_g', (1.38, 0.003, 0.1), yel, 0.0, (0, -0.1515, 2.26), segs=1))
+    x = -0.69
+    while x < 0.69:
+        x1, x2 = x, min(0.69, x + 0.1)
+        pr = _pf('pas_g', [(x1, 2.21), (x2, 2.21), (min(0.69, x2 + 0.1), 2.31), (min(0.69, x1 + 0.1), 2.31)], 0.002, blk, 0.0004)
+        pr.location = (0, -0.154, 0.0)
+        s.append(pr)
+        x += 0.2
+    # tabliczka na skrzydle: co to za drzwi
+    tb = [rbox('tabliczka', (0.5, 0.004, 0.2), mat('tabl_z', '1f7a44', 0.6), 0.004, (-0.16, -0.118, 1.68)),
+          text('tabl_t1', 'EMERGENCY EXIT', 0.05, mat('tabl_b', 'f2fff4', 0.5), (-0.16, -0.122, 1.71)),
+          text('tabl_t2', 'KEEP CLEAR', 0.04, mat('tabl_b', 'f2fff4', 0.5), (-0.16, -0.122, 1.64))]
+    tbo = join('Tabliczka', tb)
+    weather([tbo], 512, 0.25, 0.3, RUST)
     so = join('Szewrony', s)
     weather([so], 512, 0.8, 0.9, RUST)
     lathe('Swiatlo', [(0.0, 0.05), (0.055, 0.05), (0.06, 0.1), (0.045, 0.16), (0.0, 0.18)], mat('klosz', 'ffe2b0', 0.3, 0.0, 4.0), 12, loc=(0, -0.05, 2.6)).rotation_euler = (R90, 0, 0)
