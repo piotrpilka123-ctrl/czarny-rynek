@@ -362,7 +362,8 @@ static func _walk_variants(lib: AnimationLibrary) -> void:
 	_scale_motion(made["Walk_Swagger"], ["pelvis"], 1.4)
 	# przygarbiony: plecy i głowa pochylone jak w „zombie”, ręce prawie nie pracują
 	if lib.has_animation("Zombie_Walk_Fwd"):
-		_mix_cycle(made["Walk_Hunched"], lib.get_animation("Zombie_Walk_Fwd"), TORSO, 0.5)
+		# (tylko domieszka — przy połowie wychodził krok żywego trupa)
+		_mix_cycle(made["Walk_Hunched"], lib.get_animation("Zombie_Walk_Fwd"), TORSO, 0.25)
 	_scale_motion(made["Walk_Hunched"], ARMS, 0.45)
 	# z telefonem przy uchu: prawa ręka i głowa z rozmowy telefonicznej
 	if lib.has_animation("Idle_TalkingPhone"):

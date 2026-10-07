@@ -97,7 +97,8 @@ func spawn_citizen(idx := 0) -> Dictionary:
 		o["beard"] = true
 	var drunk := idx == 4
 	if drunk:
-		o["walk"] = "Zombie_Walk_Fwd"
+		# pijany idzie zwykłym, przygarbionym krokiem i się zatacza (niżej) — krok „zombie” robił z niego żywego trupa
+		o["walk"] = "Walk_Hunched"
 		o["kind"] = "jacket"
 	var rig: Dictionary = Chars.make(o)
 	add_child(rig.root)
@@ -110,7 +111,7 @@ func spawn_citizen(idx := 0) -> Dictionary:
 	var n := {
 		"kind": "citizen", "loc": "out", "rig": rig, "node": rig.root, "female": female, "x": w.x, "z": w.z, "wi": ni, "pi": -1,
 		"tx": w.x, "tz": w.z, "rot": 0.0, "speed": randf_range(1.05, 1.5) * (0.6 if drunk else 1.0), "idle": randf_range(0.0, 3.0), "state": "walk", "talk_t": 0.0,
-		"idle_pose": "phone" if randf() < 0.35 else ("junkie" if drunk else ""), "reroll": randf_range(60.0, 160.0), "icon": icon, "active": true, "idx": idx, "drunk": drunk,
+		"idle_pose": "phone" if (randf() < 0.35 and not drunk) else "", "reroll": randf_range(60.0, 160.0), "icon": icon, "active": true, "idx": idx, "drunk": drunk,
 	}
 	_roll_identity(n)
 	n.interact = {"label": func(): return "Zagadaj: " + String(n.name), "range": 2.6, "act": func(): approach_citizen(n)}
@@ -456,7 +457,8 @@ func _build_static() -> void:
 		"look": {"model": "mg1", "kind": "jacket", "top": "55504a", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "3a3530", "build": 1.05, "height": 1.7, "seed": 34},
 		"lines": ["Jak huta stała, to tu było życie. A teraz? Sam pan widzi.", "Trzydzieści lat przy piecu. I co mi z tego zostało?", "Kiedyś to na tej górce saneczki, festyny… Dziś strach wieczorem wyjść."]})
 	# pijaczek pod monopolowym
-	_static({"x": 33.4, "z": 11.2, "rot": 0.3, "pose": "junkie", "name": "Zdzichu",
+	# (siedzi na skrzynce pod ścianą; wcześniej stał zgięty wpół jak zombie)
+	_static({"x": 33.4, "z": 11.2, "rot": 0.3, "pose": "sit", "y": 0.02, "name": "Zdzichu",
 		"look": {"model": "m07", "kind": "jacket", "top": "4a4538", "bottom": "2b2622", "beard": true, "hair": "hair_simpleparted", "hair_color": "7a7a7a", "seed": 35},
 		"lines": ["Kierowniku… poratuj złotówką…", "Ja tu wszystko widzę. Wszyściutko. Ale nic nie mówię.", "Zimno dziś, co?"]})
 	# potencjalni klienci „z rozmowy”
@@ -1130,8 +1132,17 @@ func update(dt: float) -> void:
 				n.x += dx / d * sp * dt
 				n.z += dz / d * sp * dt
 				n.rot = atan2(dx, dz)
-			n.node.rotation.y += _ang_diff(n.rot, n.node.rotation.y) * minf(1.0, dt * 8.0)
+			n.node.rotation.y += _ang_diff(n.rot + (sin(G.now * 1.05 + float(n.idx)) * 0.32 if (n.drunk and sp > 0.0) else 0.0), n.node.rotation.y) * minf(1.0, dt * 8.0)
 		n.node.position = Vector3(n.x, _h(n.x, n.z), n.z)
+		if n.drunk:
+			# zataczanie: buja się na boki, lekko pochylony, a w marszu znosi go raz w lewo, raz w prawo
+			var ph: float = G.now * 1.5 + float(n.idx)
+			var mdl := n.rig.model as Node3D
+			mdl.rotation.z = sin(ph) * (0.1 if sp > 0.0 else 0.055)
+			mdl.rotation.x = 0.05 + sin(ph * 0.63) * 0.04
+			if sp > 0.0:
+				var sway := sin(ph * 0.7) * 0.16
+				n.node.position += Vector3(cos(n.node.rotation.y), 0.0, -sin(n.node.rotation.y)) * sway
 		var near := dp < 70.0
 		Chars.set_active(n.rig, near)
 		if near:

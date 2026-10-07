@@ -793,9 +793,11 @@ func export_glb(path: String, cx: float, cz: float, rad: float) -> void:
 			ap.active = true
 			# animacja od razu, bez przenikania z poprzedniej — inaczej w pliku zostaje poza stojąca
 			var an_name := String(G.main.npcs.Chars.POSES.get(String(st0.pose), "Idle"))
+			if glb_anim != "":
+				an_name = glb_anim.get_slice("@", 0)        # podgląd wybranej animacji: --anim=Nazwa@sekunda
 			if ap.has_animation(an_name):
 				ap.play(an_name, 0.0)
-			ap.advance(0.7)
+			ap.advance(float(glb_anim.get_slice("@", 1)) if glb_anim.contains("@") else 0.7)
 			var pd: Node3D = (rig.root as Node3D).duplicate()
 			pd.visible = true
 			_glb_fix(pd)
@@ -3421,6 +3423,7 @@ func _backdrop() -> void:
 ## Zieleń sadzona jest, zanim stanie zabudowa uzupełniająca i garaże, więc część drzew i krzaków lądowała w środku
 ## budynków (pień przez dach garażu). Po postawieniu wszystkiego takie rośliny znikają razem z kolizją i kryjówką.
 var args_debug := false
+var glb_anim := ""                    # podgląd: animacja wymuszona u dołączonych postaci
 var glb_people := false              # podgląd: dołącz stojące postacie
 var glb_train_x := -9999.0           # podgląd: gdzie postawić kolejkę (plan miasta)
 var greens_evicted := 0
@@ -3592,7 +3595,7 @@ const LITTER_SPOTS := [[22.0, -69.0, 4.0, 16], [-14.5, -104.3, 2.5, 5], [4.0, -1
 	[53.0, -108.0, 5.0, 14], [-70.0, -110.0, 5.0, 14], [44.0, -121.0, 14.0, 14], [78.0, -44.5, 12.0, 22], [80.0, -59.5, 8.0, 12], [70.0, -58.8, 2.0, 3],
 	[66.0, 12.0, 4.0, 12], [-58.0, 12.4, 3.0, 6], [-84.0, -13.5, 5.0, 10], [5.4, 124.0, 6.0, 20], [-26.0, 142.5, 6.0, 10], [58.0, 84.0, 12.0, 18],
 	[108.0, 110.0, 5.0, 8], [-88.0, 66.0, 4.0, 10], [-70.0, 128.0, 10.0, 10], [126.0, 20.0, 6.0, 14], [100.0, 142.0, 7.5, 26], [8.0, -75.6, 3.0, 6],
-	[-60.0, -75.4, 3.0, 6], [-27.0, -16.5, 3.0, 6], [60.0, -16.5, 3.0, 6], [-193.0, 20.0, 5.0, 6], [8.0, 165.6, 6.0, 12], [-10.0, 166.5, 5.0, 6], [200.0, 27.0, 5.0, 6], [-181.0, 11.0, 4.0, 3], [-181.0, 30.5, 4.0, 4], [172.0, 30.0, 6.0, 10]]
+	[-60.0, -75.4, 3.0, 6], [-27.0, -16.5, 3.0, 6], [60.0, -16.5, 3.0, 6], [-193.0, 20.0, 5.0, 6], [8.0, 165.6, 6.0, 12], [33.6, 12.4, 1.8, 5], [-10.0, 166.5, 5.0, 6], [200.0, 27.0, 5.0, 6], [-181.0, 11.0, 4.0, 3], [-181.0, 30.5, 4.0, 4], [172.0, 30.0, 6.0, 10]]
 
 func _litter() -> void:
 	var lr := RandomNumberGenerator.new()
@@ -3727,6 +3730,8 @@ func _street_details() -> void:
 			add_child(mmi)
 			drains = pts.size()
 		inst.free()
+	# skrzynka pod monopolowym, na której siedzi Zdzichu
+	_prop("wooden_crate_02", 33.4, 11.2, 0.3, 0.42, 0.0, false)
 	for e in [[-150.0, 20.6], [-60.0, 19.4], [100.0, 20.5], [150.0, 19.5], [0.6, 70.0], [-0.5, 120.0], [-106.0, -60.0], [-106.4, -110.0], [-40.0, -130.0], [40.0, -130.6], [95.0, -95.0],
 			[-27.0, -90.0], [60.0, -50.0], [8.0, -66.0], [-5.3, 45.0], [75.0, 50.0], [166.0, -30.0], [10.0, 157.0]]:
 		_prop("water_manhole_cover", float(e[0]), float(e[1]), float(e[0]) * 0.7, 0.0, 0.0, false, 0.01)
