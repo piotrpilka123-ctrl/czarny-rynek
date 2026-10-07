@@ -489,13 +489,20 @@ func tip_show(title: String, text: String, secs := 11.0) -> void:
 	h.add_child(xb)
 	Sfx.play("open")
 	cc.modulate.a = 0.0
-	cc.offset_top = -60.0
+	# przy otwartym ekwipunku karta siada na dole, żeby nie zasłaniać zakładek, nazw paneli i pojemności
+	var low: bool = inv != null and inv.visible
+	if low:
+		cc.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		cc.offset_bottom = -2.0
+		cc.offset_top = -80.0
+	else:
+		cc.offset_top = -60.0
 	# animacja należy do karty: gdy kartę zastąpi następna, ta po prostu znika razem z nią
 	var tw := cc.create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tw.set_parallel(true)
 	tw.tween_property(cc, "modulate:a", 1.0, 0.25)
-	tw.tween_property(cc, "offset_top", 14.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(cc, "offset_top", -124.0 if low else 14.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_interval(secs)
 	tw.chain().tween_property(cc, "modulate:a", 0.0, 0.5)
 	tw.chain().tween_callback(cc.queue_free)

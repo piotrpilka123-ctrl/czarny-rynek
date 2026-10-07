@@ -414,9 +414,9 @@ func _tab_inv() -> void:
 	var mid := K.vbox(8)
 	mid.custom_minimum_size = Vector2(W_MID, H_BODY)
 	row.add_child(mid)
-	var view := _char_view(W_MID, 340.0)
+	var view := _char_view(W_MID, 396.0)
 	mid.add_child(view)
-	_gear_slots(view, W_MID, 340.0)
+	_gear_slots(view, W_MID, 396.0)
 	mid.add_child(_detail())
 	# --- prawa strona: skrytka albo ziemia
 	if has_stash():
@@ -443,7 +443,6 @@ func _tab_inv() -> void:
 			# paczka / skrytka Wiktora / rzeczy na ziemi: bierzesz stąd do plecaka (na ziemię można też odkładać)
 			var L: Dictionary = G.loot
 			_title(rv, "", String(L.get("title", "POJEMNIK")), String(L.get("note", "")), K.C_DIM)
-			_list(rv, st, "stash", String(L.get("empty", "Pusto.")))
 			var all: Button = T._mini("Zabierz wszystko", func():
 				if G.loot_take_all() > 0:
 					Sfx.play("pickup")
@@ -456,6 +455,7 @@ func _tab_inv() -> void:
 			all.custom_minimum_size = Vector2(0, 32)
 			all.tooltip_text = String(L.get("hint", ""))
 			rv.add_child(all)
+			_list(rv, st, "stash", String(L.get("empty", "Pusto.")))
 		else:
 			_title(rv, "", String(D.ROOMS[room].name).to_upper(), "%s / %d" % [G.units(sused), int(scap)], K.C_BAD if sused > scap - 0.5 and scap > 0.0 else K.C_TXT)
 			rv.add_child(_cap_bar(sused, scap, K.C_GOLD))
@@ -1034,7 +1034,7 @@ func _detail() -> Control:
 		var box := K.hbox(0)
 		box.alignment = BoxContainer.ALIGNMENT_CENTER
 		box.add_theme_constant_override("separation", 26)
-		_num(box, "ok. " + G.money(G.carry_value()), "wartość na ulicy")
+		_num(box, ("ok. " + G.money(G.carry_value())) if goods > 0.0 else "—", "wartość na ulicy")
 		_num(box, "%d g" % G.packed_total(S.inv), "w %d paczkach" % G.packed_bags(S.inv))
 		_num(box, G.weight_text(G.store_weight(S.inv)), "waga")
 		v.add_child(box)
@@ -1060,7 +1060,7 @@ func _detail() -> Control:
 	h.add_child(hv)
 	v.add_child(h)
 	var dl := K.wrap(e.desc, 12, T.C_MID)
-	dl.max_lines_visible = 4
+	dl.max_lines_visible = 3
 	v.add_child(dl)
 	# ubranie: co daje
 	if e.kind == "item" and G.is_gear(String(e.id)):
@@ -1188,7 +1188,7 @@ func _tab_wear() -> void:
 	left.add_child(idc)
 	var iv := K.vbox(3)
 	idc.add_child(iv)
-	iv.add_child(K.lbl("MASZ NA SOBIE", 10, K.C_DIM))
+	iv.add_child(K.lbl("MASZ NA SOBIE", 10, T.C_LOW))
 	for se in D.GEAR_SLOTS:
 		var wid: String = G.gear(String(se[0]))
 		var wr := K.hbox(6)
@@ -1209,7 +1209,7 @@ func _tab_wear() -> void:
 	right.add_child(rv)
 	_title(rv, "store", "TANIA ODZIEŻ — WIESZAK" if in_shop else "UBRANIA", G.money(S.cash) if in_shop else "", K.C_ACC)
 	if not in_shop:
-		rv.add_child(K.wrap("Ubrania kupisz w „Taniej Odzieży” przy Hutniczej. Zakładasz je w zakładce Ekwipunek, przeciągając na pole przy postaci — albo przyciskiem tutaj (w kryjówce lub w sklepie).", 12, K.C_DIM))
+		rv.add_child(K.wrap("Kupisz je w Taniej Odzieży przy Hutniczej.", 12, T.C_LOW))
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1225,7 +1225,7 @@ func _tab_wear() -> void:
 			if String(D.ITEMS[gid].get("slot", "")) == slot:
 				ids.append(gid)
 		ids.sort_custom(func(a, b): return int(D.ITEMS[a].lvl) * 100000 + int(D.ITEMS[a].price) < int(D.ITEMS[b].lvl) * 100000 + int(D.ITEMS[b].price))
-		list.add_child(K.lbl(String(se[1]).to_upper(), 10, T.C_LOW))
+		var head_done := false
 		for gid in ids:
 			var iid: String = gid
 			var gd: Dictionary = D.ITEMS[iid]
@@ -1233,6 +1233,9 @@ func _tab_wear() -> void:
 			var have: bool = worn or G.item(iid) > 0
 			if not in_shop and not have:
 				continue
+			if not head_done:
+				head_done = true
+				list.add_child(K.lbl(String(se[1]).to_upper(), 10, T.C_LOW))
 			wear_offer.append(iid)
 			var glocked: bool = int(S.lvl) < int(gd.lvl)
 			var gc := K.panel(T._flat(0.07 if worn else 0.03, 0.4 if worn else 0.0, 9, 6, 7))
@@ -1264,7 +1267,7 @@ func _tab_wear() -> void:
 			gb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			gh.add_child(gb)
 	if wear_offer.is_empty():
-		list.add_child(K.wrap("Nie masz jeszcze żadnych ubrań na zmianę.", 12, K.C_DIM))
+		list.add_child(K.wrap("Nie masz jeszcze ubrań na zmianę.", 12, T.C_LOW))
 	hint.text = "cechy na czerwono szkodzą  •  lepsze rzeczy odblokowują kolejne poziomy"
 
 
