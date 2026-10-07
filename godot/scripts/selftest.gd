@@ -541,8 +541,10 @@ func run() -> void:
 	S.orders.clear()
 	G.npcs.clear_customers()
 	var o2: Dictionary = G.make_order(G.cust_def("dominik"))
-	G.reply_order(o2.id, "price", int(o2.stated) + 1)
-	ok(G.find_order(o2.id) != null, "negocjacja przez telefon nie zrywa rozmowy przy +1 zł")
+	var sum2: int = G.order_sum(o2)
+	ok(sum2 == int(o2.stated) * int(o2.grams) and String(o2.text).contains(str(sum2)) and absf(float(o2.deadline) - float(o2.meet) - D.CLIENT_WAIT) < 0.1, "klient podaje sumę za całość (%d zł) i jest gotów czekać 5 godzin" % sum2)
+	G.reply_order(o2.id, "price", sum2 + 1)
+	ok(G.find_order(o2.id) != null, "negocjacja przez telefon nie zrywa rozmowy przy +1 zł do sumy")
 	var o3 = G.find_order(o2.id)
 	if o3 != null and o3.status == "new" and o3.counter != null:
 		G.reply_order(o3.id, "counterok")
@@ -550,17 +552,80 @@ func run() -> void:
 	if o3 != null and o3.status == "new":
 		G.reply_order(o3.id, "accept")
 	o3 = G.find_order(o2.id)
-	ok(o3 != null and o3.status == "accepted", "zamówienie umówione")
+	ok(o3 != null and o3.status == "accepted" and G.order_sum(o3) >= sum2, "zamówienie umówione (%d zł za %d g)" % [G.order_sum(o3) if o3 != null else 0, int(o2.grams)])
 	if o3 != null:
+		# inna godzina: klient zgadza się albo sam proponuje porę obok — bez fochów i bez utraty zadowolenia
 		var m0: float = o3.meet
+		var rng_m: Vector2 = G.meet_range()
+		var tgt: float = clampf(m0 + 60.0, rng_m.x, rng_m.y)
+		var sat_t: float = S.cust[o3.cust].sat
 		var tries := 0
-		while float(o3.meet) == m0 and tries < 12 and G.find_order(o3.id) != null:
+		var offered := false
+		while float(o3.meet) != tgt and tries < 20 and G.find_order(o3.id) != null:
 			tries += 1
 			o3.resched = false
-			G.reply_order(o3.id, "time", m0 + 60.0)
-		ok(float(o3.meet) == m0 + 60.0, "zmiana godziny spotkania")
+			G.reply_order(o3.id, "time", tgt)
+			if o3.has("time_offer"):
+				offered = true
+				ok(absf(float(o3.time_offer) - tgt) >= 20.0 and float(o3.time_offer) >= rng_m.x and float(o3.time_offer) <= rng_m.y, "gdy pora nie pasuje, klient proponuje własną, dziś i niedaleko (%s)" % G.clock(o3.time_offer)) if tries == 1 else null
+		ok(float(o3.meet) == tgt and float(S.cust[o3.cust].sat) == sat_t and absf(float(o3.deadline) - tgt - D.CLIENT_WAIT) < 0.1, "zmiana godziny spotkania (kontrpropozycja po drodze: %s)" % str(offered))
+		o3["time_offer"] = clampf(tgt + 45.0, rng_m.x, rng_m.y)
+		var want_t: float = o3.time_offer
+		G.reply_order(o3.id, "timeok")
+		ok(float(o3.meet) == want_t and not o3.has("time_offer"), "zgoda na porę zaproponowaną przez klienta")
+		ok(G.meet_range().y < floorf(S.t / 1440.0) * 1440.0 + 1440.0 + 91.0 and G.meet_range().x >= S.t + 20.0, "na zegarze da się wskazać tylko dzisiejszą porę, najwcześniej za 20 minut")
 		G.reply_order(o3.id, "decline")
 		ok(G.find_order(o3.id) == null, "odwołanie spotkania")
+	# zejście z ceny: klient bierze od ręki i jest zadowolony
+	S.orders.clear()
+	var od: Dictionary = G.make_order(G.cust_def("dominik"))
+	var sat_d: float = S.cust.dominik.sat
+	G.reply_order(od.id, "price", G.order_sum(od) - 10)
+	ok(od.status == "accepted" and absf(float(od.agreed) * int(od.grams) - float(int(od.stated) * int(od.grams) - 10)) < 0.01 and float(S.cust.dominik.sat) > sat_d, "suma niższa o 10 zł: zgoda od razu i zadowolony klient")
+	G.reply_order(od.id, "decline")
+	# zamiana towaru: klient, który lubi też amfetaminę, zwykle się zgadza; sumę i gramy liczy na nowo
+	S.orders.clear()
+	var lvl_s: int = S.lvl
+	S.lvl = maxi(int(S.lvl), int(D.PRODUCTS.szron.lvl))
+	G.add_pack(S.inv, "szron", 100, 4)
+	var cs = null
+	for cd0 in D.CLIENTS:
+		if "szron" in cd0.get("prods", [cd0.prod]) and String(cd0.prod) == "dym":
+			cs = cd0
+	ok(cs != null, "jest klient, który bierze trawę, ale lubi też amfetaminę")
+	if cs != null:
+		var swapped_ok := false
+		for tr in range(12):
+			S.orders.clear()
+			var os: Dictionary = G.make_order(cs, 0, "dym")
+			var opts_s: Array = G.swap_options(os)
+			if tr == 0:
+				ok(opts_s.size() >= 1 and String(opts_s[0].p) == "szron" and int(opts_s[0].have) >= 4, "zamiana towaru: do wyboru to, co masz zaporcjowane (amfetamina, %d porcji)" % int(opts_s[0].have))
+			G.reply_order(os.id, "swap", "szron")
+			if String(os.product) == "szron":
+				swapped_ok = int(os.grams) >= 1 and G.order_sum(os) == int(os.stated) * int(os.grams) and bool(os.swapped)
+				G.reply_order(os.id, "swap", "dym")
+				swapped_ok = swapped_ok and String(os.product) == "szron"
+				break
+		ok(swapped_ok, "klient zgadza się na inny towar, podaje nową sumę; drugi raz przy tym zamówieniu pytać nie można")
+	G.take_pack(S.inv, "szron", 100, 99)
+	S.lvl = lvl_s
+	# pięć godzin czekania bez żalu: po terminie zamówienie znika, ale zadowolenie i lojalność zostają
+	S.orders.clear()
+	var ow: Dictionary = G.make_order(G.cust_def("dominik"))
+	G.reply_order(ow.id, "accept")
+	var sat_w: float = S.cust.dominik.sat
+	var loy_w: float = S.cust.dominik.loy
+	var t_w: float = S.t
+	S.t = float(ow.meet) + D.CLIENT_WAIT - 20.0
+	G.on_tick()
+	ok(G.find_order(ow.id) != null, "cztery i pół godziny po umówionej porze klient dalej czeka")
+	S.t = float(ow.meet) + D.CLIENT_WAIT + 5.0
+	G.on_tick()
+	ok(G.find_order(ow.id) == null and float(S.cust.dominik.sat) == sat_w and float(S.cust.dominik.loy) == loy_w, "po pięciu godzinach odpuszcza, ale się nie zraża")
+	S.t = t_w
+	S.orders.clear()
+	G.npcs.clear_customers()
 
 	# --- „Zaraz wracam”: klient czeka, zamówienie zostaje; „Rezygnuję” je odwołuje
 	S.orders.clear()
@@ -882,7 +947,7 @@ func _sim_one(days: int, run_i: int) -> String:
 				G.reply_order(o.id, "decline")
 				continue
 			if randf() < skill * 0.5:
-				G.reply_order(o.id, "price", int(round(float(o.stated) * 1.08)))
+				G.reply_order(o.id, "price", int(round(float(G.order_sum(o)) * 1.08)))
 				var o2 = G.find_order(o.id)
 				if o2 != null and o2.status == "new" and o2.counter != null:
 					G.reply_order(o.id, "counterok")

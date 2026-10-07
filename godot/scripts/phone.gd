@@ -45,8 +45,11 @@ var sv: VBoxContainer
 var wall: TextureRect
 var _dir := 1.0
 var nego := -1
-var nego_price := 0
+var nego_price := 0             # negocjowana SUMA za całość (zł)
 var retime := -1
+var retime_t := 0.0             # pora wskazana na tarczy zegara
+var swap := -1                  # zamówienie, przy którym wybierasz inny towar
+const Dial = preload("res://scripts/clock_dial.gd")
 var hot: Array = []          # akcje kafli pod rozmową (klawisze 1–4)
 
 
@@ -617,7 +620,10 @@ func _order_footer(order: Dictionary) -> void:
 	var oid := int(order.id)
 	var S: Dictionary = G.S
 	var accepted: bool = order.status == "accepted"
-	var price: int = int(order.agreed) if (accepted and order.agreed != null) else (int(order.counter) if order.counter != null else int(order.stated))
+	var grams := int(order.grams)
+	var sum: int = G.order_sum(order)
+	var per := float(sum) / float(maxi(1, grams))
+	var per_txt := ("%d" % int(round(per))) if absf(per - round(per)) < 0.05 else ("%.1f" % per).replace(".", ",")
 	# --- karta: co, za ile, gdzie, kiedy
 	var edge := K.C_ACC if accepted else K.C_WARN
 	var card := K.panel(K.sb(Color(0.075, 0.09, 0.13), 14, Color(edge.r, edge.g, edge.b, 0.55), 1, 10))
@@ -645,99 +651,134 @@ func _order_footer(order: Dictionary) -> void:
 	g2.add_child(c2)
 	_fact(c1, D.PRODUCT_ICONS.get(order.product, "leaf"), "%d g %s" % [int(order.grams), D.PRODUCT_GEN[order.product]])
 	_fact(c1, "map_pin", String(G.spot_def(order.spot).name))
-	_fact(c2, "banknote", "%d zł/g  •  %s" % [price, G.money(price * int(order.grams))], K.C_ACC)
+	_fact(c2, "banknote", "%s  •  %s zł/g" % [G.money(sum), per_txt], K.C_ACC)
 	if accepted:
 		var left: float = float(order.meet) - S.t
-		_fact(c2, "clock", "%s  •  %s" % [G.clock(order.meet), ("za %d min" % int(left)) if left > 0.0 else "czeka!"], K.C_TXT if left > 10.0 else K.C_WARN)
+		# klient czeka ok. 5 godzin i się nie zraża; do godziny po umówionej porze jest wręcz zadowolony
+		var wait_txt := ("za %d min" % int(left)) if left > 0.0 else ("czeka • jeszcze %d min na premię" % int(D.CLIENT_EARLY + left) if left > -D.CLIENT_EARLY else "czeka do %s" % G.clock(order.deadline))
+		_fact(c2, "clock", "%s  •  %s" % [G.clock(order.meet), wait_txt], K.C_TXT if left > 10.0 else (K.C_ACC if left > -D.CLIENT_EARLY else K.C_WARN))
 	elif order.get("fixed", false) and float(order.meet) > S.t + 12.0:
 		_fact(c2, "clock", "%s  •  ustalone" % G.clock(order.meet))
 	else:
 		_fact(c2, "clock", "ok. %s  •  za godzinę" % G.clock(G.default_meet()))
 
-	# --- wybór nowej godziny
+	# --- wybór nowej godziny: tarcza zegara — wskazówkę ustawiasz kliknięciem albo przeciąganiem (tylko dziś)
 	if retime == oid:
-		footer.add_child(K.lbl("KIEDY CHCESZ SIĘ SPOTKAĆ?", 10, K.C_DIM))
-		var opts: Array = []
-		if accepted:
-			var m: float = order.meet
-			if m - 30.0 > S.t + 20.0:
-				opts.append([m - 30.0, "30 min wcześniej"])
-			opts.append([m + 30.0, "30 min później"])
-			opts.append([m + 60.0, "godzinę później"])
-			opts.append([m + 120.0, "2 godz. później"])
-		else:
-			for e in [[30.0, "za pół godziny"], [90.0, "za 1,5 godz."], [120.0, "za 2 godz."], [180.0, "za 3 godz."]]:
-				opts.append([ceil((S.t + float(e[0])) / 5.0) * 5.0, e[1]])
-		var grid := GridContainer.new()
-		grid.columns = 2
-		grid.add_theme_constant_override("h_separation", 6)
-		grid.add_theme_constant_override("v_separation", 6)
-		footer.add_child(grid)
-		var k := 1
-		for e in opts.slice(0, 4):
-			var tm := int(e[0])
-			grid.add_child(_tile("clock", G.clock(tm), String(e[1]), K.C_BLUE, func(): retime = -1; _reply(oid, "time", tm), k))
-			k += 1
-		footer.add_child(_chip("Wróć", func(): retime = -1; _dir = 0.0; render(), "flat"))
+		var rng: Vector2 = G.meet_range()
+		if retime_t < rng.x or retime_t > rng.y:
+			retime_t = clampf(float(order.meet) + (60.0 if accepted else 0.0), rng.x, rng.y)
+		footer.add_child(K.lbl("O KTÓREJ SIĘ SPOTKACIE?  (wskaż na zegarze — tylko dziś)", 10, K.C_DIM))
+		var dial := Dial.new()
+		var dc := CenterContainer.new()
+		dc.add_child(dial)
+		footer.add_child(dc)
+		dial.setup(S.t, rng.x, rng.y, retime_t)
+		var send_t := _tile("send", "Zaproponuj %s" % G.clock(retime_t), "klient poczeka do %s" % G.clock(retime_t + D.CLIENT_WAIT), K.C_BLUE, func(): var tt := int(retime_t); retime = -1; _reply(oid, "time", tt), 1)
+		var send_l: Label = send_t.find_children("", "Label", true, false)[0]
+		var send_s: Label = send_t.find_children("", "Label", true, false)[1]
+		dial.changed.connect(func(t: float):
+			retime_t = t
+			send_l.text = "Zaproponuj %s" % G.clock(t)
+			send_s.text = "klient poczeka do %s" % G.clock(t + D.CLIENT_WAIT))
+		var fine := K.hbox(6)
+		fine.alignment = BoxContainer.ALIGNMENT_CENTER
+		for dm in [-30, -5, 5, 30]:
+			var dmin: int = dm
+			var fb := _chip(("%+d min" % dmin), func(): dial.nudge(float(dmin)), "")
+			fb.custom_minimum_size = Vector2(62, 28)
+			fine.add_child(fb)
+		footer.add_child(fine)
+		var trow := K.hbox(6)
+		trow.add_child(send_t)
+		trow.add_child(_tile("arrow_left", "Wróć", "", Color(0.6, 0.64, 0.72), func(): retime = -1; _dir = 0.0; render(), 2))
+		footer.add_child(trow)
 		return
 
-	# --- negocjacja ceny
+	# --- inny towar zamiast zamówionego
+	if swap == oid and not accepted:
+		var opts2: Array = G.swap_options(order)
+		footer.add_child(K.lbl("CO PROPONUJESZ ZAMIAST %s?" % String(D.PRODUCT_GEN[order.product]).to_upper(), 10, K.C_DIM))
+		if opts2.is_empty():
+			footer.add_child(K.wrap("Nie masz zaporcjowanego innego towaru — ani przy sobie, ani w skrytkach.", 12, K.C_WARN))
+		var k2 := 1
+		for e2 in opts2.slice(0, 3):
+			var np: String = e2.p
+			footer.add_child(_tile(D.PRODUCT_ICONS.get(np, "leaf"), String(e2.name), "masz %d porcji • klient może odmówić" % int(e2.have), K.C_GOLD, func(): swap = -1; _reply(oid, "swap", np), k2))
+			k2 += 1
+		footer.add_child(_tile("arrow_left", "Wróć", "", Color(0.6, 0.64, 0.72), func(): swap = -1; _dir = 0.0; render(), k2))
+		return
+
+	# --- negocjacja: SUMA za całość, po bokach małe przyciski — w lewo taniej (−10, −1), w prawo drożej (+1, +10)
 	if nego == oid and not accepted:
-		var base := int(order.stated)
+		var base := int(order.stated) * grams
+		nego_price = clampi(nego_price, maxi(1, int(base * 0.5)), int(base * 1.8))
 		var up := (float(nego_price) / maxf(1.0, float(base)) - 1.0) * 100.0
-		var risk := "raczej się zgodzi" if up <= 8.0 else ("może odbić kontrofertą" if up <= 28.0 else "może zerwać rozmowę")
+		var risk := "klient da tyle od ręki — i to zapamięta" if up < -0.5 else ("tyle sam proponuje" if up < 0.5 else ("raczej się zgodzi" if up <= 8.0 else ("może odbić własną sumą" if up <= 28.0 else "może zerwać rozmowę")))
 		var rc := K.C_ACC if up <= 8.0 else (K.C_WARN if up <= 28.0 else K.C_BAD)
-		footer.add_child(K.lbl("TWOJA CENA ZA GRAM", 10, K.C_DIM))
-		var nrow := K.hbox(6)
+		footer.add_child(K.lbl("ILE CHCESZ ZA CAŁOŚĆ  (%d g)" % grams, 10, K.C_DIM))
+		var nrow := K.hbox(5)
 		nrow.alignment = BoxContainer.ALIGNMENT_CENTER
-		for step in [-5, -1]:
+		for step in [-10, -1]:
 			var st: int = step
-			var mb := _chip(str(st), func(): nego_price = maxi(base, nego_price + st); _dir = 0.0; render(), "")
-			mb.custom_minimum_size = Vector2(44, 34)
+			var mb := _chip(str(st), func(): nego_price += st; _dir = 0.0; render(), "")
+			mb.custom_minimum_size = Vector2(42, 36)
 			nrow.add_child(mb)
 		var pv := K.vbox(-3)
-		pv.custom_minimum_size = Vector2(118, 0)
-		var pl := K.head("%d zł" % nego_price, 26, K.C_ACC)
+		pv.custom_minimum_size = Vector2(116, 0)
+		var pl := K.head(G.money(nego_price), 26, K.C_ACC)
 		pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		pv.add_child(pl)
-		var dl := K.lbl("klient daje %d zł  (%+d%%)" % [base, int(round(up))], 10, K.C_DIM)
+		var dl := K.lbl("klient daje %s  (%+d zł)" % [G.money(base), nego_price - base], 10, K.C_DIM)
 		dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		pv.add_child(dl)
 		nrow.add_child(pv)
-		for step in [1, 5]:
+		for step in [1, 10]:
 			var st2: int = step
 			var pb := _chip("+" + str(st2), func(): nego_price += st2; _dir = 0.0; render(), "")
-			pb.custom_minimum_size = Vector2(44, 34)
+			pb.custom_minimum_size = Vector2(42, 36)
 			nrow.add_child(pb)
 		footer.add_child(nrow)
 		var rl2 := K.lbl(risk, 11, rc)
 		rl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		footer.add_child(rl2)
 		var row := K.hbox(6)
-		row.add_child(_tile("send", "Wyślij", "%d zł/g" % nego_price, K.C_ACC, func(): nego = -1; _reply(oid, "price", nego_price), 1))
+		row.add_child(_tile("send", "Wyślij", G.money(nego_price), K.C_ACC, func(): nego = -1; _reply(oid, "price", nego_price), 1))
 		row.add_child(_tile("arrow_left", "Wróć", "", Color(0.6, 0.64, 0.72), func(): nego = -1; _dir = 0.0; render(), 2))
 		footer.add_child(row)
 		return
 
-	# --- cztery odpowiedzi
+	# --- odpowiedzi
 	var grid2 := GridContainer.new()
 	grid2.columns = 2
 	grid2.add_theme_constant_override("h_separation", 6)
 	grid2.add_theme_constant_override("v_separation", 6)
 	footer.add_child(grid2)
+	var nego_open := func(): nego = oid; nego_price = G.order_sum(order) + maxi(5, int(round(G.order_sum(order) * 0.06))); _dir = 0.0; render()
+	var time_open := func(): retime = oid; retime_t = 0.0; _dir = 0.0; render()
 	if accepted:
 		grid2.add_child(_tile("navigation", "Prowadź", "trasa na mapie", K.C_ACC, func(): G.main.set_track(oid); ui.close_all(), 1))
-		grid2.add_child(_tile("clock", "Zmień godzinę", "teraz %s" % G.clock(order.meet), K.C_BLUE, func(): retime = oid; _dir = 0.0; render(), 2))
-		grid2.add_child(_tile("x", "Anuluj", "odwołaj spotkanie", K.C_BAD, func(): _reply(oid, "decline"), 3))
-	elif order.counter != null:
-		grid2.add_child(_tile("check", "Zgoda", "%d zł/g" % int(order.counter), K.C_ACC, func(): _reply(oid, "counterok"), 1))
-		grid2.add_child(_tile("clock", "Zmień godzinę", "inna pora", K.C_BLUE, func(): retime = oid; _dir = 0.0; render(), 2))
-		grid2.add_child(_tile("x", "Anuluj", "odmów", K.C_BAD, func(): _reply(oid, "decline"), 3))
+		grid2.add_child(_tile("clock", "Zmień godzinę", "teraz %s" % G.clock(order.meet), K.C_BLUE, time_open, 2))
+		if order.has("time_offer"):
+			grid2.add_child(_tile("check", "Zgoda na %s" % G.clock(order.time_offer), "pora klienta", K.C_ACC, func(): _reply(oid, "timeok"), 3))
+		grid2.add_child(_tile("x", "Anuluj", "odwołaj spotkanie", K.C_BAD, func(): _reply(oid, "decline"), 4 if order.has("time_offer") else 3))
 	else:
-		grid2.add_child(_tile("check", "Zgoda", "%d zł/g" % int(order.stated), K.C_ACC, func(): _reply(oid, "accept"), 1))
-		grid2.add_child(_tile("hand_coins", "Negocjuj", "podbij cenę", K.C_GOLD, func(): nego = oid; nego_price = int(order.stated) + 3; _dir = 0.0; render(), 2))
-		grid2.add_child(_tile("clock", "Zmień godzinę", "inna pora", K.C_BLUE, func(): retime = oid; _dir = 0.0; render(), 3))
-		grid2.add_child(_tile("x", "Anuluj", "odmów", K.C_BAD, func(): _reply(oid, "decline"), 4))
+		var kk := 1
+		if order.counter != null:
+			grid2.add_child(_tile("check", "Zgoda", G.money(sum), K.C_ACC, func(): _reply(oid, "counterok"), kk))
+		else:
+			grid2.add_child(_tile("check", "Zgoda", G.money(sum), K.C_ACC, func(): _reply(oid, "accept"), kk))
+			kk += 1
+			grid2.add_child(_tile("hand_coins", "Negocjuj", "zmień sumę", K.C_GOLD, nego_open, kk))
+		kk += 1
+		if order.has("time_offer"):
+			grid2.add_child(_tile("check", "Pora %s" % G.clock(order.time_offer), "zgoda na jego godzinę", K.C_BLUE, func(): _reply(oid, "timeok"), kk))
+			kk += 1
+		grid2.add_child(_tile("clock", "Zmień godzinę", "wskaż na zegarze", K.C_BLUE, time_open, kk))
+		kk += 1
+		if not order.get("swapped", false) and order.counter == null:
+			grid2.add_child(_tile("boxes", "Inny towar", "zaproponuj zamianę", Color(0.75, 0.6, 0.95), func(): swap = oid; _dir = 0.0; render(), kk))
+			kk += 1
+		grid2.add_child(_tile("x", "Anuluj", "odmów", K.C_BAD, func(): _reply(oid, "decline"), kk))
 
 
 func _pair(a: Button, b: Button) -> HBoxContainer:
@@ -755,8 +796,8 @@ func _chip(text: String, cb: Callable, kind: String) -> Button:
 	return b
 
 
-func _reply(oid: int, kind: String, price := 0) -> void:
-	G.reply_order(oid, kind, price)
+func _reply(oid: int, kind: String, value: Variant = 0) -> void:
+	G.reply_order(oid, kind, value)
 	_dir = 0.0
 	render()
 

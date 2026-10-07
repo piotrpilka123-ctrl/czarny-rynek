@@ -109,38 +109,45 @@ static func build(U) -> void:
 		qh.add_child(K.lbl("ile:", 11, K.C_DIM))
 		for q0 in range(1, max_q + 1):
 			var q: int = q0
-			qh.add_child(K.btn("%d g" % q, func(): deal.qty = q; U._render_deal(), "go" if int(deal.qty) == q else "", true))
+			qh.add_child(K.btn("%d g" % q, func(): G.deal_qty(deal, q); U._render_deal(), "go" if int(deal.qty) == q else "", true))
 		top.add_child(qh)
 	if int(sel.pur) < int(who.minpur) and (int(deal.st.get("deals", 9)) >= 3 or not deal.st.has("deals")) and not sting:
 		body.add_child(K.icon_label("triangle_alert", "Ten klient zwykle bierze towar od %d%% w górę — może to wyczuć i odmówić." % int(who.minpur), 11, K.C_WARN, 13.0))
-	# --- cena: lekko w dół, wyjściowa albo lekko w górę
+	# --- cena: SUMA za całość na środku, po bokach dwa małe przyciski — w lewo taniej (−10, −1), w prawo drożej (+1, +10)
 	var ph := K.hbox(6)
+	ph.alignment = BoxContainer.ALIGNMENT_CENTER
 	body.add_child(ph)
-	ph.add_child(K.lbl("Cena za gram:", 11, K.C_DIM))
+	var base_sum: int = G.deal_base_sum(deal)
+	var step_btn := func(delta: int) -> Button:
+		var sb := K.btn(("%+d" % delta), func():
+			if G.deal_shift(deal, delta):
+				Sfx.play("tick")
+			else:
+				Sfx.play("error")
+			U._render_deal(), "", true)
+		sb.custom_minimum_size = Vector2(52, 40)
+		sb.add_theme_font_size_override("font_size", 15)
+		sb.disabled = deal.over or (delta > 0 and deal.pushed) or (sting and delta < 0)
+		sb.tooltip_text = "Po odmowie nie da się już podbić ceny." if (delta > 0 and deal.pushed) else ("Taniej o %d zł" % -delta if delta < 0 else "Drożej o %d zł" % delta)
+		return sb
+	ph.add_child(step_btn.call(-10))
+	ph.add_child(step_btn.call(-1))
+	var mid := K.vbox(-2)
+	mid.custom_minimum_size = Vector2(250, 0)
+	var sum_l := K.head(G.money(int(deal.sum)), 30, K.C_ACC)
+	sum_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mid.add_child(sum_l)
+	var diff: int = int(deal.sum) - base_sum
+	var read: String = G.deal_read(deal, float(deal.pct))
 	var tips := {"sure": "weźmie", "ok": "raczej weźmie", "risk": "ryzykowne", "no": "nie przejdzie", "": ""}
 	var tcol := {"sure": K.C_ACC, "ok": K.C_ACC, "risk": K.C_WARN, "no": K.C_BAD, "": K.C_DIM}
-	for pct0 in G.DEAL_LEVELS:
-		var pct: int = pct0
-		var pr: int = G.deal_price_at(deal, pct)
-		var lab := "%d zł" % pr
-		var tag := "umówiona" if (pct == 0 and not street) else ("uliczna" if pct == 0 else ("%+d%%" % pct))
-		var read: String = G.deal_read(deal, pct)
-		var v := K.vbox(1)
-		var b := K.btn(lab, func(): G.deal_set(deal, pct); U._render_deal(), "go" if int(deal.pct) == pct else "", true)
-		b.custom_minimum_size = Vector2(74, 0)
-		b.disabled = sting and pct < 0 or (pct > 0 and deal.pushed) or (int(deal.pct) != pct and deal.pushed and pct > int(deal.pct))
-		b.tooltip_text = "Po odmowie nie da się już podbić ceny." if (pct > 0 and deal.pushed) else ""
-		v.add_child(b)
-		var tl := K.lbl(tag + ((" • " + String(tips[read])) if read != "" and pct != 0 else ""), 9, tcol[read] if pct != 0 else K.C_DIM)
-		tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		v.add_child(tl)
-		ph.add_child(v)
-	ph.add_child(K.spacer())
-	var total := int(deal.price) * int(deal.qty)
-	var sum := K.rich("[right]%d g × %d zł\n[b]%s[/b][/right]" % [int(deal.qty), int(deal.price), K.col(G.money(total), K.C_ACC)], 15)
-	sum.custom_minimum_size = Vector2(150, 0)
-	sum.fit_content = true
-	ph.add_child(sum)
+	var tag := ("umówione" if not street else "cena uliczna") if diff == 0 else ("%s %s (%+d zł)" % ["umówione" if not street else "uliczna", G.money(base_sum), diff])
+	var sub_l := K.lbl("za %d g  •  %s%s" % [int(deal.qty), tag, (" • " + String(tips[read])) if read != "" and diff != 0 else ""], 11, tcol[read] if diff != 0 else K.C_DIM)
+	sub_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mid.add_child(sub_l)
+	ph.add_child(mid)
+	ph.add_child(step_btn.call(1))
+	ph.add_child(step_btn.call(10))
 	# --- podanie: przytrzymaj. Pasek rośnie, puszczenie go cofa.
 	var foot := K.hbox(8)
 	body.add_child(foot)

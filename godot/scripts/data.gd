@@ -44,6 +44,7 @@ const PRODUCTS := {
 }
 ## dopełniacz do zdań typu „5 g marihuany”
 const PRODUCT_GEN := {"dym": "marihuany", "szron": "amfetaminy", "krysztal": "metamfetaminy", "snieg": "kokainy"}
+const PRODUCT_ACC := {"dym": "marihuanę", "szron": "amfetaminę", "krysztal": "metamfetaminę", "snieg": "kokainę"}
 
 ## hurt u Wiktora: ilości i rabaty
 const WHOLESALE_SIZES := [5, 10, 20, 50, 100, 250]
@@ -565,6 +566,10 @@ const RANKS := [
 	{"at": 25000, "name": "Wspólnik", "perk": "wolny", "day": 46, "bonus": 0, "desc": "Dzielnica jest Twoja. Wiktor bierze już tylko za towar."},
 ]
 const LIVING_COST := 28
+## klient czeka na umówionym miejscu około pięciu godzin i nie ma żalu, że musiał postać;
+## cieszy się za to, gdy zjawisz się w ciągu godziny od umówionej pory
+const CLIENT_WAIT := 300.0
+const CLIENT_EARLY := 60.0
 const MAX_ARRESTS := 5
 ## zeszyt u Wiktora: najmniejszy limit, termin spłaty (dni) i dłuższy termin na początku gry, gdy Wiktor jest wyrozumiały
 const CREDIT_BASE := 700

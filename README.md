@@ -51,9 +51,13 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
   w kryjówce ustawiasz je klawiszem B i dopiero wtedy działają. Zdjęty mebel wraca na stan; w hurtowni odsprzedasz go za połowę ceny.
 - **Skrzynka Wiktora**: gotówkę wrzucasz do skrzynki za pawilonem (zawsze w tym samym miejscu). Najpierw schodzi z niej
   zeszyt za towar, cała reszta idzie na Twój wkład i awanse (telefon → Portfel pokazuje szczeble i nagrody).
-- **Klienci**: każdy odzywa się mniej więcej raz dziennie. Odpowiadasz kaflami: Zgoda / Negocjuj / Zmień godzinę / Anuluj.
-  Po potwierdzeniu spotkanie jest za ok. godzinę (chyba że ustalisz inną porę); klient wychodzi z domu i idzie na miejsce.
-  Na spotkaniu nie ma gadania: wybierasz porcję, ewentualnie cenę (od −10% do +15%) i przytrzymujesz „Podaj towar”.
+- **Klienci**: każdy odzywa się mniej więcej raz dziennie i od razu podaje sumę za całość. Odpowiadasz kaflami (klawisze 1–5):
+  Zgoda / Negocjuj / Zmień godzinę / Inny towar / Anuluj. Negocjacja to jedna liczba — suma za całość — i cztery małe
+  przyciski: −10 i −1 w lewo (taniej), +1 i +10 w prawo (drożej). Godzinę wskazujesz na tarczy zegara (tylko dziś);
+  jeśli klientowi nie pasuje, sam proponuje porę obok. „Inny towar” proponuje zamianę na to, co masz zaporcjowane.
+  Po potwierdzeniu klient jest na miejscu ok. godzinę później i czeka około 5 godzin — nie zraża się czekaniem,
+  a jeśli zdążysz w godzinę od umówionej pory, jest wyraźnie zadowolony i łatwiej coś u niego ugrać.
+  Na spotkaniu nie ma gadania: wybierasz porcję, ewentualnie zmieniasz sumę tymi samymi przyciskami i przytrzymujesz „Podaj towar”.
   Świat się wtedy nie zatrzymuje — pasek pokazuje, ilu ludzi patrzy i czy widzi Was patrol.
   „Zaraz wracam” zostawia klienta na miejscu, „Rezygnuję” odwołuje transakcję.
 - **Ekwipunek** (I): rzeczy mają rozmiar i wagę, układają się w stosy. Przeciągasz je między plecakiem a skrytką,

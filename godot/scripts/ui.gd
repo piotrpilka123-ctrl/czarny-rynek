@@ -1405,7 +1405,7 @@ func _render_deal() -> void:
 	var ctx: Dictionary = saved.ctx
 	var wants := "chce %d g %s" % [int(saved.want), String(D.PRODUCT_GEN[saved.product])]
 	if ctx.get("agreed") != null:
-		wants += " • umówione %d zł/g" % int(ctx.agreed)
+		wants += " • umówione %s za całość" % G.money(round(float(ctx.agreed) * int(saved.want)))
 	_open_modal(String(who.name), wants, "bottom", 860.0)
 	deal = saved
 	deal_npc = ctx.get("npc") if (ctx.get("npc") is Dictionary and ctx.get("npc").get("node") != null) else null
@@ -1461,10 +1461,9 @@ func _render_deal() -> void:
 
 func _deal_pick(s: Dictionary) -> void:
 	deal.sel = s
-	deal.qty = clampi(int(deal.qty), 1, int(s.n))
 	if deal.ctx.get("agreed") == null:
-		deal.base = int(round(G.market_price(s.p)))
-		deal.price = G.deal_price_at(deal, int(deal.pct))
+		deal.base = round(G.market_price(s.p))
+	G.deal_qty(deal, clampi(int(deal.qty), 1, int(s.n)))
 	_render_deal()
 
 
@@ -2534,7 +2533,7 @@ func _input(event: InputEvent) -> void:
 				close_all()
 			elif kc == KEY_ESCAPE or kc == KEY_BACKSPACE:
 				phone.back()
-			elif kc >= KEY_1 and kc <= KEY_4:
+			elif kc >= KEY_1 and kc <= KEY_5:
 				used = phone.hotkey(kc - KEY_1 + 1)
 			elif act == "inv":
 				close_all()

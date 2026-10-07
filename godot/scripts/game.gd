@@ -1723,9 +1723,8 @@ func on_tick() -> void:
 		elif S.t > float(o.deadline):
 			drop_order(o)
 			if o.status == "accepted":
-				st.sat = maxf(0.0, float(st.sat) - 14.0)
-				st.loy = maxf(0.0, float(st.loy) - 6.0)
-				chat(o.cust, "Czekałem godzinę, a ciebie nie było. Słabo.")
+				# pięć godzin czekania: klient odpuszcza, ale się nie zraża — po prostu odezwie się innym razem
+				chat(o.cust, ["Czekałem pół dnia. Trudno, muszę lecieć — innym razem.", "Nie doczekałem się. Odezwę się jutro.", "Długo cię nie było, zbieram się. Następnym razem."].pick_random())
 	# paczki w skrytkach
 	for d in S.drops.duplicate():
 		if d.state == "wait" and S.t >= float(d.ready):
@@ -1910,19 +1909,21 @@ func make_order(c: Dictionary, force_g := 0, force_p := "") -> Dictionary:
 	var meet: float = default_meet()
 	var o := {
 		"id": int(S.next_order), "cust": c.id, "product": product, "grams": g, "minpur": int(c.minpur), "spot": spot.id,
-		"meet": meet, "fixed": false, "deadline": meet + 60.0, "respond_by": S.t + 180.0, "status": "new",
+		"meet": meet, "fixed": false, "deadline": meet + D.CLIENT_WAIT, "respond_by": S.t + 180.0, "status": "new",
 		"stated": stated, "noise": noise, "agreed": null, "counter": null, "countered": false, "resched": false, "t0": S.t, "text": "",
 	}
 	S.next_order = int(S.next_order) + 1
 	var pn: String = D.PRODUCT_GEN[product]
 	var sn: String = spot.name
+	# klient podaje od razu sumę za całość — o nią toczą się potem negocjacje (−10 / −1 / +1 / +10 zł)
+	var sm := stated * g
 	var lines := {
-		"luzak": ["Siema, ogarniesz %d g %s? Dam %d za gram. %s, za godzinkę?" % [g, pn, stated, sn], "Ej, masz coś? %d g po %d zł. Mogę być za godzinę: %s." % [g, stated, sn]],
-		"twardziel": ["%d g. %d za gram. %s. Potwierdź, będę za godzinę." % [g, stated, sn], "Potrzebuję %d g. Daję %d. %s, godzina od twojego „ok”. Nie spóźnij się." % [g, stated, sn]],
-		"gadula": ["Dzień dobry, panie kolego! Potrzebowałbym %d g, po %d złotych. Spotkajmy się: %s — będę godzinę po pańskiej odpowiedzi." % [g, stated, sn]],
-		"konkret": ["%d g %s, %d zł/g. Miejsce: %s. Czas: godzina od potwierdzenia." % [g, pn, stated, sn]],
-		"cwaniak": ["Słuchaj, biorę %d g, ale więcej niż %d za gram nie dam, bo krucho. %s, godzinę po twoim „ok”." % [g, stated, sn]],
-		"impulsywny": ["%d g! %d zł/g. %s. Odpisz, to lecę!!" % [g, stated, sn]],
+		"luzak": ["Siema, ogarniesz %d g %s? Dam %d zł. %s, za godzinkę?" % [g, pn, sm, sn], "Ej, masz coś? %d g, mam %d zł. Mogę być za godzinę: %s." % [g, sm, sn]],
+		"twardziel": ["%d g. %d zł. %s. Potwierdź, będę za godzinę." % [g, sm, sn], "Potrzebuję %d g. Daję %d zł. %s, godzina od twojego „ok”." % [g, sm, sn]],
+		"gadula": ["Dzień dobry, panie kolego! Potrzebowałbym %d g, mam na to %d złotych. Spotkajmy się: %s — będę godzinę po pańskiej odpowiedzi i spokojnie poczekam." % [g, sm, sn]],
+		"konkret": ["%d g %s za %d zł. Miejsce: %s. Czas: godzina od potwierdzenia." % [g, pn, sm, sn]],
+		"cwaniak": ["Słuchaj, biorę %d g, ale więcej niż %d zł nie dam, bo krucho. %s, godzinę po twoim „ok”." % [g, sm, sn]],
+		"impulsywny": ["%d g! Daję %d zł. %s. Odpisz, to lecę!!" % [g, sm, sn]],
 	}
 	var opts: Array = lines.get(c.type, lines.luzak)
 	o.text = opts.pick_random()
@@ -1970,58 +1971,133 @@ func drop_order(o: Dictionary) -> void:
 	nav_dirty.emit()
 
 
-## odpowiedź na SMS: accept (zgoda na cenę klienta) | price (negocjacja) | counterok | time (zmiana godziny) | decline
-func reply_order(id, kind: String, value := 0) -> void:
+## cena zamówienia jako suma za całość: umówiona, kontroferta klienta albo jego pierwsza propozycja
+func order_sum(o: Dictionary) -> int:
+	var per: float = float(o.stated)
+	if o.status == "accepted" and o.agreed != null:
+		per = float(o.agreed)
+	elif o.counter != null:
+		per = float(o.counter)
+	return int(round(per * int(o.grams)))
+
+
+## granice pory, na którą można się dziś umówić: najwcześniej za 20 minut, najpóźniej do końca dnia
+## (o następnym dniu nie ma mowy; tylko późnym wieczorem zostaje półtorej godziny zapasu przez północ)
+func meet_range() -> Vector2:
+	var lo: float = ceil((S.t + 20.0) / 5.0) * 5.0
+	var day_end: float = floorf(S.t / 1440.0) * 1440.0 + 1435.0
+	return Vector2(lo, maxf(day_end, lo + 70.0))
+
+
+## inne towary, które możesz zaproponować zamiast zamówionego: [{p, name, have}] — to, co masz zaporcjowane przy sobie albo w domu
+func swap_options(o: Dictionary) -> Array:
+	var out := []
+	for p in D.PRODUCTS:
+		if p == String(o.product) or int(S.lvl) < int(D.PRODUCTS[p].lvl):
+			continue
+		var have := packed_total(S.inv, p)
+		for r in S.stash:
+			if r != "wiktor" and r != "loot" and S.stash[r].has("pack"):
+				have += packed_total(S.stash[r], p)
+		if have > 0:
+			out.append({"p": p, "name": String(D.PRODUCTS[p].name), "have": have})
+	return out
+
+
+## odpowiedź na SMS: accept (zgoda na sumę klienta) | price (własna suma za całość) | counterok | time (inna pora) |
+## timeok (zgoda na porę, którą zaproponował klient) | swap (inny towar) | decline
+func reply_order(id, kind: String, value = 0) -> void:
 	var o = find_order(id)
 	if o == null:
 		return
 	var def := cust_def(o.cust)
 	var st: Dictionary = S.cust[o.cust]
+	var g := int(o.grams)
 	if kind == "accept":
 		o.meet = meet_if_accepted(o)
-		chat(o.cust, "Pasuje. %d zł za gram, będę o %s." % [int(o.stated), clock(o.meet)], true)
-		_accept_order(o, int(o.stated), ["Ok, czekam.", "Dobra. Do zobaczenia.", "Super, będę."].pick_random())
+		chat(o.cust, "Pasuje. %d g za %s, będę o %s." % [g, money(order_sum(o)), clock(o.meet)], true)
+		_accept_order(o, float(o.stated), ["Ok, czekam.", "Dobra. Do zobaczenia.", "Super, będę."].pick_random())
 	elif kind == "counterok":
 		o.meet = meet_if_accepted(o)
-		chat(o.cust, "Niech będzie %d zł za gram." % int(o.counter), true)
-		_accept_order(o, o.counter, "Stoi, %d za gram. Czekam o %s." % [int(o.counter), clock(o.meet)])
+		chat(o.cust, "Niech będzie %s za całość." % money(order_sum(o)), true)
+		_accept_order(o, float(o.counter), "Stoi, %s. Czekam o %s." % [money(order_sum(o)), clock(o.meet)])
 	elif kind == "price":
-		var price := value
-		chat(o.cust, "%d zł za gram i jestem." % price, true)
+		# value = suma za całość, o którą prosisz
+		var sum := maxi(1, int(value))
+		var per := float(sum) / float(g)
+		chat(o.cust, "%s za całość i jestem." % money(sum), true)
 		# przez telefon klient jest mniej skłonny do ustępstw niż twarzą w twarz
-		var mx := max_price(def, st, o.product, maxi(int(o.minpur), 60), int(o.grams), {"noise": o.noise}) * 0.94
-		if price <= mx:
+		var mx := max_price(def, st, o.product, maxi(int(o.minpur), 60), g, {"noise": o.noise}) * 0.94
+		if per <= float(o.stated):
+			# zszedłeś z ceny: bierze od ręki i to zapamięta
 			o.meet = meet_if_accepted(o)
-			_accept_order(o, price, ["Ok, %d za gram. Będę o %s." % [price, clock(o.meet)], "Niech będzie %d. Do zobaczenia o %s." % [price, clock(o.meet)]].pick_random())
-		elif price <= mx * 1.2 and not o.countered:
-			o.counter = maxi(int(o.stated), int(round(mx * randf_range(0.93, 0.99))))
+			var cut := (1.0 - per / maxf(1.0, float(o.stated))) * 100.0
+			st.sat = minf(100.0, float(st.sat) + minf(4.0, cut * 0.35))
+			_accept_order(o, per, ["O, dzięki! %s, będę o %s." % [money(sum), clock(o.meet)], "Uczciwie. %s — lecę, będę o %s." % [money(sum), clock(o.meet)]].pick_random())
+		elif per <= mx:
+			o.meet = meet_if_accepted(o)
+			_accept_order(o, per, ["Ok, %s. Będę o %s." % [money(sum), clock(o.meet)], "Niech będzie %s. Do zobaczenia o %s." % [money(sum), clock(o.meet)]].pick_random())
+		elif per <= mx * 1.2 and not o.countered:
+			var csum: int = maxi(int(o.stated) * g, int(round(mx * randf_range(0.93, 0.99) * g)))
+			o.counter = float(csum) / float(g)
 			o.countered = true
-			chat(o.cust, "%d? Za drogo. Mogę dać %d za gram, nie więcej." % [price, int(o.counter)])
+			chat(o.cust, "%s? Za drogo. Mogę dać %s za wszystko, nie więcej." % [money(sum), money(csum)])
 		else:
 			drop_order(o)
 			st.sat = maxf(0.0, float(st.sat) - 6.0)
 			chat(o.cust, ["Chyba żartujesz. Szukam gdzie indziej.", "Za takie pieniądze? Nie, dzięki."].pick_random())
 	elif kind == "time":
-		var meet := float(value)
+		var rng_t := meet_range()
+		var meet: float = clampf(float(value), rng_t.x, rng_t.y)
 		var was_new: bool = o.status == "new"
 		chat(o.cust, ("Możemy się spotkać o %s?" % clock(meet)) if was_new else ("Możemy o %s zamiast o %s?" % [clock(meet), clock(o.meet)]), true)
-		var odds := {"impulsywny": 0.35, "konkret": 0.55, "twardziel": 0.6, "cwaniak": 0.7}
-		var p: float = odds.get(def.type, 0.85)
+		var odds := {"impulsywny": 0.5, "konkret": 0.7, "twardziel": 0.7, "cwaniak": 0.8}
+		var p: float = odds.get(def.type, 0.9)
 		if o.resched:
-			p *= 0.4
+			p *= 0.6
 		o.resched = true
+		o.erase("time_offer")
 		if randf() < p:
-			o.meet = meet
-			o["fixed"] = true
-			o.deadline = meet + 60.0
-			o.respond_by = maxf(float(o.respond_by), minf(meet - 10.0, S.t + 120.0))
-			chat(o.cust, ["Ok, %s." % clock(meet), "Dobra, niech będzie %s." % clock(meet)].pick_random())
-			if npcs != null:
-				npcs.reschedule(int(o.id))
+			_set_meet(o, meet)
+			chat(o.cust, ["Ok, %s." % clock(meet), "Dobra, niech będzie %s." % clock(meet), "Pasuje, %s. Poczekam, jakby co." % clock(meet)].pick_random())
+		else:
+			# nie pasuje mu ta pora — sam proponuje inną, niedaleko Twojej (żadnych fochów)
+			var alt: float = clampf(ceil((meet + [-90.0, -60.0, -45.0, 45.0, 60.0, 90.0].pick_random()) / 5.0) * 5.0, rng_t.x, rng_t.y)
+			if absf(alt - meet) < 20.0:
+				alt = clampf(meet + (45.0 if meet + 45.0 <= rng_t.y else -45.0), rng_t.x, rng_t.y)
+			o["time_offer"] = alt
+			chat(o.cust, ["O %s nie dam rady. A %s?" % [clock(meet), clock(alt)], "%s odpada, mam coś na głowie. Może %s?" % [clock(meet), clock(alt)]].pick_random())
+	elif kind == "timeok":
+		if o.has("time_offer"):
+			var t2 := float(o.time_offer)
+			o.erase("time_offer")
+			chat(o.cust, "Dobra, %s." % clock(t2), true)
+			_set_meet(o, t2)
+			chat(o.cust, ["Super, to do zobaczenia.", "Ok. Będę."].pick_random())
+	elif kind == "swap":
+		# zamiast zamówionego towaru proponujesz inny — klient bierze albo zostaje przy swoim (raz na zamówienie)
+		var np := String(value)
+		if o.status != "new" or o.get("swapped", false) or not D.PRODUCTS.has(np) or np == String(o.product):
+			return
+		o["swapped"] = true
+		chat(o.cust, "Nie mam %s. Mogę dać %s — pasuje?" % [String(D.PRODUCT_GEN[o.product]), String(D.PRODUCT_ACC.get(np, D.PRODUCTS[np].name)).to_lower()], true)
+		var likes: bool = np in def.get("prods", [def.prod])
+		var chance: float = 0.92 if likes else ({"impulsywny": 0.55, "luzak": 0.45, "gadula": 0.4, "cwaniak": 0.35, "konkret": 0.25, "twardziel": 0.2}.get(def.type, 0.35) + float(st.get("hunger", 0.4)) * 0.2)
+		if randf() < chance:
+			var budget := float(o.stated) * g
+			o.product = np
+			var mx2 := max_price(def, st, np, maxi(int(o.minpur), 60), g, {"noise": o.noise})
+			var per2: int = maxi(5, int(round(mx2 * float(def.honesty) * randf_range(0.9, 0.98) * (1.0 if likes else 0.93))))
+			# droższy towar: bierze tyle gramów, na ile go stać
+			var g2: int = clampi(int(floor(budget * 1.15 / float(per2))), 1, g)
+			o.grams = g2
+			o.stated = per2
+			o.counter = null
+			o.countered = false
+			chat(o.cust, ["%s? Dobra, niech będzie. %d g, dam %s." % [String(D.PRODUCTS[np].name), g2, money(per2 * g2)], "Może być. Wezmę %d g za %s." % [g2, money(per2 * g2)]].pick_random())
 			nav_dirty.emit()
 		else:
-			st.sat = maxf(0.0, float(st.sat) - 2.0)
-			chat(o.cust, "Nie da rady. Godzinę po twoim „ok” albo wcale." if was_new else ("Nie da rady. O %s albo wcale." % clock(o.meet)))
+			chat(o.cust, ["Nie, dzięki. Chciałem %s." % String(D.PRODUCT_ACC.get(o.product, D.PRODUCT_GEN[o.product])).to_lower(), "To nie dla mnie. Masz %s czy nie?" % String(D.PRODUCT_ACC.get(o.product, D.PRODUCT_GEN[o.product])).to_lower()].pick_random())
 	elif kind == "decline":
 		chat(o.cust, "Nie tym razem." if o.status == "new" else "Muszę odwołać. Sorry.", true)
 		var was_accepted: bool = o.status == "accepted"
@@ -2034,11 +2110,22 @@ func reply_order(id, kind: String, value := 0) -> void:
 		chat(o.cust, ["Szkoda. Następnym razem.", "Ok, rozumiem."].pick_random() if not was_accepted else "Serio? Już się zbierałem. Słabo.", false, true)
 
 
+## ustala porę spotkania (po zgodzie klienta na inną godzinę)
+func _set_meet(o: Dictionary, meet: float) -> void:
+	o.meet = meet
+	o["fixed"] = true
+	o.deadline = meet + D.CLIENT_WAIT
+	o.respond_by = maxf(float(o.respond_by), minf(meet - 10.0, S.t + 120.0))
+	if npcs != null:
+		npcs.reschedule(int(o.id))
+	nav_dirty.emit()
+
+
 func _accept_order(o: Dictionary, agreed, line: String) -> void:
 	var def := cust_def(o.cust)
 	o.status = "accepted"
 	o.agreed = agreed
-	o.deadline = float(o.meet) + 60.0
+	o.deadline = float(o.meet) + D.CLIENT_WAIT
 	o.counter = null
 	o.t0 = S.t
 	S.cust[o.cust].declines = 0
@@ -2047,7 +2134,7 @@ func _accept_order(o: Dictionary, agreed, line: String) -> void:
 	S.track = int(o.id)
 	S.nav_on = true
 	chat(o.cust, line, false, true)
-	notify("Spotkanie o %s: %s — %s." % [clock(o.meet), def.name, spot_def(o.spot).name], "good")
+	notify("Spotkanie o %s: %s — %s. Poczeka do %s." % [clock(o.meet), def.name, spot_def(o.spot).name, clock(o.deadline)], "good")
 	nav_dirty.emit()
 
 
@@ -2162,11 +2249,10 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 	var who: Dictionary = ctx.who
 	var st: Dictionary = who.st
 	var o = ctx.get("order")
-	var late := 0.0
-	if o != null:
-		late = clampf((S.t - float(o.meet) - 5.0) * 0.45, 0.0, 25.0)
-	var d := {"ctx": ctx, "who": who, "st": st, "product": ctx.product, "want": int(ctx.grams), "qty": int(ctx.grams), "sel": {}, "price": 0, "base": 0, "pct": 0,
-		"tol": 0.0, "pushed": false, "hold": 0.0, "speech": "", "over": false, "sold": false, "late": late, "credit": false,
+	# klient nie ma żalu, że czekał — za to cieszy się, gdy zjawiasz się w ciągu godziny od umówionej pory
+	var early: bool = o != null and S.t <= float(o.meet) + D.CLIENT_EARLY
+	var d := {"ctx": ctx, "who": who, "st": st, "product": ctx.product, "want": int(ctx.grams), "qty": int(ctx.grams), "sel": {}, "price": 0.0, "base": 0.0, "pct": 0.0, "sum": 0,
+		"tol": 0.0, "pushed": false, "hold": 0.0, "speech": "", "over": false, "sold": false, "late": 0.0, "early": early, "credit": false,
 		"cop": null, "cop_t": 0.0, "cop_max": 6.0, "notes": []}
 	var best = null
 	for s in st_list:
@@ -2179,11 +2265,11 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 		d.notes.append("Wróciłeś — klient dalej czeka.")
 	d.sel = best if best != null else st_list[0]
 	d.qty = clampi(int(d.want), 1, int(d.sel.n))
-	d.base = int(ctx.agreed) if ctx.get("agreed") != null else int(round(market_price(d.sel.p)))
-	d.price = d.base
+	d.base = float(ctx.agreed) if ctx.get("agreed") != null else round(market_price(d.sel.p))
+	deal_set(d, 0)
 	# o ile procent ponad cenę wyjściową klient jeszcze zapłaci
 	var tol := 2.0 + float(st.get("hunger", 0.4)) * 10.0 + minf(100.0, float(st.get("loy", 0.0))) / 100.0 * 6.0 + (float(who.get("wealth", 1.0)) - 1.0) * 20.0
-	tol += (float(st.get("sat", 55.0)) - 50.0) / 50.0 * 4.0 - late * 0.6 - (3.0 if rain > 0.3 else 0.0)
+	tol += (float(st.get("sat", 55.0)) - 50.0) / 50.0 * 4.0 + (2.0 if early else 0.0) - (3.0 if rain > 0.3 else 0.0)
 	if o != null:
 		# cena z SMS-a była już blisko jego granicy
 		tol -= 3.0
@@ -2203,9 +2289,9 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 		}
 		var hl: Array = hello.get(who.get("type", "luzak"), hello.luzak)
 		d.speech = hl.pick_random()
-		if late > 8.0:
-			d.speech = String(d.speech) + " „Ile można czekać?”"
-			d.notes.append("Spóźniłeś się — trudniej będzie coś ugrać.")
+		if early:
+			d.speech = String(d.speech) + [" „Szybko jesteś. Lubię to.”", " „O, punktualnie.”", " „Nie musiałem czekać — super.”"].pick_random()
+			d.notes.append("Zdążyłeś w godzinę — klient jest w dobrym humorze.")
 	if float(st.get("owes", 0.0)) > 0.0:
 		if randf() < float(who.get("reliable", 0.8)) + (0.25 if has_weapon() else 0.0):
 			S.cash += float(st.owes)
@@ -2217,23 +2303,61 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 
 
 ## cena za gram przy danym podbiciu / opuście (w procentach od ceny wyjściowej)
-func deal_price_at(d: Dictionary, pct: int) -> int:
+## cena za gram przy danym odchyleniu od ceny wyjściowej (w procentach)
+func deal_price_at(d: Dictionary, pct: float) -> int:
 	return maxi(1, int(round(float(d.base) * (1.0 + float(pct) / 100.0))))
 
 
-## ustawia poziom ceny; po jednej odmowie podbić już się nie da
-func deal_set(d: Dictionary, pct: int) -> bool:
-	if d.over or (pct > 0 and d.pushed):
+## suma wyjściowa: umówiona (albo uliczna) cena razy liczba gramów
+func deal_base_sum(d: Dictionary) -> int:
+	return maxi(1, int(round(float(d.base) * int(d.qty))))
+
+
+## Cena to SUMA za całość. Ustawia ją wprost; d.pct (odchylenie w %) i d.price (zł/g) wynikają z sumy.
+## Po jednej odmowie klienta nie da się już prosić o więcej, niż wtedy zostało.
+func deal_set_sum(d: Dictionary, sum: int) -> bool:
+	if d.over:
 		return false
-	d.pct = pct
-	d.price = deal_price_at(d, pct)
+	var bs := deal_base_sum(d)
+	sum = clampi(sum, maxi(1, int(round(bs * 0.5))), int(round(bs * 1.6)))
+	if d.pushed and sum > int(d.sum):
+		return false
+	d.sum = sum
+	d.pct = (float(sum) / float(bs) - 1.0) * 100.0
+	d.price = float(sum) / float(maxi(1, int(d.qty)))
 	return true
+
+
+## przyciski −10 / −1 / +1 / +10 zł przy sumie
+func deal_shift(d: Dictionary, delta: int) -> bool:
+	return deal_set_sum(d, int(d.sum) + delta)
+
+
+## ustawia sumę jako odchylenie od wyjściowej w procentach (testy, bot, zwiastun; 0 = cena umówiona)
+func deal_set(d: Dictionary, pct: float) -> bool:
+	if d.over or (pct > 0.0 and d.pushed):
+		return false
+	var keep: bool = d.pushed
+	d.pushed = false
+	var ok := deal_set_sum(d, int(round(deal_base_sum(d) * (1.0 + pct / 100.0))))
+	d.pushed = keep
+	return ok
+
+
+## zmiana liczby gramów (handel uliczny): suma idzie za nią, odchylenie od ceny zostaje
+func deal_qty(d: Dictionary, q: int) -> void:
+	var pct := float(d.pct)
+	d.qty = maxi(1, q)
+	var keep: bool = d.pushed
+	d.pushed = false
+	deal_set_sum(d, int(round(deal_base_sum(d) * (1.0 + pct / 100.0))))
+	d.pushed = keep
 
 
 ## Co wiesz o szansie przy danej cenie: "sure" | "ok" | "risk" | "no" | "" (nie wiesz — obcy albo mało transakcji).
 ## Im więcej razy handlowałeś z klientem, tym pewniejsza ocena.
-func deal_read(d: Dictionary, pct: int) -> String:
-	if pct <= 0 and float(d.tol) >= float(pct):
+func deal_read(d: Dictionary, pct: float) -> String:
+	if pct <= 0.0 and float(d.tol) >= pct:
 		return "sure"
 	var known := int(d.st.get("deals", 0)) if d.st.has("deals") else 0
 	if has_skill("oko1"):
@@ -2242,11 +2366,11 @@ func deal_read(d: Dictionary, pct: int) -> String:
 		return ""
 	var fuzz := 0.0 if known >= 8 else 3.0 * (float(int(float(d.tol) * 37.0) % 7) / 3.0 - 1.0)
 	var t: float = float(d.tol) + fuzz
-	if float(pct) <= t - 4.0:
+	if pct <= t - 4.0:
 		return "sure"
-	if float(pct) <= t:
+	if pct <= t:
 		return "ok"
-	if float(pct) <= t + 5.0:
+	if pct <= t + 5.0:
 		return "risk"
 	return "no"
 
@@ -2310,18 +2434,18 @@ func deal_hand(d: Dictionary) -> void:
 		return
 	if float(d.pct) > float(d.tol):
 		# za drogo: nie obraża się, ale drugi raz podbić się nie da
-		var was := int(d.pct)
+		var was := float(d.pct)
+		# wraca do sumy, którą jeszcze przełknie (najwyżej wyjściowej); od tej chwili w górę już się nie da
+		var back: float = clampf(floorf(float(d.tol) / 5.0) * 5.0, -10.0, 0.0)
+		d.pushed = false
+		deal_set_sum(d, int(round(deal_base_sum(d) * (1.0 + back / 100.0))))
 		d.pushed = true
-		var back := mini(0, int(floor(float(d.tol) / 5.0)) * 5)
-		back = maxi(-10, back)
-		d.pct = back
-		d.price = deal_price_at(d, back)
 		if d.st.has("sat"):
-			d.st.sat = maxf(0.0, float(d.st.sat) - (3.0 if was >= 15 else 1.5))
-		if back < 0:
-			d.speech = ["„Spóźniony i jeszcze drożej? %s i ani grosza więcej.”" % money(d.price), "„Nie dziś. %s albo idę.”" % money(d.price)].pick_random()
+			d.st.sat = maxf(0.0, float(d.st.sat) - (3.0 if was >= 15.0 else 1.5))
+		if back < 0.0:
+			d.speech = ["„Dziś mam mniej. %s i ani grosza więcej.”" % money(d.sum), "„Nie dziś. %s albo idę.”" % money(d.sum)].pick_random()
 		else:
-			d.speech = ["„Nie przesadzaj. %s, jak było.”" % money(d.price), "„Za drogo. %s albo nic.”" % money(d.price), "„Umawialiśmy się na %s.”" % money(d.price)].pick_random()
+			d.speech = ["„Nie przesadzaj. %s, jak było.”" % money(d.sum), "„Za drogo. %s albo nic.”" % money(d.sum), "„Umawialiśmy się na %s.”" % money(d.sum)].pick_random()
 		Sfx.play("error")
 		return
 	var line := "„Stoi.”"
@@ -2333,13 +2457,17 @@ func deal_hand(d: Dictionary) -> void:
 			d.st.loy = maxf(0.0, float(d.st.get("loy", 0.0)) - 2.0)
 			if d.st.has("known"):
 				d.st.known["minpur"] = true
-	elif int(d.pct) < 0:
+	elif float(d.pct) < -0.5:
 		line = ["„O, dzięki. Zapamiętam.”", "„Uczciwie. Wrócę.”"].pick_random()
 		if d.st.has("sat"):
 			d.st.sat = minf(100.0, float(d.st.sat) + 3.0)
 			d.st.loy = minf(100.0, float(d.st.get("loy", 0.0)) + 1.5)
-	elif int(d.pct) > 0:
+	elif float(d.pct) > 0.5:
 		line = ["„…Niech ci będzie.”", "„Drogo, ale biorę.”"].pick_random()
+	# zdążyłeś w godzinę od umówionej pory: klient to docenia
+	if d.get("early", false) and d.st.has("sat") and q != "meh":
+		d.st.sat = minf(100.0, float(d.st.sat) + 2.5)
+		d.st.loy = minf(100.0, float(d.st.get("loy", 0.0)) + 0.8)
 	deal_sell(d, float(d.price), line)
 
 

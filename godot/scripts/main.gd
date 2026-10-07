@@ -2652,15 +2652,19 @@ func _test_ui(what: String) -> void:
 			set_track(int(mo.id))
 			refresh_nav()
 			ui.open_phone("mapa")
-		"chat_nego", "chat_time", "chat_ok":
+		"chat_nego", "chat_time", "chat_ok", "chat_swap":
 			var co := _test_order("dominik", what == "chat_ok")
 			ui.open_phone("sms")
 			ui.phone.chat_id = "dominik"
 			if what == "chat_nego":
 				ui.phone.nego = int(co.id)
-				ui.phone.nego_price = int(co.stated) + 4
+				ui.phone.nego_price = G.order_sum(co) + 20
 			elif what == "chat_time":
 				ui.phone.retime = int(co.id)
+			elif what == "chat_swap":
+				G.S.lvl = maxi(int(G.S.lvl), 4)
+				G.add_pack(G.S.inv, "szron", 100, 6)
+				ui.phone.swap = int(co.id)
 			ui.phone.render()
 		"kontakty":
 			G.unlock_client("seba")
