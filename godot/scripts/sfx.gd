@@ -797,6 +797,9 @@ func ambient(outside: bool, night: float, rain: float) -> void:
 		rain_player.play()
 	var a := (-27.0 - night * 4.0) if outside else -44.0
 	amb_player.volume_db = lerpf(amb_player.volume_db, a, 0.05)
+	# bezpiecznik: scena imprezy wycisza resztę dźwięków tylko na swój czas — poza prologiem wszystko gra
+	if _party_solo and G.prologue == null:
+		party_solo(false)
 	_city_tick(outside, night)
 	var r := (-40.0 + rain * 22.0 - (0.0 if outside else 12.0)) if rain > 0.05 else -70.0
 	rain_player.volume_db = lerpf(rain_player.volume_db, r, 0.05)

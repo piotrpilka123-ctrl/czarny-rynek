@@ -1167,6 +1167,7 @@ func _char(n: Node) -> void:
 ## testy i zrzuty ekranu: od razu ustawia wskazany etap
 func jump(to: String) -> void:
 	_jumped = true
+	Sfx.party_stop()
 	M.cut_skip = false
 	if M.ui.mode != "":
 		M.ui.close_all()
