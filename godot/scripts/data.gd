@@ -70,7 +70,9 @@ const SHOP := [
 	{"id": "doniczka", "name": "Doniczka z ziemią", "price": 40, "n": 1, "lvl": 4, "desc": "Stawiasz ją w kryjówce [B] i sadzisz w niej jeden krzak. Każdy krzak doglądasz osobno."},
 	{"id": "nasiona", "name": "Nasiona konopi (3 szt.)", "price": 45, "n": 3, "lvl": 4, "desc": "Jedno nasiono = jeden krzak w doniczce."},
 	{"id": "nawoz", "name": "Nawóz (3 dawki)", "price": 45, "n": 3, "lvl": 4, "desc": "Dawka na krzak: plon większy o 25%, ale roślina pije więcej wody. Tylko dopóki rośnie."},
-	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 800, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Jeden zestaw = jedna synteza przy stole laboratoryjnym."},
+	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 800, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Pakiet wsadu do laboratoryjnej partii; wymagane ilości widać przy stanowisku."},
+	{"id": "pakiet_procesowy", "name": "Pakiet procesowy", "price": 3200, "n": 1, "lvl": 8, "desc": "Fikcyjny moduł wsadu do większych partii laboratoryjnych."},
+	{"id": "pakiet_finalny", "name": "Pakiet wykończeniowy", "price": 5200, "n": 1, "lvl": 10, "desc": "Fikcyjny trzeci moduł wsadu do najdroższej produkcji."},
 	{"id": "burner", "name": "Telefon na kartę", "price": 420, "n": 1, "lvl": 2, "use": true, "desc": "Nowy numer: śledztwo policji spada o 25."},
 	{"id": "kastet", "name": "Kastet (spod lady)", "price": 350, "n": 1, "lvl": 3, "desc": "Dłużnicy „na zeszyt” oddają o wiele chętniej. Nielegalny: nie wejdziesz z nim do klubu, a policja doliczy zarzut."},
 ]
@@ -113,20 +115,20 @@ const RECIPES := {
 			{"name": "Lampy 24/0", "speed": 1.35, "smell": 1.3, "power": 2.0, "water": 1.4, "pur": -4, "desc": "Rośnie o 1/3 szybciej, ale żre prąd i wodę, mocniej pachnie i wychodzi trochę słabsza."}]},
 	# wydajności liczone od ceny zestawu (800 zł): amfetamina ok. 22 zł/g (u Wiktora 32), metamfetamina 80 zł/g, kokaina 120 zł/g —
 	# im droższy towar, tym większy zysk z jednej wymiany; przy dawnych 28 g własna amfetamina prawie nie była tańsza niż z hurtu
-	"amfetamina": {"name": "Amfetamina", "station": "lab", "product": "szron", "lvl": 5, "input": {"chemia": 1}, "hours": 5.0, "yield": 36.0, "pur": 72,
+	"amfetamina": {"name": "Amfetamina", "station": "lab", "product": "szron", "lvl": 5, "input": {"chemia": 2}, "hours": 8.0, "yield": 72.0, "pur": 72,
 		"smell": 34.0, "power": 8.0,
 		"stages": [{"name": "Reakcja", "to": 0.45, "hold": "Przelej i schłodź"}, {"name": "Krystalizacja", "to": 0.85}, {"name": "Suszenie", "to": 1.0}],
 		"modes": [{"name": "Niska temp.", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Wolno i czysto: najlepszy towar, najmniej smrodu."},
 			{"name": "Średnia temp.", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
 			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.18, "desc": "Szybko, ale śmierdzi na całą okolicę, towar słabszy i co szósta partia się przypala."}]},
-	"metamfetamina": {"name": "Metamfetamina", "station": "lab", "product": "krysztal", "lvl": 8, "input": {"chemia": 2}, "hours": 8.0, "yield": 20.0, "pur": 74,
+	"metamfetamina": {"name": "Metamfetamina", "station": "lab", "product": "krysztal", "lvl": 8, "input": {"chemia": 2, "pakiet_procesowy": 1}, "hours": 14.0, "yield": 60.0, "pur": 74,
 		"smell": 46.0, "power": 10.0,
 		"stages": [{"name": "Redukcja", "to": 0.4, "hold": "Odfiltruj osad"}, {"name": "Krystalizacja", "to": 0.9, "hold": "Zbierz kryształy"}, {"name": "Suszenie", "to": 1.0}],
 		"modes": [{"name": "Niska temp.", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Wolno i czysto."},
 			{"name": "Średnia temp.", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
 			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.22, "desc": "Szybko, śmierdząco i z ryzykiem przypalenia."}]},
 	# kokaina: już nie z hurtu — oczyszczasz pastę w tym samym laboratorium; najdłuższa i najdroższa robota, ale najdroższy towar
-	"kokaina": {"name": "Kokaina", "station": "lab", "product": "snieg", "lvl": 10, "input": {"chemia": 3}, "hours": 11.0, "yield": 20.0, "pur": 78,
+	"kokaina": {"name": "Kokaina", "station": "lab", "product": "snieg", "lvl": 10, "input": {"chemia": 3, "pakiet_procesowy": 1, "pakiet_finalny": 1}, "hours": 22.0, "yield": 90.0, "pur": 78,
 		"smell": 30.0, "power": 9.0,
 		"stages": [{"name": "Ekstrakcja", "to": 0.35, "hold": "Odlej rozpuszczalnik"}, {"name": "Oczyszczanie", "to": 0.8, "hold": "Przefiltruj"}, {"name": "Suszenie", "to": 1.0}],
 		"modes": [{"name": "Dokładnie", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Dwa razy przez filtr: wolno, ale czysto."},
@@ -174,6 +176,8 @@ const ITEMS := {
 	"nasiona": {"name": "Nasiona konopi", "icon": "nasiona", "size": 0.1, "w": 1.0, "unit": "szt.", "illegal": true, "desc": "Jedno nasiono = jeden krzak. Sadzisz je, celując w pustą doniczkę."},
 	"nawoz": {"name": "Nawóz", "icon": "nawoz", "size": 0.4, "w": 90.0, "unit": "dawek", "desc": "Dawka na jeden krzak: plon większy o 25%, ale roślina pije więcej wody."},
 	"chemia": {"name": "Zestaw chemikaliów", "icon": "chemia", "size": 4.0, "w": 1800.0, "unit": "szt.", "illegal": true, "desc": "Prekursory i rozpuszczalniki na jedną syntezę przy stole laboratoryjnym."},
+	"pakiet_procesowy": {"name": "Pakiet procesowy", "icon": "chemia", "size": 3.0, "w": 1400.0, "unit": "szt.", "illegal": true, "desc": "Fikcyjny moduł wsadu do produkcji w grze."},
+	"pakiet_finalny": {"name": "Pakiet wykończeniowy", "icon": "chemia", "size": 2.0, "w": 900.0, "unit": "szt.", "illegal": true, "desc": "Fikcyjny moduł wykończenia partii w grze."},
 	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
 	# --- ZNALEZISKA: rzeczy z ziemi i ze śmietników. Do niczego nie służą — lombard przy Hutniczej płaci za nie gotówką (pawn = cena skupu).
 	"butelki": {"name": "Butelki zwrotne", "icon": "beer", "size": 0.5, "w": 350.0, "unit": "szt.", "junk": true, "pawn": 3, "desc": "Kaucja to kaucja. Lombard bierze je hurtem."},

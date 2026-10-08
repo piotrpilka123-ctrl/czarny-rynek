@@ -36,6 +36,12 @@ func build() -> void:
 		spawn_citizen(i)
 	# patrole dochodzą z czasem gry (G.cop_quota) — pierwszego dnia ulice są puste
 	_build_static()
+	for dealer in G.Dealers.DEFS:
+		var id: String = dealer.id
+		var at: Vector2 = G.Dealers.position(id)
+		_static({"x": at.x / D.SC, "z": at.y / D.SC, "rot": PI, "pose": "phone", "name": dealer.name,
+			"hours": [8.0, 23.0], "look": {"model": "m11" if id == "mati" else "m16", "seed": 81 if id == "mati" else 82},
+			"act": func(): G.main.talk_dealer(id)})
 	_build_outskirts()
 	_build_edges()
 	_build_car()
@@ -950,6 +956,12 @@ func noise_at(x: float, z: float, r: float) -> int:
 
 ## zaczyna przeszukiwanie okolicy punktu `c.inv`: rozgląda się, potem sprawdza 2–3 miejsca w pobliżu
 func _begin_search(c: Dictionary, secs: float, hunt := false) -> void:
+	if G.world.grid.is_point_solid(G.world._cell(c.x, c.z)):
+		var free: Vector2 = G.world.near_free(c.x, c.z)
+		c.x = free.x
+		c.z = free.y
+	c.path = PackedVector2Array()
+	c.path_t = 0.0
 	c.state = "search"
 	c.search_t = secs
 	c.sp_wait = 1.6
@@ -959,11 +971,14 @@ func _begin_search(c: Dictionary, secs: float, hunt := false) -> void:
 	# po zgubionym pościgu nie krąży na ślepo: idzie tam, dokąd uciekałeś, potem sprawdza boki
 	var dir: Vector2 = c.get("flee_dir", Vector2.ZERO)
 	var a0 := atan2(dir.y, dir.x) if (hunt and dir.length() > 0.3) else randf() * TAU
-	for k in range(3 if hunt else 1):
-		var a = a0 + [0.0, 1.15, -1.15][k] + randf_range(-0.3, 0.3)
+	for k in range(12 if hunt else 6):
+		if pts.size() >= (3 if hunt else 1): break
+		var a = a0 + float(k) * TAU / 12.0 + randf_range(-0.3, 0.3)
 		var q: Vector2 = G.world.near_free(o.x + cos(a) * randf_range(5.0, 9.0), o.y + sin(a) * randf_range(5.0, 9.0))
 		if q.distance_to(o) < 14.0:
-			pts.append(q)
+			var path: PackedVector2Array = G.world.grid_path(Vector2(c.x, c.z), q)
+			if not path.is_empty() and G.world.grid_clear(Vector2(c.x, c.z), path[0]):
+				pts.append(q)
 	if hunt:
 		# altanka śmietnikowa tuż obok? Doświadczony patrol do niej zajrzy
 		for h in G.world.hides:

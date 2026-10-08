@@ -8,6 +8,7 @@ const OrderUI = preload("res://scripts/order_ui.gd")
 const APPS := [
 	["sms", "Wiadomości", "message_circle", Color(0.2, 0.72, 0.38)],
 	["kontakty", "Kontakty", "users", Color(0.25, 0.5, 0.9)],
+	["dealerzy", "Dealerzy", "users", Color(0.4, 0.55, 0.35)],
 	["dostawy", "Dostawy", "list_checks", Color(0.65, 0.43, 0.2)],
 	["mapa", "Mapa", "map", Color(0.15, 0.6, 0.62)],
 	["portfel", "Portfel", "wallet", Color(0.8, 0.62, 0.15)],
@@ -357,6 +358,7 @@ func render() -> void:
 				_contact()
 			else:
 				_contacts()
+		"dealerzy": _dealers()
 		"dostawy": _deliveries()
 		"mapa": _map()
 		"portfel": _wallet()
@@ -1190,6 +1192,27 @@ func _deliveries() -> void:
 		var order_id := int(delivery.id)
 		card.add_child(K.btn("Prowadź do klienta", func():
 			G.S.track = order_id
+			G.S.nav_on = true
+			G.nav_dirty.emit()
+			ui.close_all()))
+
+
+func _dealers() -> void:
+	_header("Dealerzy", "Twoja sieć sprzedaży")
+	body.add_child(K.wrap("Spotkaj się osobiście, donieś paczki i odbierz zarobek. Sprzedaż 8–23, po prowizji. Przy śledztwie 65+ wstrzymują pracę.", 12, K.C_DIM))
+	for dealer in G.Dealers.DEFS:
+		var id: String = dealer.id
+		var card := K.card(body)
+		card.add_child(K.head(String(dealer.name), 17))
+		card.add_child(K.wrap("Prowizja %d%% • zapas do %d g • do %d g na godzinę" % [int(float(dealer.commission) * 100), int(dealer.cap), int(dealer.pace)], 12, K.C_DIM))
+		if G.S.dealers.has(id):
+			var state: Dictionary = G.S.dealers[id]
+			card.add_child(K.wrap("Zapas: %d g • do odbioru: %s" % [G.Dealers.stock(id), G.money(state.cash)], 13, K.C_TXT))
+			card.add_child(K.wrap("Wstrzymane" if state.paused else ("Brak zapasu" if G.Dealers.stock(id) == 0 else "Sprzedaje w godzinach pracy"), 12, K.C_WARN if state.paused or G.Dealers.stock(id) == 0 else K.C_DIM))
+		else:
+			card.add_child(K.wrap(G.Dealers.requirement(id) if G.Dealers.requirement(id) != "" else "Podejdź i zaproponuj współpracę: %s." % G.money(dealer.fee), 12, K.C_DIM))
+		card.add_child(K.btn("Prowadź do %s" % dealer.name, func():
+			G.S.track = "dealer_" + id
 			G.S.nav_on = true
 			G.nav_dirty.emit()
 			ui.close_all()))

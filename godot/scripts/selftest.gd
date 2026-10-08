@@ -1113,6 +1113,7 @@ func run() -> void:
 
 	# --- Giełda: dostawcy, dostawy, okazje, skup
 	await load("res://scripts/market_test.gd").run(self)
+	load("res://scripts/dealers_test.gd").run(self)
 
 	# --- prolog: nalot na laboratorium, ucieczka, eksplozje
 	if not M.args.has("noprologue"):
@@ -1488,10 +1489,11 @@ func _sim_production(skill: float) -> void:
 		elif kind == "lab":
 			if j == null:
 				var rid := "metamfetamina" if (int(S.lvl) >= 8 and randf() < 0.5) else "amfetamina"
-				var need: int = int(D.RECIPES[rid].input.chemia)
-				while G.item_at(room, "chemia") < need and S.cash > 1400.0:
-					if not G.shop_buy("chemia"):
-						break
+				for ingredient in D.RECIPES[rid].input:
+					var need: int = int(D.RECIPES[rid].input[ingredient])
+					while G.item_at(room, ingredient) < need and S.cash > 350.0:
+						if not G.shop_buy(ingredient):
+							break
 				if P.start(room, i, rid):
 					P.set_mode(room, i, 0 if skill > 0.8 else 1)
 			elif float(j.prog) >= 1.0:

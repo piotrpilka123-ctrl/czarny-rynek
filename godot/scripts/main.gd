@@ -1667,6 +1667,12 @@ func _order_target(o: Dictionary) -> Dictionary:
 
 
 func _place_target(id: String) -> Dictionary:
+	if id.begins_with("dealer_"):
+		var dealer_id := id.trim_prefix("dealer_")
+		var dealer: Dictionary = G.Dealers.definition(dealer_id)
+		if dealer.is_empty(): return {}
+		var at: Vector2 = G.Dealers.position(dealer_id)
+		return {"id": id, "label": "Dealer: " + String(dealer.name), "loc": "out", "x": at.x, "z": at.y, "color": C_PLACE}
 	if id == "box":
 		return {"id": id, "label": "Skrzynka Wiktora", "loc": "out", "x": float(D.WIKTOR_BOX.x), "z": float(D.WIKTOR_BOX.z), "color": C_PLACE}
 	if id == "pawn":
@@ -3063,6 +3069,7 @@ func _test_ui(what: String) -> void:
 				ui._input(key)
 			G.test_mode = was_test
 			print("CHEAT_INPUT cash_delta=", G.S.cash - before_cash, " mode_preserved=", ui.mode == before_mode)
+		"dealerzy": ui.open_phone("dealerzy")
 		"dostawy":
 			G.add_pack(G.S.inv, "dym", 100, 3)
 			_test_order("dominik")
@@ -3708,3 +3715,33 @@ func _record() -> void:
 			n += 1
 	print("REC ", n, " klatek")
 	get_tree().quit()
+
+
+func talk_dealer(id: String) -> void:
+	var dealer: Dictionary = G.Dealers.definition(id)
+	if dealer.is_empty() or not G.Dealers.near(id): return
+	if G.S.wanted:
+		ui.dialog({"name": dealer.name, "lines": ["Nie teraz. Najpierw zgub policję."]})
+		return
+	var choices: Array = []
+	if not G.S.dealers.has(id):
+		var reason: String = G.Dealers.requirement(id)
+		choices.append({"label": "Zaczynamy: %s" % G.money(dealer.fee), "act": func():
+			if G.Dealers.hire(id): talk_dealer(id)
+			else: G.notify(G.Dealers.requirement(id), "warn")})
+		choices.append({"label": "Jeszcze wrócę."})
+		ui.dialog({"name": dealer.name, "lines": ["Ty donosisz zapakowany towar, ja sprzedaję okolicznym. Biorę %d%%, resztę odbierasz tutaj. Bez zapasu nie ma sprzedaży." % int(float(dealer.commission) * 100), reason if reason != "" else "Możemy zaczynać."], "choices": choices})
+		return
+	var state: Dictionary = G.S.dealers[id]
+	for product in dealer.products:
+		var p := String(product)
+		choices.append({"label": "Przekaż do 20 g: %s" % D.PRODUCTS[p].name, "act": func():
+			var supplied: int = G.Dealers.supply(id, p)
+			G.notify("Przekazano %d g." % supplied if supplied > 0 else "Brak pasujących paczek, poziomu albo miejsca u dealera.", "good" if supplied > 0 else "warn")
+			talk_dealer(id)})
+	choices.append({"label": "Odbierz %s" % G.money(state.cash), "act": func():
+		G.notify("Odebrano %s." % G.money(G.Dealers.collect(id)), "good")
+		talk_dealer(id)})
+	choices.append({"label": "Wznów sprzedaż" if state.paused else "Wstrzymaj sprzedaż", "act": func(): state.paused = not state.paused; talk_dealer(id)})
+	choices.append({"label": "Do później."})
+	ui.dialog({"name": dealer.name, "lines": ["Zapas %d / %d g. Rozliczenie %s. Działam 8–23; przy dużym śledztwie przeczekuję." % [G.Dealers.stock(id), int(dealer.cap), G.money(state.cash)]], "choices": choices})

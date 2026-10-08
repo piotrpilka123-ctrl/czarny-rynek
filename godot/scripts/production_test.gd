@@ -168,10 +168,10 @@ static func run(T) -> void:
 	for e in P.recipes_for(room, lab):
 		names.append(String(e.id))
 	T.ok(names.has("amfetamina") and names.has("metamfetamina") and not names.has("konopie"), "przy stole: amfetamina i metamfetamina (z danych, nie z kodu)")
-	T.ok(P.start(room, lab, "amfetamina") and S.items["chemia"] == 4, "synteza zużywa zestaw chemikaliów")
+	T.ok(P.start(room, lab, "amfetamina") and S.items["chemia"] == 3, "synteza zużywa zestaw chemikaliów")
 	j = P.job(room, lab)
 	T.ok(int(j.mode) == 1 and P.stage_name(j) == "Reakcja", "start w średniej temperaturze, etap „Reakcja”")
-	_run(P, 3.0 * 60.0)
+	_run(P, float(D.RECIPES.amfetamina.hours) * 0.46 * 60.0)
 	T.ok(int(j.hold) == 0 and absf(float(j.prog) - 0.45) < 0.001 and P.stage_name(j) == "Przelej i schłodź", "po reakcji synteza czeka na gracza")
 	T.ok(G.station_label(room, lab).contains("przelej"), "napis nad stołem woła do roboty")
 	_run(P, 60.0)
@@ -179,7 +179,7 @@ static func run(T) -> void:
 	_run(P, 3.0 * 60.0)
 	T.ok(float(j.health) < 100.0, "zostawiona na 4 godziny — jakość spada (kondycja %d%%)" % int(j.health))
 	T.ok(P.proceed(room, lab) and int(j.hold) == -1, "przelanie odblokowuje kolejny etap")
-	_run(P, 3.0 * 60.0)
+	_run(P, float(D.RECIPES.amfetamina.hours) * 0.56 * 60.0)
 	T.ok(float(j.prog) >= 1.0, "synteza skończona")
 	var lf: Dictionary = P.forecast(j)
 	var before: float = G.goods_total(S.stash[room])
@@ -281,6 +281,8 @@ static func run(T) -> void:
 	T.ok(G.main.care.play("water", room, 0) and float(P.plant_of(room, 0).water) == 100.0 and not G.main.care.busy(), "konewka podlewa wskazany krzak")
 	U.open_station(room, lab)
 	await T.frames(2)
+	S.items["chemia"] = 2
+	S.items["pakiet_procesowy"] = 1
 	P.start(room, lab, "metamfetamina")
 	var mj: Dictionary = P.job(room, lab)
 	mj.prog = 0.4

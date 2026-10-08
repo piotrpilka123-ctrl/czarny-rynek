@@ -127,6 +127,17 @@ static func _empty_ui(_U, body: VBoxContainer, view, room: String, idx: int, kin
 		var need: Array = []
 		for it in r.input:
 			need.append("%s ×%d" % [String(D.ITEMS[it].name).to_lower(), int(r.input[it])])
+		var slots := K.hbox(6)
+		v.add_child(slots)
+		for ingredient in r.input:
+			var slot := K.panel(K.sb(K.C_BG, 6, K.C_LINE, 1, 8))
+			slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			slots.add_child(slot)
+			var contents := K.vbox(3)
+			slot.add_child(contents)
+			contents.add_child(K.icon(String(D.ITEMS[ingredient].icon), 22))
+			contents.add_child(K.wrap(String(D.ITEMS[ingredient].name), 11, K.C_TXT))
+			contents.add_child(K.lbl("%d / %d" % [G.item_at(room, ingredient), int(r.input[ingredient])], 12, K.C_DIM if G.item_at(room, ingredient) >= int(r.input[ingredient]) else K.C_WARN))
 		var pots := int(P.furn(room, idx).get("pots", 1))
 		var yld: float = float(r["yield"]) * (pots if r.has("water") else 1)
 		v.add_child(K.rich("Wsad: [b]%s[/b]  •  czas: ok. [b]%d godz.[/b]  •  plon: ok. [b]%d g[/b]  •  czystość od [b]%d%%[/b]" % [", ".join(need), int(r.hours), int(yld), int(r.pur)], 12))
