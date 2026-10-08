@@ -2309,6 +2309,8 @@ func _accept_order(o: Dictionary, agreed, line: String) -> void:
 	S.nav_on = true
 	chat(o.cust, line, false, true)
 	notify("Spotkanie o %s: %s, %d g %s — %s. Poczeka do %s." % [clock(o.meet), def.name, int(o.grams), String(D.PRODUCT_GEN[o.product]), spot_def(o.spot).name, clock(o.deadline)], "good")
+	if int(S.stats.sold) == 0:
+		tip("pierwsze_spotkanie", "Pierwszy klient", "Umówiliście się na %s — klient przyjdzie przed tą godziną. Linia na minimapie prowadzi do miejsca spotkania; pełną mapę otwiera [%s]. Godzina gry trwa minutę. Klient czeka 5 godzin gry, a sprawna dostawa w pierwszej godzinie poprawia jego humor. Z paczek w kieszeni musisz złożyć zamówioną wagę." % [clock(o.meet), kn("map")], 15.0)
 	nav_dirty.emit()
 
 
@@ -4129,7 +4131,7 @@ func _build_story() -> void:
 			"done": func(): return flag("got_first"), "marker": _starter_marker},
 		{"id": "pack1", "text": func(): return "Zapakuj cały towar od Wiktora: podejdź do wagi na biurku [E], wybierz, ile gramów idzie do jednego woreczka, i pakuj. Klienci biorą po kilka gramów — z małych paczek (1–2 g) złożysz każde zamówienie. Luzem zostało: %d g." % loose_left(),
 			"done": func(): return _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
-		{"id": "sell1", "text": func(): return ("Odpisz Dominikowi: telefon [%s] → Wiadomości → Zgoda. Dopiero potem wyjdź z mieszkania." % kn("phone")) if _first_order_new() else "Zanieś Dominikowi towar (%s) — czeka w umówionym miejscu. Trasę włącza [%s]." % [_first_order_what(), kn("nav")],
+		{"id": "sell1", "text": _first_delivery_text,
 			"done": func(): return int(S.stats.sold) >= 1 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker, "on_done": _on_first_sale},
 		{"id": "order1", "text": func(): return "Zamów u Wiktora 10 g marihuany i 10 g amfetaminy: telefon [%s] → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem." % kn("phone"),
 			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
@@ -4177,6 +4179,18 @@ func loose_left() -> int:
 			for k in src.bulk[p]:
 				n += float(src.bulk[p][k])
 	return int(n)
+
+
+## Konkretna pora i miejsce, zamiast informacji, że klient już czeka przed spotkaniem.
+func _first_delivery_text() -> String:
+	if _first_order_new():
+		return "Odpisz Dominikowi: telefon [%s] → Wiadomości → Zgoda. Dopiero potem wyjdź z mieszkania." % kn("phone")
+	for order in S.orders:
+		if String(order.cust) == "dominik" and String(order.status) == "accepted":
+			var where: String = String(spot_def(order.spot).name)
+			var when := "Spotkanie o %s" % clock(order.meet) if S.t < float(order.meet) else "Dominik czeka do %s" % clock(order.deadline)
+			return "%s — %s. Zabierz %s. Trasę masz na minimapie, pełną mapę otwiera [%s]." % [when, where, _first_order_what(), kn("map")]
+	return "Sprawdź wiadomość od Dominika [%s] i umów pierwsze spotkanie. Pierwsza sprzedaż otwiera zamówienia u Wiktora." % kn("phone")
 
 
 ## samouczek: Dominik napisał, a gracz jeszcze mu nie odpisał

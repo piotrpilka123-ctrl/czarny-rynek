@@ -352,6 +352,8 @@ func run() -> void:
 	G.reply_order(o.id, "accept")
 	ok(o.status == "accepted" and o.agreed != null, "zamówienie przyjęte po cenie klienta (%s zł/g)" % str(o.agreed))
 	ok(float(o.meet) - S.t > 50.0 and float(o.meet) - S.t < 70.0, "spotkanie wypada ok. godzinę po potwierdzeniu (%d min)" % int(float(o.meet) - S.t))
+	ok(G._first_delivery_text().contains(G.clock(o.meet)) and not G._first_delivery_text().contains("czeka do"), "cel pierwszej dostawy pokazuje umówioną godzinę, zanim klient przyjdzie")
+	ok(G.flag("tip_pierwsze_spotkanie"), "pierwsze spotkanie wyjaśnia mapę, czas gry i oczekiwanie klienta")
 	ok(G.npcs.customers.size() == 1, "klient zaplanowany na spotkanie")
 	ok(G.npcs.customers[0].node == null, "klient jeszcze nie wyszedł z domu")
 	# pojawia się na krótko przed umówioną godziną i idzie pieszo
@@ -360,6 +362,7 @@ func run() -> void:
 	var cn: Dictionary = G.npcs.customers[0]
 	ok(cn.node != null, "klient wyszedł z domu przed spotkaniem")
 	G.add_minutes(maxf(0.0, float(o.meet) - S.t))
+	ok(G._first_delivery_text().contains(G.clock(o.deadline)) and G._first_delivery_text().contains("czeka do"), "po umówionej godzinie cel pierwszej dostawy pokazuje czas oczekiwania")
 	# przenieś klienta na miejsce i podejdź
 	if cn.node == null:
 		G.npcs._customer_enter(cn, true)

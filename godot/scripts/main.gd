@@ -3503,6 +3503,8 @@ func _shot() -> void:
 		last_us = now_us
 		if i == 30 and args.has("ui"):
 			_test_ui(String(args.ui))
+		if i == 36 and args.has("demo_step") and ui.inv.demo_tween != null and ui.inv.demo_tween.is_valid():
+			ui.inv.demo_tween.custom_step(float(args.demo_step))
 		if i == 30 and args.has("prostage") and G.prologue != null:
 			G.prologue.jump(String(args.prostage))
 			if args.has("pos"):

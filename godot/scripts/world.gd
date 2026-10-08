@@ -170,7 +170,7 @@ void fragment() {
 		vec3 g1 = texture(a_grass, uv * 0.31, lodb).rgb;
 		vec3 g2 = texture(a_grass2, uv * 0.27, lodb).rgb;
 		vec3 a = mix(g1, g2, smoothstep(0.42, 0.62, big));
-		a = mix(vec3(dot(a, vec3(0.3, 0.5, 0.2))), a, 0.7) * vec3(0.6, 1.08, 0.46) * (0.72 + mid * 0.5);
+		a = mix(vec3(dot(a, vec3(0.3, 0.5, 0.2))), a, 0.62) * vec3(0.82, 0.95, 0.68) * (0.68 + mid * 0.4);
 		float litter = smoothstep(0.25, 0.6, c2.b + (nz - 0.5) * 0.5 + (mid - 0.5) * 0.3);
 		vec3 lf = texture(a_leaf, uv * 0.36, lodb).rgb;
 		lf = mix(vec3(dot(lf, vec3(0.33))), lf, 0.6) * 0.72;
@@ -185,8 +185,10 @@ void fragment() {
 	alb = mix(alb, vec3(0.6, 0.6, 0.56), mark * wear * 0.7);
 	// kałuże i mokra nawierzchnia
 	float hard = clamp(w.r + w.g + w.b, 0.0, 1.0);
-	float puddle = smoothstep(0.56, 0.66, big * 0.6 + mid * 0.5) * hard * max(wet, 0.18 * w.r);
-	alb *= 1.0 - wet * 0.3 - puddle * 0.35;
+	float puddle = smoothstep(0.56, 0.66, big * 0.6 + mid * 0.5) * hard * wet;
+	// Duże przebarwienia rozbijają regularny wzór płyt, bez wyginania fug.
+	float stain = smoothstep(0.48, 0.74, big * 0.65 + mid * 0.35) * hard;
+	alb *= 1.0 - stain * 0.12 - wet * 0.3 - puddle * 0.35;
 	ALBEDO = alb;
 	NORMAL_MAP = mix(nrm, vec3(0.5, 0.5, 1.0), puddle);
 	NORMAL_MAP_DEPTH = mix(0.85, 0.2, smoothstep(2.5, 20.0, vdist));
@@ -1339,6 +1341,14 @@ func _prop(name: String, x: float, z: float, ry := 0.0, h := 0.0, solid := 0.0, 
 	var n := Props.make(name, h, 0.0, shadows)
 	n.position = Vector3(x, hd(x, z) + yoff, z)
 	n.rotation.y = ry
+	# Właz leży w płaszczyźnie nawierzchni: obrót dopasowuje normalną, a nie jej przeciwny kierunek.
+	if name == "water_manhole_cover":
+		var prop_size: Vector3 = n.get_meta("size", Vector3.ZERO)
+		var hx := (hd(x + 0.6, z) - hd(x - 0.6, z)) / 1.2
+		var hz := (hd(x, z + 0.6) - hd(x, z - 0.6)) / 1.2
+		var normal := Vector3(-hx, 1.0, -hz).normalized()
+		n.basis = Basis(Quaternion(Vector3.UP, normal)) * Basis(Vector3.UP, ry)
+		n.position.y += 0.02 - prop_size.y * normal.y
 	n.scale = Vector3(INV, 1.0, INV)
 	if yoff > 0.05:
 		n.set_meta("na_stosie", true)

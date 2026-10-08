@@ -356,12 +356,18 @@ func drag_demo(to_right: bool) -> void:
 	add_child(demo)
 	var cursor := Control.new()
 	cursor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cursor.z_index = 1
 	cursor.position = start
 	cursor.set_meta("held", false)
 	demo.add_child(cursor)
 	var hand := K.icon("hand", 34.0, T.C_HI)
 	hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cursor.add_child(hand)
+	var held_item := K.icon(String(entry.icon), 30.0, T.C_HI)
+	held_item.position = Vector2(40, -8)
+	held_item.visible = false
+	held_item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cursor.add_child(held_item)
 	cursor.draw.connect(func():
 		# Schemat myszy: lewy przycisk wypełniony przez cały czas trzymania.
 		cursor.draw_style_box(K.sb(Color(0.08, 0.09, 0.1, 0.96), 8, Color.WHITE, 1, 0), Rect2(-25, -16, 18, 28))
@@ -392,6 +398,7 @@ func drag_demo(to_right: bool) -> void:
 	cv.add_child(go)
 	var phase := func(text: String, held: bool):
 		label.text = text
+		held_item.visible = held and (text.begins_with("2.") or text.begins_with("3."))
 		cursor.set_meta("held", held)
 		cursor.queue_redraw()
 	demo_tween = create_tween()
