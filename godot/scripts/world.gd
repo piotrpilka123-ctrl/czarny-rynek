@@ -5422,6 +5422,99 @@ func _club_walls(g: Node3D, cx: float, w: float, d: float, h: float) -> void:
 	Props._no_shadow(walls)
 
 
+const SH_LEDWALL := """shader_type spatial;
+render_mode unshaded;
+// ściana LED za konsoletą: słupki „korektora” skaczą w rytm, kolor płynie od różu do turkusu
+void fragment() {
+	vec2 g = UV * vec2(28.0, 9.0);
+	vec2 cell = floor(g);
+	vec2 f = fract(g);
+	float beat = 0.55 + 0.45 * sin(TIME * 7.5 + cell.x * 1.7) * sin(TIME * 2.3 + cell.x * 0.37);
+	float h = clamp(0.25 + 0.75 * beat * (0.6 + 0.4 * sin(cell.x * 12.9898)), 0.08, 1.0);
+	float on = step(1.0 - h, 1.0 - (cell.y + 0.5) / 9.0);
+	float dot_ = smoothstep(0.48, 0.3, length(f - 0.5));
+	vec3 col = mix(vec3(1.0, 0.2, 0.75), vec3(0.2, 0.9, 1.0), (cell.y + 0.5) / 9.0 + 0.2 * sin(TIME * 0.7));
+	ALBEDO = col * on * dot_ * 1.8 + vec3(0.012, 0.01, 0.02);
+}
+"""
+
+## Reszta wyposażenia sali, której brakowało do „skończonego” klubu: ściana LED za DJ-em, szatnia przy wejściu,
+## drzwi toalet z neonami, czerwony chodnik od bramki, dwa lustrzane filary przy parkiecie i kanały wentylacji pod sufitem.
+func _club_extras(g: Node3D, cx: float, w: float, d: float, h: float) -> void:
+	var ex := Node3D.new()
+	g.add_child(ex)
+	var fx := cx - 2.2
+	var dark := Models.mat("0e0d12", 0.6, 0.3)
+	var wood := Models.mat("2a1c16", 0.55, 0.1)
+	var chrome := Models.mat("b9bcc4", 0.16, 1.0)
+	# --- ściana LED za konsoletą (pod neonem)
+	var led := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(4.6, 1.35)
+	led.mesh = qm
+	var lsh := Shader.new()
+	lsh.code = SH_LEDWALL
+	var lm := ShaderMaterial.new()
+	lm.shader = lsh
+	led.material_override = lm
+	led.position = Vector3(fx, 1.9, -d * 0.5 + 0.075)
+	ex.add_child(led)
+	Models.box(ex, Vector3(4.8, 1.55, 0.05), Vector3(fx, 1.9, -d * 0.5 + 0.045), dark)
+	# --- szatnia w rogu przy wejściu (po stronie baru): lada, wieszak z kurtkami, numerki, szyld
+	var sx0 := cx + w * 0.5 - 3.3
+	var sz0 := d * 0.5 - 1.5
+	Models.box(ex, Vector3(2.9, 1.02, 0.5), Vector3(sx0 + 1.45, 0.51, sz0), wood)
+	Models.box(ex, Vector3(3.0, 0.05, 0.6), Vector3(sx0 + 1.45, 1.045, sz0), Models.mat("14100e", 0.3, 0.2))
+	Models.box(ex, Vector3(2.9, 0.03, 0.02), Vector3(sx0 + 1.45, 0.3, sz0 - 0.26), Models.mat("ff3bd0", 0.4, 0.0, 2.6), Vector3.ZERO, false)
+	add_col(sx0, sx0 + 2.9, sz0 - 0.3, sz0 + 0.3, 1.1, true, -1.0)
+	rects.pop_back()
+	Models.cyl(ex, 0.015, 0.015, 2.7, Vector3(sx0 + 1.45, 1.75, sz0 + 0.95), chrome, Vector3(0, 0, PI / 2.0), 8)
+	var coats := ["2b2e36", "5a3a2c", "20222a", "3c4a3a", "6a2a34", "1c1c20", "4a4638", "2a3550", "101014"]
+	for k in range(coats.size()):
+		var kx := sx0 + 0.25 + k * 0.29
+		Models.box(ex, Vector3(0.22, 0.78 + (k % 3) * 0.08, 0.1), Vector3(kx, 1.32 - (k % 3) * 0.04, sz0 + 0.95), Models.mat(coats[k], 0.9), Vector3(0, 0.25 - (k % 2) * 0.5, 0))
+		Models.box(ex, Vector3(0.03, 0.05, 0.004), Vector3(kx, 1.74, sz0 + 0.9), Models.mat("d8d2c0", 0.6), Vector3.ZERO, false)
+	var cs := Signs.text("CLOAKROOM", "bebas", 90, Color(1.0, 0.85, 0.35), 0.006, 6, Color(0, 0, 0, 0.6))
+	cs.position = Vector3(sx0 + 1.45, 2.55, d * 0.5 - 0.06)
+	cs.rotation.y = PI
+	cs.shaded = false
+	ex.add_child(cs)
+	# --- toalety: dwoje drzwi w południowej ścianie po stronie lóż, nad nimi neony
+	var door_m := Models.mat("1b1620", 0.5, 0.2)
+	var k2 := 0
+	for txo in [1.5, 2.9]:
+		var tx := cx - w * 0.5 + float(txo)
+		Models.box(ex, Vector3(0.98, 2.1, 0.06), Vector3(tx, 1.05, d * 0.5 - 0.05), dark)
+		Models.box(ex, Vector3(0.86, 2.0, 0.05), Vector3(tx, 1.02, d * 0.5 - 0.075), door_m)
+		Models.box(ex, Vector3(0.03, 0.14, 0.04), Vector3(tx + 0.33, 1.02, d * 0.5 - 0.11), chrome)
+		var ws := Signs.text("WC ♀" if k2 == 0 else "WC ♂", "bebas", 70, Color(1.0, 0.3, 0.85) if k2 == 0 else Color(0.3, 0.95, 1.0), 0.006, 6, Color(0, 0, 0, 0.6))
+		ws.position = Vector3(tx, 2.35, d * 0.5 - 0.06)
+		ws.rotation.y = PI
+		ws.shaded = false
+		ex.add_child(ws)
+		k2 += 1
+	# --- czerwony chodnik od bramki w stronę parkietu
+	Models.box(ex, Vector3(1.5, 0.012, 3.2), Vector3(cx, 0.008, d * 0.5 - 4.1), Models.mat("5a1420", 0.95), Vector3.ZERO, false)
+	for sxx in [-1.0, 1.0]:
+		Models.box(ex, Vector3(0.05, 0.014, 3.2), Vector3(cx + sxx * 0.75, 0.009, d * 0.5 - 4.1), Models.mat("b08a3c", 0.4, 0.8), Vector3.ZERO, false)
+	# --- dwa lustrzane filary przy parkiecie, z obręczą LED
+	# (z dala od wysokich stolików: jeden filar stoi między parkietem a barem, drugi bliżej wejścia)
+	for pz in [0.6, -3.9]:
+		var px := cx + 2.3
+		Models.box(ex, Vector3(0.44, h, 0.44), Vector3(px, h * 0.5, pz), chrome)
+		for yy in [0.9, 2.2, 3.4]:
+			Models.box(ex, Vector3(0.48, 0.05, 0.48), Vector3(px, yy, pz), Models.mat("3be8ff" if yy > 2.0 else "ff3bd0", 0.4, 0.0, 2.6), Vector3.ZERO, false)
+		add_col(px - 0.24, px + 0.24, pz - 0.24, pz + 0.24, h, true, -1.0)
+		rects.pop_back()
+	# --- wentylacja pod sufitem: dwa kanały z kratkami
+	var duct := Models.mat("3a3d44", 0.45, 0.7)
+	for dz in [-2.6, 2.9]:
+		Models.box(ex, Vector3(w - 1.2, 0.3, 0.42), Vector3(cx, h - 0.4, dz), duct)
+		for k3 in range(5):
+			Models.box(ex, Vector3(0.5, 0.02, 0.3), Vector3(cx - w * 0.5 + 2.0 + k3 * (w - 4.0) / 4.0, h - 0.56, dz), dark)
+	Props._no_shadow(ex)
+
+
 func _club_room() -> void:
 	var R: Dictionary = D.ROOMS.club
 	var cx: float = R.cx
@@ -5430,6 +5523,7 @@ func _club_room() -> void:
 	var h: float = R.h
 	var g := _room("club", "concrete_floor_worn_001", "concrete_wall_008", "1a1420", Color(0.2, 0.17, 0.26), 0.5)
 	_club_walls(g, cx, w, d, h)
+	_club_extras(g, cx, w, d, h)
 	# bramka z wykrywaczem tuż za drzwiami
 	_lm(g, "klub_bramka", cx, d * 0.5 - 2.4, 0.0)
 	for sx in [-1.0, 1.0]:
