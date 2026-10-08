@@ -3169,6 +3169,10 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "wear")
 			if ui.tip_box != null and is_instance_valid(ui.tip_box):
 				ui.tip_box.queue_free()
+			# --try=pole:rzecz,pole:rzecz — przymiarka jak po najechaniu myszą
+			for tp in String(args.get("try", "")).split(",", false):
+				ui.inv.try_on[tp.get_slice(":", 0)] = tp.get_slice(":", 1)
+			ui.inv._dress()
 		"org":
 			_test_order("dominik")
 			ui.open_inventory("", "org")
