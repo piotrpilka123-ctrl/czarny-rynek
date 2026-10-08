@@ -60,3 +60,9 @@ Blok 319d3d2: dealerzy i podstawowe 1–3 sloty wsadu, 664 testy OK.
 Panel Dealerzy i sloty obejrzane w rendererze; audyt układu 0 uwag.
 Punkt 2 pozostaje otwarty do czynności i animacji w świecie oraz poprawy roślin.
 Osobny audyt jednej partii dealerów i opis ograniczeń w EKONOMIA-SIECI.md.
+
+
+Podpunkt 2a [x]: menu laboratorium w świecie + animacje i jednokrotne skutki czynności
+(2692af9, aa8e909; 674 testy). Podpunkt 2b [ ]: lepsze rośliny, sadzenie i uprawa.
+Końcowe dopracowanie światła laboratorium i podgląd zakończone: f2a57be, 673 testy OK. Nie odhaczać całego punktu 2
+przed poprawą roślin oraz sprawdzeniem wyniku.

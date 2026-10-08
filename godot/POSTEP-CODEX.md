@@ -135,3 +135,24 @@ Nowa kompletna kolejka NOCNA-LISTA-CODEX.md — korzystać z niej przy kolejnych
   jako testu całej nowej gospodarki.
 Następny punkt: fizyczne czynności/animacje laboratorium i poprawa roślin/sadzenia,
 potem wznowić rozszerzenie mapy. W tej turze mapy jeszcze nie zmieniono.
+
+
+## Interaktywne laboratorium — kolejny blok
+
+2692af9 / aa8e909: laboratorium ma menu przy celowniku, jak doniczki. Puste stanowisko:
+wybór dostępnej partii + Sprawdź. W trakcie: oczekująca czynność; po zakończeniu: odbiór.
+LabCare animuje układanie 1–3 pakietów, przelewanie, filtrowanie, zgarnianie i odbiór.
+Skutki wykonywane raz w środku animacji. Panel parametrów pozostaje pod Sprawdź.
+9 nowych kontroli obejmuje braki wsadu, zakaz podwójnego startu, oczekiwanie, kontynuację,
+odbiór i blokadę drugiej czynności; pełny test ostatnio 674 OK.
+
+Pierwszy podgląd laboratorium-czynnosc.png był omyłkowo panelem, bo preset labwork
+nie uruchamiał animacji. Poprawiono preset; laboratorium-wsad.png oraz
+laboratorium-przelanie.png obejrzane w rendererze (log LAB_WORK_STARTED true).
+Zauważona silna zielona poświata: trwa korekta na neutralną ciecz i lokalne ciepłe
+światło palnika. Otwarta szyjka butelki i krople w animacji. Końcowy podgląd
+laboratorium-swiatlo.png obejrzany: neutralne oświetlenie zamiast zielonej poświaty.
+f2a57be zapisany po pełnym teście: 673 OK, 0 błędów.
+
+Następny podpunkt listy: rzeczywista poprawa modeli roślin i sadzenia/uprawy,
+nie ponowne przepisywanie już gotowego menu laboratorium. Po roślinach mapa.
