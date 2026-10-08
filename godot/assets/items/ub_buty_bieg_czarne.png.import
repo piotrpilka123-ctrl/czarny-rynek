@@ -2,6 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://c1h6k77druglt"
+path="res://.godot/imported/ub_buty_bieg_czarne.png-a94b071c415425b116cb0917cadcd1ad.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/items/ub_buty_bieg_czarne.png"
+dest_files=["res://.godot/imported/ub_buty_bieg_czarne.png-a94b071c415425b116cb0917cadcd1ad.ctex"]
 
 [params]
 

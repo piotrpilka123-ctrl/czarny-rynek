@@ -2,6 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://yrxc1rcw0nra"
+path="res://.godot/imported/ub_czapka_daszek_czarna.png-a740616de2489bb513902ae9b7b11a60.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/items/ub_czapka_daszek_czarna.png"
+dest_files=["res://.godot/imported/ub_czapka_daszek_czarna.png-a740616de2489bb513902ae9b7b11a60.ctex"]
 
 [params]
 
