@@ -905,6 +905,15 @@ func run() -> void:
 	S.t = floorf(S.t / 1440.0) * 1440.0 + 8.0 * 60.0
 	ok(not G.snack_buy("bulka") and S.cash == 1.0, "bez gotówki piekarnia nic nie sprzeda")
 	S.erase("fed_until")
+	# kod na gotówkę: wpisanie hasła litera po literze daje 1000 zł, niepełne hasło nic
+	var cash_c: float = S.cash
+	U.cheat_buf = ""
+	for ch0 in "jebacmazu":
+		U.cheat_key(KEY_A + (ch0.unicode_at(0) - 97))
+	var half_ok: bool = S.cash == cash_c
+	U.cheat_key(KEY_R)
+	ok(half_ok and S.cash == cash_c + 1000.0 and U.cheat_buf == "", "kod „jebacmazur” dokłada 1000 zł do kieszeni")
+	S.cash = cash_c
 	# Zdzichu: piwo raz dziennie studzi śledztwo
 	var inv_b: float = S.invest
 	S.invest = 30.0

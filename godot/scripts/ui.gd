@@ -2810,7 +2810,27 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 	K.poly(cv, PackedVector2Array([c0 + f * 9.0, c0 - f * 6.0 + r * 5.5, c0 - f * 2.5, c0 - f * 6.0 - r * 5.5]), Color.WHITE)
 
 
+## kod na gotówkę: wpisane z klawiatury litery (w dowolnym momencie gry) składają się w hasło
+const CHEAT_CASH := "jebacmazur"
+var cheat_buf := ""
+
+## dokłada literę do bufora; gdy bufor kończy się hasłem — 1000 zł do kieszeni
+func cheat_key(kc: int) -> bool:
+	if kc < KEY_A or kc > KEY_Z:
+		return false
+	cheat_buf = (cheat_buf + char(kc).to_lower()).right(CHEAT_CASH.length())
+	if cheat_buf != CHEAT_CASH or not G.running or G.S == null:
+		return false
+	cheat_buf = ""
+	G.S.cash = float(G.S.cash) + 1000.0
+	Sfx.play("cash")
+	G.notify("+1 000 zł do kieszeni.", "good")
+	return true
+
+
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and not G.test_mode:
+		cheat_key((event as InputEventKey).keycode)
 	if G.test_mode:
 		return
 	if event is InputEventMouseButton and event.pressed and mode == "" and G.running and not G.busy and G.main.build_active():
