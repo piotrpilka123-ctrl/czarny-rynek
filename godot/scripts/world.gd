@@ -5331,7 +5331,7 @@ func _clothes_room() -> void:
 	var plinth := Models.mat("cfc8b8", 0.6)
 	for e in [[-2.75, d * 0.5 - 0.55, 0.3, {"glowa": "czapka_daszek_czerwona", "gora": "dres_gora_czerwona", "spodnie": "dresy_czarne", "buty": "buty_bieg_biale"}],
 			[-1.7, d * 0.5 - 0.5, -0.2, {"glowa": "czapka_zimowa_szara", "gora": "kurtka_puchowa", "spodnie": "jeansy_jasne", "buty": "trampki"}],
-			[w * 0.5 - 2.9, -d * 0.5 + 0.5, 0.35, {"gora": "kurtka_skorzana", "spodnie": "jeansy_czarne", "buty": "buty_robocze"}]]:
+			[w * 0.5 - 2.9, -d * 0.5 + 0.5, 0.35, {"gora": "marynarka", "spodnie": "spodnie_garnitur", "buty": "polbuty"}]]:
 		var mx: float = cx + float(e[0])
 		var mzz: float = e[1]
 		var front: float = PI if mzz > 0.0 else 0.0     # ci w oknie stoją przodem do ulicy, ten przy ladzie do sali
