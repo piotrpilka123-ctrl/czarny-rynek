@@ -121,6 +121,17 @@ func run() -> void:
 	await frames(3)
 	G.story_tick()
 	ok(G.flag("read_wiktor"), "przeczytana wiadomość od Wiktora")
+	# karta „pierwszy raz” nie zasłania telefonu trzymanego pionowo: staje w lewej kolumnie, obok niego
+	U.tip_show("Telefon", "Tekst podpowiedzi na próbę, wystarczająco długi, żeby zawinął się w kilka linijek wąskiej karty obok telefonu.", 30.0)
+	await frames(4)
+	var tip_r: Rect2 = U.tip_panel.get_global_rect()
+	var ph_left := 99999.0
+	for pc in U.phone.find_children("*", "PanelContainer", true, false):
+		if (pc as Control).is_visible_in_tree() and (pc as Control).size.y > 400.0:
+			ph_left = minf(ph_left, (pc as Control).global_position.x)
+	ok(U.tip_narrow and tip_r.size.x < 420.0 and tip_r.end.x <= ph_left + 1.0, "podpowiedź przy pionowym telefonie stoi w lewej kolumnie i go nie zasłania (%d ≤ %d)" % [int(tip_r.end.x), int(ph_left)])
+	U.tip_box.queue_free()
+	await frames(2)
 	for app in ["", "kontakty", "mapa", "portfel", "rozwoj", "zadania", "lokale", "ustawienia"]:
 		U.phone.go(app)
 		await frames(2)

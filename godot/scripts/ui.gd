@@ -117,6 +117,9 @@ var deal_zone_hot := false
 var deal_ask := {}                     # okienko „ile paczek położyć”
 var deal_ask_box: Control = null
 var tip_box: Control = null          # karta „pierwszy raz” (najwyżej jedna naraz)
+var tip_panel: Control = null
+var tip_text: Label = null
+var tip_narrow := false
 var waymark: Control
 var mini_card: PanelContainer
 var ic_stance: TextureRect
@@ -477,6 +480,8 @@ func tip_show(title: String, text: String, secs := 11.0) -> void:
 	var p := K.panel(K.sb(Color(0.04, 0.046, 0.058, 0.96), 12, Color(1, 1, 1, 0.24), 1, 14))
 	p.custom_minimum_size = Vector2(620, 0)
 	cc.add_child(p)
+	tip_panel = p
+	tip_narrow = false
 	var h := K.hbox(12)
 	p.add_child(h)
 	var ic := K.icon("lightbulb", 26.0, Color(0.82, 0.84, 0.88))
@@ -486,7 +491,8 @@ func tip_show(title: String, text: String, secs := 11.0) -> void:
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(v)
 	v.add_child(K.lbl("PIERWSZY RAZ  •  " + title.to_upper(), 11, K.C_DIM))
-	v.add_child(K.wrap(text, 14, K.C_TXT, 540.0))
+	tip_text = K.wrap(text, 14, K.C_TXT, 540.0)
+	v.add_child(tip_text)
 	var xb := K.btn("", func(): cc.queue_free(), "flat", true)
 	xb.icon = K.tex("x")
 	xb.add_theme_constant_override("icon_max_width", 13)
@@ -502,15 +508,54 @@ func tip_show(title: String, text: String, secs := 11.0) -> void:
 		cc.offset_top = -80.0
 	else:
 		cc.offset_top = -60.0
+	# przy telefonie trzymanym pionowo karta od razu staje w lewej kolumnie (patrz _tip_place)
+	var side := not low and _tip_side()
+	if side:
+		_tip_place()
 	# animacja należy do karty: gdy kartę zastąpi następna, ta po prostu znika razem z nią
 	var tw := cc.create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tw.set_parallel(true)
 	tw.tween_property(cc, "modulate:a", 1.0, 0.25)
-	tw.tween_property(cc, "offset_top", -124.0 if low else 14.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if not side:
+		tw.tween_property(cc, "offset_top", -124.0 if low else 14.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_interval(secs)
 	tw.chain().tween_property(cc, "modulate:a", 0.0, 0.5)
 	tw.chain().tween_callback(cc.queue_free)
+
+
+## telefon trzymany pionowo stoi pośrodku ekranu: karta podpowiedzi nie może leżeć u góry na środku, bo zasłania jego nagłówek
+func _tip_side() -> bool:
+	return mode == "phone" and phone != null and phone.visible and not phone._landscape and not (inv != null and inv.visible)
+
+
+## Miejsce karty „pierwszy raz”: zwykle u góry, w wolnej części obok przypiętego celu; przy pionowym telefonie —
+## wąska karta w lewej kolumnie pod celem; przy ekwipunku — na dole (ustawia to tip_show).
+func _tip_place() -> void:
+	if tip_box == null or not is_instance_valid(tip_box) or (inv != null and inv.visible):
+		return
+	var side := _tip_side()
+	if side != tip_narrow:
+		tip_narrow = side
+		tip_panel.custom_minimum_size.x = 384.0 if side else 620.0
+		tip_text.custom_minimum_size.x = 300.0 if side else 540.0
+		if not side:
+			tip_box.offset_right = 0.0
+			tip_box.offset_top = 14.0
+			tip_box.offset_bottom = 150.0
+	if side:
+		var top := 20.0
+		if hud.visible and obj_card.visible:
+			top = obj_card.position.y + obj_card.size.y + 10.0
+		tip_box.offset_left = 20.0
+		tip_box.offset_right = -(root.size.x - 404.0)
+		tip_box.offset_top = top
+		tip_box.offset_bottom = top + maxf(tip_panel.size.y, 60.0)
+	else:
+		var left := 0.0
+		if hud.visible and obj_card.visible:
+			left = obj_card.position.x + obj_card.size.x + 14.0
+		tip_box.offset_left = left
 
 
 ## Powiadomienia idą po kolei, jedno naraz: ważniejsze wcześniej, a każde wisi tyle, ile trzeba na przeczytanie
@@ -2046,11 +2091,7 @@ func _process_ui(dt: float) -> void:
 				t_left = modal_box.global_position.x
 				t_right = -(root.size.x - modal_box.global_position.x - modal_box.size.x)
 	# karta „pierwszy raz" nie nachodzi na przypięty cel w lewym górnym rogu: środkuje się w wolnej części ekranu
-	if tip_box != null and is_instance_valid(tip_box):
-		var left := 0.0
-		if hud.visible and obj_card.visible:
-			left = obj_card.position.x + obj_card.size.x + 14.0
-		tip_box.offset_left = left
+	_tip_place()
 	# otwarty telefon zajmuje prawą stronę — powiadomienia przesuwają się na lewą część ekranu
 	if mode == "phone" and t_left == 0.0:
 		t_right = -430.0
