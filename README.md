@@ -78,6 +78,8 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
   nie za plecy (stożki widać na mapie). W pościgu przytrzymaj X, żeby wyrzucić towar.
 - **Miasto**: GPS prowadzi ulicami i ścieżkami, ale w płotach są dziury — kto zna teren, pójdzie na skróty.
 - **Kryjówki**: garaż i piwnica do kupienia; meblujesz je sam (B) — stół z wagą, regały, namiot uprawowy.
+- **Sklepy mają godziny**: lombard 9–19, hurtownia 7–18, piekarnia 6–15, kebab 11–23, fryzjer 9–17 — po godzinach
+  opada roleta i gaśnie światło; monopolowy działa całą dobę.
 - **Laboratorium**: stół laboratoryjny z hurtowni i „zestaw do udrażniania rur” od Stasia. Z jednego zestawu wychodzi
   ok. 36 g amfetaminy (taniej niż u Wiktora), z dwóch 20 g metamfetaminy, z trzech 20 g kokainy — im droższy towar,
   tym dłuższa robota i większy zysk z jednej wymiany. Synteza śmierdzi: bez filtra węglowego rośnie ryzyko nalotu.
@@ -90,17 +92,19 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
 | Klawisz | Działanie |
 |---|---|
 | WASD, mysz | ruch i rozglądanie |
-| Shift | sprint |
+| Shift | bieg (zużywa kondycję) |
+| C | kucanie — ciszej, trudniej Cię zauważyć, przełazy w płotach |
 | E | interakcja z tym, na co celujesz (skrytki, paczki i rzeczy na ziemi otwierają ekwipunek) |
-| Tab | telefon |
+| Tab | telefon (odbiera też połączenie); Spacja — następna kwestia rozmowy |
 | I | ekwipunek |
+| M | mapa z trasą do celu |
 | N / Q | trasa do celu / następny cel |
 | B / R | meblowanie kryjówki / obrót mebla |
 | F | latarka |
+| G | rzut kamykiem — hałas odciąga patrol |
 | X (przytrzymaj) | wyrzuć towar |
-| M | dźwięk |
 | F11 | pełny ekran |
-| Esc | pauza |
+| Esc | pauza, opcje, zmiana klawiszy |
 
 ## Muzyka w klubie
 
