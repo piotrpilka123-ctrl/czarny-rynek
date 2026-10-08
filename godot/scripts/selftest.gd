@@ -771,6 +771,29 @@ func run() -> void:
 	ok(G.upgrade_buy("plecak1") and G.capacity() == 60 and G.capacity() >= D.CAP_BASE * 2, "plecak szkolny: 60 miejsc — dwa razy tyle co kieszenie")
 	U.open_shop()
 	await frames(3)
+	# okno sklepu w oszczędnym stylu: wiersz = nazwa + mały przycisk z ceną, opis dopiero w stopce po najechaniu
+	var shop_btns: Array = U.modal_body.find_children("*", "Button", true, false)
+	var buy_b: Button = null
+	for sb0 in shop_btns:
+		if String((sb0 as Button).text) == G.money(D.SHOP[0].price) and not (sb0 as Button).disabled:
+			buy_b = sb0
+	var had_bags: int = G.item(String(D.SHOP[0].id))
+	var long_txt := 0
+	for sl0 in U.modal_body.find_children("*", "Label", true, false):
+		if String((sl0 as Label).text).length() > 60:
+			long_txt += 1
+	ok(shop_btns.size() >= D.SHOP.size() and buy_b != null and long_txt == 0, "sklep: każda pozycja ma mały przycisk z ceną, a na liście nie ma długich opisów (%d)" % long_txt)
+	ok(U.shop_hint != null and not String(U.shop_hint.text).contains(String(D.SHOP[0].desc)), "sklep: stopka zaczyna od krótkiej wskazówki")
+	U.Shop.hint(U, String(D.SHOP[0].name), String(D.SHOP[0].desc))
+	ok(String(U.shop_hint.text).contains(String(D.SHOP[0].desc)), "sklep: opis pozycji pojawia się w stopce po najechaniu")
+	if buy_b != null:
+		buy_b.pressed.emit()
+		await frames(2)
+	ok(G.item(String(D.SHOP[0].id)) == had_bags + int(D.SHOP[0].n), "sklep: przycisk z ceną kupuje (%d → %d)" % [had_bags, G.item(String(D.SHOP[0].id))])
+	U.close_all()
+	U.open_scales()
+	await frames(2)
+	ok(U.mode == "modal" and U.shop_hint != null, "lombard: okno wag w tym samym stylu")
 	U.close_all()
 
 	# --- kryjówka, meble, uprawa

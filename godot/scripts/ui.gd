@@ -6,6 +6,7 @@ const K = preload("res://scripts/uikit.gd")
 const Trade = preload("res://scripts/trade.gd")
 const Bench = preload("res://scripts/bench.gd")
 const StationUI = preload("res://scripts/station_ui.gd")
+const Shop = preload("res://scripts/shop_ui.gd")
 const PhoneScript = preload("res://scripts/phone.gd")
 const InvScript = preload("res://scripts/inventory.gd")
 const OptsScript = preload("res://scripts/options.gd")
@@ -78,6 +79,9 @@ var modal_scroll: ScrollContainer
 var modal_body: VBoxContainer
 var modal_v: VBoxContainer
 var modal_head_extra: HBoxContainer
+var modal_foot: VBoxContainer          # stopka pod przewijaną treścią (opis pozycji w sklepach)
+var modal_close: Button
+var shop_hint: Label = null
 var modal_dock := "center"
 var deal_said := ""
 var deal_npc = null
@@ -1068,7 +1072,8 @@ func _build_modal() -> void:
 	head.add_child(K.spacer())
 	modal_head_extra = K.hbox(14)
 	head.add_child(modal_head_extra)
-	head.add_child(K.btn("Zamknij  [Esc]", _modal_close, "", true))
+	modal_close = K.btn("Zamknij  [Esc]", _modal_close, "", true)
+	head.add_child(modal_close)
 	v.add_child(head)
 	modal_scroll = ScrollContainer.new()
 	modal_scroll.custom_minimum_size = Vector2(856, 120)
@@ -1077,11 +1082,13 @@ func _build_modal() -> void:
 	modal_body = K.vbox(8)
 	modal_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	modal_scroll.add_child(modal_body)
+	modal_foot = K.vbox(6)
+	v.add_child(modal_foot)
 
 
 ## okno dopasowuje wysokość do treści (do maksimum zależnego od ekranu)
 func _fit_modal() -> void:
-	var max_h := root.size.y - (150.0 if modal_dock == "center" else 170.0)
+	var max_h := root.size.y - (150.0 if modal_dock == "center" else 170.0) - modal_foot.get_combined_minimum_size().y
 	var want := clampf(modal_body.get_combined_minimum_size().y, 60.0, max_h)
 	if absf(modal_scroll.custom_minimum_size.y - want) > 0.5:
 		modal_scroll.custom_minimum_size.y = want
@@ -1094,7 +1101,7 @@ func _modal_close() -> void:
 	close_all()
 
 
-func _open_modal(title: String, sub := "", dock := "center", width := 900.0) -> void:
+func _open_modal(title: String, sub := "", dock := "center", width := 900.0, minimal := false) -> void:
 	dialog_box.visible = false
 	skill_box.visible = false
 	phone.visible = false
@@ -1111,7 +1118,20 @@ func _open_modal(title: String, sub := "", dock := "center", width := 900.0) -> 
 	# okno wymiany jest ciasne: bez dużego tytułu, z wąskimi marginesami i mniejszymi odstępami
 	var tight := dock == "deal"
 	modal_head.visible = not tight
-	modal_box.add_theme_stylebox_override("panel", Trade.panel_style(12) if tight else K.sb(Color(0.045, 0.055, 0.08, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20))
+	modal_box.add_theme_stylebox_override("panel", Trade.panel_style(12) if tight else (Trade.panel_style(18) if minimal else K.sb(Color(0.045, 0.055, 0.08, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20)))
+	# okna sklepów: mniejszy tytuł i mały przycisk zamknięcia, jak w ekwipunku
+	modal_title.add_theme_font_size_override("font_size", 19 if minimal else 26)
+	modal_close.text = "Esc" if minimal else "Zamknij  [Esc]"
+	for st in ["normal", "hover", "pressed"]:
+		if minimal:
+			modal_close.add_theme_stylebox_override(st, Trade._flat(0.035 if st == "normal" else 0.09, 0.13 if st == "normal" else 0.24))
+		else:
+			modal_close.remove_theme_stylebox_override(st)
+	if not minimal:
+		modal_close.add_theme_stylebox_override("normal", K.sb(Color(0.11, 0.135, 0.2), 7, Color(0.2, 0.23, 0.32), 1, 8))
+		modal_close.add_theme_stylebox_override("hover", K.sb(Color(0.15, 0.185, 0.27), 7, Color(0.28, 0.32, 0.48), 1, 8))
+	K.clear(modal_foot)
+	shop_hint = null
 	modal_inner.add_theme_constant_override("separation", 0 if tight else 10)
 	modal_body.add_theme_constant_override("separation", 6 if tight else 8)
 	modal_hrow.add_theme_constant_override("separation", 10 if tight else 14)
@@ -1335,63 +1355,62 @@ func open_loot(src: Dictionary) -> bool:
 
 # ---------------------------------------------------------------- sklep u Stasia
 func open_shop() -> void:
-	_open_modal("Sklep spożywczy u Stasia", "„Wszystko, czego trzeba. O nic nie pytam.”")
+	Shop.begin(self, "Sklep u Stasia", "„Wszystko, czego trzeba. O nic nie pytam.”")
 	var S: Dictionary = G.S
-	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
-	var c := K.card(modal_body)
-	c.add_child(K.lbl("TOWARY", 10, K.C_DIM))
+	var box := Shop.section(self, "TOWARY")
 	for it in D.SHOP:
 		var id: String = it.id
-		var locked: bool = int(S.lvl) < int(it.lvl) or (it.has("skill") and not G.has_skill(it.skill))
-		var b := K.btn("Kup — %s" % G.money(it.price), func(): G.shop_buy(id); open_shop(), "go", true)
-		b.disabled = locked or S.cash < float(it.price)
-		var req := ""
+		var block := ""
+		var desc := String(it.desc)
 		if int(S.lvl) < int(it.lvl):
-			req = K.col("  (poziom %d)" % int(it.lvl), K.C_WARN)
+			block = "poz. %d" % int(it.lvl)
 		elif it.has("skill") and not G.has_skill(it.skill):
-			req = K.col("  (wymaga umiejętności: %s)" % G.skill_def(it.skill).name, K.C_WARN)
-		_row(c, "[b]%s[/b] %s%s\n%s" % [it.name, K.col("masz: %d" % G.item(id), K.C_DIM), req, K.col(it.desc, K.C_DIM)], [b], 13)
-	var c2 := K.card(modal_body)
-	c2.add_child(K.lbl("WYPOSAŻENIE", 10, K.C_DIM))
+			block = "umiejętność"
+			desc += " Wymaga umiejętności: %s." % G.skill_def(it.skill).name
+		elif S.cash < float(it.price):
+			block = "-"
+		Shop.row(self, box, {"name": it.name, "sub": "masz %d" % G.item(id), "desc": desc, "icon": String(D.ITEMS[id].icon) if D.ITEMS.has(id) else "",
+			"price": G.money(it.price), "block": block, "dim": block != "" and block != "-", "cb": func(): G.shop_buy(id); open_shop()})
+	var box2 := Shop.section(self, "WYPOSAŻENIE")
 	for it in D.UPGRADES:
 		var id2: String = it.id
 		if G.upg(id2):
-			_row(c2, "[b]%s[/b]  %s" % [it.name, K.col("kupione", K.C_ACC)], [], 13)
+			Shop.row(self, box2, {"name": it.name, "sub": "kupione", "desc": it.desc, "dim": true})
 			continue
 		var why := ""
 		if int(S.lvl) < int(it.lvl):
-			why = "poziom %d" % int(it.lvl)
+			why = "poz. %d" % int(it.lvl)
 		elif it.has("req") and not G.upg(it.req):
-			why = "najpierw poprzedni"
-		var b2 := K.btn(("Kup — %s" % G.money(it.price)) if why == "" else why, func(): G.upgrade_buy(id2); open_shop(), "go", true)
-		b2.disabled = why != "" or S.cash < float(it.price)
-		_row(c2, "[b]%s[/b]\n%s" % [it.name, K.col(it.desc, K.C_DIM)], [b2], 13)
+			why = "po poprzednim"
+		elif S.cash < float(it.price):
+			why = "-"
+		Shop.row(self, box2, {"name": it.name, "desc": it.desc, "price": G.money(it.price), "block": why, "dim": why != "" and why != "-",
+			"cb": func(): G.upgrade_buy(id2); open_shop()})
+	Shop.foot(self, "Najedź na pozycję, żeby zobaczyć, do czego służy.")
 
 
 ## lombard: wagi. Każda następna jest szybsza i gubi mniej towaru; stara idzie w rozliczeniu, więc płacisz tylko raz.
 func open_scales() -> void:
-	_open_modal("Lombard — wagi", "„Dokładna waga to uczciwy interes. Dla obu stron.”")
+	Shop.begin(self, "Lombard — wagi", "„Dokładna waga to uczciwy interes. Dla obu stron.”")
 	var S: Dictionary = G.S
-	modal_body.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
-	var c := K.card(modal_body)
-	c.add_child(K.lbl("WAGI", 10, K.C_DIM))
+	var box := Shop.section(self, "WAGI")
 	for i in range(D.SCALES.size()):
 		var sc: Dictionary = D.SCALES[i]
 		var idx := i
 		var stats := "gram w %s min • %s" % [("%.1f" % float(sc.min)).replace(".", ","), "bez strat" if float(sc.waste) <= 0.0 else "straty ok. %d%%" % int(round(float(sc.waste) * 100.0))]
-		var txt := "[b]%s[/b]  %s\n%s" % [sc.name, K.col(stats, K.C_BLUE), K.col(sc.desc, K.C_DIM)]
 		if i == G.scale():
-			_row(c, txt + "\n" + K.col("stoi na Twoim stole", K.C_ACC), [], 13)
+			Shop.row(self, box, {"name": sc.name, "sub": stats + " • stoi na Twoim stole", "desc": sc.desc})
 		elif i < G.scale():
-			_row(c, txt + "\n" + K.col("oddana w rozliczeniu", K.C_DIM), [], 13)
+			Shop.row(self, box, {"name": sc.name, "sub": "oddana w rozliczeniu", "desc": sc.desc, "dim": true})
 		else:
 			var why := ""
 			if int(S.lvl) < int(sc.lvl):
-				why = "poziom %d" % int(sc.lvl)
-			var b := K.btn(("Kup — %s" % G.money(sc.price)) if why == "" else why, func(): G.scale_buy(idx); open_scales(), "go", true)
-			b.disabled = G.scale_block(i) != ""
-			_row(c, txt, [b], 13)
-	modal_body.add_child(K.wrap("Wagi nie trzeba nosić ani ustawiać: po zakupie stoi na każdym Twoim stole roboczym.", 12, K.C_DIM))
+				why = "poz. %d" % int(sc.lvl)
+			elif G.scale_block(i) != "":
+				why = "-"
+			Shop.row(self, box, {"name": sc.name, "sub": stats, "desc": sc.desc, "price": G.money(sc.price), "block": why, "dim": why != "" and why != "-",
+				"cb": func(): G.scale_buy(idx); open_scales()})
+	Shop.foot(self, "Wagi nie trzeba nosić ani ustawiać: po zakupie stoi na każdym Twoim stole roboczym.")
 
 
 # ---------------------------------------------------------------- namiot uprawowy
@@ -1427,20 +1446,17 @@ const FURN_KINDS := {"pack": "stanowisko", "stash": "skrytka", "growlight": "św
 
 ## Meblowanie [B]: ustawiasz to, co masz „na stanie” — kupione wcześniej w hurtowni budowlanej. Tu nic nie kosztuje.
 func open_build(room: String) -> void:
-	_open_modal("Urządzanie — " + String(D.ROOMS[room].name), "Ustawiasz sprzęt i meble kupione w hurtowni budowlanej.")
+	Shop.begin(self, "Urządzanie — " + String(D.ROOMS[room].name), "Ustawiasz sprzęt i meble kupione w hurtowni budowlanej.")
 	var S: Dictionary = G.S
 	# doniczki to przedmioty ze sklepu: stawiasz te, które masz przy sobie albo w skrytce
-	var cp := K.card(modal_body)
-	cp.add_child(K.lbl("UPRAWA", 10, K.C_DIM))
+	var cp := Shop.section(self, "UPRAWA")
 	var have: int = G.item_at(room, "doniczka")
 	var placed: int = G.Prod.pots(room).size()
 	var pmax := int(D.POT_MAX.get(room, 8))
-	var pb := K.btn("Postaw doniczkę" if have > 0 and placed < pmax else ("brak doniczek" if have <= 0 else "brak miejsca"), func(): close_all(); G.main.build_begin_pot(), "go", true)
-	pb.disabled = have <= 0 or placed >= pmax
-	_row(cp, "[b]Doniczka z ziemią[/b]  %s\n%s" % [K.col("[masz %d • stoi %d/%d]" % [have, placed, pmax], K.C_BLUE),
-		K.col("Kupujesz u Stasia razem z nasionami i nawozem. Każdy krzak doglądasz osobno: celujesz w niego i wybierasz czynność. Najlepiej rośnie pod lampą LED.", K.C_DIM)], [pb], 13)
-	var c := K.card(modal_body)
-	c.add_child(K.lbl("NA STANIE — DO USTAWIENIA", 10, K.C_DIM))
+	Shop.row(self, cp, {"name": "Doniczka z ziemią", "sub": "masz %d • stoi %d/%d" % [have, placed, pmax], "icon": "doniczka" if K.is_item("doniczka") else "",
+		"desc": "Kupujesz u Stasia razem z nasionami i nawozem. Każdy krzak doglądasz osobno: celujesz w niego i wybierasz czynność. Najlepiej rośnie pod lampą LED.",
+		"price": "Postaw", "block": "" if (have > 0 and placed < pmax) else ("brak" if have <= 0 else "brak miejsca"), "cb": func(): close_all(); G.main.build_begin_pot()})
+	var c := Shop.section(self, "NA STANIE — DO USTAWIENIA")
 	var any := false
 	for f in D.FURNITURE:
 		var fid: String = f.id
@@ -1448,55 +1464,51 @@ func open_build(room: String) -> void:
 		if n <= 0:
 			continue
 		any = true
-		var b := K.btn("Ustaw", func(): close_all(); G.main.build_begin(fid), "go", true)
-		_row(c, "[b]%s[/b]  %s  %s\n%s" % [f.name, K.col("× %d" % n, K.C_ACC), K.col("[%s]" % FURN_KINDS.get(f["func"], ""), K.C_BLUE), K.col(f.desc, K.C_DIM)], [b], 13)
+		Shop.row(self, c, {"name": f.name, "sub": "× %d • %s" % [n, FURN_KINDS.get(f["func"], "")], "desc": f.desc, "price": "Ustaw", "cb": func(): close_all(); G.main.build_begin(fid)})
 	if not any:
-		c.add_child(K.wrap("Nie masz nic do ustawienia. Sprzęt do produkcji i meble kupisz w hurtowni budowlanej przy Hutniczej (szyld BUILDING SUPPLIES, otwarte %d:00–%d:00) — zaznaczysz ją w telefonie: Mapa → Hurtownia budowlana." % [int(D.SUPPLY_OPEN[0]), int(D.SUPPLY_OPEN[1])], 13, K.C_WARN))
+		Shop.alert(self, "Nic do ustawienia. Sprzęt i meble kupisz w hurtowni budowlanej przy Hutniczej (szyld BUILDING SUPPLIES, %d:00–%d:00) — telefon: Mapa → Hurtownia budowlana." % [int(D.SUPPLY_OPEN[0]), int(D.SUPPLY_OPEN[1])])
 	var items: Array = S.hide[room].items
 	if not items.is_empty():
-		var c2 := K.card(modal_body)
-		c2.add_child(K.lbl("USTAWIONE (zdjęte wraca na stan)", 10, K.C_DIM))
+		var c2 := Shop.section(self, "USTAWIONE")
 		for i in range(items.size()):
 			var idx := i
 			var f := G.furn_def(items[i].f)
-			_row(c2, String(f.name), [K.btn("Zdejmij", func(): G.furn_remove(room, idx); open_build(room), "", true)], 13)
+			Shop.row(self, c2, {"name": String(f.name), "sub": String(FURN_KINDS.get(f["func"], "")), "desc": String(f.desc) + " Zdjęte wraca na stan.",
+				"extra": [["Zdejmij", func(): G.furn_remove(room, idx); open_build(room)]]})
+	Shop.foot(self, "Ustawienie nic nie kosztuje. Sprzęt działa dopiero wtedy, gdy stoi w kryjówce.")
 
 
 ## Hurtownia budowlana: sprzęt do produkcji i meble. Kupione rzeczy czekają „na stanie”, aż ustawisz je w kryjówce [B].
 func open_supply() -> void:
-	_open_modal("Hurtownia budowlana", "„Dowozimy pod wskazany adres. Faktury nie wystawiamy, jak pan nie chce.”")
+	Shop.begin(self, "Hurtownia budowlana", "„Dowozimy pod wskazany adres. Faktury nie wystawiamy, jak pan nie chce.”", "na stanie %d szt." % G.owned_total())
 	var S: Dictionary = G.S
-	var top := K.hbox(18)
-	modal_body.add_child(top)
-	top.add_child(K.icon_label("banknote", "Gotówka: " + G.money(S.cash), 15, K.C_ACC))
-	top.add_child(K.icon_label("warehouse", "Na stanie: %d szt." % G.owned_total(), 13, K.C_DIM))
 	var hide_n := 0
 	for pr in D.PROPERTIES:
 		if String(pr.room) != "" and G.owns(pr.id):
 			hide_n += 1
 	if hide_n <= 0:
-		modal_body.add_child(K.wrap("Nie masz jeszcze własnej kryjówki — kupione rzeczy poczekają na stanie, aż będzie gdzie je postawić (telefon → Lokale).", 12, K.C_WARN))
+		Shop.alert(self, "Nie masz jeszcze kryjówki — kupione rzeczy poczekają na stanie (telefon → Lokale).")
 	for grp in [["SPRZĘT DO PRODUKCJI", true], ["MEBLE DO KRYJÓWKI", false]]:
-		var c := K.card(modal_body)
-		c.add_child(K.lbl(String(grp[0]), 10, K.C_DIM))
+		var c := Shop.section(self, String(grp[0]))
 		for f in D.FURNITURE:
 			if (String(f["func"]) in D.SUPPLY_GEAR) != bool(grp[1]):
 				continue
 			var fid: String = f.id
 			var why := ""
 			if int(S.lvl) < int(f.lvl):
-				why = "poziom %d" % int(f.lvl)
-			var b := K.btn(("Kup — %s" % G.money(f.price)) if why == "" else why, func(): G.furn_buy(fid); open_supply(), "go", true)
-			b.disabled = G.furn_block(fid) != ""
-			var btns: Array = [b]
+				why = "poz. %d" % int(f.lvl)
+			elif G.furn_block(fid) != "":
+				why = "-"
 			var own: int = G.owned(fid)
-			if own > 0:
-				btns.append(K.btn("Odsprzedaj (+%s)" % G.money(round(float(f.price) * 0.5)), func(): G.furn_sell(fid); open_supply(), "bad", true))
-			var state := ""
+			var sub := String(FURN_KINDS.get(f["func"], ""))
 			if own > 0 or G.furn_count(fid) > 0:
-				state = "  " + K.col("na stanie: %d • ustawione: %d" % [own, G.furn_count(fid)], K.C_ACC if own > 0 else K.C_DIM)
-			_row(c, "[b]%s[/b]  %s%s\n%s" % [f.name, K.col("[%s]" % FURN_KINDS.get(f["func"], ""), K.C_BLUE), state, K.col(f.desc, K.C_DIM)], btns, 13)
-	modal_body.add_child(K.wrap("Kupione rzeczy ustawisz w swojej kryjówce klawiszem [%s]. Dopiero ustawione działają." % G.kn("build"), 12, K.C_DIM))
+				sub += " • na stanie %d • ustawione %d" % [own, G.furn_count(fid)]
+			var extra: Array = []
+			if own > 0:
+				extra.append(["Odsprzedaj +%s" % G.money(round(float(f.price) * 0.5)), func(): G.furn_sell(fid); open_supply()])
+			Shop.row(self, c, {"name": f.name, "sub": sub, "desc": f.desc, "price": G.money(f.price), "block": why, "dim": why != "" and why != "-",
+				"extra": extra, "cb": func(): G.furn_buy(fid); open_supply()})
+	Shop.foot(self, "Kupione rzeczy ustawisz w swojej kryjówce klawiszem [%s]. Dopiero ustawione działają." % G.kn("build"))
 
 
 # ---------------------------------------------------------------- NEGOCJACJE
