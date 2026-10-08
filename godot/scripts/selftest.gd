@@ -216,6 +216,23 @@ func run() -> void:
 	G.add_bulk(S.stash.safe, "dym", 100, G.take_bulk(S.inv, "dym", 100, start_g - 10.0 if start_g > 15.0 else maxf(0.0, float(S.inv.bulk["dym"].get("100", 0.0)) - 5.0)))
 	ok(absf(G.carry_total() - 5.0 - bag_sp) < 0.01, "zajęte miejsce: 5 g luzem i paczka woreczków")
 
+	# Promień interakcji nie przechodzi przez fizyczną przeszkodę.
+	var ray_from := Vector3(5000, 20, 0)
+	ok(M._aim_clear(ray_from, Vector3.FORWARD, 2.0), "interakcja ma wolną linię wzroku w pustym miejscu")
+	var aim_wall := StaticBody3D.new()
+	var aim_collision := CollisionShape3D.new()
+	var aim_box := BoxShape3D.new()
+	aim_box.size = Vector3(1, 2, 0.2)
+	aim_collision.shape = aim_box
+	aim_wall.add_child(aim_collision)
+	M.add_child(aim_wall)
+	aim_wall.global_position = ray_from + Vector3.FORWARD
+	await frames(4)
+	ok(not M._aim_clear(ray_from, Vector3.FORWARD, 2.0), "ściana przed celem blokuje interakcję")
+	aim_wall.queue_free()
+	await frames(3)
+	ok(M._aim_clear(ray_from, Vector3.FORWARD, 2.0), "po usunięciu przeszkody interakcja znów ma linię wzroku")
+
 	# --- stół: porcjowanie
 	M.enter("safe")
 	await wait_busy()
@@ -1103,6 +1120,28 @@ func run() -> void:
 		await load("res://scripts/prologue_test.gd").run(self)
 		G.S = keep_state
 		U.close_all()
+
+	# Dostawy: jedna paczka nie może być przydzielona dwa razy, nie wolno zmieniać zapasu.
+	var real_state: Dictionary = G.S
+	G.S = G.new_state()
+	G.S.orders = [
+		{"id": 901, "cust": "dominik", "product": "dym", "grams": 3, "meet": 600.0, "deadline": 900.0, "status": "accepted", "spot": D.SPOTS[0].id},
+		{"id": 902, "cust": "dominik", "product": "dym", "grams": 3, "meet": 660.0, "deadline": 960.0, "status": "accepted", "spot": D.SPOTS[0].id}]
+	G.add_pack(G.S.inv, "dym", 100, 3)
+	var inventory_before := JSON.stringify(G.S.inv)
+	var deliveries: Array = G.delivery_plan()
+	ok(deliveries.size() == 2 and int(deliveries[0].ready) == 3 and int(deliveries[1].missing) == 3 and JSON.stringify(G.S.inv) == inventory_before, "plan dostaw rezerwuje paczki tylko raz i nie zmienia kieszeni")
+	G.S.inv = G.new_store()
+	G.add_pack(G.S.inv, "dym", 100, 1, 5)
+	deliveries = G.delivery_plan()
+	ok(deliveries[0].repack and int(deliveries[0].ready) == 0, "plan ostrzega, że woreczka 5 g nie podzielisz na ulicy na zamówienie 3 g")
+	G.S.inv = G.new_store()
+	G.add_pack(G.S.inv, "dym", 10, 6)
+	deliveries = G.delivery_plan()
+	ok(int(deliveries[0].ready) == 0, "plan nie oznacza słabego towaru jako gotowego dla wymagającego klienta")
+	G.S.t = 1000.0
+	ok(G.delivery_plan().is_empty(), "plan pomija spotkania, których czas już minął")
+	G.S = real_state
 
 	# --- raty i zakończenia
 	S = G.S

@@ -8,6 +8,7 @@ const OrderUI = preload("res://scripts/order_ui.gd")
 const APPS := [
 	["sms", "Wiadomości", "message_circle", Color(0.2, 0.72, 0.38)],
 	["kontakty", "Kontakty", "users", Color(0.25, 0.5, 0.9)],
+	["dostawy", "Dostawy", "list_checks", Color(0.65, 0.43, 0.2)],
 	["mapa", "Mapa", "map", Color(0.15, 0.6, 0.62)],
 	["portfel", "Portfel", "wallet", Color(0.8, 0.62, 0.15)],
 	["rozwoj", "Rozwój", "brain", Color(0.55, 0.35, 0.85)],
@@ -356,6 +357,7 @@ func render() -> void:
 				_contact()
 			else:
 				_contacts()
+		"dostawy": _deliveries()
 		"mapa": _map()
 		"portfel": _wallet()
 		"rozwoj": _skills()
@@ -1168,3 +1170,26 @@ func _settings() -> void:
 	var m := K.card(body)
 	m.add_child(K.lbl("MUZYKA W KLUBIE NEON", 10, K.C_DIM))
 	m.add_child(K.rich("Teraz gra: [b]%s[/b]\nWłasna muzyka: wrzuć pliki MP3 do folderu [b]muzyka[/b] w folderze gry — klub będzie je odtwarzał." % Sfx.club_track_name(), 12))
+
+
+func _deliveries() -> void:
+	_header("Dostawy", "Zaplanuj jedną wyprawę po osiedlu")
+	body.add_child(K.wrap("Liczymy tylko paczki w kieszeni, o jakości odpowiedniej dla klienta. Ta sama paczka nie jest przypisana do dwóch spotkań.", 12, K.C_DIM))
+	var plan: Array = G.delivery_plan()
+	if plan.is_empty():
+		body.add_child(K.wrap("Nie masz umówionych dostaw. Przyjmij zamówienie w Wiadomościach.", 13, K.C_TXT))
+	for delivery in plan:
+		var card := K.card(body)
+		card.add_child(K.head(String(delivery.name), 17))
+		card.add_child(K.wrap("%s • %s" % [G.clock(delivery.meet), delivery.where], 12, K.C_DIM))
+		card.add_child(K.wrap("%s: %d / %d g gotowe" % [D.PRODUCTS[delivery.p].name, int(delivery.ready), int(delivery.want)], 13, K.C_TXT))
+		if int(delivery.missing) > 0:
+			card.add_child(K.wrap("Przepakuj przy wadze — masz za duże paczki." if delivery.repack else "Brakuje %d g odpowiedniego towaru w kieszeni." % int(delivery.missing), 12, K.C_WARN))
+		else:
+			card.add_child(K.wrap("Możesz ruszać. Klient czeka do %s." % G.clock(delivery.deadline), 12, K.C_DIM))
+		var order_id := int(delivery.id)
+		card.add_child(K.btn("Prowadź do klienta", func():
+			G.S.track = order_id
+			G.S.nav_on = true
+			G.nav_dirty.emit()
+			ui.close_all()))

@@ -1308,7 +1308,7 @@ func _take_drop(d: Dictionary) -> void:
 
 ## Interakcja wymaga nacelowania: promień wzroku musi przejść przez obiekt z normalnej odległości.
 ## Każdy obiekt to pionowy „słupek” (x, z, y0..y1) o promieniu r; reach = zasięg ręki.
-const AIM_REACH := 2.6
+const AIM_REACH := 2.3
 
 ## zwraca (odległość promienia od osi obiektu, odległość wzdłuż promienia)
 func _aim_at(o: Vector3, d: Vector3, x: float, z: float, y0: float, y1: float) -> Vector2:
@@ -1321,6 +1321,23 @@ func _aim_at(o: Vector3, d: Vector3, x: float, z: float, y0: float, y1: float) -
 	var q := o + d * sdist
 	t = clampf(q.y - y0, 0.0, hgt)
 	return Vector2(q.distance_to(b + Vector3(0, t, 0)), sdist)
+
+
+func _aim_radius(it: Dictionary) -> float:
+	if String(it.get("id", "")) == "npc":
+		return 0.28
+	if String(it.get("id", "")) == "hide":
+		return 0.32
+	return clampf(float(it.get("r", 0.6)) * 0.65, 0.12, 0.85)
+
+
+## Promień do przedniej krawędzi celu: żadnych interakcji przez ścianę.
+func _aim_clear(o: Vector3, dir: Vector3, distance: float) -> bool:
+	if distance < 0.04:
+		return true
+	var ray := PhysicsRayQueryParameters3D.create(o, o + dir * distance)
+	ray.exclude = [player.get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
 
 
 ## wszystkie obiekty w zasięgu kilku metrów: [{it, pos (punkt celowania), miss, dist, hit}]
@@ -1357,9 +1374,15 @@ func _aim_scan() -> Array:
 		var y0: float = gy + float(it.get("y0", 0.0))
 		var y1: float = gy + float(it.get("y1", 1.9))
 		var res := _aim_at(o, dir, ax, az, y0, y1)
-		var reach: float = it.get("reach", AIM_REACH)
+		var reach: float = minf(float(it.get("reach", AIM_REACH)), 2.5)
+		var radius := _aim_radius(it)
+		var facing: bool = res.y > 0.02
+		var hit: bool = facing and res.x <= radius and res.y <= reach
+		if hit:
+			var entry := maxf(0.0, res.y - sqrt(maxf(0.0, radius * radius - res.x * res.x)) - 0.04)
+			hit = _aim_clear(o, dir, entry)
 		out.append({"it": it, "pos": Vector3(ax, (y0 + y1) * 0.5, az), "miss": res.x, "dist": res.y,
-			"hit": res.x <= float(it.get("r", 0.6)) and res.y <= reach, "near": Vector2(ax - pp.x, az - pp.z).length() <= reach + 1.4})
+			"hit": hit, "near": Vector2(ax - pp.x, az - pp.z).length() <= reach + 1.4})
 	return out
 
 
@@ -1566,8 +1589,7 @@ func hide_leave(_forced := false) -> void:
 		player.global_position = Vector3(float(h.ox), world.height(float(h.ox), float(h.oz)), float(h.oz))
 	player.crouching = true
 	player.set_crouch(false)
-	for c in npcs.cops:
-		c.know = false
+	# Wyjście nie wymazuje pamięci patrolu, który widział wejście.
 
 
 ## Rzut kamykiem: tam, gdzie spadnie, robi się hałas i spokojne patrole idą to sprawdzić.
@@ -3041,6 +3063,10 @@ func _test_ui(what: String) -> void:
 				ui._input(key)
 			G.test_mode = was_test
 			print("CHEAT_INPUT cash_delta=", G.S.cash - before_cash, " mode_preserved=", ui.mode == before_mode)
+		"dostawy":
+			G.add_pack(G.S.inv, "dym", 100, 3)
+			_test_order("dominik")
+			ui.open_phone("dostawy")
 		"home": ui.open_phone("")
 		"gielda", "gielda_chat", "sklep":
 			G.S.flags["hurt_on"] = true

@@ -4576,3 +4576,38 @@ func state_from_save(data: Dictionary) -> Dictionary:
 func delete_save() -> void:
 	if has_save():
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+
+
+## Plan wyprawy: rezerwuje całe paczki w kopii kieszeni, bez zmiany zapasu gracza.
+func delivery_plan() -> Array:
+	var pool: Dictionary = S.inv.duplicate(true)
+	var accepted: Array = []
+	for order in S.orders:
+		if String(order.status) == "accepted" and S.t <= float(order.deadline):
+			accepted.append(order)
+	accepted.sort_custom(func(a, b): return float(a.meet) < float(b.meet))
+	var rows: Array = []
+	for order in accepted:
+		var def := cust_def(String(order.cust))
+		var packs: Array = []
+		var sizes := {}
+		var available := 0
+		for pack in stacks(pool, "pack"):
+			if String(pack.p) == String(order.product) and int(pack.pur) >= int(def.minpur):
+				packs.append(pack)
+				sizes[int(pack.g)] = int(sizes.get(int(pack.g), 0)) + int(pack.n)
+				available += int(pack.g) * int(pack.n)
+		var groups: Array = []
+		for size in sizes:
+			groups.append({"g": int(size), "n": int(sizes[size])})
+		var chosen: Dictionary = bag_combo(groups, int(order.grams))
+		for portion in chosen.bags:
+			var left := int(portion.n)
+			for pack in packs:
+				if int(pack.g) == int(portion.g) and left > 0:
+					left -= take_pack(pool, String(pack.p), int(pack.pur), left, int(pack.g))
+		rows.append({"id": int(order.id), "name": String(def.name), "p": String(order.product),
+			"meet": float(order.meet), "deadline": float(order.deadline), "where": String(spot_def(order.spot).name),
+			"want": int(order.grams), "ready": int(chosen.sum), "missing": int(order.grams) - int(chosen.sum),
+			"repack": available >= int(order.grams) and int(chosen.sum) < int(order.grams)})
+	return rows

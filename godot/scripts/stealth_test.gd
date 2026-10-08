@@ -316,6 +316,9 @@ static func run(T) -> void:
 	c.sees = true
 	M.hide_enter(h0)
 	T.ok(P.hidden and c.know and c.inv != null, "patrol, który widział wejście, idzie prosto do kryjówki")
+	M.hide_leave()
+	T.ok(c.know and c.inv != null, "wyjście z kryjówki nie wymazuje pamięci patrolu")
+	M.hide_enter(h0)
 	c.state = "chase"
 	c.last_seen = G.now
 	G.arresting = false

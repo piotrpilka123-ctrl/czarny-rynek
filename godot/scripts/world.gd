@@ -1510,7 +1510,7 @@ func _hide_shed(x: float, z: float, ry: float, search := true) -> bool:
 	var sid := "altanka_%d_%d" % [int(round(x)), int(round(z))]
 	inter.append({"loc": "out", "x": (x + f.x * 1.2 * INV) * SC, "z": (z + f.y * 1.2 * INV) * SC, "y0": 0.0, "y1": 1.5, "r": 1.6, "reach": 2.6, "id": sid,
 		"label": func(): return "Kontenery — już przeszukane" if G.bin_used(sid) else "Przeszukaj kontenery", "act": func(): G.main.search_bin(sid, "dumpster")})
-	inter.append({"loc": "out", "x": front.x * SC, "z": front.y * SC, "ax": (x + f.x * 1.4 * INV) * SC, "az": (z + f.y * 1.4 * INV) * SC, "y0": 0.2, "y1": 1.7, "r": 1.5, "reach": 3.4, "id": "hide",
+	inter.append({"loc": "out", "x": front.x * SC, "z": front.y * SC, "ax": front.x * SC, "az": front.y * SC, "y0": 0.45, "y1": 1.5, "r": 0.5, "reach": 2.3, "id": "hide",
 		"label": func(): return "[E] Schowaj się między kontenerami", "act": func(): G.main.hide_enter(h)})
 	return true
 
