@@ -99,7 +99,17 @@ func run() -> void:
 	for en0 in G.entries(S.inv):
 		if String(en0.id) == "notes":
 			note_e = en0
-	ok(not note_e.is_empty() and G.move_entry("safe", note_e, true, 1.0) == 1.0 and G.item("notes") == 0 and int(G.store_items(S.stash.safe).get("notes", 0)) == 1, "notes przeciągnięty do szafy")
+	U.inv.drag_demo(true)
+	await frames(4)
+	ok(is_instance_valid(U.inv.demo) and U.inv.demo.mouse_filter == Control.MOUSE_FILTER_IGNORE and G.item("notes") == 1, "pokaz przeciągania wskazuje notes, nie blokuje myszy i sam niczego nie przenosi")
+	U.inv.ask_amount(note_e, "bag", "stash")
+	ok(U.inv.asking() and G.item("notes") == 1 and U.inv.demo == null, "upuszczenie notesu kończy pokaz i prosi o potwierdzenie, zanim go przeniesie")
+	U.inv.ask_close()
+	ok(G.item("notes") == 1, "anulowanie przeniesienia zostawia notes w kieszeni")
+	U.inv.ask_amount(note_e, "bag", "stash")
+	ok(U.inv.ask_go.text.contains("wszystko"), "samouczek pokazuje potwierdzenie przeniesienia wszystkiego")
+	U.inv.ask_ok()
+	ok(G.item("notes") == 0 and int(G.store_items(S.stash.safe).get("notes", 0)) == 1, "notes przeciągnięty do szafy po potwierdzeniu")
 	U.close_all()
 	G.story_tick()
 	ok(G.cur_step().id == "room_bench" and absf(G.carry_total() - bag_sp) < 0.01, "krok ze skrytką zaliczony, w kieszeniach zostały tylko woreczki")

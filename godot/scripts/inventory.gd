@@ -37,6 +37,8 @@ var ask_sub: Label
 var ask_slider: HSlider
 var ask_edit: LineEdit
 var ask_go: Button
+var demo: Control = null
+var demo_tween: Tween
 
 
 func build(ui_ref) -> void:
@@ -282,7 +284,7 @@ func open(room_id := "", start_tab := "inv") -> void:
 func _first_time() -> void:
 	var shown := false
 	if G.prologue != null and room == "lab":
-		shown = G.tip("torba", "Pakowanie torby", "Po prawej leży towar ze stołu, po lewej Twoja torba. Złap kokainę lewym przyciskiem myszy, przeciągnij na lewą stronę i puść. W oknie ilości wybierz wszystko i zatwierdź [Enter].")
+		shown = G.tip("torba", "Pakowanie torby", "Po prawej leży towar ze stołu, po lewej Twoja torba. Złap kokainę lewym przyciskiem myszy, przeciągnij na lewą stronę i puść. W oknie ilości kliknij „Wszystko”, potem „Przenieś wszystko” albo [Enter].")
 		if shown:
 			drag_demo(false)
 	elif room == "loot":
@@ -295,7 +297,7 @@ func _first_time() -> void:
 			drag_demo(true)
 	elif has_stash():
 		if G.item("notes") > 0 and room == "safe":
-			shown = G.tip("skrytka_notes", "Schowaj notes", "Po lewej masz kieszenie, po prawej szafę. Złap NOTES Z NUMERAMI lewym przyciskiem myszy, przeciągnij na prawą stronę i puść. Chodzi o notes, nie o gotówkę — pieniądze zostaw przy sobie, przydadzą się na mieście.")
+			shown = G.tip("skrytka_notes", "Schowaj notes", "Po lewej masz kieszenie, po prawej szafę. Złap NOTES Z NUMERAMI lewym przyciskiem myszy, przeciągnij na prawą stronę i puść. Kliknij „Wszystko”, potem „Przenieś wszystko”. Chodzi o notes, nie o gotówkę — pieniądze zostaw przy sobie, przydadzą się na mieście.")
 			if shown:
 				drag_demo(true)
 				return
@@ -306,34 +308,120 @@ func _first_time() -> void:
 		G.tip("plecak", "Plecak", "Tu widzisz wszystko, co masz przy sobie, i ile to zajmuje. Kliknięcie pokazuje opis. Przeciągnięcie rzeczy na pole po prawej wyrzuca ją na ziemię — ktoś inny może ją potem znaleźć. Zakładki u góry: postać, ubrania, notatki.")
 
 
-## „Ręka” pokazująca przeciąganie między stronami okna: jedzie z jednej strony na drugą trzy razy i znika.
+## Pokaz nie przenosi przedmiotów: klik, trzymanie, upuszczenie, wybór i potwierdzenie.
+func demo_stop() -> void:
+	if demo_tween != null and demo_tween.is_valid():
+		demo_tween.kill()
+	if is_instance_valid(demo):
+		demo.queue_free()
+	demo = null
+
+
+func _demo_find(n: Node, side: String, preferred := "") -> Control:
+	if n is Control and n.has_meta("demo_entry") and String(n.get_meta("demo_side")) == side:
+		var entry: Dictionary = n.get_meta("demo_entry")
+		if preferred == "" or String(entry.get("id", "")) == preferred or String(entry.get("p", "")) == preferred:
+			return n as Control
+	for child in n.get_children():
+		var found := _demo_find(child, side, preferred)
+		if found != null:
+			return found
+	return null
+
+
 func drag_demo(to_right: bool) -> void:
+	demo_stop()
+	# Wiersze i kolumny muszą mieć rzeczywiste rozmiary, również po zmianie rozdzielczości.
+	var active_room := room
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not visible or room != active_room or asking():
+		return
+	var side := "bag" if to_right else "stash"
+	var preferred := "notes" if to_right and room == "safe" and G.item("notes") > 0 else ("snieg" if room == "lab" else "")
+	var source := _demo_find(content, side, preferred)
+	if source == null:
+		source = _demo_find(content, side)
+	if source == null:
+		return
+	var entry: Dictionary = source.get_meta("demo_entry")
+	var inv_transform := get_global_transform().affine_inverse()
+	var start := inv_transform * source.get_global_rect().get_center()
+	var target := Vector2(size.x * (0.83 if to_right else 0.17), start.y)
+	demo = Control.new()
+	demo.name = "DragTutorial"
+	demo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	demo.z_index = 80
+	demo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(demo)
+	var cursor := Control.new()
+	cursor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cursor.position = start
+	cursor.set_meta("held", false)
+	demo.add_child(cursor)
 	var hand := K.icon("hand", 34.0, T.C_HI)
 	hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hand.z_index = 50
-	add_child(hand)
-	var w := size.x if size.x > 100.0 else 1280.0
-	var hgt := size.y if size.y > 100.0 else 720.0
-	var a := Vector2(w * 0.5 - 430.0, hgt * 0.5 - 60.0)
-	var b := Vector2(w * 0.5 + 400.0, hgt * 0.5 - 60.0)
-	if not to_right:
-		var t0 := a
-		a = b
-		b = t0
-	var tw := hand.create_tween()
-	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	for i in range(3):
-		tw.tween_callback(func(): hand.position = a; hand.modulate.a = 0.0; hand.scale = Vector2(1.15, 1.15))
-		tw.tween_property(hand, "modulate:a", 1.0, 0.25)
-		tw.tween_property(hand, "scale", Vector2(0.9, 0.9), 0.18)
-		tw.tween_property(hand, "position", b, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.tween_property(hand, "scale", Vector2(1.15, 1.15), 0.15)
-		tw.tween_property(hand, "modulate:a", 0.0, 0.3)
-		tw.tween_interval(0.35)
-	tw.tween_callback(hand.queue_free)
+	cursor.add_child(hand)
+	cursor.draw.connect(func():
+		# Schemat myszy: lewy przycisk wypełniony przez cały czas trzymania.
+		cursor.draw_style_box(K.sb(Color(0.08, 0.09, 0.1, 0.96), 8, Color.WHITE, 1, 0), Rect2(-25, -16, 18, 28))
+		if bool(cursor.get_meta("held")):
+			cursor.draw_rect(Rect2(-23, -14, 6, 11), Color.WHITE)
+			cursor.draw_arc(Vector2(9, 12), 25.0, 0, TAU, 32, Color(1, 1, 1, 0.65), 2, true))
+	var label := K.lbl("", 13, T.C_HI)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.position = Vector2(-30, 42)
+	cursor.add_child(label)
+	# Demonstracyjne okno: nie przechwytuje myszy i nie modyfikuje prawdziwego schowka.
+	var confirm := K.panel(K.sb(Color(0.05, 0.057, 0.072, 0.99), 10, Color(1, 1, 1, 0.4), 1, 16))
+	confirm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	confirm.position = size * 0.5 - Vector2(170, 95)
+	confirm.size = Vector2(340, 190)
+	confirm.visible = false
+	demo.add_child(confirm)
+	var cv := K.vbox(12)
+	cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	confirm.add_child(cv)
+	cv.add_child(K.head("POKAZ — %s" % String(entry.name), 16, T.C_HI))
+	cv.add_child(K.lbl("Ile chcesz przenieść?", 13, T.C_MID))
+	var all := K.lbl("Wszystko", 15, T.C_HI)
+	all.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cv.add_child(all)
+	var go := K.head("Przenieś wszystko  [Enter]", 16, T.C_HI)
+	go.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cv.add_child(go)
+	var phase := func(text: String, held: bool):
+		label.text = text
+		cursor.set_meta("held", held)
+		cursor.queue_redraw()
+	demo_tween = create_tween()
+	demo_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	demo_tween.tween_callback(func(): phase.call("1. Kliknij", false))
+	demo_tween.tween_interval(0.55)
+	demo_tween.tween_callback(func(): phase.call("2. Trzymaj LPM", true))
+	demo_tween.tween_property(cursor, "scale", Vector2(0.88, 0.88), 0.18)
+	demo_tween.tween_interval(0.4)
+	demo_tween.tween_callback(func(): phase.call("3. Przeciągnij", true))
+	demo_tween.tween_property(cursor, "position", target, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	demo_tween.tween_callback(func(): phase.call("4. Puść LPM", false))
+	demo_tween.tween_property(cursor, "scale", Vector2.ONE, 0.18)
+	demo_tween.tween_interval(0.55)
+	demo_tween.tween_callback(func(): confirm.show(); phase.call("5. Wybierz wszystko", false))
+	demo_tween.tween_interval(0.2)
+	demo_tween.tween_property(cursor, "position", confirm.position + Vector2(35, 85), 0.5)
+	demo_tween.tween_callback(func(): phase.call("5. Kliknij: Wszystko", true); all.modulate = Color(0.7, 1.0, 0.8))
+	demo_tween.tween_interval(0.4)
+	demo_tween.tween_callback(func(): phase.call("6. Potwierdź", false))
+	demo_tween.tween_property(cursor, "position", confirm.position + Vector2(35, 125), 0.5)
+	demo_tween.tween_callback(func(): phase.call("6. Kliknij lub Enter", true); go.modulate = Color(0.7, 1.0, 0.8))
+	demo_tween.tween_interval(0.4)
+	demo_tween.tween_callback(func(): confirm.hide(); phase.call("✓ Teraz Twoja kolej", false))
+	demo_tween.tween_interval(1.8)
+	demo_tween.tween_callback(demo_stop)
 
 
 func close() -> void:
+	demo_stop()
 	ask_close()
 	try_on = {}
 	if visible and room == "wiktor":
@@ -353,6 +441,7 @@ func has_stash() -> bool:
 
 
 func render() -> void:
+	demo_stop()
 	var S: Dictionary = G.S
 	_dress()
 	l_cash.text = G.money(S.cash)
@@ -638,6 +727,8 @@ func _row(e: Dictionary, side: String) -> Control:
 	ql.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(ql)
 	p.gui_input.connect(_row_input.bind(e, side))
+	p.set_meta("demo_entry", e)
+	p.set_meta("demo_side", side)
 	p.set_drag_forwarding(_drag.bind(e, side), _can_drop.bind(side), _drop.bind(side))
 	return p
 
@@ -847,6 +938,7 @@ func _fmt_amount(e: Dictionary, v: float) -> String:
 ## Okno wyboru ilości po upuszczeniu przedmiotu: suwak, pole do wpisania liczby
 ## oraz podgląd, ile to waży i ile miejsca zajmie. `to` = "stash" | "bag" | "bin".
 func ask_amount(e: Dictionary, from: String, to: String) -> void:
+	demo_stop()
 	var step: float = e.get("step", 1.0)
 	var limit: float = float(e.n) if to == "bin" else G.move_limit(room, e, to == "stash")
 	if limit < step - 0.001:
@@ -856,7 +948,7 @@ func ask_amount(e: Dictionary, from: String, to: String) -> void:
 			G.notify("Brak miejsca w %s." % ("skrytce" if to == "stash" else "plecaku"), "warn")
 		Sfx.play("error")
 		return
-	if float(e.n) <= step + 0.001:
+	if float(e.n) <= step + 0.001 and not (room == "safe" and String(e.get("id", "")) == "notes" and to == "stash"):
 		_apply_move(e, to, float(e.n))
 		return
 	ask_close()
@@ -949,6 +1041,7 @@ func ask_amount(e: Dictionary, from: String, to: String) -> void:
 	v.add_child(bh)
 	bh.add_child(T._mini("Anuluj  [Esc]", ask_close, "text"))
 	bh.add_child(K.spacer())
+	bh.add_child(T._mini("Wszystko", func(): _ask_set(float(ask.max))))
 	ask_go = T._mini("", ask_ok, "strong")
 	ask_go.custom_minimum_size = Vector2(150, 28)
 	bh.add_child(ask_go)
@@ -978,7 +1071,7 @@ func _ask_set(val: float, move_slider := true, from_edit := false) -> void:
 	ask_big.text = _fmt_amount(e, v2)
 	ask_sub.text = "miejsce %s  •  %s" % [G.units(v2 * float(e.usize)), G.weight_text(v2 * float(e.uw))]
 	var verb := "Wyrzuć" if ask.to == "bin" else "Przenieś"
-	ask_go.text = "%s %s  [Enter]" % [verb, _fmt_amount(e, v2)]
+	ask_go.text = "Przenieś wszystko  [Enter]" if ask.to != "bin" and v2 >= float(e.n) - 0.001 else "%s %s  [Enter]" % [verb, _fmt_amount(e, v2)]
 	if move_slider and absf(ask_slider.value - v2) > 0.001:
 		ask_slider.set_value_no_signal(v2)
 	if not from_edit:
