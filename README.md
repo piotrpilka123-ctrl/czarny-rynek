@@ -80,6 +80,7 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
 - **Kryjówki**: garaż i piwnica do kupienia; meblujesz je sam (B) — stół z wagą, regały, namiot uprawowy.
 - **Sklepy mają godziny**: lombard 9–19, hurtownia 7–18, piekarnia 6–15, kebab 11–23, fryzjer 9–17 — po godzinach
   opada roleta i gaśnie światło; monopolowy działa całą dobę.
+- **Zdzichu** spod monopolowego wszystko widzi: za piwo (6 zł, raz dziennie) „nic nie widział” i śledztwo trochę stygnie.
 - **Jedzenie**: kebab (14 zł) i drożdżówka z piekarni (4 zł) dają +20% kondycji na kilka godzin gry — przydaje się
   przed dłuższym kursem albo ucieczką.
 - **Laboratorium**: stół laboratoryjny z hurtowni i „zestaw do udrażniania rur” od Stasia. Z jednego zestawu wychodzi

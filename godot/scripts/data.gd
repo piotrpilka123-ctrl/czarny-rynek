@@ -716,6 +716,8 @@ const HINTS := [
 	"U Wiktora dostaniesz tylko zioło i amfetaminę. Metę i kokainę robi się samemu — w laboratorium, gdy urządzisz pod nie lokal.",
 	"Dosyp klientowi gram ponad zamówienie, a zapamięta to na długo. Zadowolony klient zamawia więcej i mniej się targuje.",
 	"Przed dłuższym kursem zjedz kebab przy Hutniczej albo drożdżówkę z piekarni: przez kilka godzin masz o jedną piątą więcej kondycji.",
+	"Zdzichu spod monopolowego widzi wszystko, co dzieje się na ulicy. Postaw mu piwo, a śledztwo trochę ostygnie — raz na dzień.",
+	"Dobrane ubrania tworzą komplety: garnitur myli patrole, dres pomaga w biegu, czarne ciuchy chowają nocą. Szafa podpowie, czego brakuje.",
 	"Sklepy mają swoje godziny. Lombard zamyka się o 19:00, hurtownia o 18:00 — mapa w telefonie pokazuje, do której czynne.",
 	"W „Taniej Odzieży” najedź kursorem na rzecz z wieszaka: postać obok od razu ją przymierzy, zanim zapłacisz.",
 	"Możesz dać mniej, niż klient zamówił, i liczyć jak za całość — ale jak się zorientuje, drugi raz patrzy Ci na ręce.",
