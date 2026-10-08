@@ -4993,7 +4993,12 @@ func _interiors() -> void:
 	Interior.shoes(g, Vector3(cx + 0.95, 0, d * 0.5 - 0.22), 0.3)
 	Interior.shoes(g, Vector3(cx + 1.3, 0, d * 0.5 - 0.2), -0.2, "6a4a2a")
 	Interior.switch_plate(g, Vector3(cx - 0.75, 1.25, d * 0.5 - 0.01), PI)
-	Models.box(g, Vector3(0.9, 0.012, 0.5), Vector3(cx, 0.007, d * 0.5 - 0.45), Models.mat("3a3630", 0.95), Vector3.ZERO, false)
+	# wycieraczka: kokosowa, z ciemniejszym gumowym obszyciem i prążkami (czarna paczka od Wiktora ginęła na ciemnej płycie)
+	var mat_z := d * 0.5 - 0.45
+	Models.box(g, Vector3(0.94, 0.01, 0.54), Vector3(cx, 0.006, mat_z), Models.mat("4a4038", 0.9), Vector3.ZERO, false)
+	Models.box(g, Vector3(0.86, 0.016, 0.46), Vector3(cx, 0.009, mat_z), Models.mat("a8895c", 1.0), Vector3.ZERO, false)
+	for k in range(7):
+		Models.box(g, Vector3(0.8, 0.004, 0.018), Vector3(cx, 0.019, mat_z - 0.18 + k * 0.06), Models.mat("96784e", 1.0), Vector3.ZERO, false)
 	_rp(g, "cardboard_box_01", cx + 2.6, d * 0.5 - 0.5, 0.4, 0.34)
 	_rp(g, "cardboard_box_01", cx + 2.2, d * 0.5 - 0.42, 1.2, 0.3)
 	Interior.moving_boxes(g, Vector3(cx + 2.75, 0, d * 0.5 - 1.25), 3)

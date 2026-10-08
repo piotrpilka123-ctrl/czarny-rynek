@@ -167,7 +167,8 @@ def paczka_start():
     ys, xs = np.mgrid[0:hp, 0:wp].astype(np.float32)
     uu, vv = xs / wp * 2 - 1, ys / hp * 2 - 1
     # --- czarna folia: prawie czerń, z jaśniejszymi smugami naciągniętych warstw i zmarszczkami w poprzek
-    base = np.zeros((hp, wp, 3), dtype=np.float32) + np.array([0.035, 0.036, 0.04], dtype=np.float32)
+    # (grafit, nie smolista czerń: na ekranie folia ma być czarna, ale z widocznymi fałdami)
+    base = np.zeros((hp, wp, 3), dtype=np.float32) + np.array([0.3, 0.305, 0.32], dtype=np.float32)
     for _i in range(230):
         # fałda: krótki, lekko wygięty odcinek; większość biegnie w poprzek kostki, część skosem od rogów
         x0, y0 = rs.random() * wp, rs.random() * hp
@@ -180,7 +181,7 @@ def paczka_start():
         amp = rs.uniform(0.03, 0.2)
         base += (np.exp(-(dist / wd) ** 2) * k * amp)[..., None]
         base -= (np.exp(-((dist - wd * 2.2) / (wd * 1.6)) ** 2) * k * amp * 0.25)[..., None]
-    base = np.clip(base, 0.012, 1.0)
+    base = np.clip(base, 0.22, 1.0)
     for _i in range(8):                                                # granice kolejnych warstw folii (skośne)
         x0 = rs.random() * wp
         dist = (xs - x0) + (ys - hp / 2) * rs.uniform(-0.5, 0.5)

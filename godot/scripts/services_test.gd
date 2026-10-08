@@ -667,7 +667,9 @@ static func run(T) -> void:
 		var blinked := false
 		for i in range(30):
 			await T.frames(1)
-			if float(frig.face._blink) >= 0.0:
+			# przy długiej klatce (zadyszka maszyny) całe mrugnięcie mieści się w jednym kroku: wtedy widać tylko,
+			# że odliczanie do następnego już ruszyło
+			if float(frig.face._blink) >= 0.0 or float(frig.face._blink_in) > 0.2:
 				blinked = true
 		T.ok(blinked, "postać mruga")
 	frig.root.queue_free()
