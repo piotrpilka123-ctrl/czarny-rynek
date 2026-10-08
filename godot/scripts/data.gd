@@ -201,6 +201,15 @@ const ITEMS := {
 		"stats": {"witness": 0.9, "attention": 1.04}, "desc": "Podciągnięty na nos chroni przed rozpoznaniem, ale patrol patrzy na Ciebie odrobinę uważniej."},
 	"lancuch": {"name": "Łańcuch z tombaku", "icon": "ub_lancuch", "size": 0.5, "w": 90.0, "unit": "szt.", "look": {"acc": "chain", "bone": "Bip01 Spine2"}, "slot": "szyja", "price": 650, "lvl": 5,
 		"stats": {"charm": 1.03, "attention": 1.03}, "desc": "Wygląda na złoto. Klienci traktują Cię poważniej — policja też."},
+	# --- nowe wykroje
+	"dres_gora": {"name": "Bluza dresowa", "icon": "ub_dres_gora", "size": 1.0, "w": 280.0, "unit": "szt.", "look": {"color": "1f2a44", "stripes": true}, "slot": "gora", "price": 140, "lvl": 1,
+		"stats": {"speed": 1.02, "stamina": 1.03}, "desc": "Lekka, z trzema paskami. Biega się w niej lepiej niż w czymkolwiek innym."},
+	"kurtka_skorzana": {"name": "Ramoneska", "icon": "ub_ramoneska", "size": 1.0, "w": 520.0, "unit": "szt.", "look": {"color": "1d1b1a", "collar": true}, "slot": "gora", "price": 900, "lvl": 6,
+		"stats": {"charm": 1.05, "cap": 2, "attention": 1.03}, "desc": "Czarna skóra. Klienci traktują Cię poważniej — patrol też chętniej się przygląda."},
+	"parka": {"name": "Parka z kapturem", "icon": "ub_parka", "size": 1.0, "w": 600.0, "unit": "szt.", "look": {"color": "3d4438", "hood": true}, "slot": "gora", "price": 760, "lvl": 5,
+		"stats": {"cap": 5, "conceal": 0.9, "speed": 0.98}, "desc": "Długa, z wielkimi kieszeniami. Pomieści najwięcej, ale w biegu trochę zawadza."},
+	"chinosy": {"name": "Chinosy", "icon": "ub_chinosy", "size": 1.0, "w": 320.0, "unit": "szt.", "look": {"color": "8a7a5c"}, "slot": "spodnie", "price": 280, "lvl": 3,
+		"stats": {"attention": 0.94, "charm": 1.02}, "desc": "Zaprasowany kant i porządny pasek. Wyglądasz jak ktoś, kto idzie do pracy."},
 	# --- warianty szyte z tych samych wykrojów (look.model = wykrój, look.tint = barwienie tkaniny)
 	"bluza_czarna": {"name": "Czarna bluza z kapturem", "icon": "ub_bluza_czarna", "size": 1.0, "w": 330.0, "unit": "szt.", "look": {"color": "1e1f23", "hood": true, "model": "bluza_kaptur", "tint": "4a4a50"}, "slot": "gora", "price": 340, "lvl": 3,
 		"stats": {"vis_night": 0.9, "cap": 2}, "desc": "Ta sama bluza, tylko czarna. Po zmroku prawie Cię nie widać."},

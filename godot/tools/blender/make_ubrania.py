@@ -611,7 +611,149 @@ def koszula():
     finish(B, ob, parts, 'koszula')
 
 
+def kurtka_skorzana():
+    """ramoneska: czarna skóra, wykładany kołnierz z klapami, skośny zamek, kieszenie na zamek, pas ze sprzączką"""
+    B = Body()
+    lea = mat('skora_ramoneska', '1d1b1a', 0.5)
+    dark = mat('skora_ramoneska_c', '141312', 0.5)
+    metal = mat('metal_zamek', 'a9adb3', 0.35, 0.9)
+
+    def off(co, w):
+        if part(w, ('UpperArm', 'Forearm')) > 0.5:
+            return 0.012 if along(B, co, 'Forearm', 'Hand') > 0.86 else 0.016
+        return 0.018
+    bm, tree, neck, cuffs, hems = _top(B, 0.86, off, 2)
+    ob = to_object(B, bm, 'kurtka_skorzana', [lea, dark, metal])
+    parts = []
+    for lp in neck:
+        parts.append(band(lp, 0.009, dark, 'kolnierz', 0.003, 2.6, Z * 0.012, wide=0.8))
+    for lp in cuffs:
+        c = sum(lp, Vector()) / len(lp)
+        parts.append(band(lp, 0.008, dark, 'mankiet', 0.001, 2.0, _arm_dir(B, c) * 0.006, wide=0.7))
+    for lp in hems:
+        parts.append(band(lp, 0.011, dark, 'pas', 0.001, 2.6, Z * 0.006))
+    for sx in (-1, 1):
+        r = (X * sx + Z * -0.9).normalized()
+        u = (Z + X * sx * 0.6).normalized()
+        parts.append(patch(tree, Vector((sx * 0.07, -0.3, 1.42)), r, u, 0.11, 0.075, 0.008, dark, 'klapa', 6, 4, 0.7, FRONT))
+        parts.append(ribbon(tree, Vector((sx * 0.07, -0.3, 1.12)), Vector((sx * 0.15, -0.3, 1.02)), FRONT, 0.008, metal, 8, 0.004, 'zamek_kieszeni', 0.002))
+        parts.append(ribbon(tree, Vector((sx * 0.06, 0.0, 1.9)), Vector((sx * 0.19, 0.0, 1.9)), DOWN, 0.035, dark, 6, 0.005, 'pagon', 0.002))
+        parts.append(button(tree, Vector((sx * 0.085, 0.0, 1.9)), DOWN, metal, 0.005, 0.008))
+    parts.append(ribbon(tree, Vector((0.06, -0.3, 0.9)), Vector((-0.03, -0.3, 1.38)), FRONT, 0.008, metal, 18, 0.005, 'zamek', 0.002))
+    loc, _ = on_surface(tree, Vector((0.05, -0.3, 0.885)), FRONT, 0.008)
+    parts.append(rbox('sprzaczka', (0.035, 0.008, 0.028), metal, 0.003, tuple(loc)))
+    finish(B, ob, parts, 'kurtka_skorzana')
+
+
+def dres_gora():
+    """bluza dresowa: śliska dzianina, stójka, zamek na całej długości, ściągacze, trzy białe paski wzdłuż rękawów"""
+    B = Body()
+    knit = mat('dzianina_dres_gora', '1f2a44', 0.8)
+    rib = mat('sciagacz_dres_gora', '18213a', 0.9)
+    white = mat('dzianina_lampas', 'e4e2dc', 0.9)
+    metal = mat('metal_zamek', 'a9adb3', 0.35, 0.9)
+
+    def off(co, w):
+        if part(w, ('UpperArm', 'Forearm')) > 0.5:
+            return 0.01 if along(B, co, 'Forearm', 'Hand') > 0.84 else 0.014
+        return 0.016
+    bm, tree, neck, cuffs, hems = _top(B, 0.85, off, 3)
+    ob = to_object(B, bm, 'dres_gora', [knit, rib, white, metal])
+    paint(ob, lambda c, n: c.z < 0.9 or _cuff(B, c), 1)
+    parts = []
+    for lp in neck:
+        parts.append(band(lp, 0.009, rib, 'stojka', 0.003, 3.0, Z * 0.016, wide=0.8))
+    for lp in cuffs:
+        c = sum(lp, Vector()) / len(lp)
+        parts.append(band(lp, 0.01, rib, 'mankiet', 0.001, 2.4, _arm_dir(B, c) * 0.01))
+    for lp in hems:
+        parts.append(band(lp, 0.011, rib, 'dol', 0.0, 2.4, Z * 0.01))
+    parts.append(ribbon(tree, Vector((0.0, -0.3, 0.88)), Vector((0.0, -0.3, 1.48)), FRONT, 0.007, metal, 18, 0.004, 'zamek', 0.002))
+    for sx in (-1, 1):
+        for k in (-1, 0, 1):
+            a = Vector((sx * 0.2, 0.026 * k, 1.9))
+            b = Vector((sx * 0.6, 0.026 * k, 1.9))
+            parts.append(ribbon(tree, a, b, DOWN, 0.012, white, 14, 0.003, 'pasek', 0.001))
+    finish(B, ob, parts, 'dres_gora')
+
+
+def parka():
+    """parka: długa kurtka do połowy uda, kaptur z futrzanym rantem, kryty zamek, dwie duże kieszenie z patkami, ściągacz w pasie"""
+    B = Body()
+    cloth = mat('plotno_parka', '3d4438', 0.92)
+    dark = mat('plotno_parka_c', '33392f', 0.92)
+    fur = mat('dzianina_futerko', '8a7b63', 1.0)
+    metal = mat('metal_zamek', '6f7378', 0.4, 0.9)
+
+    def off(co, w):
+        if part(w, ('UpperArm', 'Forearm')) > 0.5:
+            return 0.015 if along(B, co, 'Forearm', 'Hand') > 0.86 else 0.021
+        return 0.026 if co.z < 0.95 else 0.024
+    bm, tree, neck, cuffs, hems = _top(B, 0.66, off, 2)
+    ob = to_object(B, bm, 'parka', [cloth, dark, fur, metal])
+    parts = []
+    for lp in neck:
+        parts.append(band(lp, 0.012, dark, 'stojka', 0.004, 3.2, Z * 0.02, wide=0.8))
+    for lp in cuffs:
+        c = sum(lp, Vector()) / len(lp)
+        parts.append(band(lp, 0.011, dark, 'mankiet', 0.001, 2.6, _arm_dir(B, c) * 0.01, wide=0.7))
+    for lp in hems:
+        parts.append(band(lp, 0.008, dark, 'dol', 0.001, 1.6))
+    parts.append(ribbon(tree, Vector((0.012, -0.3, 0.72)), Vector((0.012, -0.3, 1.47)), FRONT, 0.055, dark, 20, 0.006, 'plisa', 0.003))
+    for z in (0.76, 0.92, 1.08, 1.24, 1.4):
+        parts.append(button(tree, Vector((0.012, -0.3, z)), FRONT, metal, 0.007, 0.0095))
+    # sznurek ściągacza w pasie
+    parts.append(ribbon(tree, Vector((-0.16, -0.3, 1.04)), Vector((0.16, -0.3, 1.04)), FRONT, 0.012, dark, 10, 0.004, 'sciagacz', 0.002))
+    for sx in (-1, 1):
+        c = Vector((sx * 0.125, -0.3, 0.86))
+        parts.append(patch(tree, c, X, Z, 0.15, 0.16, 0.009, cloth, 'kieszen', 6, 6, 0.3, FRONT))
+        parts.append(patch(tree, c + Z * 0.07, X, Z, 0.158, 0.05, 0.015, dark, 'patka', 6, 3, 0.5, FRONT))
+        parts.append(button(tree, c + Z * 0.058, FRONT, metal, 0.006, 0.0165))
+    # kaptur na karku z futrzanym rantem
+    nk = B.H['Bip01 Neck']
+    hb = bmesh.new()
+    bmesh.ops.create_uvsphere(hb, u_segments=18, v_segments=10, radius=1.0)
+    for v in hb.verts:
+        x, y, z = v.co
+        sag = 1.0 - 0.35 * max(0.0, -z)
+        v.co = Vector((x * 0.18, y * 0.095, z * 0.14 - 0.03 * (y + 1.0)))
+    bmesh.ops.delete(hb, geom=[v for v in hb.verts if v.co.z > 0.05 and v.co.y < 0.03], context='VERTS')
+    hb.transform(Matrix.Translation(nk + Vector((0, 0.115, 0.01))) @ Matrix.Rotation(math.radians(-22), 4, 'X'))
+    for lp in loops(hb, lambda c: True):
+        parts.append(band(lp, 0.02, fur, 'futerko'))
+    parts.append(mesh_object(hb, 'kaptur', cloth))
+    finish(B, ob, parts, 'parka')
+
+
 # ================================================================ SPODNIE
+def chinosy():
+    """chinosy: gładkie płótno, zaprasowany kant, pasek ze szlufkami, skośne kieszenie, nogawka bez podwinięcia"""
+    B = Body()
+    cloth = mat('plotno_chinosy', '8a7a5c', 0.9)
+    dark = mat('plotno_chinosy_c', '76684e', 0.9)
+    metal = mat('metal_guzik', '8a8d92', 0.35, 0.9)
+    bm, tree, waist, ankles = _legs(B, lambda co, w: 0.007, 1)
+    ob = to_object(B, bm, 'chinosy', [cloth, dark, metal])
+    parts = []
+    for lp in waist:
+        parts.append(band(lp, 0.01, dark, 'pasek', 0.002, 2.6, Z * -0.014, wide=0.7))
+    for lp in ankles:
+        parts.append(band(lp, 0.005, cloth, 'nogawka', 0.001, 1.4))
+    wz = max((sum(lp, Vector()) / len(lp)).z for lp in waist) - 0.016 if waist else 0.98
+    _belt_loops(tree, wz, dark, parts)
+    parts.append(button(tree, Vector((0.0, -0.3, wz)), FRONT, metal, 0.007, 0.008))
+    parts.append(ribbon(tree, Vector((0.014, -0.3, wz - 0.03)), Vector((0.014, -0.3, wz - 0.15)), FRONT, 0.028, cloth, 6, 0.004, 'rozporek', 0.001))
+    for sx in (-1, 1):
+        # kant z przodu nogawki i skośny wlot kieszeni
+        parts.append(stitch(tree, Vector((sx * 0.095, -0.3, wz - 0.16)), Vector((sx * 0.095, -0.3, 0.16)), FRONT, dark, 22, 0.0016, 0.0022, 'kant'))
+        pts = [on_surface(tree, Vector((sx * (0.07 + 0.1 * (k / 6)), -0.3, wz - 0.03 - 0.1 * (k / 6))), FRONT, 0.002)[0] for k in range(7)]
+        parts.append(sweep('wlot', pts, 0.0014, dark, 4))
+        c = Vector((sx * 0.088, 0.3, wz - 0.12))
+        parts.append(ribbon(tree, c - X * 0.055, c + X * 0.055, BACK, 0.008, dark, 6, 0.003, 'kieszen_tyl', 0.001))
+        parts.append(button(tree, c - Z * 0.012, BACK, metal, 0.005, 0.004))
+    finish(B, ob, parts, 'chinosy')
+
+
 def _legs(B, off, smooth, tight=0.86):
     def pick(co, w):
         return legs_w(w) >= 0.3 and top_w(w) < 0.72 and foot_w(w) < 0.6 and hand_w(w) < 0.3
@@ -1162,7 +1304,7 @@ def lancuch():
     finish(B, ob, parts, 'lancuch', rigid='Bip01 Spine2')
 
 
-ALL = (bluza_kaptur, kurtka_kieszenie, koszula, dresy, jeansy, bojowki, rekawiczki, rekawiczki_skora, trampki, buty_bieg, buty_robocze,
+ALL = (bluza_kaptur, kurtka_kieszenie, koszula, kurtka_skorzana, dres_gora, parka, chinosy, dresy, jeansy, bojowki, rekawiczki, rekawiczki_skora, trampki, buty_bieg, buty_robocze,
        komin, kominiarka, czapka_daszek, czapka_zimowa, okulary, lancuch)
 if __name__ == '__main__':
     only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else []
