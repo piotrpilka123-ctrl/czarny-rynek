@@ -3099,8 +3099,20 @@ func _test_ui(what: String) -> void:
 			if what == "labwork":
 				teleport("garage", Vector3(float(D.ROOMS.garage.cx), 0.0, 1.8), 0.0)
 				G.busy = false
+				var action := String(args.get("labaction", "load"))
+				var recipe := String(args.get("labrecipe", "kokaina"))
+				if action != "load":
+					G.Prod.start("garage", 0, recipe)
+					var lab_job: Dictionary = G.Prod.job("garage", 0)
+					if action == "collect":
+						lab_job.prog = 1.0
+						lab_job.hold = -1
+					else:
+						var step := clampi(int(args.get("labstage", "0")), 0, D.RECIPES[recipe].stages.size() - 1)
+						lab_job.prog = float(D.RECIPES[recipe].stages[step].to)
+						lab_job.hold = step
 				G.test_mode = false
-				print("LAB_WORK_STARTED ", lab_care.play("load", "garage", 0, "kokaina"))
+				print("LAB_WORK_STARTED ", action, " ", lab_care.play(action, "garage", 0, recipe))
 				get_tree().create_timer(3.2).timeout.connect(func(): G.test_mode = true)
 			else:
 				ui.open_station("garage", 0)

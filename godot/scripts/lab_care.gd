@@ -55,7 +55,7 @@ func play(what: String, at_room: String, index: int, rid := "") -> bool:
 		var action: String = G.Prod.stage_name(G.Prod.job(room, idx)).to_lower()
 		variant = "filter" if action.contains("filtr") else ("scoop" if action.contains("zbierz") else "pour")
 	var work_point := Vector3(0.25, 1.1, 0.45) if what == "load" else Vector3(0.2, 1.42, 0.05)
-	if what == "collect" or variant == "scoop": work_point = Vector3(0.2, 1.1, 0.35)
+	if what == "collect" or variant == "scoop": work_point = Vector3(0.7, 1.04, 0.22)
 	if variant == "filter": work_point.y = 1.32
 	target = station.global_transform * work_point
 	start_yaw = G.player.yaw
@@ -80,7 +80,18 @@ func play(what: String, at_room: String, index: int, rid := "") -> bool:
 		Models.sphere(tool, 0.035, Vector3(0.1, 0, 0), steel, Vector3(1, 0.18, 0.7))
 	elif what == "continue":
 		Models.cyl(tool, 0.055, 0.045, 0.17, Vector3.ZERO, bottle, Vector3.ZERO, 16)
-		Models.cyl(tool, 0.022, 0.022, 0.04, Vector3(0, 0.1, 0), Models.mat("c5c5bd", 0.65), Vector3.ZERO, 12)
+		var neck := MeshInstance3D.new()
+		var tube := CylinderMesh.new()
+		tube.top_radius = 0.023
+		tube.bottom_radius = 0.023
+		tube.height = 0.04
+		tube.radial_segments = 16
+		tube.cap_top = false
+		tube.cap_bottom = false
+		tube.material = bottle
+		neck.mesh = tube
+		neck.position.y = 0.1
+		tool.add_child(neck)
 	else:
 		Models.box(tool, Vector3(0.24, 0.025, 0.18), Vector3.ZERO, Models.mat("b6b7b0", 0.5, 0.35))
 		Models.box(tool, Vector3(0.12, 0.03, 0.08), Vector3(0, 0.02, 0), Models.mat("d4d0c5", 0.98))
@@ -138,6 +149,7 @@ func _process(dt: float) -> void:
 		tool.global_rotation.z = sin(progress * PI * 6.0) * 0.12
 	if is_instance_valid(drops):
 		drops.global_position = tool.global_transform * Vector3(0, 0.12, 0)
+		drops.direction = ((station.global_transform * Vector3(0.2, 1.12, 0.05)) - drops.global_position).normalized()
 		drops.emitting = progress > 0.35 and progress < 0.72
 	G.ui.set_prompt({"load": "Układasz wsad", "continue": "Pracujesz przy stanowisku", "collect": "Zbierasz partię"}[kind], progress, false)
 	if progress >= 0.58 and not applied: _apply()

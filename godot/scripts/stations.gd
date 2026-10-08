@@ -504,14 +504,14 @@ static func _lab_live(g: Node3D, heat_y: float) -> void:
 	var glow := Node3D.new()
 	glow.name = "Glow"
 	g.add_child(glow)
-	Models.sphere(glow, 0.125, Vector3(-0.55, 1.13, 0.0), _m("liq", "9be35a", 0.3, 0.0, 1.4, 0.85), Vector3(1, 0.7, 1), false, 10)
-	Models.cyl(glow, 0.078, 0.062, 0.1, Vector3(0.2, 0.99, 0.05), _m("liq2", "e9e2b8", 0.4, 0.0, 0.5, 0.9), Vector3.ZERO, 10)
-	Models.cyl(glow, 0.125 if heat_y > 1.02 else 0.1, 0.125 if heat_y > 1.02 else 0.1, 0.012, Vector3(-0.55, heat_y, 0.0), _m("heat", "ff5a1e", 0.5, 0.0, 3.0), Vector3.ZERO, 14)
+	Models.sphere(glow, 0.125, Vector3(-0.55, 1.13, 0.0), _m("lab_liquid", "b7b198", 0.4, 0.0, 0.0, 0.85), Vector3(1, 0.7, 1), false, 10)
+	Models.cyl(glow, 0.078, 0.062, 0.1, Vector3(0.2, 0.99, 0.05), _m("lab_receiver", "d3cdb5", 0.4, 0.0, 0.0, 0.9), Vector3.ZERO, 10)
+	Models.cyl(glow, 0.125 if heat_y > 1.02 else 0.1, 0.125 if heat_y > 1.02 else 0.1, 0.012, Vector3(-0.55, heat_y, 0.0), _m("lab_heat", "dd6c2d", 0.5, 0.0, 0.9), Vector3.ZERO, 14)
 	var li := OmniLight3D.new()
 	li.position = Vector3(-0.5, 1.3, 0.1)
-	li.light_color = Color(0.65, 1.0, 0.5)
-	li.light_energy = 0.7
-	li.omni_range = 2.6
+	li.light_color = Color(1.0, 0.72, 0.45)
+	li.light_energy = 0.12
+	li.omni_range = 0.65
 	li.shadow_enabled = false
 	glow.add_child(li)
 	glow.visible = false
@@ -583,7 +583,7 @@ static func refresh_lab(n: Node3D, j) -> void:
 	if glow != null:
 		glow.visible = j != null and float(j.prog) < 1.0
 	if out != null:
-		out.visible = j != null and float(j.prog) >= 1.0
+		out.visible = j != null and (float(j.prog) >= 1.0 or (int(j.hold) >= 0 and G.Prod.stage_name(j).to_lower().contains("zbierz")))
 
 
 ## owinięta taśmą cegła towaru (kolor zależy od rodzaju) i stos takich cegieł
