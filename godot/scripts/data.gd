@@ -85,7 +85,7 @@ const SCALES := [
 const UPGRADES := [
 	{"id": "plecak1", "name": "Plecak szkolny (60 miejsc)", "price": 380, "lvl": 2, "cap": 60, "desc": "Zamiast upychać towar po kieszeniach."},
 	{"id": "plecak2", "name": "Plecak turystyczny (120 miejsc)", "price": 1500, "lvl": 5, "cap": 120, "req": "plecak1", "desc": "Na poważniejsze kursy."},
-	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 150 miejsc zamiast 60."},
+	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 400 miejsc zamiast 200."},
 ]
 ## Dostawca jest jeden: Wiktor. Czysty towar, zamówienie SMS-em, paczka w skrytce oznaczonej sprejem, zapłata „na zeszyt”
 ## (gotówkę wrzuca się do jego skrzynki). eta = minuty do dostawy.
@@ -312,7 +312,7 @@ const SIWY_LOOK := {"model": "m18", "kind": "hoodie", "seed": 51, "tall": 1.02, 
 
 const PLAYER_LOOK := {"model": "m10", "kind": "dres", "top": "14161a", "top2": "e8e6e0", "bottom": "14161a", "stripes": true, "shoes": "e4e4e0", "hair": "hair_buzzed", "seed": 77, "skin": 0.25}
 const CAP_BASE := 30
-const STASH_BASE := 60
+const STASH_BASE := 200
 
 # ---------------------------------------------------------------- klienci
 ## type: charakter (wpływa na taktyki), like/hate: styl powitania

@@ -1270,7 +1270,7 @@ func stash_cap(room: String) -> int:
 	if room == "loot":
 		return 0 if loot.is_empty() else 100000
 	if room == "safe":
-		return 150 if upg("szafka") else D.STASH_BASE
+		return 400 if upg("szafka") else D.STASH_BASE
 	var cap := 0
 	for it in S.hide.get(room, {}).get("items", []):
 		for f in D.FURNITURE:
