@@ -105,7 +105,9 @@ def rbox(name, size, material, bevel=0.01, loc=(0, 0, 0), rot=(0, 0, 0), parent=
 
 
 def tube(name, pts, radius, material, segs=10, parent=None, taper=None):
-    """rurka wzdłuż łamanej (uchwyty, dzióbki, przewody); taper = promień na końcu"""
+    """rurka wzdłuż łamanej (uchwyty, dzióbki, przewody); taper = promień na końcu albo lista mnożników promienia
+    dla kolejnych punktów (karbowana rura)"""
+    rad = (lambda i: taper[i]) if isinstance(taper, (list, tuple)) else (lambda i: 1.0 + (taper / radius - 1.0) * i / (len(pts) - 1))
     cu = bpy.data.curves.new(name, 'CURVE')
     cu.dimensions = '3D'
     cu.bevel_depth = radius
@@ -117,7 +119,7 @@ def tube(name, pts, radius, material, segs=10, parent=None, taper=None):
         for i, p in enumerate(pts):
             sp.points[i].co = (*p, 1.0)
             if taper is not None:
-                sp.points[i].radius = 1.0 + (taper / radius - 1.0) * i / (len(pts) - 1)
+                sp.points[i].radius = rad(i)
     else:
         sp.bezier_points.add(len(pts) - 1)
         for i, p in enumerate(pts):
@@ -125,7 +127,7 @@ def tube(name, pts, radius, material, segs=10, parent=None, taper=None):
             bp.co = p
             bp.handle_left_type = bp.handle_right_type = 'AUTO'
             if taper is not None:
-                bp.radius = 1.0 + (taper / radius - 1.0) * i / (len(pts) - 1)
+                bp.radius = rad(i)
     ob = bpy.data.objects.new(name, cu)
     bpy.context.scene.collection.objects.link(ob)
     cu.materials.append(material)

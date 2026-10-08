@@ -3085,8 +3085,9 @@ func _test_ui(what: String) -> void:
 				G.furn_buy_place("garage", String(fd[0]), float(fd[1]), float(fd[2]), int(fd[3]))
 			G.S.items["chemia"] = 6
 			world.refresh_furniture("garage")
-			teleport("garage", Vector3(float(D.ROOMS.garage.cx) - 0.4, 0.0, 2.6), 0.0)
-			player.pitch = deg_to_rad(-8.0)
+			var kp := String(args.get("kpos", "-0.4,2.6,0,-8")).split(",")
+			teleport("garage", Vector3(float(D.ROOMS.garage.cx) + float(kp[0]), 0.0, float(kp[1])), deg_to_rad(float(kp[2])))
+			player.pitch = deg_to_rad(float(kp[3]))
 			if what == "labui":
 				var its: Array = G.S.hide.garage.items
 				for li in range(its.size()):

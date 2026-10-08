@@ -450,6 +450,9 @@ static func dryer() -> Node3D:
 
 ## Zbiornik z pompą: niebieska beczka, pompa i wąż
 static func tank() -> Node3D:
+	var made := model("kryj_zbiornik")
+	if made != null:
+		return made
 	var g := Node3D.new()
 	var blue := _m("tank", "23508c", 0.45, 0.1)
 	Models.cyl(g, 0.3, 0.3, 0.92, Vector3(0, 0.46, 0), blue, Vector3.ZERO, 16)
@@ -466,6 +469,9 @@ static func tank() -> Node3D:
 
 ## Filtr węglowy: bęben na stojaku, wentylator i rura do sufitu
 static func carbon_filter() -> Node3D:
+	var made := model("kryj_filtr")
+	if made != null:
+		return made
 	var g := Node3D.new()
 	var steel := _m("steel", "2b2e33", 0.45, 0.7)
 	for sx in [-1.0, 1.0]:
@@ -478,8 +484,46 @@ static func carbon_filter() -> Node3D:
 	return g
 
 
+## to, co na stole laboratoryjnym zmienia się w czasie: zawartość naczyń i żar (Glow — tylko w trakcie syntezy),
+## gotowy towar na tacce (Out). heat_y = wysokość żarzącego się pierścienia pod kolbą.
+static func _lab_live(g: Node3D, heat_y: float) -> void:
+	var glow := Node3D.new()
+	glow.name = "Glow"
+	g.add_child(glow)
+	Models.sphere(glow, 0.125, Vector3(-0.55, 1.13, 0.0), _m("liq", "9be35a", 0.3, 0.0, 1.4, 0.85), Vector3(1, 0.7, 1), false, 10)
+	Models.cyl(glow, 0.078, 0.062, 0.1, Vector3(0.2, 0.99, 0.05), _m("liq2", "e9e2b8", 0.4, 0.0, 0.5, 0.9), Vector3.ZERO, 10)
+	Models.cyl(glow, 0.125 if heat_y > 1.02 else 0.1, 0.125 if heat_y > 1.02 else 0.1, 0.012, Vector3(-0.55, heat_y, 0.0), _m("heat", "ff5a1e", 0.5, 0.0, 3.0), Vector3.ZERO, 14)
+	var li := OmniLight3D.new()
+	li.position = Vector3(-0.5, 1.3, 0.1)
+	li.light_color = Color(0.65, 1.0, 0.5)
+	li.light_energy = 0.7
+	li.omni_range = 2.6
+	li.shadow_enabled = false
+	glow.add_child(li)
+	glow.visible = false
+	var out := Node3D.new()
+	out.name = "Out"
+	g.add_child(out)
+	for k in range(6):
+		Models.box(out, Vector3(0.05, 0.02, 0.04), Vector3(0.66 + (k % 3) * 0.06, 0.96, 0.14 + int(k / 3.0) * 0.1), _m("cryst", "f1ecd0", 0.5), Vector3(0, k * 0.7, 0), false)
+	out.visible = false
+
+
 ## Stół laboratoryjny: palnik, kolba, chłodnica, zlewki, butle. „Glow” świeci, gdy coś się gotuje.
 static func lab_table() -> Node3D:
+	var made := model("kryj_lab")
+	if made != null:
+		# model z Blendera: zestaw do destylacji na stole; zawartość naczyń, żar i gotowy towar dorysowuje gra
+		_lab_live(made, 1.047)
+		var pt0 := Props.make("propane_tank", 0.56)
+		pt0.position = Vector3(-0.55, 0.32, 0.05)
+		made.add_child(pt0)
+		for k0 in range(2):
+			var bt0 := Props.make("plastic_bottle_gallon", 0.3)
+			bt0.position = Vector3(-0.05 + k0 * 0.3, 0.32, -0.12 + k0 * 0.16)
+			bt0.rotation.y = k0 * 1.1
+			made.add_child(bt0)
+		return made
 	var g := Node3D.new()
 	var steel := _m("labsteel", "8d9299", 0.35, 0.8)
 	var dark := _m("steel", "2b2e33", 0.45, 0.7)
@@ -506,28 +550,7 @@ static func lab_table() -> Node3D:
 	Models.cyl(g, 0.055, 0.055, 0.2, Vector3(0.82, 1.03, -0.1), _m("brownbottle", "5a3414", 0.25, 0.0, 0.0, 0.85), Vector3.ZERO, 8)
 	Models.cyl(g, 0.02, 0.02, 0.06, Vector3(0.82, 1.16, -0.1), _m("cap", "111111", 0.6), Vector3.ZERO, 6)
 	Models.box(g, Vector3(0.26, 0.02, 0.36), Vector3(0.72, 0.94, 0.22), _m("trayw", "e8e6e0", 0.6))
-	# zawartość naczyń: widoczna i świecąca tylko w trakcie syntezy
-	var glow := Node3D.new()
-	glow.name = "Glow"
-	g.add_child(glow)
-	Models.sphere(glow, 0.125, Vector3(-0.55, 1.13, 0.0), _m("liq", "9be35a", 0.3, 0.0, 1.4, 0.85), Vector3(1, 0.7, 1), false, 10)
-	Models.cyl(glow, 0.078, 0.062, 0.1, Vector3(0.2, 0.99, 0.05), _m("liq2", "e9e2b8", 0.4, 0.0, 0.5, 0.9), Vector3.ZERO, 10)
-	Models.cyl(glow, 0.1, 0.1, 0.012, Vector3(-0.55, 1.005, 0.0), _m("heat", "ff5a1e", 0.5, 0.0, 3.0), Vector3.ZERO, 12)
-	var li := OmniLight3D.new()
-	li.position = Vector3(-0.5, 1.3, 0.1)
-	li.light_color = Color(0.65, 1.0, 0.5)
-	li.light_energy = 0.7
-	li.omni_range = 2.6
-	li.shadow_enabled = false
-	glow.add_child(li)
-	glow.visible = false
-	# produkt na tacce
-	var out := Node3D.new()
-	out.name = "Out"
-	g.add_child(out)
-	for k in range(6):
-		Models.box(out, Vector3(0.05, 0.02, 0.04), Vector3(0.66 + (k % 3) * 0.06, 0.96, 0.14 + int(k / 3.0) * 0.1), _m("cryst", "f1ecd0", 0.5), Vector3(0, k * 0.7, 0), false)
-	out.visible = false
+	_lab_live(g, 1.005)
 	# pod blatem: butla, kanistry
 	var pt := Props.make("propane_tank", 0.62)
 	pt.position = Vector3(-0.6, 0.32, 0.0)
