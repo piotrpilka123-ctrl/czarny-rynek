@@ -4123,6 +4123,11 @@ func _build_story() -> void:
 			"done": func(): return _any_job() or Prod.plant_count("garage") + Prod.plant_count("basement") > 0 or int(S.stats.grown) > 0, "marker": _garage_marker},
 		{"id": "zbior1", "text": func(): return "Doglądaj krzaków: podlewaj, nawoź, przytnij liście. Dojrzałe zetnij, wysusz w suszarce (kupisz ją w hurtowni) i zważ. Nadwyżki sprzedasz hurtem na Giełdzie. (%d g)" % int(S.stats.grown),
 			"done": func(): return int(S.stats.grown) > 0, "marker": _garage_marker},
+		# mocniejszy towar robi się samemu: najpierw trzeba przygotować pod to lokal
+		{"ch": "Rozdział 4: Laboratorium", "id": "lab1", "text": func(): return "U Wiktora jest tylko zioło i amfetamina — mocniejszy towar zrobisz sam. Przygotuj lokal: kup w hurtowni stół laboratoryjny (%s, poziom %d) i filtr węglowy, a potem ustaw je w kryjówce [B]." % [money(furn_def("lab").price), int(furn_def("lab").lvl)],
+			"done": func(): return _has_furn_any("lab") or int(S.stats.get("cooked", 0)) > 0, "marker": _lab_marker},
+		{"id": "synteza1", "text": func(): return "Kup u Stasia „zestaw do udrażniania rur” i nastaw przy stole pierwszą partię amfetaminy — wyjdzie taniej niż u Wiktora. Zaglądaj do kolby: niektóre etapy czekają na Ciebie. Od poziomu %d zrobisz tak metamfetaminę, od poziomu %d kokainę." % [int(D.RECIPES.metamfetamina.lvl), int(D.RECIPES.kokaina.lvl)],
+			"done": func(): return int(S.stats.get("cooked", 0)) > 0, "marker": _lab_room_marker},
 		{"ch": "Wolna gra", "id": "free", "text": func(): return ("Rozwijaj interes i pnij się w ekipie Wiktora. %s — do awansu na %s brakuje %s." % [String(rank_def().name), String(rank_next().name), money(maxf(0.0, float(rank_next().at) - S.paid))]) if not rank_next().is_empty() else "Jesteś wspólnikiem Wiktora. Dzielnica jest Twoja — rozwijaj interes po swojemu.", "done": func(): return false},
 	]
 
@@ -4304,6 +4309,29 @@ func _furnish_marker() -> Variant:
 	var need_shelf: bool = not _has_furn("garage", "stash") and owned("regal") + owned("skrzynia") <= 0
 	if need_table or need_shelf:
 		return {"loc": "out", "x": float(D.SUPPLY_AT.x), "z": float(D.SUPPLY_AT.z)}
+	return _garage_marker()
+
+
+## czy w którejkolwiek kryjówce stoi mebel o danej funkcji
+func _has_furn_any(fn: String) -> bool:
+	for room in Prod.ROOMS:
+		if S.hide.has(room) and _has_furn(room, fn):
+			return true
+	return false
+
+
+## do laboratorium: po stół do hurtowni, a gdy już czeka na stanie albo stoi — do kryjówki
+func _lab_marker() -> Variant:
+	if owned("lab") <= 0 and not _has_furn_any("lab"):
+		return {"loc": "out", "x": float(D.SUPPLY_AT.x), "z": float(D.SUPPLY_AT.z)}
+	return _lab_room_marker()
+
+
+## kryjówka ze stołem laboratoryjnym (albo garaż, gdy stół jeszcze nie stoi)
+func _lab_room_marker() -> Variant:
+	for room in Prod.ROOMS:
+		if S.hide.has(room) and _has_furn(room, "lab") and D.DOORS.has(room):
+			return {"loc": "out", "x": D.DOORS[room].x, "z": D.DOORS[room].z}
 	return _garage_marker()
 
 

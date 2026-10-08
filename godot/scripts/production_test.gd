@@ -149,7 +149,20 @@ static func run(T) -> void:
 	T.ok(float(idle.risk) == 0.0 and float(idle.smell) == 0.0, "pusta kryjówka nie ściąga uwagi")
 
 	# ---------------------------------------------------------------- stół laboratoryjny
+	# fabuła: po zbiorach przychodzi rozdział o laboratorium (stół w kryjówce, pierwsza własna partia), potem wolna gra
+	var st_i := {}
+	for si in range(G.story.size()):
+		st_i[String(G.story[si].get("id", ""))] = si
+	var cooked_keep := int(S.stats.get("cooked", 0))
+	S.stats["cooked"] = 0
+	T.ok(st_i.has("lab1") and st_i.has("synteza1") and int(st_i.zbior1) < int(st_i.lab1) and int(st_i.lab1) < int(st_i.synteza1) and int(st_i.synteza1) < int(st_i.free) and String(G.story[st_i.lab1].get("ch", "")).contains("Laboratorium"),
+		"fabuła ma rozdział o laboratorium: po zbiorach, przed wolną grą")
+	var lab_before: bool = G.story[st_i.lab1].done.call()
+	var lab_mark0: Dictionary = G.story[st_i.lab1].marker.call()
 	T.ok(G.furn_buy_place(room, "lab", 2.5, 2.9, 1), "wstawiony stół laboratoryjny")
+	var lab_mark1: Dictionary = G.story[st_i.lab1].marker.call()
+	T.ok(not lab_before and G.story[st_i.lab1].done.call() and not G.story[st_i.synteza1].done.call() and absf(float(lab_mark0.x) - float(D.SUPPLY_AT.x)) < 0.01 and absf(float(lab_mark1.x) - float(D.DOORS[room].x)) < 0.01,
+		"krok „przygotuj lokal” prowadzi do hurtowni, a po ustawieniu stołu — do kryjówki, i zalicza się")
 	var lab: int = S.hide[room].items.size() - 1
 	var names: Array = []
 	for e in P.recipes_for(room, lab):
@@ -172,6 +185,8 @@ static func run(T) -> void:
 	var before: float = G.goods_total(S.stash[room])
 	res = P.collect(room, lab)
 	T.ok(String(res.p) == "szron" and not res.get("wet", false) and absf(G.goods_total(S.stash[room]) - before - float(lf.g)) < 0.6, "amfetamina: %d g (%d%%) prosto do skrytki" % [int(lf.g), int(lf.pur)])
+	T.ok(G.story[st_i.synteza1].done.call(), "pierwsza własna partia zalicza krok syntezy")
+	S.stats["cooked"] = int(S.stats.get("cooked", 0)) + cooked_keep
 	# temperatura: jakość kontra czas i smród
 	P.start(room, lab, "amfetamina")
 	j = P.job(room, lab)
