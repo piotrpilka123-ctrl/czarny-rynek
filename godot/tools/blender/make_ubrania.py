@@ -679,21 +679,22 @@ def _neck_ring(lps, n=60):
 
 
 def _collar_stand(ring, material, parts, height=0.038, lean=0.006, thick=0.004, name='stojka'):
-    """stójka: gładki pas wokół szyi, zachodzi na brzeg powłoki i lekko pochyla się do środka"""
+    """stójka: gładki pas wokół szyi; u dołu szerszy (zakrywa pofałdowany brzeg powłoki), ku górze pochyla się do środka"""
     c = sum(ring, Vector()) / len(ring)
     vb = bmesh.new()
     rows = []
     for p in ring:
         e = Vector((p.x - c.x, p.y - c.y, 0)).normalized()
-        rows.append((vb.verts.new(p - Z * 0.02 + e * 0.0095),
-                     vb.verts.new(p + Z * (height * 0.45) + e * (0.007 - lean * 0.4)),
-                     vb.verts.new(p + Z * height + e * (0.007 - lean)),
-                     vb.verts.new(p + Z * (height - 0.004) + e * (0.002 - lean))))
+        rows.append((vb.verts.new(p - Z * 0.022 + e * 0.017),
+                     vb.verts.new(p + Z * (height * 0.3) + e * 0.012),
+                     vb.verts.new(p + Z * (height * 0.7) + e * (0.01 - lean * 0.5)),
+                     vb.verts.new(p + Z * height + e * (0.009 - lean))))
     n = len(rows)
     for i in range(n):
         for k in range(3):
             vb.faces.new((rows[i][k], rows[i][k + 1], rows[(i + 1) % n][k + 1], rows[(i + 1) % n][k]))
     bmesh.ops.recalc_face_normals(vb, faces=vb.faces[:])
+    bmesh.ops.solidify(vb, geom=vb.faces[:], thickness=thick)
     parts.append(mesh_object(vb, name, material))
 
 
@@ -754,7 +755,7 @@ def bluza_kaptur():
     paint(ob, lambda c, n: c.z < 0.875 or _cuff(B, c), 1)
     parts = []
     for lp in neck:
-        _collar_stand(lp, rib, parts, 0.024, 0.004, name='karczek')
+        _collar_stand(lp, rib, parts, 0.012, 0.002, 0.003, name='karczek')
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
         parts.append(band(lp, 0.012, rib, 'mankiet', 0.001, 2.4, _arm_dir(B, c) * 0.012))
@@ -1626,6 +1627,20 @@ def buty_robocze():
 
 
 # ================================================================ SZYJA I GŁOWA
+def _calm_face(B, b, ez, hy, gap=0.0115):
+    """dzianina na twarzy nie odwzorowuje ust, nozdrzy ani małżowin: otwór po ustach zaszyty, te miejsca dodatkowo wygładzone"""
+    for lp_e in _edge_loops(b):
+        cz = sum(((e.verts[0].co + e.verts[1].co) / 2 for e in lp_e), Vector()) / len(lp_e)
+        if len(lp_e) < 40 and cz.z < ez - 0.03 and cz.z > 1.56 and cz.y < hy - 0.04:
+            bmesh.ops.holes_fill(b, edges=lp_e, sides=0)
+    soft = [v for v in b.verts if not v.is_boundary and ((v.co.z < ez - 0.025 and v.co.y < hy - 0.02) or abs(v.co.x) > 0.082)]
+    for _ in range(6):
+        bmesh.ops.smooth_vert(b, verts=soft, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    clear(B, b, gap)
+    for _ in range(2):
+        bmesh.ops.smooth_vert(b, verts=soft, factor=0.35, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+
+
 def komin():
     """komin naciągnięty na nos: elastyczna dzianina z poziomymi fałdami, obszyte brzegi"""
     B = Body()
@@ -1640,8 +1655,9 @@ def komin():
         return head_w(w) >= 0.5 and co.z < top and w.get('Bip01 MTongue', 0.0) < 0.01
 
     def off(co, w):
-        return 0.012 + 0.003 * math.sin(co.z * 210.0)
-    bm, lps = shell(B, pick, off, 3, 1, rim=0.004, gap=0.009)
+        return 0.0135 + 0.0025 * math.sin(co.z * 210.0)
+    ez = (B.H['Bip01 LEye'].z + B.H['Bip01 REye'].z) / 2
+    bm, lps = shell(B, pick, off, 3, 1, rim=0.004, gap=0.0115, post=lambda b: _calm_face(B, b, ez, hy))
     ob = to_object(B, bm, 'komin', [knit])
     parts = [band(lp, 0.005, knit, 'obszycie', 0.001, 1.3) for lp in lps if len(lp) > 12]
     finish(B, ob, parts, 'komin')
@@ -1664,19 +1680,7 @@ def kominiarka():
             return False
         # otwór na oczy: poziomy pas z przodu twarzy
         return not (co.y < hy - 0.055 and abs(co.z - ez) < 0.017 and abs(co.x) < 0.064)
-    def calm(b):
-        # dzianina nie odwzorowuje ust, nozdrzy ani małżowin: te miejsca są dodatkowo wygładzone
-        for lp_e in _edge_loops(b):
-            cz = sum(((e.verts[0].co + e.verts[1].co) / 2 for e in lp_e), Vector()) / len(lp_e)
-            if len(lp_e) < 40 and cz.z < ez - 0.03 and cz.z > 1.56 and cz.y < hy - 0.04:
-                bmesh.ops.holes_fill(b, edges=lp_e, sides=0)      # otwór po ustach
-        soft = [v for v in b.verts if not v.is_boundary and ((v.co.z < ez - 0.025 and v.co.y < hy - 0.02) or abs(v.co.x) > 0.082)]
-        for _ in range(6):
-            bmesh.ops.smooth_vert(b, verts=soft, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
-        clear(B, b, 0.0115)
-        for _ in range(2):
-            bmesh.ops.smooth_vert(b, verts=soft, factor=0.35, use_axis_x=True, use_axis_y=True, use_axis_z=True)
-    bm, lps = shell(B, pick, lambda co, w: 0.013, 3, 1, rim=0.004, gap=0.0115, post=calm)
+    bm, lps = shell(B, pick, lambda co, w: 0.013, 3, 1, rim=0.004, gap=0.0115, post=lambda b: _calm_face(B, b, ez, hy))
     ob = to_object(B, bm, 'kominiarka', [knit])
     parts = []
     for lp in lps:
