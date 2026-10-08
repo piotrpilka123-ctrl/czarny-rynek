@@ -1152,6 +1152,9 @@ func _tab_char() -> void:
 	_stat(mv, "package_open", "Odebrane paczki", str(int(S.stats.pickups)))
 	_stat(mv, "scale", "Zaporcjowane / rozsypane", "%d / %d g" % [int(S.stats.packed), int(S.stats.wasted)])
 	_stat(mv, "sprout", "Wyhodowane", "%d g" % int(S.stats.grown))
+	if G.fed():
+		# po kebabie albo drożdżówce: do której trzyma dodatkowa kondycja
+		_stat(mv, "wind", "Najedzony (+20% kondycji)", "do " + G.clock(float(S.fed_until)))
 	mv.add_child(K.gap(4))
 	_title(mv, "siren", "POLICJA")
 	_stat(mv, "flame", "Gorąco", "%d%%" % int(S.heat), K.C_BAD if float(S.heat) > 60.0 else K.C_TXT)
