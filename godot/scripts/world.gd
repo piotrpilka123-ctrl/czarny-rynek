@@ -6175,6 +6175,9 @@ func refresh_furniture(room: String) -> void:
 				inter_dyn[room].append(aim)
 			"grow", "dry", "lab":
 				aim.merge({"label": func(): return G.station_label(room, idx), "act": func(): G.ui.open_station(room, idx)})
+				if String(f["func"]) == "lab":
+					aim["station"] = idx
+					aim["menu"] = func(): return G.main.lab_menu(room, idx)
 				inter_dyn[room].append(aim)
 				grow_nodes[room][idx] = n
 			"tank", "filter":

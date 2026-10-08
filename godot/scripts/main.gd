@@ -12,6 +12,7 @@ const LoadingScript = preload("res://scripts/loading.gd")
 const Models = preload("res://scripts/models.gd")
 const Chars = preload("res://scripts/chars.gd")
 const Props = preload("res://scripts/props.gd")
+const LabCareScript = preload("res://scripts/lab_care.gd")
 const CareScript = preload("res://scripts/care.gd")
 const Stations = preload("res://scripts/stations.gd")
 const K = preload("res://scripts/uikit.gd")
@@ -57,6 +58,7 @@ var hide_at := {}               # kryjówka, w której siedzi gracz
 var drop_actors := {}           # kurierzy i zasadzki przy paczkach: id paczki → {static} albo {cop}
 var way := {}                 # znacznik celu na ekranie: {pos, color, dist}
 var build := {}               # tryb ustawiania mebla: {fid, room, r, ghost, mark, valid, x, z}
+var lab_care: Node3D = null
 var care: Node3D = null       # animacje doglądania krzaków (scripts/care.gd)
 var menu_id := ""             # cel, którego menu czynności jest na ekranie
 var menu_sel := 0
@@ -124,6 +126,8 @@ func _ready() -> void:
 	npcs.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(npcs)
 	G.npcs = npcs
+	lab_care = LabCareScript.new()
+	add_child(lab_care)
 	care = CareScript.new()
 	add_child(care)
 	npcs.build()
@@ -2160,7 +2164,7 @@ func menu_scroll(d: int) -> void:
 
 ## wykonuje pozycję z menu przy celowniku (numer albo zaznaczoną)
 func menu_pick(i := -1) -> void:
-	if not menu_active() or cur_inter == null or not cur_inter.has("pot"):
+	if not menu_active() or cur_inter == null or not (cur_inter.has("pot") or cur_inter.has("station")):
 		return
 	if i < 0:
 		i = menu_sel
@@ -2172,6 +2176,15 @@ func menu_pick(i := -1) -> void:
 		Sfx.play("error")
 		if String(o.get("why", "")) != "":
 			G.notify(String(o.why), "warn")
+		return
+	if cur_inter.has("station"):
+		var index := int(cur_inter.station)
+		if String(o.id) == "inspect":
+			ui.open_station(player.loc, index)
+		elif String(o.id).begins_with("load:"):
+			lab_care.play("load", player.loc, index, String(o.id).trim_prefix("load:"))
+		else:
+			lab_care.play(String(o.id), player.loc, index)
 		return
 	pot_do(player.loc, int(cur_inter.pot), String(o.id))
 
@@ -3074,12 +3087,12 @@ func _test_ui(what: String) -> void:
 				G.S.dealers["mati"] = {"stock": G.new_store(), "cash": 325.0, "sold": 10, "paused": false, "next": G.S.t + 60.0, "empty_notified": false}
 				G.add_bulk(G.S.dealers.mati.stock, "szron", 75, 20.0)
 			ui.open_phone("dealerzy")
-		"labslots":
+		"labslots", "labwork":
 			G.S.props["garaz"] = true
 			G.S.lvl = 10
 			G.S.hide.garage.items = [{"f": "lab", "x": 0.0, "z": 0.0, "r": 0}]
 			G.S.hide.garage.jobs.clear()
-			G.S.items["chemia"] = 6
+			G.S.items["chemia"] = 4
 			G.S.items["pakiet_procesowy"] = 1
 			G.S.items["pakiet_finalny"] = 1
 			world.refresh_furniture("garage")
@@ -3170,7 +3183,7 @@ func _test_ui(what: String) -> void:
 			G.buy_property("garaz")
 			for fd in [["stol", -1.6, -3.6, 0], ["lab", 1.4, -3.5, 0], ["regal", 2.3, 1.6, 1], ["filtr", 2.3, -0.9, 0], ["suszarka", -2.2, 1.4, 0], ["lampa", 0.0, -1.0, 0], ["zbiornik", -2.3, -0.9, 0]]:
 				G.furn_buy_place("garage", String(fd[0]), float(fd[1]), float(fd[2]), int(fd[3]))
-			G.S.items["chemia"] = 6
+			G.S.items["chemia"] = 4
 			# --grow=0..1: lampa LED i pięć doniczek z krzakami na danym etapie wzrostu
 			if args.has("grow"):
 				G.furn_buy_place("garage", "lampa_led", -0.2, 2.2, 0)
@@ -3759,3 +3772,17 @@ func talk_dealer(id: String) -> void:
 	choices.append({"label": "Wznów sprzedaż" if state.paused else "Wstrzymaj sprzedaż", "act": func(): state.paused = not state.paused; talk_dealer(id)})
 	choices.append({"label": "Do później."})
 	ui.dialog({"name": dealer.name, "lines": ["Zapas %d / %d g. Rozliczenie %s. Działam 8–23; przy dużym śledztwie przeczekuję." % [G.Dealers.stock(id), int(dealer.cap), G.money(state.cash)]], "choices": choices})
+
+
+func lab_menu(room: String, index: int) -> Array:
+	var job = G.Prod.job(room, index)
+	var options: Array = []
+	if job == null:
+		for choice in G.Prod.recipes_for(room, index):
+			options.append({"id": "load:" + String(choice.id), "label": "Nastaw: " + String(choice.r.name), "icon": "flask_conical", "ok": String(choice.miss) == "", "note": "%d sloty • %d g" % [choice.r.input.size(), int(choice.r["yield"])], "why": String(choice.miss)})
+	elif float(job.prog) >= 1.0:
+		options.append({"id": "collect", "label": "Zbierz partię", "icon": "package_open", "ok": true, "note": "do skrytki", "why": ""})
+	else:
+		options.append({"id": "continue", "label": G.Prod.stage_name(job) if int(job.hold) >= 0 else "Kontynuuj etap", "icon": "flask_conical", "ok": int(job.hold) >= 0, "note": "" if int(job.hold) >= 0 else "jeszcze pracuje", "why": "Stanowisko jeszcze pracuje — zajrzyj później."})
+	options.append({"id": "inspect", "label": "Sprawdź stanowisko", "icon": "info", "ok": true, "note": "wsad, temperatura, prognoza", "why": ""})
+	return options
