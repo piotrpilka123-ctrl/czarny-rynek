@@ -608,6 +608,7 @@ def shoe_icon(name, col, kind):
 
 cap_icon('ub_czapka_daszek', (40, 60, 110))
 cap_icon('ub_czapka_zimowa', (28, 30, 34), True)
+cap_icon('ub_czapka_daszek_czarna', (40, 41, 46))
 glasses_icon('ub_okulary')
 chain_icon('ub_lancuch')
 scarf_icon('ub_komin', (70, 76, 84))
@@ -625,6 +626,7 @@ pants_icon('ub_chinosy', (150, 132, 100), 'jeans')
 pants_icon('ub_bojowki', (96, 100, 70), 'cargo')
 shoe_icon('ub_trampki', (40, 44, 52), 'canvas')
 shoe_icon('ub_buty_bieg', (220, 70, 60), 'run')
+shoe_icon('ub_buty_bieg_czarne', (52, 52, 58), 'run')
 shoe_icon('ub_buty_robocze', (120, 86, 50), 'work')
 
 for i, k in enumerate(['dym', 'szron', 'krysztal', 'snieg']):

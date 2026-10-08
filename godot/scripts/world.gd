@@ -1398,7 +1398,7 @@ func set_mill_burnt(on: bool) -> void:
 		mill_burnt = Node3D.new()
 		city.add_child(mill_burnt)
 		var soot := StandardMaterial3D.new()
-		soot.albedo_color = Color(0.02, 0.02, 0.02, 0.78)
+		soot.albedo_color = Color(0.09, 0.085, 0.08, 0.78)
 		soot.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		soot.albedo_texture = Props._soft_tex()
 		soot.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -1769,7 +1769,7 @@ func _mail_slot() -> void:
 	g.position = Vector3(float(R.cx) - 0.04, SLOT_Y, float(R.d) * 0.5 - 0.072)
 	rooms.safe.add_child(g)
 	var brass := Models.mat("b08a3c", 0.32, 0.9)
-	var dark := Models.mat("070708", 0.95)
+	var dark := Models.void_mat()
 	# ramka z czterech listew wokół otworu 24 × 5 cm
 	Models.box(g, Vector3(0.31, 0.022, 0.012), Vector3(0, 0.041, 0), brass)
 	Models.box(g, Vector3(0.31, 0.022, 0.012), Vector3(0, -0.041, 0), brass)
@@ -3545,7 +3545,7 @@ func _viaduct() -> void:
 	for rz in [-1.3, 1.3]:
 		Models.box(city, Vector3(VIA_LEN, 0.12, 0.14), Vector3(0.0, top + 0.08, zc + rz), steel, Vector3.ZERO, false)
 	var hall := Models.mat("3a3836", 0.95)
-	var hole := Models.mat("050505", 1.0)
+	var hole := Models.void_mat()
 	for sx in [-1.0, 1.0]:
 		# filar za murem i ciemny wjazd w ścianie hali
 		var fy := hd(208.0 * sx, zc)

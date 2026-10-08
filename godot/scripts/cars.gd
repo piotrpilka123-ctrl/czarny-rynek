@@ -443,7 +443,7 @@ static func _car_old(type := "", color = null, police := false) -> Node3D:
 		bb.size = Vector3(0.28, 0.06, 1.0)
 		bar.mesh = bb
 		var dm := StandardMaterial3D.new()
-		dm.albedo_color = Color(0.08, 0.08, 0.09)
+		dm.albedo_color = Color(0.11, 0.11, 0.12)
 		bar.material_override = dm
 		bar.position = Vector3(-0.15, roof_y + 0.05, 0)
 		g.add_child(bar)

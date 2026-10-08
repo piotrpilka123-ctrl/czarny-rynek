@@ -19,9 +19,47 @@ static func col(c) -> Color:
 	return Color.html("#" + str(c).lstrip("#"))
 
 
+## Żadnej idealnej czerni na modelach: najciemniejszy dozwolony kolor to ciemny grafit. Kolor ciemniejszy od progu
+## jest podnoszony o stałą wartość (odcień zostaje), jaśniejszych funkcja nie rusza.
+const BLACK_FLOOR := 0.105
+
+static func no_vanta(c: Color) -> Color:
+	var m := maxf(c.r, maxf(c.g, c.b))
+	if m >= BLACK_FLOOR:
+		return c
+	var add := BLACK_FLOOR - m
+	return Color(c.r + add, c.g + add, c.b + add, c.a)
+
+
+## podnosi czerń we wszystkich nieteksturowanych materiałach modelu wczytanego z pliku (raz na plik)
+static func lift_blacks(n: Node) -> void:
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		var mesh: Mesh = (n as MeshInstance3D).mesh
+		for i in range(mesh.get_surface_count()):
+			var m := mesh.surface_get_material(i)
+			if m is BaseMaterial3D and (m as BaseMaterial3D).albedo_texture == null and not (m as BaseMaterial3D).emission_enabled:
+				(m as BaseMaterial3D).albedo_color = no_vanta((m as BaseMaterial3D).albedo_color)
+	for ch in n.get_children():
+		lift_blacks(ch)
+
+
+## Ciemność w głębi otworu (tunel, szczelina, wnętrze za szybą): to nie „czarny przedmiot”, tylko brak światła,
+## więc tu — i tylko tu — zostaje prawie czerń.
+static var _void: StandardMaterial3D = null
+
+static func void_mat() -> StandardMaterial3D:
+	if _void == null:
+		_void = StandardMaterial3D.new()
+		_void.albedo_color = Color(0.02, 0.02, 0.022)
+		_void.roughness = 1.0
+	return _void
+
+
 ## materiał PBR z pamięcią podręczną
 static func mat(c, rough := 0.8, metal := 0.0, emit := 0.0, alpha := 1.0) -> StandardMaterial3D:
 	var cc := col(c)
+	if emit <= 0.0:
+		cc = no_vanta(cc)
 	var key := "%s|%.2f|%.2f|%.2f|%.2f" % [cc.to_html(), rough, metal, emit, alpha]
 	if _mats.has(key):
 		return _mats[key]

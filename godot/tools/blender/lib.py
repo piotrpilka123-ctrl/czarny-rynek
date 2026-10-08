@@ -25,6 +25,10 @@ def mat(name, color, rough=0.7, metal=0.0, emit=0.0, alpha=1.0, wzor=''):
     m.use_nodes = True
     b = m.node_tree.nodes['Principled BSDF']
     c = color if isinstance(color, tuple) else tuple(int(color[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    # żadnej idealnej czerni: najciemniejszy kolor modelu to ciemny grafit (świecących materiałów to nie dotyczy)
+    if emit <= 0.0 and max(c[:3]) < 0.105:
+        add = 0.105 - max(c[:3])
+        c = tuple(v + add for v in c[:3])
     c = tuple(pow(v, 2.2) for v in c)          # kolory podawane jak na ekranie (sRGB)
     b.inputs['Base Color'].default_value = (*c, 1.0)
     b.inputs['Roughness'].default_value = rough

@@ -201,6 +201,10 @@ const ITEMS := {
 		"stats": {"witness": 0.9, "attention": 1.04}, "desc": "Podciągnięty na nos chroni przed rozpoznaniem, ale patrol patrzy na Ciebie odrobinę uważniej."},
 	"lancuch": {"name": "Łańcuch z tombaku", "icon": "ub_lancuch", "size": 0.5, "w": 90.0, "unit": "szt.", "look": {"acc": "chain", "bone": "Bip01 Spine2"}, "slot": "szyja", "price": 650, "lvl": 5,
 		"stats": {"charm": 1.03, "attention": 1.03}, "desc": "Wygląda na złoto. Klienci traktują Cię poważniej — policja też."},
+	"czapka_daszek_czarna": {"name": "Czarna czapka z daszkiem", "icon": "ub_czapka_daszek_czarna", "size": 0.5, "w": 80.0, "unit": "szt.", "look": {"hat": "cap", "color": "1e1f24", "bone": "Bip01 Head", "model": "czapka_daszek", "tint": "555558"}, "slot": "glowa", "price": 110, "lvl": 2,
+		"stats": {"witness": 0.93, "vis_night": 0.97}, "desc": "Daszek zasłania twarz, a ciemny kolor nie odcina się po zmroku."},
+	"buty_bieg_czarne": {"name": "Czarne buty do biegania", "icon": "ub_buty_bieg_czarne", "size": 1.0, "w": 280.0, "unit": "szt.", "look": {"color": "26262a", "model": "buty_bieg", "tint": "4a4a4e"}, "slot": "buty", "price": 380, "lvl": 4,
+		"stats": {"speed": 1.03, "stamina": 1.05, "noise": 0.95}, "desc": "Szybkie jak czerwone, ale ciche i nie świecą z daleka."},
 	# --- nowe wykroje
 	"dres_gora": {"name": "Bluza dresowa", "icon": "ub_dres_gora", "size": 1.0, "w": 280.0, "unit": "szt.", "look": {"color": "1f2a44", "stripes": true}, "slot": "gora", "price": 140, "lvl": 1,
 		"stats": {"speed": 1.02, "stamina": 1.03}, "desc": "Lekka, z trzema paskami. Biega się w niej lepiej niż w czymkolwiek innym."},

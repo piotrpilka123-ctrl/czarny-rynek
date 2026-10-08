@@ -76,12 +76,21 @@ const POT_H := 0.27
 static var _glb := {}
 
 ## model zrobiony w Blenderze (tools/blender/*.py → assets/models/*.glb) albo null, gdy pliku nie ma
+static var _lifted := {}
+
 static func model(name: String) -> Node3D:
 	if not _glb.has(name):
 		var path := "res://assets/models/%s.glb" % name
 		_glb[name] = load(path) if ResourceLoader.exists(path) else null
 	var ps: PackedScene = _glb[name]
-	return ps.instantiate() if ps != null else null
+	if ps == null:
+		return null
+	var inst: Node3D = ps.instantiate()
+	# materiały są wspólne dla wszystkich egzemplarzy pliku, więc czerń podnosimy tylko przy pierwszym
+	if not _lifted.has(name):
+		_lifted[name] = true
+		Models.lift_blacks(inst)
+	return inst
 
 
 static func _find(n: Node, name: String) -> Node:

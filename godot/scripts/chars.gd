@@ -6,6 +6,7 @@ extends RefCounted
 const Face = preload("res://scripts/face.gd")
 const Stations = preload("res://scripts/stations.gd")
 const People = preload("res://scripts/people.gd")
+const Models = preload("res://scripts/models.gd")
 
 const SH_BODY := """
 shader_type spatial;
@@ -913,7 +914,7 @@ static func _fabric_mat(src: Material, tint := Color.WHITE) -> Material:
 		if not _fabric_mats.has(tk):
 			var base: Material = _fabric_mat(src).duplicate()
 			if base is BaseMaterial3D and not String(src.resource_name).begins_with("metal"):
-				(base as BaseMaterial3D).albedo_color = (base as BaseMaterial3D).albedo_color * tint
+				(base as BaseMaterial3D).albedo_color = Models.no_vanta((base as BaseMaterial3D).albedo_color * tint)
 			_fabric_mats[tk] = base
 		return _fabric_mats[tk]
 	var nm := String(src.resource_name)
@@ -934,6 +935,7 @@ static func _fabric_mat(src: Material, tint := Color.WHITE) -> Material:
 	elif src is BaseMaterial3D:
 		var m: BaseMaterial3D = src.duplicate()
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.albedo_color = Models.no_vanta(m.albedo_color)
 		if FABRIC_REPEAT.has(kind):
 			m.albedo_texture = _ftex(kind + "_a")
 			m.normal_enabled = true
@@ -988,7 +990,7 @@ static func _wear_skinned(rig: Dictionary, id: String, tint := Color.WHITE) -> b
 
 
 ## sztywny dodatek (czapka, okulary, łańcuch): model zapisany względem początku kości
-static func _wear_rigid(rig: Dictionary, id: String, bone: String) -> bool:
+static func _wear_rigid(rig: Dictionary, id: String, bone: String, tint := Color.WHITE) -> bool:
 	var ps := _wear_load(id)
 	if ps == null:
 		return false
@@ -996,7 +998,7 @@ static func _wear_rigid(rig: Dictionary, id: String, bone: String) -> bool:
 	for n in inst.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = n
 		for sf in range(mi.mesh.get_surface_count()):
-			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf)))
+			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf), tint))
 	_on_bone(rig, bone, inst, Transform3D())
 	return true
 
@@ -1069,7 +1071,7 @@ static func dress(rig: Dictionary, gear: Dictionary, tints := {}) -> void:
 		var gid := String(look[slot].get("model", gear[slot]))
 		var bone := String(look[slot].get("bone", ""))
 		var tn: Color = tints.get(slot, col(look[slot].tint) if look[slot].has("tint") else Color.WHITE)
-		made[slot] = _wear_rigid(rig, gid, bone) if bone != "" else _wear_skinned(rig, gid, tn)
+		made[slot] = _wear_rigid(rig, gid, bone, tn) if bone != "" else _wear_skinned(rig, gid, tn)
 	_hair_cards(rig, not made.get("glowa", false))
 	var hide := Vector4(1.0 if made.get("gora", false) else 0.0, 1.0 if made.get("spodnie", false) else 0.0,
 		1.0 if made.get("buty", false) else 0.0, 1.0 if made.get("dlonie", false) else 0.0)
@@ -1339,7 +1341,7 @@ static func _balaclava(skel: Skeleton3D) -> void:
 	ba.bone_name = "Bip01 Head"
 	skel.add_child(ba)
 	var cloth := StandardMaterial3D.new()
-	cloth.albedo_color = Color(0.04, 0.04, 0.05)
+	cloth.albedo_color = Color(0.11, 0.11, 0.12)
 	cloth.roughness = 0.95
 	# kość szkieletu Biped: oś X w górę, Y do przodu, Z w bok
 	var m := MeshInstance3D.new()
@@ -1381,7 +1383,7 @@ static func _balaclava(skel: Skeleton3D) -> void:
 		em.height = 0.022
 		eye.mesh = em
 		var emat := StandardMaterial3D.new()
-		emat.albedo_color = Color(0.05, 0.05, 0.06)
+		emat.albedo_color = Color(0.11, 0.11, 0.12)
 		eye.material_override = emat
 		eye.position = Vector3(0.106, 0.126, sz)
 		ba.add_child(eye)
