@@ -557,12 +557,13 @@ const LEVEL_TITLES := ["Nikt", "Goniec", "Osiedlowy", "Diler", "Kombinator", "Gr
 const LEVEL_UNLOCKS := {
 	2: "Nowi klienci z polecenia, większe zamówienia u Wiktora (10 g), plecak u Stasia.",
 	3: "Zaczepianie przechodniów, do 4 stałych klientów.",
-	4: "Nowy towar: amfetamina. Możesz kupić Garaż nr 14.",
-	5: "Doniczki, nasiona i lampy LED — własna marihuana w kryjówce.",
+	4: "Możesz kupić Garaż nr 14 — pierwszą własną kryjówkę.",
+	5: "Doniczki, nasiona i lampy LED — własna marihuana w kryjówce. Stół laboratoryjny: własna amfetamina.",
 	6: "Klienci z klubu Neon. Piwnica w kamienicy na sprzedaż.",
-	7: "Nowy towar: metamfetamina. Zamówienia hurtowe po 100 g.",
-	8: "Zamówienia hurtowe po 250 g.",
-	9: "Nowy towar: kokaina — dla klientów z najgrubszym portfelem.",
+	7: "Zamówienia hurtowe po 100 g.",
+	8: "Laboratorium: metamfetamina własnej roboty. Zamówienia hurtowe po 250 g.",
+	9: "Klienci z najgrubszym portfelem pytają o coś mocniejszego — przygotuj laboratorium.",
+	10: "Laboratorium: kokaina własnej roboty.",
 }
 ## drzewko umiejętności: 4 gałęzie, wymagania w „req”
 const SKILLS := [
