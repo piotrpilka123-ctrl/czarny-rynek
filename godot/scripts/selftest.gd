@@ -384,7 +384,10 @@ func run() -> void:
 	await frames(5)
 
 	# --- zeszyt
-	ok(not G.flag("hurt_on") and G.Market.cart_block([{"p": "dym", "g": 5}]) != "", "przed pierwszą wpłatą Wiktor nie przyjmuje zamówień")
+	if String(G.cur_step().id) == "sell1":
+		G.story_tick()
+	ok(G.flag("hurt_on") and String(G.cur_step().id) == "order1" and String(G.cur_step().text.call()).contains("10 g marihuany i 10 g amfetaminy") and (S.chats.wiktor as Array).any(func(m): return String(m.text).contains("10 g zioła")),
+		"po pierwszej sprzedaży Wiktor otwiera zamówienia, a cel każe zamówić 10 g marihuany i 10 g amfetaminy")
 	S.cash = maxf(S.cash, float(S.credit) + 50.0)
 	var debt0: float = S.debt
 	var cash1: float = S.cash

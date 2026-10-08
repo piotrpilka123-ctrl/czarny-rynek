@@ -4014,12 +4014,12 @@ func _build_story() -> void:
 		{"id": "pack1", "text": func(): return "Zapakuj cały towar od Wiktora: podejdź do wagi na biurku [E], wybierz, ile gramów idzie do jednego woreczka, i pakuj. Klienci biorą po kilka gramów — z małych paczek (1–2 g) złożysz każde zamówienie. Luzem zostało: %d g." % loose_left(),
 			"done": func(): return _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
 		{"id": "sell1", "text": func(): return ("Odpisz Dominikowi: telefon [%s] → Wiadomości → Zgoda. Dopiero potem wyjdź z mieszkania." % kn("phone")) if _first_order_new() else "Zanieś Dominikowi towar (%s) — czeka w umówionym miejscu. Trasę włącza [%s]." % [_first_order_what(), kn("nav")],
-			"done": func(): return int(S.stats.sold) >= 1 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker},
+			"done": func(): return int(S.stats.sold) >= 1 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker, "on_done": _on_first_sale},
+		{"id": "order1", "text": func(): return "Zamów u Wiktora 10 g marihuany i 10 g amfetaminy: telefon [%s] → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem." % kn("phone"),
+			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
 		{"id": "repay1", "text": func(): return "Zanieś pierwsze pieniądze do skrzynki Wiktora — to stara skrzynka gazowa na tyłach pawilonu. Otwórz ją [E] i przeciągnij do niej gotówkę. (%s / %s)" % [money(minf(float(D.BOX_FIRST), float(S.stats.get("box_paid", 0.0)))), money(D.BOX_FIRST)],
 			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST), "marker": _box_marker, "on_done": _on_repay_done},
-		{"ch": "Rozdział 2: Na swoim", "id": "order1", "text": func(): return "Zamów u Wiktora 10 g marihuany i 10 g amfetaminy: telefon [%s] → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem." % kn("phone"),
-			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
-		{"id": "lvl2", "text": func(): return "Zdobądź poziom 2. Zadowolony Dominik poleci Cię dalej. (%d/%d PD)" % [int(S.xp), int(D.XP_LEVELS[1])],
+		{"ch": "Rozdział 2: Na swoim", "id": "lvl2", "text": func(): return "Zdobądź poziom 2. Zadowolony Dominik poleci Cię dalej. (%d/%d PD)" % [int(S.xp), int(D.XP_LEVELS[1])],
 			"done": func(): return int(S.lvl) >= 2},
 		{"id": "rata1", "text": func(): return "Zanieś Wiktorowi do skrzynki pierwsze %s wkładu (ponad zeszyt za towar): awansujesz na Gońca i dostaniesz plecak. Wkład: %s" % [money(D.RANKS[1].at), money(S.paid)],
 			"done": func(): return S.paid >= float(D.RANKS[1].at)},
@@ -4194,9 +4194,17 @@ func _on_pack_done() -> void:
 	make_order(D.CLIENTS[0], first_order_grams(have), have)
 
 
+## Pierwsza sprzedaż za nami: Wiktor od razu otwiera zamówienia i mówi, co wziąć na początek.
+func _on_first_sale() -> void:
+	if flag("hurt_on"):
+		return
+	S.flags["hurt_on"] = true
+	chat("wiktor", "Widzę, że umiesz sprzedać. To teraz weź coś konkretnego: 10 g zioła i 10 g amfy. „Zamów towar” pod tą rozmową — idzie na zeszyt, paczkę zostawię w skrytce z moim znakiem.", false, true)
+
+
 func _on_repay_done() -> void:
 	S.flags["hurt_on"] = true
-	chat("wiktor", "Uczciwy. Od teraz piszesz do mnie, co ci potrzeba — „Zamów towar” pod tą rozmową. Paczkę zostawię w skrytce z moim znakiem, wszystko idzie na zeszyt. Kasę wrzucasz do skrzynki; na początek masz na to %d dni." % credit_days())
+	chat("wiktor", "Uczciwy. Tak trzymaj: co ci potrzeba, zamawiasz pod tą rozmową, paczkę zostawiam w skrytce z moim znakiem, wszystko idzie na zeszyt. Kasę wrzucasz do skrzynki; na początek masz na to %d dni." % credit_days())
 	add_xp(20.0)
 	# to, co zostało po dawnej sieci: paru detalistów z osiedla, którzy brali od Twoich ludzi
 	chat("wiktor", "I jeszcze jedno. Puściłem twój numer dwóm detalistom, którzy brali od twoich chłopaków: Sebie spod bloku 9 i staremu Zenonowi. Drobnica, ale od czegoś trzeba zacząć.", false, true)
@@ -4263,6 +4271,9 @@ func story_tick() -> void:
 	var st := cur_step()
 	if st.is_empty():
 		return
+	# stary zapis mógł stanąć na „zamów u Wiktora” bez otwartych zamówień (kroki zamieniły się miejscami)
+	if String(st.get("id", "")) == "order1" and not flag("hurt_on"):
+		S.flags["hurt_on"] = true
 	if st.done.call():
 		notify("Cel ukończony!", "good")
 		if st.has("on_done"):
