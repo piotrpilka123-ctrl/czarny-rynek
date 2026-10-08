@@ -261,7 +261,192 @@ def kebab_witryna():
     export('kebab_witryna')
 
 
-ALL = {'piekarnia_witryna': piekarnia_witryna, 'kebab_witryna': kebab_witryna}
+def fryzjer_witryna():
+    """salon fryzjerski: okno z fotelem na chromowanej nodze, suszarką hełmową, lustrem i półką z kosmetykami,
+    plakaty fryzur, cennik, drzwi z szybą"""
+    reset()
+    rama = mat('rama', 'b08ab8', 0.6)
+    rama_c = mat('rama_c', '8f6a98', 0.6)
+    plytki = mat('plytki', wz('d8d0d8', 'beton'), 0.5, wzor='beton')
+    tlo = mat('wnetrze', 'cfc3c9', 0.9)
+    bialy = mat('bialy', 'ecebe4', 0.6)
+    tusz = mat('tusz', '2a2630', 0.6)
+    stal = mat('stal', 'b4b8bd', 0.4)
+    skaj = mat('skaj', '6a2f4a', 0.5)
+    roz = mat('roz', 'd0508a', 0.6)
+    zo, zt = 0.5, H - 0.3
+    xd0, xd1 = 0.52, W / 2 - 0.12
+    xw0, xw1 = -W / 2 + 0.12, xd0 - 0.14
+    xc, ww = (xw0 + xw1) / 2, xw1 - xw0
+    xo, wd = (xd0 + xd1) / 2, xd1 - xd0
+    p = []
+    portal(p, rama, rama_c, plytki, tlo, xw0, xw1, zo, zt, (-W / 2 + 0.06, xd0 - 0.07, W / 2 - 0.06))
+    p.append(rbox('parapet', (ww, D - 0.02, 0.04), bialy, 0.006, (xc, 0.0, zo + 0.02)))
+    p.append(rbox('rama_d', (ww, 0.05, 0.05), rama_c, 0.006, (xc, yf + 0.06, zo + 0.045)))
+    p.append(rbox('rama_g', (ww, 0.05, 0.05), rama_c, 0.006, (xc, yf + 0.06, zt - 0.03)))
+    # drzwi z szybą
+    p.append(rbox('stopien', (wd + 0.3, 0.42, 0.14), plytki, 0.012, (xo, yf - 0.1, 0.07)))
+    zd0, zd1, yd = 0.14, zt, 0.08
+    p.append(rbox('skrzydlo_d', (wd - 0.04, 0.05, 0.6), rama, 0.008, (xo, yd, zd0 + 0.3)))
+    for x in (xd0 + 0.07, xd1 - 0.07):
+        p.append(rbox('ramiak', (0.1, 0.05, zd1 - zd0 - 0.02), rama, 0.008, (x, yd, (zd0 + zd1) / 2)))
+    p.append(rbox('ramiak_g', (wd - 0.04, 0.05, 0.12), rama, 0.008, (xo, yd, zd1 - 0.07)))
+    p.append(rbox('wnetrze_d', (wd - 0.2, 0.02, zd1 - zd0 - 0.75), tlo, 0.0, (xo, yd + 0.05, zd0 + 0.6 + (zd1 - zd0 - 0.75) / 2), segs=1))
+    p.append(tube('pochwyt', [(xd0 + 0.16, yd - 0.03, zd0 + 0.8), (xd0 + 0.16, yd - 0.075, zd0 + 0.86), (xd0 + 0.16, yd - 0.075, zd0 + 1.2), (xd0 + 0.16, yd - 0.03, zd0 + 1.26)], 0.011, stal, 6))
+    p.append(rbox('prog', (wd, 0.2, 0.03), stal, 0.004, (xo, yd - 0.08, zd0 + 0.015)))
+    wit = join('Witryna', p)
+
+    t = []
+    napisy = []
+    zp = zo + 0.04
+    # fotel fryzjerski: chromowana noga z talerzem, siedzisko, oparcie, podłokietniki, podnóżek
+    fx = xw0 + 0.62
+    t.append(lathe('fotel_noga', [(0.0, 0.0), (0.2, 0.0), (0.2, 0.012), (0.04, 0.03), (0.03, 0.34), (0.0, 0.34)], stal, 16, loc=(fx, 0.0, zp)))
+    t.append(rbox('fotel_siedzisko', (0.42, 0.34, 0.09), skaj, 0.03, (fx, -0.02, zp + 0.39)))
+    t.append(rbox('fotel_oparcie', (0.4, 0.08, 0.46), skaj, 0.03, (fx, 0.15, zp + 0.66), (math.radians(-8), 0, 0)))
+    for sx in (-1, 1):
+        t.append(tube('podlokietnik', [(fx + sx * 0.22, 0.14, zp + 0.5), (fx + sx * 0.23, 0.02, zp + 0.58), (fx + sx * 0.23, -0.14, zp + 0.58)], 0.018, stal, 6))
+    t.append(tube('podnozek', [(fx - 0.14, -0.2, zp + 0.14), (fx + 0.14, -0.2, zp + 0.14)], 0.014, stal, 6))
+    t.append(tube('podnozek_r', [(fx, -0.2, zp + 0.14), (fx, -0.02, zp + 0.3)], 0.012, stal, 5))
+    # suszarka hełmowa na stojaku
+    sx0 = xw0 + 1.35
+    t.append(lathe('susz_podstawa', [(0.0, 0.0), (0.18, 0.0), (0.18, 0.015), (0.02, 0.03), (0.018, 1.02), (0.0, 1.02)], stal, 14, loc=(sx0, 0.06, zp)))
+    hl = lathe('helm', [(0.0, 0.2), (0.1, 0.19), (0.17, 0.14), (0.2, 0.05), (0.2, -0.06), (0.185, -0.06), (0.18, 0.04), (0.15, 0.12), (0.09, 0.17), (0.0, 0.18)], mat('helm', 'e6dfe6', 0.4), 18)
+    hl.rotation_euler = (math.radians(-20), 0, 0)
+    hl.location = (sx0, -0.02, zp + 1.1)
+    t.append(hl)
+    t.append(tube('susz_ramie', [(sx0, 0.06, zp + 1.0), (sx0, 0.03, zp + 1.16)], 0.02, stal, 6))
+    # lustro na tylnej ścianie i półka z kosmetykami
+    t.append(rbox('lustro_rama', (0.62, 0.02, 0.9), bialy, 0.01, (fx, yb - 0.04, zp + 1.05)))
+    t.append(rbox('lustro', (0.54, 0.012, 0.82), mat('lustro', 'b9cdd6', 0.1), 0.004, (fx, yb - 0.052, zp + 1.05)))
+    t.append(rbox('polka', (0.7, 0.14, 0.02), bialy, 0.004, (sx0 + 0.02, yb - 0.1, zp + 1.5)))
+    for i in range(6):
+        c = ('d0508a', '5aa0c8', 'e2b21c', 'ecebe4', '8f6a98', '5fae7a')[i]
+        h2 = 0.1 + 0.03 * (i % 3)
+        t.append(lathe('kosmetyk', [(0.0, 0.0), (0.024, 0.0), (0.024, h2 * 0.75), (0.01, h2 * 0.85), (0.01, h2), (0.0, h2)], mat('kosm%d' % i, c, 0.4), 8, loc=(sx0 - 0.25 + i * 0.105, yb - 0.1, zp + 1.51)))
+    # kwiat w donicy i stolik z gazetami
+    kx = xw1 - 0.22
+    t.append(lathe('donica', [(0.0, 0.0), (0.09, 0.0), (0.12, 0.24), (0.105, 0.24), (0.08, 0.02), (0.0, 0.02)], mat('donica', 'c9b8a0', 0.8), 12, loc=(kx, 0.0, zp)))
+    for i in range(9):
+        a = i / 9 * math.tau
+        t.append(tube('lisc', [(kx, 0.0, zp + 0.22), (kx + math.cos(a) * 0.1, math.sin(a) * 0.1, zp + 0.5 + 0.08 * (i % 3)), (kx + math.cos(a) * 0.2, math.sin(a) * 0.17, zp + 0.5 + 0.05 * (i % 2))], 0.016, mat('lisc', '3f7a3a', 0.8), 4, taper=0.003))
+    # plakaty fryzur na szybie, cennik, deska
+    for i, c in enumerate(('d0508a', '5aa0c8')):
+        x = xw0 + 0.22 + i * 1.72
+        t.append(rbox('plakat', (0.3, 0.004, 0.42), mat('plakat%d' % i, c, 0.6), 0.004, (x, yf + 0.092, zo + 1.25)))
+        g = lathe('glowa', [(0.0, 0.0), (1.0, 0.0), (1.0, 0.1), (0.0, 0.1)], bialy, 16)
+        g.scale = (0.075, 0.09, 0.02)
+        g.rotation_euler = (R90, 0, 0)
+        g.location = (x, yf + 0.089, zo + 1.2)
+        t.append(g)
+        w = lathe('wlosy', [(0.0, 0.0), (1.0, 0.0), (1.0, 0.1), (0.0, 0.1)], tusz, 16)
+        w.scale = (0.1, 0.075, 0.02)
+        w.rotation_euler = (R90, 0, 0)
+        w.location = (x, yf + 0.086, zo + 1.29)
+        t.append(w)
+    t.append(rbox('cennik', (0.34, 0.008, 0.3), bialy, 0.004, (xo, yd - 0.04, zd0 + 0.36)))
+    napisy.append(text('c0', 'CUT  25', 0.04, tusz, (xo, yd - 0.046, zd0 + 0.44)))
+    napisy.append(text('c1', 'PERM  60', 0.04, tusz, (xo, yd - 0.046, zd0 + 0.37)))
+    napisy.append(text('c2', 'COLOUR  80', 0.04, tusz, (xo, yd - 0.046, zd0 + 0.3)))
+    t.append(rbox('deska', (W - 0.3, 0.014, 0.2), mat('deska', 'f3e6ee', 0.6), 0.004, (0, yf - 0.045, H - 0.15)))
+    napisy.append(text('deska_t', 'CUTS • PERMS • COLOUR', 0.095, mat('roz_n', 'a03870', 0.6), (0, yf - 0.054, H - 0.182)))
+    t.append(rbox('nakl', (0.9, 0.008, 0.16), bialy, 0.004, (xc, yf - 0.004, 0.25)))
+    napisy.append(text('nakl_t', 'WALK-INS WELCOME', 0.05, mat('roz_n', 'a03870', 0.6), (xc, yf - 0.01, 0.235)))
+    join('Towar', t)
+    join('Napisy', napisy)
+    szklo = mat('szklo', 'a9c6d6', 0.06, 0.1, 0.0, 0.14)
+    join('Szyby', [rbox('szyba', (ww, 0.008, zt - zo - 0.06), szklo, 0.0, (xc, yf + 0.1, (zt + zo) / 2), segs=1),
+                   rbox('szyba_d', (wd - 0.22, 0.006, zd1 - zd0 - 0.77), szklo, 0.0, (xo, yd - 0.01, zd0 + 0.61 + (zd1 - zd0 - 0.77) / 2), segs=1)])
+    join('SwiatloWitryna', [rbox('swietlowka', (ww - 0.3, 0.035, 0.03), mat('swiatlo', 'fff0f6', 0.4, 0.0, 3.0), 0.008, (xc, -0.05, zt - 0.045))])
+    join('OpenRamka', [rbox('open_tlo', (0.3, 0.014, 0.12), tusz, 0.006, (xo, yd - 0.02, zd0 + 1.6))])
+    join('SwiatloOpen', [text('open_t', 'OPEN', 0.07, mat('neon', 'ff5aa8', 0.4, 0.0, 4.0), (xo, yd - 0.03, zd0 + 1.575), depth=0.003)])
+    weather([wit], 2048, 0.28, 0.45, (0.14, 0.12, 0.11))
+    export('fryzjer_witryna')
+
+
+def pogrzebowy_witryna():
+    """zakład pogrzebowy: stonowany portal z kamienia, okno z fioletową kotarą, wieniec na stojaku, urna na postumencie,
+    znicze, tabliczka z telefonem całodobowym, drzwi z matową szybą"""
+    reset()
+    rama = mat('rama', wz('6a6e76', 'beton'), 0.6, wzor='beton')
+    rama_c = mat('rama_c', wz('54585f', 'beton'), 0.6, wzor='beton')
+    cokol = mat('cokol', wz('4e5258', 'beton'), 0.5, wzor='beton')
+    tlo = mat('kotara', wz('5a4668', 'tkanina'), 0.95, wzor='tkanina')
+    zloto = mat('zloto', 'c9a85a', 0.4, 0.3)
+    bialy = mat('bialy', 'ecebe4', 0.6)
+    kamien = mat('kamien', 'b9b6ae', 0.5)
+    tusz = mat('tusz', '2c2e34', 0.6)
+    zo, zt = 0.6, H - 0.3
+    xd0, xd1 = 0.52, W / 2 - 0.12
+    xw0, xw1 = -W / 2 + 0.12, xd0 - 0.14
+    xc, ww = (xw0 + xw1) / 2, xw1 - xw0
+    xo, wd = (xd0 + xd1) / 2, xd1 - xd0
+    p = []
+    portal(p, rama, rama_c, cokol, tlo, xw0, xw1, zo, zt, (-W / 2 + 0.06, xd0 - 0.07, W / 2 - 0.06))
+    # fałdy kotary w tle
+    for i in range(14):
+        x = xw0 + 0.07 + i * (ww - 0.14) / 13
+        p.append(tube('falda', [(x, yb - 0.06, zo + 0.05), (x, yb - 0.06, zt - 0.03)], 0.035, tlo, 6))
+    p.append(rbox('parapet', (ww, D - 0.02, 0.04), kamien, 0.006, (xc, 0.0, zo + 0.02)))
+    p.append(rbox('rama_d', (ww, 0.05, 0.05), rama_c, 0.006, (xc, yf + 0.06, zo + 0.045)))
+    p.append(rbox('rama_g', (ww, 0.05, 0.05), rama_c, 0.006, (xc, yf + 0.06, zt - 0.03)))
+    p.append(rbox('stopien', (wd + 0.3, 0.42, 0.14), cokol, 0.012, (xo, yf - 0.1, 0.07)))
+    zd0, zd1, yd = 0.14, zt, 0.08
+    drzwi = mat('drzwi', '4a4e56', 0.5)
+    p.append(rbox('skrzydlo', (wd - 0.04, 0.05, zd1 - zd0 - 0.02), drzwi, 0.008, (xo, yd, (zd0 + zd1) / 2)))
+    p.append(rbox('szyba_mat', (wd - 0.3, 0.012, 1.0), mat('szyba_mat', 'c4c8cc', 0.6), 0.01, (xo, yd - 0.03, zd0 + 1.25)))
+    p.append(tube('pochwyt', [(xd0 + 0.14, yd - 0.03, zd0 + 0.75), (xd0 + 0.14, yd - 0.08, zd0 + 0.8), (xd0 + 0.14, yd - 0.08, zd0 + 1.3), (xd0 + 0.14, yd - 0.03, zd0 + 1.35)], 0.012, zloto, 6))
+    p.append(rbox('prog', (wd, 0.2, 0.03), kamien, 0.004, (xo, yd - 0.08, zd0 + 0.015)))
+    wit = join('Witryna', p)
+
+    t = []
+    napisy = []
+    zp = zo + 0.04
+    # wieniec na trójnogu: obręcz z liści, białe i czerwone kwiaty, szarfa
+    wx, wz0 = xw0 + 0.55, zp + 0.78
+    for sxx, sy in ((-0.2, 0.0), (0.2, 0.0), (0.0, 0.16)):
+        t.append(tube('trojnog', [(wx + sxx, 0.02 + sy, zp), (wx, 0.06, zp + 1.1)], 0.01, tusz, 5))
+    wr = lathe('wieniec', [(0.25, -0.05), (0.31, -0.035), (0.33, 0.0), (0.31, 0.035), (0.25, 0.05), (0.21, 0.035), (0.19, 0.0), (0.21, -0.035), (0.25, -0.05)], mat('zielen', '2f5a34', 0.9), 22)
+    wr.rotation_euler = (math.radians(78), 0, 0)
+    wr.location = (wx, 0.0, wz0)
+    t.append(wr)
+    for i in range(14):
+        a = i / 14 * math.tau
+        kw = lathe('kwiat', [(0.0, 0.0), (0.7, 0.05), (1.0, 0.4), (0.6, 0.85), (0.0, 1.0)], mat('kwiat%d' % (i % 2), ('ecebe4', 'a8262a')[i % 2], 0.8), 8)
+        kw.scale = (0.045, 0.045, 0.03)
+        kw.rotation_euler = (math.radians(78), 0, 0)
+        kw.location = (wx + math.cos(a) * 0.26, -0.055 - 0.02 * math.sin(a), wz0 + math.sin(a) * 0.255)
+        t.append(kw)
+    t.append(rbox('szarfa', (0.07, 0.006, 0.5), bialy, 0.004, (wx - 0.1, -0.085, wz0 - 0.12), (0, math.radians(18), 0)))
+    t.append(rbox('szarfa2', (0.07, 0.006, 0.5), bialy, 0.004, (wx + 0.1, -0.085, wz0 - 0.12), (0, math.radians(-18), 0)))
+    # urna na postumencie, znicze, krzyż z tabliczką
+    ux = xw0 + 1.4
+    t.append(rbox('postument', (0.3, 0.26, 0.6), kamien, 0.012, (ux, 0.02, zp + 0.3)))
+    t.append(lathe('urna', [(0.0, 0.0), (0.06, 0.0), (0.07, 0.015), (0.11, 0.1), (0.115, 0.2), (0.09, 0.27), (0.06, 0.29), (0.065, 0.3), (0.05, 0.32), (0.02, 0.34), (0.0, 0.36)], mat('urna', '5a5f6a', 0.35, 0.3), 16, loc=(ux, 0.02, zp + 0.6)))
+    t.append(tube('urna_pas', [(ux + math.cos(i / 16 * math.tau) * 0.116, 0.02 + math.sin(i / 16 * math.tau) * 0.116, zp + 0.78) for i in range(17)], 0.005, zloto, 4))
+    for i, x in enumerate((xw1 - 0.42, xw1 - 0.22)):
+        t.append(lathe('znicz', [(0.0, 0.0), (0.05, 0.0), (0.06, 0.02), (0.06, 0.16), (0.045, 0.19), (0.05, 0.2), (0.03, 0.22), (0.0, 0.22)], mat('znicz%d' % i, ('a8262a', 'ecebe4')[i], 0.3, 0.0, 0.0, 0.8), 12, loc=(x, -0.02 - i * 0.06, zp)))
+        t.append(lathe('znicz_wieko', [(0.0, 0.22), (0.035, 0.22), (0.04, 0.235), (0.0, 0.26)], zloto, 10, loc=(x, -0.02 - i * 0.06, zp)))
+    t.append(rbox('tablica', (0.5, 0.012, 0.3), tusz, 0.006, (xw1 - 0.34, yb - 0.1, zp + 0.9)))
+    napisy.append(text('tb1', 'ETERNITAS', 0.06, zloto, (xw1 - 0.34, yb - 0.108, zp + 0.95)))
+    napisy.append(text('tb2', 'FUNERAL SERVICES', 0.03, bialy, (xw1 - 0.34, yb - 0.108, zp + 0.88)))
+    napisy.append(text('tb3', 'DAY AND NIGHT', 0.026, bialy, (xw1 - 0.34, yb - 0.108, zp + 0.82)))
+    t.append(rbox('deska', (W - 0.3, 0.014, 0.2), tusz, 0.004, (0, yf - 0.045, H - 0.15)))
+    napisy.append(text('deska_t', 'ETERNITAS  •  SINCE 1974', 0.09, zloto, (0, yf - 0.054, H - 0.18)))
+    t.append(rbox('tel', (0.34, 0.008, 0.12), bialy, 0.004, (xo, yd - 0.04, zd0 + 0.5)))
+    napisy.append(text('tel_t', 'RING AT NIGHT', 0.034, tusz, (xo, yd - 0.046, zd0 + 0.49)))
+    join('Towar', t)
+    join('Napisy', napisy)
+    szklo = mat('szklo', 'a9c6d6', 0.06, 0.1, 0.0, 0.14)
+    join('Szyby', [rbox('szyba', (ww, 0.008, zt - zo - 0.06), szklo, 0.0, (xc, yf + 0.1, (zt + zo) / 2), segs=1)])
+    join('SwiatloWitryna', [rbox('swietlowka', (ww - 0.3, 0.035, 0.03), mat('swiatlo', 'f4e8ff', 0.4, 0.0, 2.2), 0.008, (xc, -0.05, zt - 0.045)),
+                            rbox('plomyk1', (0.012, 0.012, 0.03), mat('plomyk', 'ffb040', 0.4, 0.0, 4.0), 0.004, (xw1 - 0.42, -0.02, zp + 0.12)),
+                            rbox('plomyk2', (0.012, 0.012, 0.03), mat('plomyk', 'ffb040', 0.4, 0.0, 4.0), 0.004, (xw1 - 0.22, -0.08, zp + 0.12))])
+    weather([wit], 2048, 0.28, 0.45, (0.14, 0.12, 0.11))
+    export('pogrzebowy_witryna')
+
+
+ALL = {'piekarnia_witryna': piekarnia_witryna, 'kebab_witryna': kebab_witryna, 'fryzjer_witryna': fryzjer_witryna, 'pogrzebowy_witryna': pogrzebowy_witryna}
 only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else []
 for name, fn in ALL.items():
     if not only or name in only:

@@ -2298,8 +2298,15 @@ func _buildings() -> void:
 	# witryna monopolowego z modelu: półki z butelkami, skrzynki, nocne okienko (wcześniej czarny prostokąt); czynny całą dobę
 	_front_model("monopolowy_witryna", 31.0, 10.0, 1.0, [], Color.WHITE, null)
 	_shopfront(-70.0, 30.0, "SCRAP YARD", Color(0.8, 0.8, 0.8), "rusted_shutter", true, -1.0)
-	_shopfront(-26.0, 30.0, "ELA'S HAIR SALON", Color(0.9, 0.5, 0.7), "painted_metal_shutter", true, -1.0)
-	_shopfront(24.0, 30.0, "FUNERAL HOME", Color(0.75, 0.75, 0.8), "rusted_shutter", true, -1.0)
+	# salon fryzjerski (9–17) i zakład pogrzebowy (8–16): witryny z modeli, po godzinach roleta
+	for e in [["fryzjer_witryna", -26.0, "ELA'S HAIR SALON", Color(0.9, 0.5, 0.7), "painted_metal_shutter", [9.0, 17.0], Color(0.72, 0.62, 0.78)],
+			["pogrzebowy_witryna", 24.0, "FUNERAL HOME", Color(0.75, 0.75, 0.8), "rusted_shutter", [8.0, 16.0], Color(0.5, 0.52, 0.56)]]:
+		var has_m := ResourceLoader.exists("res://assets/models/%s.glb" % String(e[0]))
+		var e_li := _shopfront(float(e[1]), 30.0, String(e[2]), e[3], String(e[4]), not has_m, -1.0)
+		if has_m:
+			if e_li != null:
+				e_li.light_energy = 0.7
+			_front_model(String(e[0]), float(e[1]), 30.0, -1.0, e[5], e[6], e_li)
 	_sign("COAL DEPOT", Vector3(57.0, 6.2, 29.9), Color(0.8, 0.78, 0.7), 110, PI, 0.007, 8)
 	_sign("HALL NO. 2", Vector3(175.9, hd(176.0, -80.0) + 11.0, -80.0), Color(0.7, 0.68, 0.62), 220, -PI / 2.0, 0.01, 8)
 	_sign("FOR SALE\ncall 600 100 …", Vector3(190.0, hd(190.0, -51.0) + 4.6, -51.9), Color(0.95, 0.85, 0.2), 90, 0.0, 0.007, 10)
