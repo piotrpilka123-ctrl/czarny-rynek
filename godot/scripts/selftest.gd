@@ -928,6 +928,11 @@ func run() -> void:
 		U._input(ev_c)
 	G.test_mode = test_c
 	ok(S.cash == cash_c + 2000.0 and U.mode == "" and G.player.crouching == crouch_c, "kod wpisany przez obsługę klawiatury działa ponownie i nie otwiera mapy ani nie włącza kucania")
+	U.open_inventory("")
+	for ch0 in U.CHEAT_CASH:
+		U.cheat_key(KEY_A + ch0.unicode_at(0) - 97)
+	ok(U.inv.l_cash.text == G.money(S.cash) and U.mode == "inv", "po kodzie otwarty ekwipunek od razu pokazuje nową gotówkę")
+	U.close_all()
 	U.cheat_key(KEY_J, 10000)
 	U.cheat_key(KEY_E, 10000 + U.CHEAT_TIMEOUT_MS + 1)
 	ok(U.cheat_buf.is_empty(), "przerwa ponad pięć sekund przerywa wpisywanie kodu")

@@ -2843,6 +2843,9 @@ func cheat_key(kc: int, now_ms: int = -1) -> bool:
 		return false
 	cheat_reset()
 	G.S.cash = float(G.S.cash) + 1000.0
+	hud_t = 0.0
+	if mode == "inv":
+		inv.render()
 	Sfx.play("cash")
 	G.notify("+1 000 zł do kieszeni.", "good")
 	return true
