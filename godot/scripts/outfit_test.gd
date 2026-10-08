@@ -237,6 +237,16 @@ static func run(T) -> void:
 	T.ok(set_ok and set_ids.size() == D.GEAR_SETS.size(), "komplety składają się z rzeczy, które istnieją i pasują do swoich pól")
 	T.ok(G.gear_sets_of("polbuty").size() == 1 and String(G.gear_sets_of("polbuty")[0].id) == "garnitur" and G.gear_sets_of("okulary").is_empty() and G.gear_sets_of("dresy_czarne").size() == 2,
 		"wieszak wie, do którego kompletu należy rzecz (czarne dresy: do dwóch)")
+	# przebranie w coś z mniejszą liczbą kieszeni nie przejdzie, gdy kieszenie są pełne
+	var items_keep: Dictionary = (S.items as Dictionary).duplicate()
+	S.gear = {"gora": "parka"}
+	S.items["koszula"] = 1
+	var free_now: float = float(G.capacity()) - G.carry_total()
+	S.items["woreczki"] = G.item("woreczki") + int(ceil((free_now - 1.5) / float(D.ITEMS.woreczki.size)))
+	var swap_no: bool = not G.gear_wear("koszula") and G.gear("gora") == "parka" and G.item("koszula") == 1
+	S.items["woreczki"] = 0
+	T.ok(swap_no and G.gear_wear("koszula") and G.gear("gora") == "koszula" and G.item("parka") == 1, "pełne kieszenie parki nie dadzą się przebrać w koszulę; po odłożeniu rzeczy — tak")
+	S.items = items_keep
 	S.gear = gear_keep
 	_cut_tests(T)
 	G.S = keep

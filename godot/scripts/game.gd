@@ -380,6 +380,13 @@ func gear_wear(id: String) -> bool:
 	if old != "":
 		S.items[old] = item(old) + 1
 	S.gear[slot] = id
+	# zamiana kurtki z kieszeniami na coś bez kieszeni nie może zostawić towaru „w powietrzu”
+	if old != "" and carry_total() > float(capacity()) + 0.01:
+		S.gear[slot] = old
+		S.items[old] = item(old) - 1
+		S.items[id] = item(id) + 1
+		notify("Najpierw odłóż część rzeczy — w tym ubraniu masz mniej kieszeni.", "warn")
+		return false
 	Sfx.play("pickup")
 	return true
 
