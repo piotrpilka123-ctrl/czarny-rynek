@@ -2256,19 +2256,21 @@ func unlock_client(id: String, text := "Cześć, słyszałem o tobie.") -> bool:
 	st.unlocked = true
 	st.next = S.t + randf_range(1.0, 3.0) * 60.0
 	chat(id, text)
-	notify("Nowy klient: %s" % cust_def(id).name, "good")
 	add_xp(10.0)
 	# nowy klient = nowy teren: dostawcy zaczynają zostawiać towar dalej
 	var fresh := []
 	for sid in drops_open():
 		if not before.has(sid):
 			fresh.append(String(drop_def(sid).name))
+	# jedno powiadomienie zamiast dwóch: nowy klient, a przy okazji — czy urósł teren
+	var grew := ""
 	if not fresh.is_empty():
 		if world != null:
 			world.refresh_drops()
 		if flag("got_first"):
 			chat("wiktor", "Kręcisz się już dalej, to i towar będę zostawiał dalej. Nowe skrytki: %s. Każda ma swój mały znak sprejem pod ścianą." % ", ".join(fresh))
-			notify("Teren rośnie: %d nowe skrytki." % fresh.size() if fresh.size() > 1 else "Teren rośnie: nowa skrytka.", "good")
+			grew = "  Teren rośnie: %s." % ("%d nowe skrytki" % fresh.size() if fresh.size() > 1 else "nowa skrytka")
+	notify("Nowy klient: %s.%s" % [cust_def(id).name, grew], "good")
 	return true
 
 
@@ -2988,7 +2990,9 @@ func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, m
 	S.stats.deals = int(S.stats.deals) + 1
 	S.stats.best = maxf(float(S.stats.best), total)
 	Sfx.play("cash")
-	notify("+%s  (%d g %s)" % [money(paid), g, D.PRODUCT_GEN[p]], "good")
+	# przy wymianie twarzą w twarz kwotę pokazuje samo okno — osobne powiadomienie tylko poza nim
+	if ui == null or ui.deal.is_empty():
+		notify("+%s  (%d g %s)" % [money(paid), g, D.PRODUCT_GEN[p]], "good")
 	var xp := g * 3.4 * (0.8 + tier(pur) * 0.22) * (1.8 if p != "dym" else 1.0) + 2.0
 	if price >= mx * 0.9:
 		xp += 2.0
