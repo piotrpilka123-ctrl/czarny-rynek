@@ -3173,7 +3173,13 @@ func _test_ui(what: String) -> void:
 				if te.kind == "bulk":
 					ui.inv.ask_amount(te, "bag", "stash")
 					ui.inv._ask_set(5.5)
-		"char": ui.open_inventory("", "char")
+		"char":
+			# --fed: po kebabie (linijka o kondycji)
+			if args.has("fed"):
+				G.S.cash = 100.0
+				G.S.t = floorf(G.S.t / 1440.0) * 1440.0 + 13.0 * 60.0
+				G.snack_buy("kebab")
+			ui.open_inventory("", "char")
 		"wear", "wear2", "wear3":
 			G.S.cash = 2500.0
 			G.S.lvl = 7

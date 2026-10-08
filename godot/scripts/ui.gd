@@ -2113,6 +2113,9 @@ func _process_ui(dt: float) -> void:
 				# przy wymianie powiadomienia stają nad panelem sprzedaży, a nie na ekwipunku obok
 				t_left = modal_box.global_position.x
 				t_right = -(root.size.x - modal_box.global_position.x - modal_box.size.x)
+	# przy otwartym ekwipunku powiadomienia idą na wolny pasek nad zakładkami (na dole leżały na statystykach i listach)
+	if inv != null and inv.visible and mode != "modal":
+		lift = root.size.y - 138.0
 	# karta „pierwszy raz" nie nachodzi na przypięty cel w lewym górnym rogu: środkuje się w wolnej części ekranu
 	_tip_place()
 	# Telefon trzymany pionowo stoi pośrodku ekranu: powiadomienia mieszczą się w lewej kolumnie obok niego
