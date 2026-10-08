@@ -6090,9 +6090,14 @@ func furn_model(fid: String) -> Node3D:
 			n.free()
 			n = made
 		if fid == "lampa":
-			Models.cyl(n, 0.02, 0.02, 2.0, Vector3(0, 1.0, 0), Models.mat("3a3d42", 0.5, 0.6), Vector3.ZERO, 6)
-			Models.cyl(n, 0.18, 0.18, 0.03, Vector3(0, 0.015, 0), Models.mat("2a2c30", 0.5, 0.6), Vector3.ZERO, 10)
-			Models.box(n, Vector3(0.9, 0.06, 0.1), Vector3(0, 2.02, 0), Models.mat("fff4d6", 0.4, 0.0, 5.0), Vector3.ZERO, false)
+			var lm0: Node3D = Stations.model("kryj_lampa")
+			if lm0 != null:
+				# statyw z dwiema świetlówkami z modelu
+				n.add_child(lm0)
+			else:
+				Models.cyl(n, 0.02, 0.02, 2.0, Vector3(0, 1.0, 0), Models.mat("3a3d42", 0.5, 0.6), Vector3.ZERO, 6)
+				Models.cyl(n, 0.18, 0.18, 0.03, Vector3(0, 0.015, 0), Models.mat("2a2c30", 0.5, 0.6), Vector3.ZERO, 10)
+				Models.box(n, Vector3(0.9, 0.06, 0.1), Vector3(0, 2.02, 0), Models.mat("fff4d6", 0.4, 0.0, 5.0), Vector3.ZERO, false)
 			var li := OmniLight3D.new()
 			li.position = Vector3(0, 1.9, 0)
 			li.light_color = Color(1.0, 0.95, 0.85)

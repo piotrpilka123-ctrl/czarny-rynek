@@ -289,7 +289,41 @@ def kryj_suszarka():
     export('kryj_suszarka')
 
 
-ALL = {'kryj_lab': kryj_lab, 'kryj_filtr': kryj_filtr, 'kryj_zbiornik': kryj_zbiornik, 'kryj_suszarka': kryj_suszarka}
+def kryj_lampa():
+    """lampa warsztatowa na statywie: trójnóg z rozpórkami, teleskopowy maszt z zaciskiem, belka z dwiema
+    świetlówkami w osłonach z siatki, kabel z wtyczką zwinięty przy nodze. Świecące rury są osobnym obiektem."""
+    reset()
+    zolty = mat('zolty', 'd9a514', 0.5)
+    stal = mat('stal', '9a9fa5', 0.45, 0.3)
+    ciemny = mat('ciemny', '3a3d43', 0.55, 0.2)
+    p = []
+    for k in range(3):
+        an = math.radians(90 + k * 120)
+        fx, fy = math.cos(an) * 0.34, math.sin(an) * 0.34
+        p.append(tube('noga', [(fx, fy, 0.0), (0, 0, 0.62)], 0.012, zolty, 6))
+        p.append(tube('rozporka', [(fx * 0.55, fy * 0.55, 0.28), (0, 0, 0.3)], 0.007, stal, 5))
+        p.append(lathe('stopka', [(0.0, 0.0), (0.022, 0.0), (0.018, 0.014), (0.0, 0.014)], ciemny, 8, loc=(fx, fy, 0.0)))
+    p.append(tube('maszt_d', [(0, 0, 0.28), (0, 0, 1.2)], 0.016, zolty, 8))
+    p.append(tube('maszt_g', [(0, 0, 1.1), (0, 0, 1.96)], 0.011, stal, 8))
+    p.append(rbox('zacisk', (0.05, 0.05, 0.06), ciemny, 0.008, (0, 0, 1.2)))
+    p.append(tube('pokretlo', [(0.025, 0, 1.2), (0.06, 0, 1.2)], 0.008, ciemny, 6))
+    p.append(rbox('belka', (0.96, 0.05, 0.04), zolty, 0.008, (0, 0, 1.98)))
+    for sx in (-1, 1):
+        x = sx * 0.25
+        p.append(rbox('oprawa', (0.44, 0.09, 0.05), ciemny, 0.012, (x, 0, 2.02)))
+        for k in range(6):                     # osłona z drutu
+            xx = x - 0.2 + k * 0.08
+            p.append(tube('drut', [(xx, -0.05, 2.02), (xx, -0.06, 2.07), (xx, 0.0, 2.1), (xx, 0.06, 2.07), (xx, 0.05, 2.02)], 0.003, stal, 4))
+    coil = [(0.3 + math.cos(i / 10 * math.tau) * (0.09 + i * 0.0015), -0.12 + math.sin(i / 10 * math.tau) * (0.09 + i * 0.0015), 0.012 + 0.002 * (i // 10)) for i in range(34)]
+    p.append(tube('kabel', [(0, 0.02, 1.9), (0.03, 0.03, 1.2), (0.05, 0.02, 0.5), (0.2, -0.05, 0.02)] + coil, 0.006, ciemny, 5))
+    p.append(rbox('wtyczka', (0.04, 0.03, 0.025), ciemny, 0.006, coil[-1]))
+    st = join('Statyw', p)
+    join('SwiatloRury', [rbox('rura', (0.4, 0.03, 0.03), mat('rura', 'fff4d6', 0.4, 0.0, 5.0), 0.012, (sx * 0.25, 0, 2.06)) for sx in (-1, 1)])
+    weather([st], 1024, 0.3, 0.45, (0.13, 0.12, 0.1))
+    export('kryj_lampa')
+
+
+ALL = {'kryj_lampa': kryj_lampa, 'kryj_lab': kryj_lab, 'kryj_filtr': kryj_filtr, 'kryj_zbiornik': kryj_zbiornik, 'kryj_suszarka': kryj_suszarka}
 only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else []
 for name, fn in ALL.items():
     if not only or name in only:
