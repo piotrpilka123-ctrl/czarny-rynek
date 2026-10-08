@@ -96,3 +96,20 @@ Na „stop”/„stoo” wyłączyć ją i zaprzestać pracy.
   (--autostart --intro --prostage=escape). Widoczny etapowy cel i znak 7 m.
 - Następny priorytet: płoty i nadmiar przejść przy hucie/torach, następnie wyraźniejsze
   różnice budynków. Dokończyć te żądania, nie wracać do już ukończonych testów bez powodu.
+
+
+## Rozbudowa po porównaniu Schedule I / DDS — najnowsze polecenia
+
+Piotr chce rozumienia pętli tych gier, porównania braków i wdrożenia ich we własnym projekcie.
+Powstał PLAN-ROZGRYWKI.md z oficjalnymi źródłami i kolejnością. Nowe prośby o grafikę
+są uzupełnieniem, nie kasują mechanik: powiększyć mapę o osiedle kontrolowane przez gang
+(niebezpieczne na początku), jezioro i teren za garażami. Poprawić śmietniki, kraty,
+system chowania, celowanie i interakcje, których pola wydają się za duże.
+
+Aktualny blok: mniejsze promienie i zasięg interakcji, promień fizyczny blokowany przez
+przeszkody, cel kryjówki na jej wejściu; wyjście nie usuwa wiedzy policjanta.
+Nowa aplikacja Dostawy: rezerwuje faktyczne całe paczki w kopii kieszeni, uwzględnia
+wymaganą jakość, ostrzega przed za dużymi woreczkami i nie podwaja zapasu.
+752a31b: 647 testów OK. Audyt Dostaw: 0 uwag; podgląd w rendererze obejrzany
+(/Users/macbook/codex-podglad/dostawy.png). Następnie realizować punkty
+3–6 planu i wcześniej zgłoszone budynki/płoty. Aktualizować ten zapis po każdym bloku.
