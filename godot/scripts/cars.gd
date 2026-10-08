@@ -275,6 +275,30 @@ static func material() -> ShaderMaterial:
 const MODELS := {"sedan": "auto_sedan", "hatch": "auto_hatch", "kombi": "auto_kombi", "suv": "auto_kombi", "maluch": "auto_maluch", "van": "auto_van", "swat": "auto_swat"}
 static var _glb := {}
 static var _paint := {}
+static var _soft := {}
+## Szyby, plastiki i opony modeli są prawie czarne (szyba 070e15 z metalicznością 0,6) — na ulicy wychodziły smoliste plamy.
+## Zamienniki: ciemne, ale czytelne (grafitowa guma, szaroniebieskie szkło, które łapie odbicie nieba).
+const SOFT := {"szyba": [Color(0.17, 0.21, 0.26), 0.1, 0.25], "plastik": [Color(0.17, 0.175, 0.19), 0.75, 0.0], "guma": [Color(0.15, 0.15, 0.16), 0.9, 0.0]}
+
+
+static func _soften(root: Node) -> void:
+	for ch in root.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = ch
+		if mi.mesh == null:
+			continue
+		for sf in range(mi.mesh.get_surface_count()):
+			var src := mi.mesh.surface_get_material(sf)
+			if src == null or not SOFT.has(String(src.resource_name)) or mi.get_surface_override_material(sf) != null:
+				continue
+			var nm := String(src.resource_name)
+			if not _soft.has(nm):
+				var m: BaseMaterial3D = src.duplicate()
+				m.albedo_color = SOFT[nm][0]
+				m.roughness = SOFT[nm][1]
+				m.metallic = SOFT[nm][2]
+				_soft[nm] = m
+			mi.set_surface_override_material(sf, _soft[nm])
+
 
 
 static func _scene(name: String) -> PackedScene:
@@ -306,7 +330,7 @@ static func car(type := "", color = null, police := false) -> Node3D:
 	var root: Node3D = ps.instantiate()
 	var c: Color = color if color is Color else Color.html("#" + String(color if color != null else "8a8f96"))
 	if type == "swat":
-		c = Color(0.07, 0.09, 0.14)
+		c = Color(0.15, 0.18, 0.26)
 	var body := _find(root, "TintKaroseria") as MeshInstance3D
 	if body != null:
 		var key := "%s|%s|%s" % [type, c.to_html(false), str(police)]
@@ -314,7 +338,7 @@ static func car(type := "", color = null, police := false) -> Node3D:
 			var src := body.mesh.surface_get_material(0)
 			var m: StandardMaterial3D = (src.duplicate() as StandardMaterial3D) if src is StandardMaterial3D else StandardMaterial3D.new()
 			m.albedo_color = c
-			m.metallic = 0.35
+			m.metallic = 0.25
 			m.roughness = 0.42
 			m.clearcoat_enabled = true
 			m.clearcoat = 0.5
@@ -322,6 +346,7 @@ static func car(type := "", color = null, police := false) -> Node3D:
 			_paint[key] = m
 		body.material_override = _paint[key]
 		root.set_meta("body", body)
+	_soften(root)
 	if type == "suv":
 		root.scale = Vector3(1.06, 1.12, 1.0)
 	var wheels: Array = []

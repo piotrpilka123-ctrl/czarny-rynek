@@ -2221,7 +2221,7 @@ func _buildings() -> void:
 	# Robotnicza
 	building(-32.0, 58.0, -8.0, 80.0, 11.4, "cegla2", Color(0.7, 0.68, 0.66), Color(0.6, 0.58, 0.54), 0.55)
 	building(8.0, 58.0, 34.0, 78.0, 11.4, "cegla2", Color(0.76, 0.72, 0.7), Color(0.62, 0.6, 0.56), 0.3)
-	building(-44.0, 116.0, -8.0, 140.0, 10.0, "klub", Color(0.22, 0.2, 0.3), Color(1.0, 0.23, 0.82), 0.0)
+	building(-44.0, 116.0, -8.0, 140.0, 10.0, "klub", Color(0.56, 0.5, 0.7), Color(1.0, 0.23, 0.82), 0.0)
 	# komisariat
 	building(-196.0, -10.0, -166.0, 8.0, 10.8, "urzad", Color(0.8, 0.82, 0.86), Color(0.25, 0.35, 0.6), 0.0)
 	# Stara Huta
@@ -2797,7 +2797,7 @@ func _lower_town() -> void:
 	_car(22.0, 22.8, -PI / 2.0, "hatch", "8a1c1c")
 	_car(-156.0, 2.0, 0.0, "sedan", "ffffff", true)
 	_car(-160.5, 2.5, 0.0, "suv", "ffffff", true)
-	_car(-1.6, 96.0, 0.0, "sedan", "15171a")
+	_car(-1.6, 96.0, 0.0, "sedan", "42464e")
 	# wrak na cegłach przy garażach
 	var wr: Node3D = Models.car("hatch", "5a6068")
 	wr.position = Vector3(98.0, hd(98.0, 88.0) + 0.12, 88.0)
@@ -4411,9 +4411,10 @@ func _club_facade() -> void:
 	var z1 := 140.0
 	var top := 10.0
 	var gy := hd(-8.0, 128.0)
-	var pier := Models.mat("1a1722", 0.75, 0.1)
-	var trim := Models.mat("2d2838", 0.6, 0.2)
-	var brick := Props.pbr("factory_brick", 0.35, Color(0.3, 0.26, 0.32))
+	# ciemny bakłażan zamiast prawie-czerni: w dzień bryła klubu była czarną plamą
+	var pier := Models.mat("3a3450", 0.75, 0.1)
+	var trim := Models.mat("54496e", 0.6, 0.2)
+	var brick := Props.pbr("factory_brick", 0.35, Color(0.66, 0.58, 0.72))
 	var grp := Node3D.new()
 	city.add_child(grp)
 	# cokół z ciemnej cegły i gzyms dookoła

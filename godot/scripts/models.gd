@@ -7,7 +7,8 @@ const HAIRC := ["17130f", "33241a", "5e4126", "9a7040", "c8ae82", "7d7d7d", "8a3
 const TOPC := ["2f4a6d", "6d2f2f", "2f6d45", "3d3d42", "a8a39a", "7a5c2e", "4b3a6d", "8a2d52", "1f6f78", "c7b08a", "20242b", "b0492c", "d8d8d8"]
 const BOTC := ["232a36", "2e3a52", "3b3630", "1b1b1e", "4a4f57", "5b4a3a", "283b2e"]
 const SHOEC := ["151515", "3a2a1e", "e8e8e8", "5a1f1f", "22324a"]
-const CARCOLS := ["8a1c1c", "1c3f8a", "d9dcdf", "15171a", "b08a1e", "1e6b3a", "5a6068", "5a2d8a", "9aa3ab", "6b1f2a", "28424f"]
+# (czarny lakier to grafit: idealnie czarne auto było na ulicy smolistą plamą)
+const CARCOLS := ["8a1c1c", "1c3f8a", "d9dcdf", "484c55", "b08a1e", "1e6b3a", "5a6068", "5a2d8a", "9aa3ab", "6b1f2a", "28424f"]
 
 static var _mats := {}
 static var _meshes := {}
