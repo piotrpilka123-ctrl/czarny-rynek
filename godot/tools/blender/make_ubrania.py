@@ -1627,37 +1627,154 @@ def buty_robocze():
 
 
 # ================================================================ SZYJA I GŁOWA
+def envelope(B, b, verts, gap, rounds=3, steps=4):
+    """Gładka otoczka zamiast odlewu: na zmianę wygładza i odsuwa od ciała to, co weszło pod powierzchnię. Wklęsłości
+    (między uchem a czaszką, pod kosmykiem grzywki) zostają zamostkowane, wypukłości dalej przylegają."""
+    for _ in range(rounds):
+        for _ in range(steps):
+            bmesh.ops.smooth_vert(b, verts=verts, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+        clear(B, b, gap)
+    bmesh.ops.smooth_vert(b, verts=verts, factor=0.3, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    clear(B, b, gap * 0.8)
+
+
+def ring_band(tree, axis, z_of, profile, material, name='wywiniecie', n=64):
+    """Pas dookoła głowy położony na powłoce `tree`: profile = [(wysokość nad brzegiem, odsunięcie)…], z_of(y) = wysokość
+    brzegu. Kąt 0 = przód (−Y). Zwraca obiekt o zamkniętym przekroju (wywinięty ściągacz czapki)."""
+    vb = bmesh.new()
+    rows = []
+    for k in range(n):
+        th = k / n * math.tau
+        d = Vector((math.sin(th), -math.cos(th), 0))
+        row = []
+        for h, o in profile:
+            z = z_of(axis.y + d.y * 0.1) + h
+            hit = None
+            for _ in range(3):
+                loc, nrm, _, _ = tree.ray_cast(Vector((axis.x, axis.y, z)) + d * 0.4, -d, 0.5)
+                if loc is None:
+                    break
+                hit = loc
+                z = z_of(loc.y) + h
+            if hit is None:
+                hit = Vector((axis.x, axis.y, z)) + d * 0.1
+            row.append(vb.verts.new(Vector((hit.x, hit.y, z)) + d * o))
+        rows.append(row)
+    m = len(profile)
+    for k in range(n):
+        a, b2 = rows[k], rows[(k + 1) % n]
+        for j in range(m - 1):
+            vb.faces.new((a[j], a[j + 1], b2[j + 1], b2[j]))
+    bmesh.ops.recalc_face_normals(vb, faces=vb.faces[:])
+    for _ in range(2):
+        bmesh.ops.smooth_vert(vb, verts=vb.verts[:], factor=0.4, use_axis_x=True, use_axis_y=True, use_axis_z=False)
+    return mesh_object(vb, name, material)
+
+
 def _calm_face(B, b, ez, hy, gap=0.0115):
     """dzianina na twarzy nie odwzorowuje ust, nozdrzy ani małżowin: otwór po ustach zaszyty, te miejsca dodatkowo wygładzone"""
+    # zęby, dziąsła i wewnętrzna strona warg (schowane za wargami) nie należą do powłoki — dawały „szczerzącą się” fakturę
+    tr = BVHTree.FromBMesh(b)
+    hidden = []
+    for v in b.verts:
+        if abs(v.co.x) < 0.045 and 1.56 < v.co.z < ez - 0.03 and v.co.y < hy - 0.03:
+            loc, _, _, dist = tr.ray_cast(v.co + Vector((0, -0.0015, 0)), Vector((0, -1, 0)), 0.06)
+            if loc is not None and dist > 0.0015:
+                hidden.append(v)
+    if hidden:
+        bmesh.ops.delete(b, geom=hidden, context='VERTS')
     for lp_e in _edge_loops(b):
         cz = sum(((e.verts[0].co + e.verts[1].co) / 2 for e in lp_e), Vector()) / len(lp_e)
-        if len(lp_e) < 40 and cz.z < ez - 0.03 and cz.z > 1.56 and cz.y < hy - 0.04:
+        if len(lp_e) < 60 and cz.z < ez - 0.03 and cz.z > 1.56 and cz.y < hy - 0.04:
             bmesh.ops.holes_fill(b, edges=lp_e, sides=0)
+    # uszy: materiał przykrywa małżowinę gładkim wybrzuszeniem (bez odlewu ucha)
+    ears = [v.co for v in b.verts if abs(v.co.x) > 0.085 and 1.6 < v.co.z < 1.74]
+    if ears:
+        xt = max(abs(c.x) for c in ears)
+        cy = sum(c.y for c in ears) / len(ears)
+        cz2 = sum(c.z for c in ears) / len(ears)
+        for v in b.verts:
+            if abs(v.co.x) < 0.06 or v.is_boundary:
+                continue
+            k = max(0.0, 1.0 - math.hypot((v.co.y - cy) / 0.06, (v.co.z - cz2) / 0.075))
+            k = k * k * (3 - 2 * k)
+            if k > 0.0:
+                sx = 1.0 if v.co.x > 0 else -1.0
+                v.co.x = sx * (abs(v.co.x) + (max(abs(v.co.x), xt * (0.93 + 0.07 * k)) - abs(v.co.x)) * min(1.0, k * 2.0))
     soft = [v for v in b.verts if not v.is_boundary and ((v.co.z < ez - 0.025 and v.co.y < hy - 0.02) or abs(v.co.x) > 0.082)]
-    for _ in range(6):
-        bmesh.ops.smooth_vert(b, verts=soft, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
-    clear(B, b, gap)
-    for _ in range(2):
-        bmesh.ops.smooth_vert(b, verts=soft, factor=0.35, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    envelope(B, b, soft, gap, 5, 6)
+
+
+def wrap_head(B, z0, off, top_fn=None, dome=False, n=64, rows=18, r_max=0.125, zc=None, straight=False):
+    """Dzianina naciągnięta na głowę: siatka z promieni rzucanych z zewnątrz w stronę osi głowy. Promień zatrzymuje się na
+    pierwszej (zewnętrznej) powierzchni, więc do powłoki nie trafiają nozdrza, wnętrze ust ani zakamarki uszu — kopia siatki
+    twarzy dawała tam „odlew” z nakładającymi się warstwami. z0 = dolny brzeg, top_fn(kierunek) = górny brzeg (komin),
+    dome = z czubkiem (kominiarka), off(z) = odsunięcie od skóry."""
+    hz, hy = B.H['Bip01 Head'].z, B.H['Bip01 Head'].y
+    ax = Vector((0, hy + 0.007, 0))
+    zc = hz + 0.125 if zc is None else zc
+    C = Vector((ax.x, ax.y, zc))
+    z0_fn = z0 if callable(z0) else (lambda d: z0)
+
+    def reach(o, d, lim):
+        loc, _, _, _ = B.tree.ray_cast(o + d * 0.5, -d, 0.5)
+        r = (loc - o).dot(d) if loc is not None else 0.09
+        return max(0.045, min(lim, r))
+    vb = bmesh.new()
+    cols = []
+    for k in range(n):
+        th = k / n * math.tau
+        d = Vector((math.sin(th), -math.cos(th), 0))
+        ztop = top_fn(d) if top_fn is not None else zc
+        zb = z0_fn(d)
+        ring = []
+        for j in range(rows + 1):
+            z = zb + (ztop - zb) * j / rows
+            o = Vector((ax.x, ax.y, z))
+            # przy szyi promień nie może złapać barków ani kołnierza ciała
+            lim = r_max if z > hz - 0.02 else 0.085 + (r_max - 0.085) * max(0.0, (z - zb) / max(0.01, hz - 0.02 - zb))
+            ring.append([o, d, reach(o, d, lim) + off(z)])
+        if dome:
+            for j in range(1, 10):
+                ph = j / 10 * math.pi / 2
+                dd = d * math.cos(ph) + Z * math.sin(ph)
+                ring.append([C, dd, reach(C, dd, 0.2) + off(zc)])
+        if straight:
+            # czapka nie zwęża się ku dołowi: poniżej najszerszego miejsca ścianka idzie prosto do brzegu
+            for j in range(rows - 1, -1, -1):
+                ring[j][2] = max(ring[j][2], ring[j + 1][2] * (1.0 if j + 1 <= rows else math.cos(math.pi / 20)))
+        cols.append([vb.verts.new(o + dd * r) for o, dd, r in ring])
+    m = len(cols[0])
+    for k in range(n):
+        a, b2 = cols[k], cols[(k + 1) % n]
+        for j in range(m - 1):
+            vb.faces.new((a[j], b2[j], b2[j + 1], a[j + 1]))
+    if dome:
+        pole = vb.verts.new(C + Z * (reach(C, Z, 0.2) + off(zc)))
+        for k in range(n):
+            vb.faces.new((cols[k][-1], cols[(k + 1) % n][-1], pole))
+    bmesh.ops.recalc_face_normals(vb, faces=vb.faces[:])
+    inner = [v for v in vb.verts if not v.is_boundary]
+    for _ in range(3):
+        bmesh.ops.smooth_vert(vb, verts=inner, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+        clear(B, vb, off(zc) * 0.8)
+    bmesh.ops.smooth_vert(vb, verts=inner, factor=0.3, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    vb.normal_update()
+    return vb
 
 
 def komin():
     """komin naciągnięty na nos: elastyczna dzianina z poziomymi fałdami, obszyte brzegi"""
     B = Body()
     knit = mat('dzianina_komin', '3a3f48', 0.95)
-    hz = B.H['Bip01 Head'].z
-    hy = B.H['Bip01 Head'].y
+    hz, hy = B.H['Bip01 Head'].z, B.H['Bip01 Head'].y
 
-    def pick(co, w):
-        if w.get('Bip01 Neck', 0.0) >= 0.2 and co.z > 1.47:
-            return True
-        top = hz + 0.066 - 0.05 * max(0.0, min(1.0, (co.y - (hy - 0.11)) / 0.2))
-        return head_w(w) >= 0.5 and co.z < top and w.get('Bip01 MTongue', 0.0) < 0.01
-
-    def off(co, w):
-        return 0.0135 + 0.0025 * math.sin(co.z * 210.0)
-    ez = (B.H['Bip01 LEye'].z + B.H['Bip01 REye'].z) / 2
-    bm, lps = shell(B, pick, off, 3, 1, rim=0.004, gap=0.0115, post=lambda b: _calm_face(B, b, ez, hy))
+    def top(d):
+        # z przodu sięga nasady nosa, z tyłu kończy się na karku
+        k = max(0.0, min(1.0, (hy + 0.007 + d.y * 0.1 - (hy - 0.11)) / 0.2))
+        return hz + 0.07 - 0.055 * k * k * (3 - 2 * k)
+    bm = wrap_head(B, 1.5, lambda z: 0.0125 + 0.0028 * math.sin(z * 190.0), top, rows=16)
+    lps = loops(bm, lambda c: True)
     ob = to_object(B, bm, 'komin', [knit])
     parts = [band(lp, 0.005, knit, 'obszycie', 0.001, 1.3) for lp in lps if len(lp) > 12]
     finish(B, ob, parts, 'komin')
@@ -1670,27 +1787,29 @@ def kominiarka():
     hz, hy = B.H['Bip01 Head'].z, B.H['Bip01 Head'].y
     eL, eR = B.H['Bip01 LEye'], B.H['Bip01 REye']
     ez = (eL.z + eR.z) / 2
-
-    def pick(co, w):
-        if w.get('Bip01 LEye', 0.0) + w.get('Bip01 REye', 0.0) > 0.5 or w.get('Bip01 MTongue', 0.0) > 0.01:
-            return False
-        if w.get('Bip01 Neck', 0.0) >= 0.2 and co.z > 1.47:
-            return True
-        if head_w(w) < 0.5:
-            return False
-        # otwór na oczy: poziomy pas z przodu twarzy
-        return not (co.y < hy - 0.055 and abs(co.z - ez) < 0.017 and abs(co.x) < 0.064)
-    bm, lps = shell(B, pick, lambda co, w: 0.013, 3, 1, rim=0.004, gap=0.0115, post=lambda b: _calm_face(B, b, ez, hy))
+    bm = wrap_head(B, 1.525, lambda z: 0.012, dome=True, rows=20)
+    # otwór na oczy: poziomy, zaokrąglony pas z przodu twarzy
+    cut_f = []
+    for f in bm.faces:
+        c = f.calc_center_median()
+        if c.y < hy - 0.04 and ((c.x / 0.07) ** 4 + ((c.z - ez - 0.002) / 0.021) ** 4) < 1.0:
+            cut_f.append(f)
+    bmesh.ops.delete(bm, geom=cut_f, context='FACES')
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
+    eye = [v for v in bm.verts if v.is_boundary and v.co.z > ez - 0.05 and v.co.y < hy]
+    for _ in range(3):
+        bmesh.ops.smooth_vert(bm, verts=eye, factor=0.5, use_axis_x=True, use_axis_y=False, use_axis_z=True)
+    bm.normal_update()
+    lps = loops(bm, lambda c: True)
     ob = to_object(B, bm, 'kominiarka', [knit])
     parts = []
     for lp in lps:
-        c = sum(lp, Vector()) / len(lp)
         if len(lp) > 10:
             parts.append(band(lp, 0.0045, knit, 'obszycie', 0.0008, 1.2))
     finish(B, ob, parts, 'kominiarka')
 
 
-def _head_shell(B, rim_front, rim_back, off, smooth=3, rim=None):
+def _head_shell(B, rim_front, rim_back, off, smooth=3, rim=None, smooth_gap=0.0, straight=False):
     hz, hy = B.H['Bip01 Head'].z, B.H['Bip01 Head'].y
 
     def rim_z(y):
@@ -1702,6 +1821,34 @@ def _head_shell(B, rim_front, rim_back, off, smooth=3, rim=None):
         return head_w(w) >= 0.5 and co.z > rim_z(co.y) - 0.03
 
     def post(bm):
+        if smooth_gap > 0.0:
+            # gładka główka czapki: bez odlewu fryzury pod spodem
+            envelope(B, bm, [v for v in bm.verts if not v.is_boundary], smooth_gap, 3, 4)
+        if straight:
+            # Czapka nie zwęża się pod główką: poniżej najszerszego miejsca boki idą prosto w dół do otoku
+            # (głowa pod spodem jest tam węższa i powłoka robiła „grzybek”).
+            ax = Vector((0, hy + 0.005, 0))
+            nb = 48
+            pol = []
+            for v in bm.verts:
+                dx, dy = v.co.x - ax.x, v.co.y - ax.y
+                pol.append((v, int((math.atan2(dx, -dy) % math.tau) / math.tau * nb) % nb, math.hypot(dx, dy)))
+            bins = [[] for _ in range(nb)]
+            for v, k, r in pol:
+                bins[k].append((v.co.z, r))
+            for v, k, r in pol:
+                if v.co.z > rim_z(v.co.y) + 0.06:
+                    continue
+                top = 0.0
+                for kk in (k - 1, k, k + 1):
+                    for z2, r2 in bins[kk % nb]:
+                        if z2 > v.co.z + 0.004 and r2 > top:
+                            top = r2
+                if top * 0.985 > r and r > 1e-4:
+                    f = top * 0.985 / r
+                    v.co.x = ax.x + (v.co.x - ax.x) * f
+                    v.co.y = ax.y + (v.co.y - ax.y) * f
+            bmesh.ops.smooth_vert(bm, verts=[v for v in bm.verts if not v.is_boundary], factor=0.35, use_axis_x=True, use_axis_y=True, use_axis_z=False)
         # równy brzeg: to, co wystaje poniżej linii brzegu, schodzi się na nią
         for v in bm.verts:
             r = rim_z(v.co.y)
@@ -1726,13 +1873,11 @@ def czapka_daszek():
         k = max(0.0, min(1.0, (y - (hy + 0.035)) / 0.08))
         return zf + (zb - zf) * k * k * (3 - 2 * k)
 
-    def off(co, w):
-        # panel czołowy usztywniony: stoi prawie pionowo nad daszkiem; tył przylega do głowy
-        front = max(0.0, min(1.0, (hy + 0.02 - co.y) / 0.11))
-        rise = max(0.0, min(1.0, (co.z - zf) / 0.045)) * max(0.0, min(1.0, (hz + 0.25 - co.z) / 0.035))
-        dome = max(0.0, min(1.0, (co.z - zf - 0.03) / 0.07))
-        return 0.0075 + 0.019 * front * front * rise + 0.011 * dome * dome * (3 - 2 * dome)
-    bm, tree, rims, rim_z = _head_shell(B, 0.0, 0.0, off, 3, rim)
+    # główka z promieni rzucanych z zewnątrz (gładka, bez odlewu fryzury); ścianki idą prosto w dół do otoku
+    bm = wrap_head(B, lambda d: rim(hy + 0.007 + d.y * 0.11), lambda z: 0.0085, dome=True, rows=5, zc=hz + 0.185, straight=True, r_max=0.14)
+    tree = BVHTree.FromBMesh(bm)
+    rims = [lp for lp in loops(bm, lambda c: True) if len(lp) > 20]
+    rim_z = rim
     ob = to_object(B, bm, 'czapka_daszek', [cloth, under, white])
     parts = [band(lp, 0.0035, under, 'otok', 0.0008, 1.8) for lp in rims]
     # szwy klinów zbiegające się w guziku
@@ -1799,32 +1944,18 @@ def czapka_zimowa():
     def off(co, w):
         slouch = max(0.0, min(1.0, (co.z - hz - 0.17) / 0.05))
         return 0.014 + 0.014 * slouch
-    bm, tree, rims, rim_z = _head_shell(B, 0.13, 0.05, off)
+    bm, tree, rims, rim_z = _head_shell(B, 0.13, 0.05, off, smooth_gap=0.012)
     for v in bm.verts:
         k = max(0.0, min(1.0, (v.co.z - hz - 0.19) / 0.05))
         v.co.y += 0.02 * k
+    tree = BVHTree.FromBMesh(bm)
     ob = to_object(B, bm, 'czapka_zimowa', [knit, rib, tag_m])
     parts = []
-    # wywinięty ściągacz: druga, grubsza warstwa nad brzegiem
-    def pick2(co, w):
-        r = rim_z(co.y)
-        return head_w(w) >= 0.5 and r - 0.03 < co.z < r + 0.09
-
-    def even(b):
-        # równe brzegi wywinięcia: to, co wystaje poza pas, schodzi się na jego krawędzie
-        for v in b.verts:
-            r = rim_z(v.co.y)
-            v.co.z = max(r - 0.004, min(r + 0.058, v.co.z))
-        bmesh.ops.dissolve_degenerate(b, dist=0.0004, edges=b.edges[:])
-    b2, l2 = shell(B, pick2, lambda co, w: 0.021, 3, 1, rim=0.007, gap=0.016, post=even)
-    cuff = mesh_object(b2, 'wywiniecie', rib)
-    for n in B.names:
-        cuff.vertex_groups.new(name=n)
+    # wywinięty ściągacz: równy, zaokrąglony pas dookoła głowy, położony na czapce
+    axis = Vector((0, hy + 0.005, 0))
+    cuff = ring_band(tree, axis, rim_z, [(-0.007, 0.001), (-0.004, 0.008), (0.006, 0.0115), (0.022, 0.0125), (0.038, 0.0125), (0.05, 0.0115), (0.058, 0.008), (0.06, 0.001)], rib)
     parts.append(cuff)
-    for lp in l2:
-        if len(lp) > 20:
-            parts.append(band(lp, 0.006, rib, 'rant', 0.0, 1.2))
-    parts.append(patch(BVHTree.FromBMesh(bmesh_from(cuff)), Vector((0.3, hy - 0.02, rim_z(hy - 0.02) + 0.03)), Y, Z, 0.034, 0.022, 0.002, tag_m, 'naszywka', 3, 2, 0.3, Vector((-1, 0, 0))))
+    parts.append(patch(BVHTree.FromBMesh(bmesh_from(cuff)), Vector((0.3, hy - 0.02, rim_z(hy - 0.02) + 0.028)), Y, Z, 0.034, 0.022, 0.002, tag_m, 'naszywka', 3, 2, 0.3, Vector((-1, 0, 0))))
     finish(B, ob, parts, 'czapka_zimowa', rigid='Bip01 Head')
 
 
