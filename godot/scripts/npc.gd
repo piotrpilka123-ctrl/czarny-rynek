@@ -480,7 +480,7 @@ func _build_static() -> void:
 		"lines": ["Jak huta stała, to tu było życie. A teraz? Sam pan widzi.", "Trzydzieści lat przy piecu. I co mi z tego zostało?", "Kiedyś to na tej górce saneczki, festyny… Dziś strach wieczorem wyjść."]})
 	# pijaczek pod monopolowym
 	# (siedzi na skrzynce pod ścianą; wcześniej stał zgięty wpół jak zombie)
-	_static({"x": 33.4, "z": 11.2, "rot": 0.3, "pose": "sit", "y": 0.02, "name": "Zdzichu",
+	_static({"x": 34.9, "z": 11.3, "rot": 0.3, "pose": "sit", "y": 0.02, "name": "Zdzichu",
 		"look": {"model": "m07", "kind": "jacket", "top": "4a4538", "bottom": "2b2622", "beard": true, "hair": "hair_simpleparted", "hair_color": "7a7a7a", "seed": 35},
 		"lines": ["Kierowniku… poratuj złotówką…", "Ja tu wszystko widzę. Wszyściutko. Ale nic nie mówię.", "Zimno dziś, co?"]})
 	# potencjalni klienci „z rozmowy”

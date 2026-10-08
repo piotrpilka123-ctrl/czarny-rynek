@@ -2292,6 +2292,10 @@ func _buildings() -> void:
 		"act": func(): G.main.pawn_talk()})
 	_shopfront(-43.0, 10.0, "KEBAB", Color(0.95, 0.35, 0.2), "painted_metal_shutter", true)
 	_shopfront(31.0, 10.0, "LIQUOR 24H", Color(0.4, 0.9, 0.5), "rusted_shutter", false)
+	# witryna monopolowego z modelu: półki z butelkami, skrzynki, nocne okienko (wcześniej czarny prostokąt)
+	var lq := Stations.model("monopolowy_witryna")
+	if lq != null:
+		Props.set_range(_place(lq, 31.0, 10.0 + 0.3 * INV, 0.0, 1.5, 0.3, 2.6), 80.0)
 	_shopfront(-70.0, 30.0, "SCRAP YARD", Color(0.8, 0.8, 0.8), "rusted_shutter", true, -1.0)
 	_shopfront(-26.0, 30.0, "ELA'S HAIR SALON", Color(0.9, 0.5, 0.7), "painted_metal_shutter", true, -1.0)
 	_shopfront(24.0, 30.0, "FUNERAL HOME", Color(0.75, 0.75, 0.8), "rusted_shutter", true, -1.0)
@@ -4211,7 +4215,7 @@ func _street_details() -> void:
 			drains = pts.size()
 		inst.free()
 	# skrzynka pod monopolowym, na której siedzi Zdzichu
-	_prop("wooden_crate_02", 33.4, 11.2, 0.3, 0.42, 0.0, false)
+	_prop("wooden_crate_02", 34.9, 11.3, 0.3, 0.42, 0.0, false)
 	for e in [[-150.0, 20.6], [-60.0, 19.4], [100.0, 20.5], [150.0, 19.5], [0.6, 70.0], [-0.5, 120.0], [-106.0, -60.0], [-106.4, -110.0], [-40.0, -130.0], [40.0, -130.6], [95.0, -95.0],
 			[-27.0, -90.0], [60.0, -50.0], [8.0, -66.0], [-5.3, 45.0], [75.0, 50.0], [166.0, -30.0], [10.0, 157.0]]:
 		_prop("water_manhole_cover", float(e[0]), float(e[1]), float(e[0]) * 0.7, 0.0, 0.0, false, 0.01)
