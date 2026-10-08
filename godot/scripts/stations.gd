@@ -420,6 +420,20 @@ static func refresh_rack(n: Node3D, j) -> void:
 
 ## Suszarka siatkowa: wiszące piętra z siatki; „Load” = susz na siatkach
 static func dryer() -> Node3D:
+	var made := model("kryj_suszarka")
+	if made != null:
+		# stelaż i siatka z modelu; susz na piętrach dorysowuje gra, gdy coś się suszy
+		var ld := Node3D.new()
+		ld.name = "Load"
+		made.add_child(ld)
+		for t0 in range(4):
+			var y0 := 0.45 + t0 * 0.36
+			for k0 in range(9):
+				var a0 := k0 * 0.7 + t0
+				var r0 := 0.07 + (k0 % 3) * 0.1
+				Models.sphere(ld, 0.05, Vector3(cos(a0) * r0, y0 + 0.035, sin(a0) * r0), _m("bud%d" % (k0 % 2), "5a7a34" if k0 % 2 == 0 else "6b8a3a", 0.95), Vector3(1.3, 0.6, 1.0), false, 6)
+		ld.visible = false
+		return made
 	var g := Node3D.new()
 	var steel := _m("steel", "2b2e33", 0.45, 0.7)
 	var net := _m("net", "20242a", 0.9, 0.0, 0.0, 0.55)

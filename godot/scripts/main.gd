@@ -3085,6 +3085,17 @@ func _test_ui(what: String) -> void:
 			for fd in [["stol", -1.6, -3.6, 0], ["lab", 1.4, -3.5, 0], ["regal", 2.3, 1.6, 1], ["filtr", 2.3, -0.9, 0], ["suszarka", -2.2, 1.4, 0], ["lampa", 0.0, -1.0, 0], ["zbiornik", -2.3, -0.9, 0]]:
 				G.furn_buy_place("garage", String(fd[0]), float(fd[1]), float(fd[2]), int(fd[3]))
 			G.S.items["chemia"] = 6
+			# --grow=0..1: lampa LED i pięć doniczek z krzakami na danym etapie wzrostu
+			if args.has("grow"):
+				G.furn_buy_place("garage", "lampa_led", -0.2, 2.2, 0)
+				G.S.items["doniczka"] = 5
+				G.S.items["nasiona"] = 5
+				for pi in range(5):
+					if G.Prod.pot_place("garage", -1.0 + pi * 0.42, 2.2 + (0.25 if pi % 2 == 0 else -0.2)):
+						G.Prod.plant_seed("garage", pi)
+						var pl: Dictionary = G.Prod.plant_of("garage", pi)
+						pl.prog = clampf(float(args.grow) - pi * 0.04, 0.02, 1.0)
+						pl.water = 80.0
 			world.refresh_furniture("garage")
 			var kp := String(args.get("kpos", "-0.4,2.6,0,-8")).split(",")
 			teleport("garage", Vector3(float(D.ROOMS.garage.cx) + float(kp[0]), 0.0, float(kp[1])), deg_to_rad(float(kp[2])))

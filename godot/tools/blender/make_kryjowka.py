@@ -240,7 +240,56 @@ def kryj_zbiornik():
     export('kryj_zbiornik')
 
 
-ALL = {'kryj_lab': kryj_lab, 'kryj_filtr': kryj_filtr, 'kryj_zbiornik': kryj_zbiornik}
+def kryj_suszarka():
+    """suszarka siatkowa 0,9 × 0,9 m: stelaż z rurek, cztery okrągłe siatkowe piętra na linkach z zamkami błyskawicznymi,
+    hak z karabińczykiem. Susz dorysowuje gra (węzeł Load) na wysokościach 0,45 + k·0,36 m."""
+    reset()
+    stal = mat('stal', 'a9adb3', 0.4, 0.3)
+    laczn = mat('lacznik', '4a4e55', 0.55, 0.2)
+    obrecz = mat('obrecz', '5a6a52', 0.7)
+    siatka = mat('siatka', '8f9a86', 0.9, 0.0, 0.0, 0.5)
+    scianka = mat('scianka', 'a8b39e', 0.9, 0.0, 0.0, 0.22)
+    zamek = mat('zamek', 'd8d6cf', 0.6)
+    p = []
+    h, r0 = 1.9, 0.42
+    # stelaż: cztery nogi, górna rama z poprzeczką i hakiem, dolne rozpórki
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.append(tube('noga', [(sx * r0, sy * r0, 0.0), (sx * r0, sy * r0, h)], 0.014, stal, 6))
+            p.append(lathe('stopka', [(0.0, 0.0), (0.028, 0.0), (0.022, 0.014), (0.0, 0.014)], laczn, 8, loc=(sx * r0, sy * r0, 0.0)))
+            p.append(rbox('lacznik', (0.045, 0.045, 0.045), laczn, 0.006, (sx * r0, sy * r0, h)))
+    for sy in (-1, 1):
+        p.append(tube('rama_x', [(-r0, sy * r0, h), (r0, sy * r0, h)], 0.012, stal, 6))
+        p.append(tube('rozporka_x', [(-r0, sy * r0, 0.16), (r0, sy * r0, 0.16)], 0.01, stal, 5))
+    for sx in (-1, 1):
+        p.append(tube('rama_y', [(sx * r0, -r0, h), (sx * r0, r0, h)], 0.012, stal, 6))
+    p.append(tube('poprzeczka', [(-r0, 0, h), (r0, 0, h)], 0.012, stal, 6))
+    p.append(tube('hak', [(0, 0, h), (0, 0, h - 0.05), (0.02, 0, h - 0.075), (0, 0, h - 0.1), (-0.015, 0, h - 0.08)], 0.005, laczn, 5))
+    st = join('Stelaz', p)
+
+    # --- siatka: piętra, obręcze, linki, ścianki z zamkami (bez wypalanego brudu, półprzezroczyste)
+    t = []
+    rr = 0.37
+    levels = [0.45 + k * 0.36 for k in range(4)]
+    for k, z in enumerate(levels):
+        t.append(lathe('pietro', [(0.0, 0.0), (rr, 0.0), (rr, 0.004), (0.0, 0.004)], siatka, 20, loc=(0, 0, z)))
+        t.append(tube('obrecz', [(math.cos(i / 24 * math.tau) * rr, math.sin(i / 24 * math.tau) * rr, z) for i in range(25)], 0.008, obrecz, 5))
+        top = levels[k + 1] if k < 3 else h - 0.28
+        t.append(lathe('scianka', [(rr * 0.995, 0.012), (rr * 0.995, top - z - 0.012)], scianka, 20, loc=(0, 0, z)))
+        # zamek błyskawiczny: łuk na ściance z suwakiem
+        zz = [(math.sin(a) * (rr + 0.002), -math.cos(a) * (rr + 0.002), z + 0.05 + (top - z - 0.1) * (0.5 - 0.5 * math.cos((a + 0.5) / 1.0 * math.pi))) for a in [i / 12 - 0.5 for i in range(13)]]
+        t.append(tube('zamek', zz, 0.003, zamek, 4))
+        t.append(rbox('suwak', (0.012, 0.006, 0.02), zamek, 0.002, (zz[0][0], zz[0][1] - 0.003, zz[0][2])))
+    t.append(tube('obrecz_g', [(math.cos(i / 24 * math.tau) * rr, math.sin(i / 24 * math.tau) * rr, h - 0.28) for i in range(25)], 0.008, obrecz, 5))
+    for k in range(4):
+        an = k * math.pi / 2 + 0.6
+        t.append(tube('linka', [(math.cos(an) * rr, math.sin(an) * rr, h - 0.28), (0, 0, h - 0.1)], 0.003, laczn, 3))
+    join('Siatka', t)
+    weather([st], 1024, 0.25, 0.4, (0.13, 0.12, 0.1))
+    export('kryj_suszarka')
+
+
+ALL = {'kryj_lab': kryj_lab, 'kryj_filtr': kryj_filtr, 'kryj_zbiornik': kryj_zbiornik, 'kryj_suszarka': kryj_suszarka}
 only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else []
 for name, fn in ALL.items():
     if not only or name in only:
