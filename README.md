@@ -30,8 +30,10 @@ Obraz 3D skaluje się automatycznie, żeby utrzymać ok. 60 kl./s na MacBooku z 
 Po nalocie na laboratorium w Starej Hucie i zasadzce za garażami zostajesz z niczym. Wiktor nie ma do Ciebie żalu —
 bierze Cię do swojej ekipy na najniższy szczebel, jako chłopaka od wszystkiego: daje towar na zeszyt i pierwszych klientów.
 Resztę budujesz sam: klienci z polecenia, własna kryjówka, uprawa, kolejne towary (marihuana → amfetamina → metamfetamina → kokaina).
+U Wiktora kupisz tylko marihuanę i amfetaminę — metamfetaminę i kokainę robi się samemu, w laboratorium urządzonym w kryjówce;
+klienci zaczynają o nie pytać dopiero wtedy, gdy masz je skąd wziąć.
 Nie ma długu, odsetek ani kar za spóźnienie. To, co odnosisz Wiktorowi ponad zeszyt za towar, jest Twoim **wkładem**:
-kolejne progi to awanse z nagrodą (Goniec — plecak, Detalista — większy zeszyt, Dealer — tańszy hurt, Zaufany — garaż
+kolejne progi to awanse z nagrodą (Goniec — plecak i więcej klientów, Detalista — większy zeszyt, Dealer — tańszy hurt, Zaufany — garaż
 za pół ceny, Prawa ręka — jeszcze tańszy hurt), a kto trzyma tempo, dostaje premię. Przy 25 000 zł zostajesz wspólnikiem
 (ok. 30–37 dni gry; 1 godzina gry = 60 s). Co rano Wiktor daje też **zlecenie dnia** — mały cel na dziś (sprzedać
 kilka gramów, zrobić utarg, zanieść gotówkę do skrzynki, być u klientów na czas). Premia za wykonanie idzie na wkład,
