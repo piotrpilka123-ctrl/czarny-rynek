@@ -3172,6 +3172,16 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "wear")
 			ui.inv.wear_sel = {"wear": "biegacz", "wear2": "kominiarka", "wear3": "garnitur"}[what]
 			ui.inv.render()
+		"czat", "czat2":
+			# zrzut: rozmowa z klientem w telefonie — nowe zamówienie z kaflami odpowiedzi ("czat2": negocjacja sumy)
+			var co := _test_order("dominik", false)
+			ui.open_phone("sms")
+			ui.phone.chat_id = "dominik"
+			ui.phone.render()
+			if what == "czat2" and ui.phone.has_method("reply_mode"):
+				ui.phone.reply_mode(String(co.id), "price")
+			if ui.tip_box != null and is_instance_valid(ui.tip_box):
+				ui.tip_box.queue_free()
 		"ciuchy":
 			# zrzut: lista zakupów przy lustrze w „Taniej Odzieży” (--lvl=N, --cash=N)
 			G.S.cash = float(args.get("cash", "2500"))

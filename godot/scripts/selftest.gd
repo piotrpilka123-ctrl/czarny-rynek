@@ -131,6 +131,15 @@ func run() -> void:
 			ph_left = minf(ph_left, (pc as Control).global_position.x)
 	ok(U.tip_narrow and tip_r.size.x < 420.0 and tip_r.end.x <= ph_left + 1.0, "podpowiedź przy pionowym telefonie stoi w lewej kolumnie i go nie zasłania (%d ≤ %d)" % [int(tip_r.end.x), int(ph_left)])
 	U.tip_box.queue_free()
+	# powiadomienie przy pionowym telefonie też mieści się obok niego, a nie na kaflach odpowiedzi
+	U._toast_show("Nowy klient: Dominik. Teren rośnie: Pawilon i okolice są teraz Twoje.", "good")
+	await frames(4)
+	var toast_end := 0.0
+	for tp0 in U.toasts.get_children():
+		toast_end = maxf(toast_end, (tp0 as Control).get_global_rect().end.x)
+	ok(toast_end > 10.0 and toast_end <= ph_left + 1.0, "powiadomienie przy pionowym telefonie stoi obok niego (%d ≤ %d)" % [int(toast_end), int(ph_left)])
+	for tp1 in U.toasts.get_children():
+		tp1.queue_free()
 	await frames(2)
 	for app in ["", "kontakty", "mapa", "portfel", "rozwoj", "zadania", "lokale", "ustawienia"]:
 		U.phone.go(app)

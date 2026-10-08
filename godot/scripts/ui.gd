@@ -529,6 +529,13 @@ func _tip_side() -> bool:
 	return mode == "phone" and phone != null and phone.visible and not phone._landscape and not (inv != null and inv.visible)
 
 
+## lewa krawędź telefonu trzymanego pionowo (do układania kart i powiadomień obok niego)
+func _phone_left() -> float:
+	if phone != null and phone.bezel != null and phone.bezel.is_visible_in_tree() and phone.bezel.size.x > 10.0:
+		return phone.bezel.global_position.x
+	return root.size.x * 0.5 - 196.0
+
+
 ## Miejsce karty „pierwszy raz”: zwykle u góry, w wolnej części obok przypiętego celu; przy pionowym telefonie —
 ## wąska karta w lewej kolumnie pod celem; przy ekwipunku — na dole (ustawia to tip_show).
 func _tip_place() -> void:
@@ -537,8 +544,9 @@ func _tip_place() -> void:
 	var side := _tip_side()
 	if side != tip_narrow:
 		tip_narrow = side
-		tip_panel.custom_minimum_size.x = 384.0 if side else 620.0
-		tip_text.custom_minimum_size.x = 300.0 if side else 540.0
+		var colw := clampf(_phone_left() - 12.0 - 20.0, 260.0, 400.0)
+		tip_panel.custom_minimum_size.x = colw if side else 620.0
+		tip_text.custom_minimum_size.x = (colw - 116.0) if side else 540.0
 		if not side:
 			tip_box.offset_right = 0.0
 			tip_box.offset_top = 14.0
@@ -548,7 +556,7 @@ func _tip_place() -> void:
 		if hud.visible and obj_card.visible:
 			top = obj_card.position.y + obj_card.size.y + 10.0
 		tip_box.offset_left = 20.0
-		tip_box.offset_right = -(root.size.x - 404.0)
+		tip_box.offset_right = -(root.size.x - (_phone_left() - 12.0))
 		tip_box.offset_top = top
 		tip_box.offset_bottom = top + maxf(tip_panel.size.y, 60.0)
 	else:
@@ -628,9 +636,13 @@ func _toast_show(text: String, kind: String) -> void:
 	h.add_child(K.icon(ic, 16, border if kind != "" else K.C_DIM))
 	var l := K.lbl(text, 16 if kind == "level" else 13, fc)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(minf(520.0, 30.0 + text.length() * 7.6), 0)
+	var cap := 520.0
+	if _tip_side():
+		cap = maxf(180.0, _phone_left() - 12.0 - 14.0 - 64.0)
+	l.custom_minimum_size = Vector2(minf(cap, 30.0 + text.length() * 7.6), 0)
 	h.add_child(l)
 	p.add_child(h)
+	p.set_meta("label", l)
 	toasts.add_child(p)
 	p.modulate.a = 0.0
 	var tw := p.create_tween()
@@ -2092,9 +2104,16 @@ func _process_ui(dt: float) -> void:
 				t_right = -(root.size.x - modal_box.global_position.x - modal_box.size.x)
 	# karta „pierwszy raz" nie nachodzi na przypięty cel w lewym górnym rogu: środkuje się w wolnej części ekranu
 	_tip_place()
-	# otwarty telefon zajmuje prawą stronę — powiadomienia przesuwają się na lewą część ekranu
-	if mode == "phone" and t_left == 0.0:
-		t_right = -430.0
+	# Telefon trzymany pionowo stoi pośrodku ekranu: powiadomienia mieszczą się w lewej kolumnie obok niego
+	# (dawniej środkowały się „w lewej części” i wchodziły na kafle odpowiedzi).
+	if _tip_side() and t_left == 0.0:
+		var col := _phone_left() - 12.0
+		t_left = 14.0
+		t_right = -(root.size.x - col)
+		for tp in toasts.get_children():
+			var tl := tp.get_meta("label", null) as Label
+			if tl != null and tl.custom_minimum_size.x > col - 14.0 - 64.0:
+				tl.custom_minimum_size.x = maxf(180.0, col - 14.0 - 64.0)
 	if absf(toast_wrap.offset_left - t_left) > 0.5 or absf(toast_wrap.offset_right - t_right) > 0.5:
 		toast_wrap.offset_left = t_left
 		toast_wrap.offset_right = t_right
