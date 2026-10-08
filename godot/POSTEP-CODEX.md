@@ -84,7 +84,15 @@ Na „stop”/„stoo” wyłączyć ją i zaprzestać pracy.
   prolog-ucieczka.png jako dowodu kontroli; poprawne uruchomienie ma --autostart --intro --prostage=escape.
 - Najnowsze zadania: zróżnicować budynki; poprawić płoty i usunąć bezsensowne/nadmierne
   przejścia; szczególnie poprawić tekstury pustaków. Nie gubić tych zadań w kolejnych blokach.
-- Wprowadzany nowy pustak z Blendera: dwie otwarte komory, porowaty beton, sfazowane
-  krawędzie. Podgląd /Users/macbook/codex-podglad/pustak.png obejrzany; do pełnego testu.
+- 5f5b01f: nowy pustak z Blendera: dwie otwarte komory, porowaty beton, sfazowane
+  krawędzie. Podgląd /Users/macbook/codex-podglad/pustak.png obejrzany; 639 testów OK.
 - Pracować oszczędniej tokenowo: krótkie odczyty i raporty, celowe screenshoty,
   utrzymać pełne testy i faktyczny postęp. Kontynuacja do „stop” nadal obowiązuje.
+
+- Dodatkowa symulacja prologu: 700 aktualizacji po 0,05 s, wszystkie patrole poza
+  kolizjami (0 wejść w zablokowaną komórkę); nowe nagranie tłumu wczytuje się,
+  strumień muzyki nadal PARTY_MUSIC. Log: /tmp/czarny-prolog-check.log.
+- Poprawny podgląd ucieczki obejrzany: /Users/macbook/codex-podglad/prolog-patrole.png
+  (--autostart --intro --prostage=escape). Widoczny etapowy cel i znak 7 m.
+- Następny priorytet: płoty i nadmiar przejść przy hucie/torach, następnie wyraźniejsze
+  różnice budynków. Dokończyć te żądania, nie wracać do już ukończonych testów bez powodu.
