@@ -496,6 +496,22 @@ func _build_static() -> void:
 		_static({"x": cl[i][0], "z": cl[i][1], "rot": cl[i][2], "pose": cl[i][3], "name": ["Imprezowicz", "Imprezowiczka"][i % 2], "hours": [20, 4],
 			"look": {"model": ["m06", "fp1", "m12", "f17"][i], "female": i % 2 == 1, "kind": ["jacket", "tank", "hoodie", "jacket"][i], "seed": 40 + i},
 			"lines": ["Ale dziś gra!", "Masz ogień?", "Znasz kogoś, kto coś ma? …A, nieważne.", "Ochrona dziś nie w humorze."]})
+	# ludzie przy sklepach, w godzinach ich otwarcia (piekarnia 6–15, kebab 11–23, fryzjer 9–17)
+	_static({"x": 102.6, "z": 12.9, "rot": PI - 0.3, "pose": "arms", "name": "Pani Halina", "hours": [6.0, 9.5],
+		"look": {"model": "f08", "female": true, "seed": 61},
+		"lines": ["Bułki jeszcze ciepłe. Po ósmej to już same okruchy zostają.", "Za moich czasów chleb kosztował złotówkę. I był chlebem.", "Pan tu nowy? Ja tu wszystkich znam."]})
+	_static({"x": 105.8, "z": 13.4, "rot": PI + 0.5, "pose": "phone", "name": "Chłopak po bułki", "hours": [6.5, 8.5],
+		"look": {"model": "m09", "seed": 62},
+		"lines": ["Mama kazała wziąć dziesięć kajzerek.", "Nie mam czasu, zaraz mam autobus."]})
+	_static({"x": -41.2, "z": 13.0, "rot": PI + 0.35, "pose": "talk", "name": "Seba", "hours": [18.0, 23.0],
+		"look": {"model": "m11", "seed": 63},
+		"lines": ["Na ostrym, z podwójnym mięsem. Tylko tak.", "Mirek robi najlepszy sos w mieście, a przepisu nie zdradzi.", "Po klubie zawsze tu kończymy."]})
+	_static({"x": -44.6, "z": 13.3, "rot": PI - 0.5, "pose": "", "name": "Kolega Seby", "hours": [19.0, 23.0],
+		"look": {"model": "m16", "seed": 64},
+		"lines": ["Ile można czekać na jedną bułę?", "Masz może ogień?"]})
+	_static({"x": -23.6, "z": 27.4, "rot": PI + 0.4, "pose": "phone", "name": "Pani Ela", "hours": [9.0, 17.0],
+		"look": {"model": "f13", "female": true, "seed": 65},
+		"lines": ["Zapisy na piątek już pełne. Może we wtorek?", "Pan by się ostrzygł. Tak z życzliwości mówię.", "Tu się wszystkiego człowiek dowie. Wystarczy posiedzieć pod suszarką."]})
 	# kobieta na przystanku
 	_static({"x": 67.6, "z": 10.9, "rot": 0.2, "pose": "phone", "name": "Kobieta na przystanku", "hours": [6, 21],
 		"look": {"model": "fb3", "female": true, "kind": "coat", "top": "5a2f52", "bottom": "101114", "seed": 46},
