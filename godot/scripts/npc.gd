@@ -305,9 +305,9 @@ func _build_yard() -> void:
 		"Za moich czasów huta dymiła na trzy zmiany. Teraz dymi tylko Mietek.", "Psy jeździły godzinę temu. Dwa kółka i pojechali.",
 		"Jak coś ci zginie spod klatki, to nie my. My tu tylko siedzimy.", "Masz otwieracz? Nie? To po co podchodzisz.", "Ta kanapa stoi tu dłużej niż ty żyjesz, szanuj."]
 	# modele wybrane po wyglądzie (zrzut --ui=galeria): m03 w tweedowej marynarce, łysy m13 w swetrze w romby, łysy mb4 w kamizelce
-	for e in [[21.4, -69.38, 0.08, 0.0, "Pan Mietek", "m03"], [22.6, -69.36, 0.08, 0.0, "Pan Stefan", "m13"], [24.3, -68.0, -1.5, -0.13, "Pan Bogdan", "mb4"]]:
+	for e in [[21.35, -69.26, 0.08, 0.03, "Pan Mietek", "m03"], [22.6, -69.26, 0.08, 0.03, "Pan Stefan", "m13"], [24.3, -68.0, -1.5, -0.13, "Pan Bogdan", "mb4"]]:
 		var dz: Dictionary = _static({"x": float(e[0]), "z": float(e[1]), "rot": float(e[2]), "y": float(e[3]), "pose": "sit", "name": String(e[4]), "hours": [12.0, 2.0],
-			"look": {"model": String(e[5]), "seed": 510 + int(float(e[0]) * 3.0), "build": 1.06},
+			"look": {"model": String(e[5]), "seed": 510 + int(float(e[0]) * 3.0), "build": 1.0},
 			"lines": gadki})
 		# butelka w prawej dłoni; co kilka–kilkanaście sekund łyk (każdy we własnym rytmie)
 		dz["beer"] = Chars.hold(dz.rig, "dom_butelka", Transform3D(Basis(Vector3(0, 0, -1), Vector3(1, 0, 0), Vector3(0, -1, 0)), Vector3(0.08, 0.03, 0.0)))
