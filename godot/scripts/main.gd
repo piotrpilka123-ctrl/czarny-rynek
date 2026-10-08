@@ -1635,9 +1635,9 @@ func _place_target(id: String) -> Dictionary:
 		return {"id": id, "label": "Lombard (skup, wagi)", "loc": "out", "x": float(D.PAWN_AT.x), "z": float(D.PAWN_AT.z), "color": C_PLACE}
 	if id == "supply":
 		return {"id": id, "label": "Hurtownia budowlana", "loc": "out", "x": float(D.SUPPLY_AT.x), "z": float(D.SUPPLY_AT.z), "color": C_PLACE}
-	if id == "home" or id == "shop":
-		var room := "safe" if id == "home" else "shop"
-		return {"id": id, "label": "Kawalerka" if id == "home" else "Sklep u Stasia", "loc": room, "x": float(D.ROOMS[room].cx), "z": 0.0, "color": C_PLACE}
+	if id == "home" or id == "shop" or id == "ciuchy":
+		var room: String = {"home": "safe", "shop": "shop", "ciuchy": "ciuchy"}[id]
+		return {"id": id, "label": {"home": "Kawalerka", "shop": "Sklep u Stasia", "ciuchy": "Tania Odzież"}[id], "loc": room, "x": float(D.ROOMS[room].cx), "z": 0.0, "color": C_PLACE}
 	var pid := id.trim_prefix("prop:")
 	var p := G.prop_def(pid)
 	if p.is_empty() or String(p.room) == "":
@@ -1681,7 +1681,7 @@ func cur_target() -> Dictionary:
 			if not dt.is_empty():
 				return dt
 			S.track = null
-		elif t == "home" or t == "shop" or t == "box" or t == "pawn" or t == "supply" or String(t).begins_with("prop:"):
+		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or String(t).begins_with("prop:"):
 			var pt := _place_target(t)
 			if not pt.is_empty():
 				return pt
@@ -1693,6 +1693,14 @@ func cur_target() -> Dictionary:
 		if o.status == "accepted":
 			return _order_target(o)
 	return _drop_target()
+
+
+## dopisek do nazwy miejsca z godzinami otwarcia: do której jeszcze czynne albo od której znów będzie
+func hours_note(open: Array) -> String:
+	var h: float = G.hour()
+	if h >= float(open[0]) and h < float(open[1]):
+		return "  •  do %d:00" % int(open[1])
+	return "  •  zamknięte do %d:00" % int(open[0])
 
 
 ## lista celów do wyboru w telefonie
@@ -1710,8 +1718,9 @@ func nav_targets() -> Array:
 	out.append({"id": "home", "label": "Kawalerka"})
 	out.append({"id": "box", "label": "Skrzynka Wiktora"})
 	out.append({"id": "shop", "label": "Sklep u Stasia"})
-	out.append({"id": "pawn", "label": "Lombard (skup, wagi)"})
-	out.append({"id": "supply", "label": "Hurtownia budowlana"})
+	out.append({"id": "ciuchy", "label": "Tania Odzież (ubrania)"})
+	out.append({"id": "pawn", "label": "Lombard (skup, wagi)" + hours_note(D.PAWN_OPEN)})
+	out.append({"id": "supply", "label": "Hurtownia budowlana" + hours_note(D.SUPPLY_OPEN)})
 	for p in D.PROPERTIES:
 		if G.owns(p.id):
 			out.append({"id": "prop:" + String(p.id), "label": String(p.name)})

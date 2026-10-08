@@ -866,6 +866,27 @@ func run() -> void:
 	G.world.shops_tick()
 	ok(G.world.shop_fronts.size() >= 4 and open_ok and (pawn_f.shutter as Node3D).visible and not G.pawn_open() and (pawn_f.light == null or (pawn_f.light as OmniLight3D).light_energy == 0.0),
 		"lombard, hurtownia, piekarnia i kebab mają godziny otwarcia: w południe witryna, wieczorem roleta i zgaszone światło (%d)" % G.world.shop_fronts.size())
+	# mapa w telefonie zna godziny: wieczorem przy lombardzie stoi „zamknięte do 9:00”, w południe „do 19:00”
+	var pawn_night := ""
+	for nt0 in M.nav_targets():
+		if String(nt0.id) == "pawn":
+			pawn_night = String(nt0.label)
+	S.t = floorf(S.t / 1440.0) * 1440.0 + 12.0 * 60.0
+	var pawn_day := ""
+	var has_clothes := false
+	for nt1 in M.nav_targets():
+		if String(nt1.id) == "pawn":
+			pawn_day = String(nt1.label)
+		if String(nt1.id) == "ciuchy":
+			has_clothes = true
+	ok(pawn_night.contains("zamknięte do 9:00") and pawn_day.contains("do 19:00") and not pawn_day.contains("zamknięte"), "mapa w telefonie podaje godziny lombardu (%s / %s)" % [pawn_night, pawn_day])
+	var track_keep = S.track
+	var nav_keep: bool = S.nav_on
+	M.set_track("ciuchy")
+	var ct: Dictionary = M.cur_target()
+	ok(has_clothes and String(ct.get("id", "")) == "ciuchy" and String(ct.get("loc", "")) == "ciuchy", "Tania Odzież jest na liście celów i da się do niej poprowadzić trasę")
+	S.track = track_keep
+	S.nav_on = nav_keep
 	S.t = t_shop
 	G.world.shops_tick()
 	U.open_supply()
