@@ -344,6 +344,16 @@ func gear_sets() -> Array:
 	return out
 
 
+## komplety, do których należy dana rzecz (do podpowiedzi przy wieszaku)
+func gear_sets_of(id: String) -> Array:
+	var out := []
+	for gs in D.GEAR_SETS:
+		for slot in gs.need:
+			if (gs.need[slot] as Array).has(id):
+				out.append(gs)
+	return out
+
+
 ## komplet, do którego brakuje już tylko jednej rzeczy: {set, slot} albo {} (podpowiedź w szafie)
 func gear_set_near() -> Dictionary:
 	if S == null or not S.has("gear"):

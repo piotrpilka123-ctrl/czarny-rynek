@@ -1294,6 +1294,16 @@ func _tab_wear() -> void:
 			var glocked: bool = int(S.lvl) < int(gd.lvl)
 			var gc := K.panel(T._flat(0.07 if worn else 0.03, 0.4 if worn else 0.0, 9, 6, 7))
 			list.add_child(gc)
+			var in_sets: Array = G.gear_sets_of(iid)
+			if not in_sets.is_empty():
+				# dymek: do jakiego kompletu należy ta rzecz i co daje cały komplet
+				var tips: Array = []
+				for gs2 in in_sets:
+					var marks: Array = []
+					for mk2 in G.stat_marks(gs2.stats):
+						marks.append(String(mk2.tip))
+					tips.append("Część kompletu „%s” (%s). %s" % [String(gs2.name), ", ".join(marks), String(gs2.desc)])
+				gc.tooltip_text = "\n".join(tips)
 			if not worn:
 				# najechanie = przymiarka na postaci obok (bez kupowania i bez zakładania)
 				gc.mouse_entered.connect(func(): try_set(slot, iid))

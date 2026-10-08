@@ -235,6 +235,8 @@ static func run(T) -> void:
 				if not D.ITEMS.has(String(it0)) or String(D.ITEMS[String(it0)].slot) != String(sl0):
 					set_ok = false
 	T.ok(set_ok and set_ids.size() == D.GEAR_SETS.size(), "komplety składają się z rzeczy, które istnieją i pasują do swoich pól")
+	T.ok(G.gear_sets_of("polbuty").size() == 1 and String(G.gear_sets_of("polbuty")[0].id) == "garnitur" and G.gear_sets_of("okulary").is_empty() and G.gear_sets_of("dresy_czarne").size() == 2,
+		"wieszak wie, do którego kompletu należy rzecz (czarne dresy: do dwóch)")
 	S.gear = gear_keep
 	_cut_tests(T)
 	G.S = keep
