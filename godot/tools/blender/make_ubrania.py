@@ -717,12 +717,20 @@ def _collar_stand(ring, material, parts, height=0.038, lean=0.006, thick=0.004, 
     parts.append(mesh_object(vb, name, material))
 
 
-def _collar_leaf(ring, material, parts, stand=0.014, back=(0.02, 0.03), front=(0.034, 0.05), gap=24.0, name='kolnierz', thick=0.003):
-    """wykładany kołnierz na pierścieniu szyi: stójka i opadający liść, z tyłu węższy, z przodu rogi; gap = rozchylenie z przodu (stopnie)"""
+def _collar_leaf(ring, material, parts, stand=0.014, back=(0.02, 0.03), front=(0.034, 0.05), gap=24.0, name='kolnierz', thick=0.003, tree=None):
+    """Wykładany kołnierz na pierścieniu szyi: stójka i liść, z tyłu węższy, z przodu rogi; gap = rozchylenie z przodu
+    (stopnie). Z `tree` (powłoka ubrania) liść leży płasko na barkach i piersi — bez tego sterczał w bok jak wałek."""
     c = sum(ring, Vector()) / len(ring)
     n = len(ring)
     vb = bmesh.new()
     rows = []
+
+    def lay(q, fallback, lift):
+        if tree is not None:
+            loc, nrm, _, _ = tree.ray_cast(Vector((q.x, q.y, q.z + 0.12)), DOWN, 0.4)
+            if loc is not None:
+                return loc + nrm * lift
+        return fallback
     for k, p in enumerate(ring):
         a = k / n * 360.0
         if a < gap / 2 or a > 360.0 - gap / 2:
@@ -734,11 +742,12 @@ def _collar_leaf(ring, material, parts, stand=0.014, back=(0.02, 0.03), front=(0
         # rogi: przy samym rozchyleniu liść wydłuża się w szpic
         edge = max(0.0, 1.0 - min(a - gap / 2, 360.0 - gap / 2 - a) / 16.0)
         dr += 0.012 * edge
+        w += 0.01 * edge
         rows.append((vb.verts.new(p - Z * 0.016 + e * 0.006),
-                     vb.verts.new(p + Z * stand + e * 0.005),
-                     vb.verts.new(p + Z * (stand * 0.8) + e * (w * 0.5 + 0.006)),
-                     vb.verts.new(p + e * (w + 0.008) - Z * (dr * 0.5)),
-                     vb.verts.new(p + e * (w + 0.007) - Z * dr)))
+                     vb.verts.new(p + Z * stand + e * 0.004),
+                     vb.verts.new(p + Z * (stand * 0.85) + e * 0.013),
+                     vb.verts.new(lay(p + e * (w * 0.55 + 0.012), p + e * (w * 0.5 + 0.006) - Z * (dr * 0.3), 0.007)),
+                     vb.verts.new(lay(p + e * (w + 0.012), p + e * (w + 0.007) - Z * dr, 0.0045))))
     for i in range(len(rows) - 1):
         for k in range(4):
             vb.faces.new((rows[i][k], rows[i][k + 1], rows[i + 1][k + 1], rows[i + 1][k]))
@@ -857,7 +866,7 @@ def koszula():
     parts = []
     for lp in neck:
         _collar_stand(lp, plaid, parts, 0.012, 0.003)
-        _collar_leaf(lp, plaid, parts, 0.016, (0.02, 0.03), (0.036, 0.052), 26.0, 'kolnierzyk')
+        _collar_leaf(lp, plaid, parts, 0.016, (0.02, 0.03), (0.036, 0.052), 26.0, 'kolnierzyk', tree=tree)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
         parts.append(band(lp, 0.009, plaid, 'mankiet', 0.001, 3.0, _arm_dir(B, c) * 0.004, wide=0.6))
@@ -885,7 +894,7 @@ def kurtka_skorzana():
     parts = []
     for lp in neck:
         _collar_stand(lp, lea, parts, 0.012, 0.003)
-        _collar_leaf(lp, dark, parts, 0.018, (0.03, 0.04), (0.055, 0.085), 40.0, 'kolnierz', 0.004)
+        _collar_leaf(lp, dark, parts, 0.018, (0.03, 0.04), (0.055, 0.085), 40.0, 'kolnierz', 0.004, tree=tree)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
         parts.append(band(lp, 0.008, dark, 'mankiet', 0.001, 2.0, _arm_dir(B, c) * 0.006, wide=0.7))
@@ -1002,8 +1011,8 @@ def marynarka():
     ob = to_object(B, bm, 'marynarka', [wool, dark, shirt, btn])
     parts = []
     for lp in neck:
-        _collar_stand(lp, shirt, parts, 0.012, 0.006, 0.003, 'kolnierzyk')
-        _collar_leaf(lp, dark, parts, 0.008, (0.028, 0.036), (0.028, 0.036), 120.0, 'kolnierz', 0.004)
+        _collar_stand(lp, shirt, parts, 0.016, 0.008, 0.003, 'kolnierzyk')
+        _collar_leaf(lp, dark, parts, 0.008, (0.028, 0.036), (0.028, 0.036), 120.0, 'kolnierz', 0.004, tree=tree)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
         parts.append(band(lp, 0.006, shirt, 'mankiet_koszuli', -0.002, 1.6, _arm_dir(B, c) * 0.004, wide=0.6))
@@ -1013,13 +1022,13 @@ def marynarka():
         parts.append(band(lp, 0.004, dark, 'dol', 0.0005, 1.4))
     # biała koszula w wycięciu i klapy schodzące do górnego guzika
     zb = 1.13
-    parts.append(patch(tree, Vector((0, -0.3, 1.31)), X, Z, 0.1, 0.34, 0.002, shirt, 'gors', 5, 9, 0.2, FRONT))
+    parts.append(patch(tree, Vector((0, -0.3, 1.31)), X, Z, 0.1, 0.34, 0.0055, shirt, 'gors', 6, 14, 0.2, FRONT))
     for sx in (-1, 1):
         a = Vector((sx * 0.05, -0.3, 1.48))
         b = Vector((sx * 0.004, -0.3, zb))
-        parts.append(ribbon(tree, a + X * sx * 0.04, b + X * sx * 0.042, FRONT, 0.085, dark, 14, 0.007, 'klapa', 0.003))
+        parts.append(ribbon(tree, a + X * sx * 0.04, b + X * sx * 0.042, FRONT, 0.085, dark, 18, 0.0095, 'klapa', 0.003))
         # wcięcie klapy
-        parts.append(stitch(tree, Vector((sx * 0.105, -0.3, 1.39)), Vector((sx * 0.06, -0.3, 1.375)), FRONT, wool, 4, 0.002, 0.0095, 'wciecie'))
+        parts.append(stitch(tree, Vector((sx * 0.105, -0.3, 1.39)), Vector((sx * 0.06, -0.3, 1.375)), FRONT, wool, 4, 0.002, 0.0125, 'wciecie'))
         c = Vector((sx * 0.13, -0.3, 0.99))
         parts.append(patch(tree, c, X, Z, 0.13, 0.045, 0.006, dark, 'patka', 6, 3, 0.35, FRONT))
     parts.append(ribbon(tree, Vector((0.075, -0.3, 1.3)), Vector((0.145, -0.3, 1.3)), FRONT, 0.014, dark, 5, 0.004, 'brustasza', 0.001))
@@ -1046,7 +1055,7 @@ def plaszcz():
     parts = []
     for lp in neck:
         _collar_stand(lp, wool, parts, 0.014, 0.003)
-        _collar_leaf(lp, dark, parts, 0.02, (0.04, 0.05), (0.07, 0.11), 50.0, 'kolnierz', 0.005)
+        _collar_leaf(lp, dark, parts, 0.02, (0.04, 0.05), (0.07, 0.11), 50.0, 'kolnierz', 0.005, tree=tree)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
         parts.append(band(lp, 0.007, dark, 'mankiet', 0.001, 2.4, _arm_dir(B, c) * 0.006, wide=0.6))
@@ -1091,7 +1100,7 @@ def kurtka_jeans():
     parts = []
     for lp in neck:
         _collar_stand(lp, denim, parts, 0.012, 0.003)
-        _collar_leaf(lp, denim, parts, 0.018, (0.03, 0.04), (0.045, 0.065), 34.0, 'kolnierz', 0.004)
+        _collar_leaf(lp, denim, parts, 0.018, (0.03, 0.04), (0.045, 0.065), 34.0, 'kolnierz', 0.004, tree=tree)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
         parts.append(band(lp, 0.008, denim, 'mankiet', 0.001, 2.6, _arm_dir(B, c) * 0.008, wide=0.6))
