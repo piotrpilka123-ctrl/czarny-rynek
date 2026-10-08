@@ -3027,6 +3027,20 @@ func _test_ui(what: String) -> void:
 			get_tree().create_timer(1.0).timeout.connect(ui.call_answer)
 		return
 	match what:
+		"cheat":
+			ui.open_inventory("")
+			var before_cash: float = G.S.cash
+			var before_mode: String = ui.mode
+			var was_test: bool = G.test_mode
+			G.test_mode = false
+			for letter in ui.CHEAT_CASH:
+				var key := InputEventKey.new()
+				key.keycode = KEY_A + letter.unicode_at(0) - 97
+				key.physical_keycode = key.keycode
+				key.pressed = true
+				ui._input(key)
+			G.test_mode = was_test
+			print("CHEAT_INPUT cash_delta=", G.S.cash - before_cash, " mode_preserved=", ui.mode == before_mode)
 		"home": ui.open_phone("")
 		"gielda", "gielda_chat", "sklep":
 			G.S.flags["hurt_on"] = true

@@ -137,3 +137,9 @@ Wszystko uruchamia się z folderu `godot/`:
 - `./tools/uiaudit.sh` — przegląd układu wszystkich okien interfejsu (ucięty tekst, elementy poza ekranem), też bez okna.
 - `Godot --headless --path . -- --autostart --test --przeglad` — lista rekwizytów, które wiszą, toną albo stoją w budynku.
 - `./tools/trailer.sh <folder>` — nagranie klatek zwiastuna; potem `python3 tools/soundtrack.py` i `swift tools/encode.swift`.
+
+## Kod na gotówkę
+
+W trakcie rozgrywki wpisz `jebacmazur`, żeby dodać 1000 zł do kieszeni. Można powtarzać.
+Litery kodu nie uruchamiają interakcji, mapy ani kucania. Przerwa ponad 5 sekund między literami
+lub inny klawisz przerywa sekwencję. Kod nie działa podczas wpisywania tekstu w pola ani przy przypisywaniu klawiszy.

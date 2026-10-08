@@ -2810,29 +2810,67 @@ func draw_map(cv: Control, center: Vector2, span: float, big: bool) -> void:
 	K.poly(cv, PackedVector2Array([c0 + f * 9.0, c0 - f * 6.0 + r * 5.5, c0 - f * 2.5, c0 - f * 6.0 - r * 5.5]), Color.WHITE)
 
 
-## kod na gotówkę: wpisane z klawiatury litery (w dowolnym momencie gry) składają się w hasło
+## Kod na gotówkę. Rozpoznana sekwencja nie uruchamia skrótów E/C/M.
 const CHEAT_CASH := "jebacmazur"
+const CHEAT_TIMEOUT_MS := 5000
 var cheat_buf := ""
+var cheat_last_ms := 0
 
-## dokłada literę do bufora; gdy bufor kończy się hasłem — 1000 zł do kieszeni
-func cheat_key(kc: int) -> bool:
-	if kc < KEY_A or kc > KEY_Z:
-		return false
-	cheat_buf = (cheat_buf + char(kc).to_lower()).right(CHEAT_CASH.length())
-	if cheat_buf != CHEAT_CASH or not G.running or G.S == null:
-		return false
+
+func cheat_reset() -> void:
 	cheat_buf = ""
+	cheat_last_ms = 0
+
+
+## Zwraca true tylko po wpisaniu całego hasła.
+func cheat_key(kc: int, now_ms: int = -1) -> bool:
+	if not G.running or G.S == null:
+		cheat_reset()
+		return false
+	var now := Time.get_ticks_msec() if now_ms < 0 else now_ms
+	if now - cheat_last_ms > CHEAT_TIMEOUT_MS:
+		cheat_reset()
+	if kc < KEY_A or kc > KEY_Z:
+		cheat_reset()
+		return false
+	var letter := char(kc).to_lower()
+	var next := cheat_buf + letter
+	if not CHEAT_CASH.begins_with(next):
+		next = letter if CHEAT_CASH.begins_with(letter) else ""
+	cheat_buf = next
+	cheat_last_ms = now
+	if cheat_buf != CHEAT_CASH:
+		return false
+	cheat_reset()
 	G.S.cash = float(G.S.cash) + 1000.0
 	Sfx.play("cash")
 	G.notify("+1 000 zł do kieszeni.", "good")
 	return true
 
 
+## Pola tekstowe i przypisywanie klawiszy dostają normalny tekst.
+func cheat_input(event: InputEventKey) -> bool:
+	var focus := get_viewport().gui_get_focus_owner()
+	if cut.visible or mode == "options" or focus is LineEdit or focus is TextEdit:
+		cheat_reset()
+		return false
+	var kc := int(event.keycode)
+	if kc == 0:
+		kc = int(event.physical_keycode)
+	if event.ctrl_pressed or event.alt_pressed or event.meta_pressed:
+		cheat_reset()
+		return false
+	var complete := cheat_key(kc)
+	return complete or not cheat_buf.is_empty()
+
+
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and not G.test_mode:
-		cheat_key((event as InputEventKey).keycode)
 	if G.test_mode:
 		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if cheat_input(event as InputEventKey):
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventMouseButton and event.pressed and mode == "" and G.running and not G.busy and G.main.build_active():
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			G.main.build_confirm()

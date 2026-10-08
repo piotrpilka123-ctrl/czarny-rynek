@@ -915,6 +915,35 @@ func run() -> void:
 	var half_ok: bool = S.cash == cash_c
 	U.cheat_key(KEY_R)
 	ok(half_ok and S.cash == cash_c + 1000.0 and U.cheat_buf == "", "kod „jebacmazur” dokłada 1000 zł do kieszeni")
+	# Prawdziwa ścieżka wejścia: E/C/M nie mogą otworzyć drzwi, kucania ani mapy.
+	U.close_all()
+	var crouch_c: bool = G.player.crouching
+	var test_c: bool = G.test_mode
+	G.test_mode = false
+	for ch0 in U.CHEAT_CASH:
+		var ev_c := InputEventKey.new()
+		ev_c.keycode = KEY_A + (ch0.unicode_at(0) - 97)
+		ev_c.physical_keycode = ev_c.keycode
+		ev_c.pressed = true
+		U._input(ev_c)
+	G.test_mode = test_c
+	ok(S.cash == cash_c + 2000.0 and U.mode == "" and G.player.crouching == crouch_c, "kod wpisany przez obsługę klawiatury działa ponownie i nie otwiera mapy ani nie włącza kucania")
+	U.cheat_key(KEY_J, 10000)
+	U.cheat_key(KEY_E, 10000 + U.CHEAT_TIMEOUT_MS + 1)
+	ok(U.cheat_buf.is_empty(), "przerwa ponad pięć sekund przerywa wpisywanie kodu")
+	U.cheat_key(KEY_J)
+	U.cheat_key(KEY_SPACE)
+	ok(U.cheat_buf.is_empty(), "spacja przerywa kod — zwykłe klawisze działają dalej")
+	var field_c := LineEdit.new()
+	U.add_child(field_c)
+	field_c.grab_focus()
+	var ev_text := InputEventKey.new()
+	ev_text.keycode = KEY_J
+	ev_text.pressed = true
+	ok(not U.cheat_input(ev_text) and U.cheat_buf.is_empty(), "pisanie w polu tekstowym nie uruchamia kodu ani nie zabiera liter")
+	field_c.release_focus()
+	field_c.queue_free()
+	U.cheat_reset()
 	S.cash = cash_c
 	# Zdzichu: piwo raz dziennie studzi śledztwo
 	var inv_b: float = S.invest
