@@ -1007,6 +1007,42 @@ func pawn_price(id: String) -> float:
 	return maxf(1.0, round(float(D.ITEMS[id].pawn) * (1.0 + (h * 2.0 - 1.0) * D.PAWN_SWING)))
 
 
+## --- jedzenie na mieście (kebab, piekarnia): najedzony Kuba ma więcej kondycji
+func fed() -> bool:
+	return S != null and float(S.get("fed_until", 0.0)) > float(S.t)
+
+
+func snack_open(id: String) -> bool:
+	var sn: Dictionary = D.SNACKS.get(id, {})
+	var h := hour()
+	return not sn.is_empty() and h >= float(sn.open[0]) and h < float(sn.open[1])
+
+
+func snack_label(id: String) -> String:
+	var sn: Dictionary = D.SNACKS[id]
+	if not snack_open(id):
+		return "%s — otwarte %d:00–%d:00" % [String(sn.shop), int(sn.open[0]), int(sn.open[1])]
+	return "%s — %s (%s)" % [String(sn.name), money(sn.price), "kondycja +20%% na %s godz." % str(sn.hours).trim_suffix(".0").replace(".", ",")]
+
+
+func snack_buy(id: String) -> bool:
+	var sn: Dictionary = D.SNACKS.get(id, {})
+	if sn.is_empty():
+		return false
+	if not snack_open(id):
+		notify("%s: otwarte od %d:00 do %d:00." % [String(sn.shop), int(sn.open[0]), int(sn.open[1])], "warn")
+		return false
+	if float(S.cash) < float(sn.price):
+		notify("%s kosztuje %s — brakuje Ci gotówki." % [String(sn.name), money(sn.price)], "warn")
+		return false
+	S.cash = float(S.cash) - float(sn.price)
+	S.stats.spent = float(S.stats.get("spent", 0.0)) + float(sn.price)
+	S["fed_until"] = maxf(float(S.get("fed_until", 0.0)), float(S.t)) + float(sn.hours) * 60.0
+	Sfx.play("cash")
+	notify("%s. Kondycja +20%% przez najbliższe %s godz." % [String(sn.name), str(sn.hours).trim_suffix(".0").replace(".", ",")], "good")
+	return true
+
+
 func pawn_open() -> bool:
 	var h := hour()
 	return h >= float(D.PAWN_OPEN[0]) and h < float(D.PAWN_OPEN[1])

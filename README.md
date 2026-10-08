@@ -80,6 +80,8 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
 - **Kryjówki**: garaż i piwnica do kupienia; meblujesz je sam (B) — stół z wagą, regały, namiot uprawowy.
 - **Sklepy mają godziny**: lombard 9–19, hurtownia 7–18, piekarnia 6–15, kebab 11–23, fryzjer 9–17 — po godzinach
   opada roleta i gaśnie światło; monopolowy działa całą dobę.
+- **Jedzenie**: kebab (14 zł) i drożdżówka z piekarni (4 zł) dają +20% kondycji na kilka godzin gry — przydaje się
+  przed dłuższym kursem albo ucieczką.
 - **Laboratorium**: stół laboratoryjny z hurtowni i „zestaw do udrażniania rur” od Stasia. Z jednego zestawu wychodzi
   ok. 36 g amfetaminy (taniej niż u Wiktora), z dwóch 20 g metamfetaminy, z trzech 20 g kokainy — im droższy towar,
   tym dłuższa robota i większy zysk z jednej wymiany. Synteza śmierdzi: bez filtra węglowego rośnie ryzyko nalotu.

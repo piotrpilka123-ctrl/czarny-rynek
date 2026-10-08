@@ -98,7 +98,7 @@ func _ready() -> void:
 
 
 func max_stamina() -> float:
-	return BASE_STAMINA * (1.3 if G.has_skill("kondycja1") else 1.0) * G.outfit_stat("stamina", 1.0)
+	return BASE_STAMINA * (1.3 if G.has_skill("kondycja1") else 1.0) * G.outfit_stat("stamina", 1.0) * (D.SNACK_STAMINA if G.fed() else 1.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:

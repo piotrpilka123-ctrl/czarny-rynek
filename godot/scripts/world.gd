@@ -2293,7 +2293,8 @@ func _buildings() -> void:
 	var keb_model := ResourceLoader.exists("res://assets/models/kebab_witryna.glb")
 	var keb_li := _shopfront(-43.0, 10.0, "KEBAB", Color(0.95, 0.35, 0.2), "painted_metal_shutter", not keb_model)
 	if keb_model:
-		_front_model("kebab_witryna", -43.0, 10.0, 1.0, [11.0, 23.0], Color(0.82, 0.8, 0.76), keb_li)
+		_front_model("kebab_witryna", -43.0, 10.0, 1.0, D.SNACKS.kebab.open, Color(0.82, 0.8, 0.76), keb_li)
+		_snack_point("kebab")
 	_shopfront(31.0, 10.0, "LIQUOR 24H", Color(0.4, 0.9, 0.5), "rusted_shutter", false)
 	# witryna monopolowego z modelu: półki z butelkami, skrzynki, nocne okienko (wcześniej czarny prostokąt); czynny całą dobę
 	_front_model("monopolowy_witryna", 31.0, 10.0, 1.0, [], Color.WHITE, null)
@@ -2370,6 +2371,13 @@ func _front_model(name: String, x: float, zw: float, dz: float, hours: Array, ti
 			glow.append(gn)
 	shop_fronts.append({"shutter": sh, "glow": glow, "light": light, "energy": light.light_energy if light != null else 0.0, "open": hours, "on": true})
 	return m
+
+
+## okienko, przy którym kupuje się coś do jedzenia (kebab, piekarnia) — patrz D.SNACKS
+func _snack_point(id: String) -> void:
+	var sn: Dictionary = D.SNACKS[id]
+	inter.append({"loc": "out", "x": float(sn.x) * SC, "z": float(sn.z) * SC, "y0": 0.0, "y1": 2.4, "r": 1.6, "reach": 3.0, "id": "snack_" + id,
+		"label": func(): return G.snack_label(id), "act": func(): G.snack_buy(id)})
 
 
 ## godziny otwarcia w świecie: zamknięty sklep ma opuszczoną roletę i zgaszone światło
@@ -3379,7 +3387,8 @@ func _dense() -> void:
 	var bak_model := ResourceLoader.exists("res://assets/models/piekarnia_witryna.glb")
 	var bak_li := _shopfront(104.0, 10.0, "BAKERY", Color(0.95, 0.75, 0.35), "rusted_shutter", not bak_model)
 	if bak_model:
-		_front_model("piekarnia_witryna", 104.0, 10.0, 1.0, [6.0, 15.0], Color(0.88, 0.76, 0.58), bak_li)
+		_front_model("piekarnia_witryna", 104.0, 10.0, 1.0, D.SNACKS.bulka.open, Color(0.88, 0.76, 0.58), bak_li)
+		_snack_point("bulka")
 	_supply_store()
 	_shopfront(-131.0, 10.0, "SECOND HAND", Color(0.9, 0.5, 0.6), "painted_metal_shutter", true)
 	_wall(Signs.shop("BAR JAGODA", Color(0.95, 0.4, 0.5), 3.0, true), -8.86, 3.2, 91.0, PI / 2.0)

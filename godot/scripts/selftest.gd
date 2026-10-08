@@ -887,6 +887,25 @@ func run() -> void:
 	ok(has_clothes and String(ct.get("id", "")) == "ciuchy" and String(ct.get("loc", "")) == "ciuchy", "Tania Odzież jest na liście celów i da się do niej poprowadzić trasę")
 	S.track = track_keep
 	S.nav_on = nav_keep
+	# jedzenie na mieście: kebab nocą zamknięty; w dzień kosztuje, a najedzony Kuba ma więcej kondycji — do czasu
+	var cash_sn: float = S.cash
+	S.cash = 100.0
+	S.t = floorf(S.t / 1440.0) * 1440.0 + 2.0 * 60.0
+	var sn_closed: bool = not G.snack_buy("kebab") and S.cash == 100.0 and not G.fed() and G.snack_label("kebab").contains("otwarte 11:00")
+	S.t = floorf(S.t / 1440.0) * 1440.0 + 13.0 * 60.0
+	var stam0: float = G.player.max_stamina()
+	var sn_ok: bool = G.snack_buy("kebab") and S.cash == 100.0 - float(D.SNACKS.kebab.price) and G.fed() and absf(G.player.max_stamina() - stam0 * D.SNACK_STAMINA) < 0.01
+	S.t += float(D.SNACKS.kebab.hours) * 60.0 + 1.0
+	var sn_point := false
+	for it_s in G.world.inter:
+		if String(it_s.get("id", "")) == "snack_kebab":
+			sn_point = true
+	ok(sn_closed and sn_ok and not G.fed() and absf(G.player.max_stamina() - stam0) < 0.01 and sn_point, "kebab: zamknięty w nocy, w dzień za %d zł daje +20%% kondycji na %d godz. (potem mija)" % [int(D.SNACKS.kebab.price), int(D.SNACKS.kebab.hours)])
+	S.cash = 1.0
+	S.t = floorf(S.t / 1440.0) * 1440.0 + 8.0 * 60.0
+	ok(not G.snack_buy("bulka") and S.cash == 1.0, "bez gotówki piekarnia nic nie sprzeda")
+	S.erase("fed_until")
+	S.cash = cash_sn
 	S.t = t_shop
 	G.world.shops_tick()
 	U.open_supply()

@@ -466,6 +466,12 @@ const BIN_ROLLS := {"bin": 1, "dumpster": 3}
 const LOOT_DAILY := [5, 8]
 ## lombard: godziny otwarcia i dzienne wahanie cen skupu
 const PAWN_OPEN := [9.0, 19.0]
+## Jedzenie na mieście: po kebabie albo drożdżówce biega się dłużej (kondycja +20%) przez kilka godzin gry.
+const SNACKS := {
+	"kebab": {"name": "Kebab na ostrym", "shop": "Kebab", "price": 14, "hours": 4.0, "open": [11.0, 23.0], "x": -43.0, "z": 10.6},
+	"bulka": {"name": "Drożdżówka", "shop": "Piekarnia", "price": 4, "hours": 1.5, "open": [6.0, 15.0], "x": 104.0, "z": 10.6},
+}
+const SNACK_STAMINA := 1.2
 ## hurtownia budowlana przy Hutniczej: sprzęt do produkcji i meble do kryjówek
 const SUPPLY_OPEN := [7.0, 18.0]
 const SUPPLY_GEAR := ["pack", "growlight", "dry", "tank", "filter", "lab"]
