@@ -2,24 +2,25 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://hdya858g5ltg"
-path="res://.godot/imported/hurtownia_witryna_Towar_kolor.png-cc3d51560054dc5911b1677395e92f76.ctex"
+uid="uid://bgk31cjapylib"
+path.bptc="res://.godot/imported/kebab_witryna_Witryna_kolor.png-14f6d401eb3cc4aa41026d8a520e2048.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "4fc739d3eb203d1f67a1167eeab2829f"
+"md5": "3b4136a91054d2e054ee6030a028dd02"
 }
 
 [deps]
 
-source_file="res://assets/models/hurtownia_witryna_Towar_kolor.png"
-dest_files=["res://.godot/imported/hurtownia_witryna_Towar_kolor.png-cc3d51560054dc5911b1677395e92f76.ctex"]
+source_file="res://assets/models/kebab_witryna_Witryna_kolor.png"
+dest_files=["res://.godot/imported/kebab_witryna_Witryna_kolor.png-14f6d401eb3cc4aa41026d8a520e2048.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

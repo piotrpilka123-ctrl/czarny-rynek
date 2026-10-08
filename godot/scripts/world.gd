@@ -37,6 +37,7 @@ var inter: Array = []          # stałe punkty interakcji: {loc,x,z,range,label,
 var inter_dyn := {}            # meble w kryjówkach: pokój -> Array
 var zones: Array = []
 var lamps: Array = []
+var shop_fronts: Array = []      # witryny z godzinami otwarcia (roleta, światła) — patrz _front_model / shops_tick
 var door_tape: Node3D = null    # taśmy na drzwiach laboratorium (po prologu)
 var mill_burnt: Node3D = null   # okopcenia i gruz pod Starą Hutą (po prologu)
 var lab_fx := {}                # światła i rekwizyty laboratorium sterowane przez prolog
@@ -2280,22 +2281,22 @@ func _buildings() -> void:
 	cl.omni_range = 9.0
 	city.add_child(cl)
 	# szyldy przy Hutniczej
-	_shopfront(-75.0, 10.0, "PAWN SHOP", Color(0.95, 0.8, 0.2), "rusted_shutter", false)
-	# witryna z modelu: okno z kratą i zastawionymi rzeczami, drzwi, deska „WE BUY ANYTHING” (wcześniej czarny prostokąt)
-	var pw := Stations.model("lombard_witryna")
-	if pw != null:
-		Props.set_range(_place(pw, -75.0, 10.0 + 0.3 * INV, 0.0, 1.5, 0.3, 2.6), 80.0)
-	else:
+	var pawn_li := _shopfront(-75.0, 10.0, "PAWN SHOP", Color(0.95, 0.8, 0.2), "rusted_shutter", false)
+	# witryna z modelu: okno z kratą i zastawionymi rzeczami, drzwi, deska „WE BUY ANYTHING” (wcześniej czarny prostokąt);
+	# po 19:00 opada roleta
+	if _front_model("lombard_witryna", -75.0, 10.0, 1.0, D.PAWN_OPEN, Color(0.62, 0.52, 0.34), pawn_li) == null:
 		_sign("WE BUY ANYTHING", Vector3(-75.0, hd(-75.0, 11.0) + 1.9, 10.2), Color(0.95, 0.8, 0.2), 34, 0.0, 0.006, 6)
 	inter.append({"loc": "out", "x": -75.0 * SC, "z": 10.6 * SC, "y0": 0.0, "y1": 2.4, "r": 1.6, "reach": 3.0, "id": "lombard",
 		"label": func(): return "Lombard — skup znalezisk, wagi" if G.pawn_open() else "Lombard — otwarte %d:00–%d:00" % [int(D.PAWN_OPEN[0]), int(D.PAWN_OPEN[1])],
 		"act": func(): G.main.pawn_talk()})
-	_shopfront(-43.0, 10.0, "KEBAB", Color(0.95, 0.35, 0.2), "painted_metal_shutter", true)
+	# kebab: okienko z rożnem, czynne od południa do 23:00 (wcześniej wiecznie zamknięta roleta)
+	var keb_model := ResourceLoader.exists("res://assets/models/kebab_witryna.glb")
+	var keb_li := _shopfront(-43.0, 10.0, "KEBAB", Color(0.95, 0.35, 0.2), "painted_metal_shutter", not keb_model)
+	if keb_model:
+		_front_model("kebab_witryna", -43.0, 10.0, 1.0, [11.0, 23.0], Color(0.82, 0.8, 0.76), keb_li)
 	_shopfront(31.0, 10.0, "LIQUOR 24H", Color(0.4, 0.9, 0.5), "rusted_shutter", false)
-	# witryna monopolowego z modelu: półki z butelkami, skrzynki, nocne okienko (wcześniej czarny prostokąt)
-	var lq := Stations.model("monopolowy_witryna")
-	if lq != null:
-		Props.set_range(_place(lq, 31.0, 10.0 + 0.3 * INV, 0.0, 1.5, 0.3, 2.6), 80.0)
+	# witryna monopolowego z modelu: półki z butelkami, skrzynki, nocne okienko (wcześniej czarny prostokąt); czynny całą dobę
+	_front_model("monopolowy_witryna", 31.0, 10.0, 1.0, [], Color.WHITE, null)
 	_shopfront(-70.0, 30.0, "SCRAP YARD", Color(0.8, 0.8, 0.8), "rusted_shutter", true, -1.0)
 	_shopfront(-26.0, 30.0, "ELA'S HAIR SALON", Color(0.9, 0.5, 0.7), "painted_metal_shutter", true, -1.0)
 	_shopfront(24.0, 30.0, "FUNERAL HOME", Color(0.75, 0.75, 0.8), "rusted_shutter", true, -1.0)
@@ -2314,18 +2315,70 @@ func _shutter_mat(shutter: String, title: String) -> Material:
 	return Props.pbr("painted_metal_shutter", 0.5, tint)
 
 
-func _shopfront(x: float, zw: float, title: String, color: Color, shutter: String, closed: bool, dz := 1.0) -> void:
+func _shopfront(x: float, zw: float, title: String, color: Color, shutter: String, closed: bool, dz := 1.0) -> OmniLight3D:
 	var z := zw + dz * 0.06
 	var gy := hd(x, zw + dz)
 	Models.box(city, Vector3(5.2, 2.5, 0.12), Vector3(x, gy + 1.4, z), _shutter_mat(shutter, title) if closed else Models.mat("1c2228", 0.3, 0.1))
 	_wall(Signs.shop(title, color, 2.9, not closed), x, 3.05, z + dz * 0.1, 0.0 if dz > 0.0 else PI)
-	if not closed:
-		var li := OmniLight3D.new()
-		li.position = Vector3(x, gy + 2.4, z + dz * 1.6)
-		li.light_color = color
-		li.light_energy = 1.1
-		li.omni_range = 6.0
-		city.add_child(li)
+	if closed:
+		return null
+	var li := OmniLight3D.new()
+	li.position = Vector3(x, gy + 2.4, z + dz * 1.6)
+	li.light_color = color
+	li.light_energy = 1.1
+	li.omni_range = 6.0
+	city.add_child(li)
+	return li
+
+
+## Witryna z modelu przed otworem sklepu. hours = [od, do]: po godzinach opada roleta, gasną świetlówki i neon
+## (puste = całą dobę). o: w = szerokość rolety, y0/y1 = jej dół i góra, z = głębokość przed ścianą modelu.
+func _front_model(name: String, x: float, zw: float, dz: float, hours: Array, tint: Color, light: OmniLight3D, o := {}) -> Node3D:
+	var m := Stations.model(name)
+	if m == null:
+		return null
+	var half: float = float(o.get("w", 2.9)) * 0.5
+	Props.set_range(_place(m, x, zw + dz * 0.3 * INV, 0.0 if dz > 0.0 else PI, half, 0.3, 2.6), 80.0)
+	if hours.is_empty():
+		return m
+	var sh := Node3D.new()
+	sh.name = "Roleta"
+	m.add_child(sh)
+	var y0: float = o.get("y0", 0.14)
+	var y1: float = o.get("y1", 2.2)
+	var zf: float = o.get("z", 0.29)
+	var sm := Props.pbr("painted_metal_shutter", 0.5, tint)
+	Models.box(sh, Vector3(half * 2.0 - 0.02, y1 - y0, 0.03), Vector3(0, (y0 + y1) * 0.5, zf), sm, Vector3.ZERO, false)
+	# listwa dolna z zamkiem i prowadnice po bokach
+	var steel := Models.mat("6a6f76", 0.5, 0.6)
+	Models.box(sh, Vector3(half * 2.0 - 0.02, 0.07, 0.045), Vector3(0, y0 + 0.035, zf + 0.004), steel, Vector3.ZERO, false)
+	Models.box(sh, Vector3(0.09, 0.06, 0.03), Vector3(0, y0 + 0.05, zf + 0.03), Models.mat("b08a3c", 0.4, 0.8), Vector3.ZERO, false)
+	for sx in [-1.0, 1.0]:
+		Models.box(sh, Vector3(0.05, y1 - y0, 0.05), Vector3(sx * (half - 0.03), (y0 + y1) * 0.5, zf), steel, Vector3.ZERO, false)
+	sh.visible = false
+	var glow: Array = []
+	for nm in ["SwiatloWitryna", "SwiatloOpen", "SwiatloNeon"]:
+		var gn := Stations._find(m, nm)
+		if gn != null:
+			glow.append(gn)
+	shop_fronts.append({"shutter": sh, "glow": glow, "light": light, "energy": light.light_energy if light != null else 0.0, "open": hours, "on": true})
+	return m
+
+
+## godziny otwarcia w świecie: zamknięty sklep ma opuszczoną roletę i zgaszone światło
+func shops_tick() -> void:
+	var h: float = G.hour()
+	for s in shop_fronts:
+		var on: bool = h >= float(s.open[0]) and h < float(s.open[1])
+		if on == bool(s.on):
+			continue
+		s.on = on
+		(s.shutter as Node3D).visible = not on
+		for gn in s.glow:
+			if is_instance_valid(gn):
+				(gn as Node3D).visible = on
+		if s.light != null and is_instance_valid(s.light):
+			(s.light as OmniLight3D).light_energy = float(s.energy) if on else 0.0
 
 
 ## Hurtownia budowlana przy Hutniczej: otwarta witryna, towar wystawiony na chodnik i okienko, przy którym kupuje się
@@ -2333,12 +2386,11 @@ func _shopfront(x: float, zw: float, title: String, color: Color, shutter: Strin
 func _supply_store() -> void:
 	var x := 104.0
 	var zw := 32.0
-	_shopfront(x, zw, "BUILDING SUPPLIES", Color(0.95, 0.82, 0.45), "painted_metal_shutter", false, -1.0)
-	# witryna z modelu: wystawa z regałem po lewej (od ulicy), okienko z ladą po prawej; tył przy ścianie
+	var sup_li := _shopfront(x, zw, "BUILDING SUPPLIES", Color(0.95, 0.82, 0.45), "painted_metal_shutter", false, -1.0)
+	# witryna z modelu: wystawa z regałem po lewej (od ulicy), okienko z ladą po prawej; tył przy ścianie; po 18:00 roleta
 	var hx := x
-	var wm := Stations.model("hurtownia_witryna")
+	var wm := _front_model("hurtownia_witryna", x, zw, -1.0, D.SUPPLY_OPEN, Color(0.78, 0.8, 0.82), sup_li, {"w": 4.4, "y0": 0.5, "y1": 2.31, "z": 0.345})
 	if wm != null:
-		Props.set_range(_place(wm, x, zw - 0.3 * INV, PI, 2.2, 0.3, 2.65), 80.0)
 		# model stoi tyłem do ściany, więc jego okienko (x = +1,41 m) wypada po zachodniej stronie
 		hx = x - 1.41 * INV
 	var keep: int = rng.state
@@ -3316,7 +3368,11 @@ func _dense() -> void:
 	add_col(82.4, 85.6, -107.6, -104.4, 24.0)
 	# kotłownia grzeje osiedle: z komina idzie jasny dym
 	_chimney_smoke(Vector3(84.0 * SC, chy + 24.2, -106.0 * SC), 1.0, 0.7)
-	_shopfront(104.0, 10.0, "BAKERY", Color(0.95, 0.75, 0.35), "rusted_shutter", true)
+	# piekarnia: czynna od świtu do 15:00, potem roleta
+	var bak_model := ResourceLoader.exists("res://assets/models/piekarnia_witryna.glb")
+	var bak_li := _shopfront(104.0, 10.0, "BAKERY", Color(0.95, 0.75, 0.35), "rusted_shutter", not bak_model)
+	if bak_model:
+		_front_model("piekarnia_witryna", 104.0, 10.0, 1.0, [6.0, 15.0], Color(0.88, 0.76, 0.58), bak_li)
 	_supply_store()
 	_shopfront(-131.0, 10.0, "SECOND HAND", Color(0.9, 0.5, 0.6), "painted_metal_shutter", true)
 	_wall(Signs.shop("BAR JAGODA", Color(0.95, 0.4, 0.5), 3.0, true), -8.86, 3.2, 91.0, PI / 2.0)

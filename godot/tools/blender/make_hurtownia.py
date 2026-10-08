@@ -16,16 +16,16 @@ def witryna():
     reset()
     W, H, D = 4.4, 2.65, 0.6
     yb, yf = D / 2, -D / 2
-    st = mat('stal', '7d8286', 0.45, 0.8)
-    stc = mat('stal_c', '3b4045', 0.5, 0.7)
+    st = mat('stal', '8f9499', 0.45, 0.3)
+    stc = mat('stal_c', '5a6068', 0.5, 0.25)
     tlo = mat('wnetrze', '14181b', 0.95)
-    mur = mat('cokol', '6b665e', 0.9, wzor='beton')
-    drew = mat('drewno', '8a6a42', 0.85, wzor='drewno')
-    karton = mat('karton', 'b08a56', 0.9, wzor='karton')
+    mur = mat('cokol', wz('77726a', 'beton'), 0.9, wzor='beton')
+    drew = mat('drewno', wz('8a6a42', 'drewno'), 0.85, wzor='drewno')
+    karton = mat('karton', wz('b08a56', 'karton'), 0.9, wzor='karton')
     bialy = mat('bialy', 'ecebe4', 0.6)
     tusz = mat('tusz', '15161a', 0.6)
     zolty = mat('zolty', 'd9a514', 0.55, 0.2)
-    alu = mat('alu', 'b9bdc0', 0.35, 0.9)
+    alu = mat('alu', 'c2c6c9', 0.35, 0.35)
     zo = 0.5                      # wierzch cokołu
     zt = H - 0.34                 # spód skrzynki rolety
     hw = zt - zo                  # wysokość otworu

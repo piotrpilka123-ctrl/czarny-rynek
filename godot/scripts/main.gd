@@ -2257,6 +2257,7 @@ func _slow() -> void:
 	G.tips_tick()
 	world.update_stations()
 	world.club_tick()
+	world.shops_tick()
 	var club_d := pp.distance_to(world.club_door) if player.loc == "out" else 999.0
 	if world.club_player != null:
 		# w środku klubu muzyka gra znad parkietu, na ulicy dudni zza drzwi

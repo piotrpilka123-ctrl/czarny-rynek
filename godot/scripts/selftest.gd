@@ -821,6 +821,21 @@ func run() -> void:
 	ok(G.furn_buy("stol") and G.owned("stol") == 1 and absf(S.cash - (9000.0 - float(G.furn_def("stol").price))) < 0.01 and not G._has_furn("garage", "pack"), "kupiony stół czeka na stanie — jeszcze nie działa")
 	var cash_p: float = S.cash
 	ok(G.furn_place("garage", "stol", -1.6, -3.6, 0) and G.owned("stol") == 0 and S.cash == cash_p and G._has_furn("garage", "pack"), "ustawienie nic nie kosztuje, a stół zaczyna działać")
+	# godziny otwarcia widać w świecie: po zamknięciu opada roleta i gaśnie światło
+	var t_shop: float = S.t
+	var pawn_f := {}
+	for sf0 in G.world.shop_fronts:
+		if (sf0.open as Array) == D.PAWN_OPEN:
+			pawn_f = sf0
+	S.t = floorf(S.t / 1440.0) * 1440.0 + 12.0 * 60.0
+	G.world.shops_tick()
+	var open_ok: bool = not pawn_f.is_empty() and not (pawn_f.shutter as Node3D).visible and G.pawn_open()
+	S.t = floorf(S.t / 1440.0) * 1440.0 + 21.0 * 60.0
+	G.world.shops_tick()
+	ok(G.world.shop_fronts.size() >= 4 and open_ok and (pawn_f.shutter as Node3D).visible and not G.pawn_open() and (pawn_f.light == null or (pawn_f.light as OmniLight3D).light_energy == 0.0),
+		"lombard, hurtownia, piekarnia i kebab mają godziny otwarcia: w południe witryna, wieczorem roleta i zgaszone światło (%d)" % G.world.shop_fronts.size())
+	S.t = t_shop
+	G.world.shops_tick()
 	U.open_supply()
 	await frames(3)
 	ok(U.mode == "modal", "okno hurtowni się rysuje")
