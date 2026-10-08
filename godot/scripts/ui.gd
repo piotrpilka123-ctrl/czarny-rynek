@@ -473,18 +473,19 @@ func tip_show(title: String, text: String, secs := 11.0) -> void:
 	cc.z_index = 60
 	root.add_child(cc)
 	tip_box = cc
-	var p := K.panel(K.sb(Color(0.04, 0.07, 0.1, 0.96), 12, K.C_BLUE, 2, 14))
+	# podpowiedź to nie ostrzeżenie: grafitowa karta z cienką jasną ramką (bez niebieskiego i żółtego)
+	var p := K.panel(K.sb(Color(0.04, 0.046, 0.058, 0.96), 12, Color(1, 1, 1, 0.24), 1, 14))
 	p.custom_minimum_size = Vector2(620, 0)
 	cc.add_child(p)
 	var h := K.hbox(12)
 	p.add_child(h)
-	var ic := K.icon("lightbulb", 28.0, K.C_GOLD)
+	var ic := K.icon("lightbulb", 26.0, Color(0.82, 0.84, 0.88))
 	ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	h.add_child(ic)
 	var v := K.vbox(3)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(v)
-	v.add_child(K.lbl("PIERWSZY RAZ  •  " + title.to_upper(), 11, K.C_BLUE))
+	v.add_child(K.lbl("PIERWSZY RAZ  •  " + title.to_upper(), 11, K.C_DIM))
 	v.add_child(K.wrap(text, 14, K.C_TXT, 540.0))
 	var xb := K.btn("", func(): cc.queue_free(), "flat", true)
 	xb.icon = K.tex("x")
@@ -572,11 +573,11 @@ func _toast_show(text: String, kind: String) -> void:
 	var fc := K.C_TXT
 	var ic := "info"
 	match kind:
-		"good": border = K.C_ACC; fc = Color(0.78, 0.97, 0.84); ic = "circle_check"
+		"good": border = Color(1, 1, 1, 0.32); fc = K.C_TXT; ic = "circle_check"
 		"warn": border = K.C_WARN; fc = Color(0.99, 0.9, 0.55); ic = "triangle_alert"
 		"bad": border = K.C_BAD; fc = Color(1.0, 0.8, 0.8); ic = "siren"
 		"level": border = K.C_GOLD; fc = K.C_GOLD; ic = "award"
-	var p := K.panel(K.sb(Color(0.035, 0.045, 0.065, 0.93) if kind != "level" else Color(0.14, 0.11, 0.03, 0.95), 10, border, 1, 14))
+	var p := K.panel(K.sb(Color(0.036, 0.04, 0.05, 0.93) if kind != "level" else Color(0.14, 0.11, 0.03, 0.95), 10, border, 1, 14))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var h := K.hbox(8)
 	h.add_child(K.icon(ic, 16, border if kind != "" else K.C_DIM))
