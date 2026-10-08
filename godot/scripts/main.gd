@@ -3069,7 +3069,21 @@ func _test_ui(what: String) -> void:
 				ui._input(key)
 			G.test_mode = was_test
 			print("CHEAT_INPUT cash_delta=", G.S.cash - before_cash, " mode_preserved=", ui.mode == before_mode)
-		"dealerzy": ui.open_phone("dealerzy")
+		"dealerzy":
+			if args.has("crewpreview"):
+				G.S.dealers["mati"] = {"stock": G.new_store(), "cash": 325.0, "sold": 10, "paused": false, "next": G.S.t + 60.0, "empty_notified": false}
+				G.add_bulk(G.S.dealers.mati.stock, "szron", 75, 20.0)
+			ui.open_phone("dealerzy")
+		"labslots":
+			G.S.props["garaz"] = true
+			G.S.lvl = 10
+			G.S.hide.garage.items = [{"f": "lab", "x": 0.0, "z": 0.0, "r": 0}]
+			G.S.hide.garage.jobs.clear()
+			G.S.items["chemia"] = 6
+			G.S.items["pakiet_procesowy"] = 1
+			G.S.items["pakiet_finalny"] = 1
+			world.refresh_furniture("garage")
+			ui.open_station("garage", 0)
 		"dostawy":
 			G.add_pack(G.S.inv, "dym", 100, 3)
 			_test_order("dominik")

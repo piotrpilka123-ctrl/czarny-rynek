@@ -33,6 +33,7 @@ static func hire(id: String) -> bool:
 	G.S.stats.spent += float(dealer.fee)
 	G.S.dealers[id] = {"stock": G.new_store(), "cash": 0.0, "sold": 0, "paused": false, "next": G.S.t + 120.0, "empty_notified": false}
 	G.chat("info", "%s dołącza do Twojej sieci. Przyjdź z zapakowanym towarem; prowizja %d%%. Pieniądze odbierasz u niego osobiście." % [dealer.name, int(float(dealer.commission) * 100)])
+	G.tip("dealerzy", "Własna sieć", "Mati i Darek sprzedają przekazane paczki w godzinach pracy. W telefonie → Dealerzy sprawdzisz zapas i rozliczenie oraz włączysz trasę. Towar i pieniądze przekazuj osobiście; prowizja jest już potrącona z rozliczenia.", 15.0)
 	return true
 
 static func stock(id: String) -> int:

@@ -113,3 +113,25 @@ wymaganą jakość, ostrzega przed za dużymi woreczkami i nie podwaja zapasu.
 752a31b: 647 testów OK. Audyt Dostaw: 0 uwag; podgląd w rendererze obejrzany
 (/Users/macbook/codex-podglad/dostawy.png). Następnie realizować punkty
 3–6 planu i wcześniej zgłoszone budynki/płoty. Aktualizować ten zapis po każdym bloku.
+
+
+## Noc 8/9 października — dealerzy i wsad
+
+User dopisał: dealerzy z zaopatrywaniem i prowizją; większe partie, amfa 1 slot,
+meta 2, koks 3; interaktywne systemy laboratoryjne jak uprawa oraz lepsze rośliny/sadzenie.
+Nowa kompletna kolejka NOCNA-LISTA-CODEX.md — korzystać z niej przy kolejnych blokach.
+- 319d3d2: scripts/dealers.gd, Mati i Darek w świecie, rekrutacja z warunkami,
+  fizyczne zaopatrzenie (paczek nie duplikuje), sprzedaż z prowizją i ograniczeniami,
+  osobisty odbiór gotówki, zapis, telefon i nawigacja. 664 testy OK.
+- Wsady 1/2/3: nowe fikcyjne pakiety u Stasia. Partie 72/60/90 g; koszty
+  1600/4800/10800 zł, czasy 8/14/22 h. Sloty pokazują posiadane/wymagane ilości.
+  Dealerzy/sloty: audyt 0 uwag i renderer obejrzany (dealerzy.png, lab-sloty.png).
+- Naprawiono ujawniony przez zmianę losowego układu NPC błąd szukania: patrol
+  wybiera osiągalne punkty, czyści starą trasę i odzyskuje pozycję na wolnej komórce.
+- Osobny audyt dystrybucji 1 partii przez 7 dni: amfa +784 zł do dnia 2, meta +864
+  do dnia 5, koks +5520 do dnia 7 po wsadzie, woreczkach i rekrutacji; bez prądu,
+  sprzętu, podróży i wpadek. EKONOMIA-SIECI.md, tools/dealer_balance.gd.
+- Kampania botów bez produkcji/sieci: wspólnik dzień 19/23 — nie traktować tego
+  jako testu całej nowej gospodarki.
+Następny punkt: fizyczne czynności/animacje laboratorium i poprawa roślin/sadzenia,
+potem wznowić rozszerzenie mapy. W tej turze mapy jeszcze nie zmieniono.

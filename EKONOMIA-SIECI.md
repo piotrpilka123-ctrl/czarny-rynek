@@ -23,3 +23,17 @@ bezpośrednia sprzedaż nadal ma lepszą marżę. Dealer daje czas, nie darmowy 
 
 Do kontroli po pierwszym bloku: symulacja kampanii i oddzielna kontrola sieci przy
 regularnym zaopatrywaniu. Nie ogłaszać ostatecznego balansu po samym sprawdzeniu wzorów.
+
+
+Audyt jednej partii przez istniejący system dealerów (7 dni, regularny dowóz):
+
+| Produkt | Sprzedana partia | Koniec sprzedaży | Wynik po wsadzie, woreczkach i rekrutacji |
+|---|---:|---:|---:|
+| Amfetamina | 72 g | dzień 2 | +784 zł |
+| Metamfetamina | 60 g | dzień 5 | +864 zł |
+| Kokaina | 90 g | dzień 7 | +5520 zł |
+
+To wariant bez prądu, sprzętu, podróży i wpadek; nie jest gwarantowanym zyskiem gracza.
+Narzędzie: `godot/tools/dealer_balance.gd` uruchamiane headless z Dummy audio.
+Symulacja dotychczasowej kampanii przy dwóch botach dała wspólnika w dniach 19 i 23,
+ale bez produkcji i sieci dealerów — mierzy więc tylko ścieżkę bezpośrednich dostaw.

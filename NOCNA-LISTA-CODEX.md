@@ -20,7 +20,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 
 ## Do wykonania po kolei
 
-1. [ ] Dealerzy: rekrutacja, przekazanie rzeczywistych paczek, powolna sprzedaż,
+1. [x] Dealerzy: rekrutacja, przekazanie rzeczywistych paczek, powolna sprzedaż,
        prowizja, zapas i fizyczny odbiór gotówki; zapis stanu, samouczek, panel telefonu.
 2. [ ] Produkcja: amfetamina 1 slot składnika, meta 2, kokaina 3. Większe partie
        odpowiednie dla dealerów, realny koszt w grze, czas i ryzyko. Fikcyjne pakiety
@@ -54,3 +54,9 @@ nie deklarować perfekcji po samym teście headless.
 Doprecyzowanie produkcji przez Piotra: także laboratorium ma mieć dobre interakcyjne
 systemy jak uprawa (widoczne składniki, czynności i animacje). Poprawić jakość roślin,
 sadzenie i cały system uprawy; to część punktów 2 i 10, nie usuwać z kolejki.
+
+
+Blok 319d3d2: dealerzy i podstawowe 1–3 sloty wsadu, 664 testy OK.
+Panel Dealerzy i sloty obejrzane w rendererze; audyt układu 0 uwag.
+Punkt 2 pozostaje otwarty do czynności i animacji w świecie oraz poprawy roślin.
+Osobny audyt jednej partii dealerów i opis ograniczeń w EKONOMIA-SIECI.md.
