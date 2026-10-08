@@ -594,7 +594,7 @@ def _skirt_w(B, bm, depth):
     return fn
 
 
-def _top(B, hem, off, smooth, flare=1.03, wrist=0.8, wrinkle=1.0):
+def _top(B, hem, off, smooth, flare=1.03, wrist=0.8, wrinkle=1.0, extra=None):
     def pick(co, w):
         if hand_w(w) > 0.85 or head_w(w) + w.get('Bip01 Neck', 0.0) > 0.72:
             return False
@@ -624,6 +624,8 @@ def _top(B, hem, off, smooth, flare=1.03, wrist=0.8, wrinkle=1.0):
             c = sum(vs, Vector()) / len(vs)
             lengthen(bm, on_hip, lambda co: Vector((c.x + (co.x - c.x) * flare, c.y + (co.y - c.y) * flare, hem)),
                      max(2, int((ZC - hem) / 0.035) + 1), 1.0, _skirt_w(B, bm, ZC - hem))
+        if extra is not None:
+            extra(bm)
         clear(B, bm, 0.005)
     bm, lps = shell(B, pick, off2, smooth, wrinkle=wrinkle, post=post)
     neck = pick_loops(lps, lambda c: c.z > 1.42 and abs(c.x) < 0.1)
@@ -899,6 +901,53 @@ def dres_gora():
                 p1 = a.lerp(b, t1) + fw * (0.02 * k) + up * 0.1
                 parts.append(ribbon(tree, p0, p1, -up, 0.011, white, 10, 0.0025, 'pasek', 0.0008))
     finish(B, ob, parts, 'dres_gora')
+
+
+def kurtka_puchowa():
+    """kurtka puchowa: pikowane komory (poziome na tułowiu, w poprzek rękawów), wysoka stójka, zamek, ściągacze, kieszenie na zamek"""
+    B = Body()
+    nylon = mat('plotno_puch', '27324a', 0.5)
+    rib = mat('sciagacz_puch', '1d2536', 0.9)
+    metal = mat('metal_zamek', 'a9adb3', 0.35, 0.9)
+    sh = {sd: B.H['Bip01 %s UpperArm' % sd] for sd in ('L', 'R')}
+    hem = 0.84
+
+    def off(co, w):
+        return 0.015 if part(w, ('UpperArm', 'Forearm')) > 0.5 else 0.019
+
+    def puff(bm):
+        # gęstsza siatka, żeby komory miały z czego się wybrzuszyć
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=1, smooth=0.3, use_grid_fill=True)
+        bm.normal_update()
+        for v in bm.verts:
+            if v.is_boundary:
+                continue
+            co = v.co
+            sd = 'L' if co.x > 0 else 'R'
+            if abs(co.x) > 0.2:
+                q = (co - sh[sd]).length / 0.082
+                edge = min(1.0, max(0.0, (1.0 - along(B, co, 'Forearm', 'Hand')) / 0.08))
+            else:
+                q = (co.z - hem) / 0.088
+                edge = min(1.0, max(0.0, (co.z - hem - 0.04) / 0.03)) * min(1.0, max(0.0, (1.5 - co.z) / 0.04))
+            p = abs(math.sin(math.pi * q)) ** 0.5
+            v.co += v.normal * ((0.014 * p - 0.003) * edge)
+    bm, tree, neck, cuffs, hems = _top(B, hem, off, 3, 1.0, 0.82, 0.3, puff)
+    ob = to_object(B, bm, 'kurtka_puchowa', [nylon, rib, metal])
+    paint(ob, lambda c, n: c.z < hem + 0.036 or _cuff(B, c, 0.97), 1)
+    parts = []
+    for lp in neck:
+        _collar_stand(lp, nylon, parts, 0.055, 0.004, 0.006)
+    for lp in cuffs:
+        c = sum(lp, Vector()) / len(lp)
+        parts.append(band(lp, 0.009, rib, 'mankiet', 0.001, 2.2, _arm_dir(B, c) * 0.006))
+    for lp in hems:
+        parts.append(band(lp, 0.01, rib, 'dol', 0.0, 2.2, Z * 0.008))
+    parts.append(ribbon(tree, Vector((0.0, -0.3, hem + 0.03)), Vector((0.0, -0.3, 1.5)), FRONT, 0.012, rib, 30, 0.004, 'plisa', 0.002))
+    parts.append(ribbon(tree, Vector((0.0, -0.3, hem + 0.03)), Vector((0.0, -0.3, 1.5)), FRONT, 0.005, metal, 30, 0.0065, 'zamek', 0.002))
+    for sx in (-1, 1):
+        parts.append(ribbon(tree, Vector((sx * 0.085, -0.3, 1.09)), Vector((sx * 0.15, -0.3, 0.98)), FRONT, 0.007, metal, 8, 0.004, 'zamek_kieszeni', 0.002))
+    finish(B, ob, parts, 'kurtka_puchowa')
 
 
 def parka():
@@ -1838,7 +1887,7 @@ def lancuch():
     finish(B, ob, parts, 'lancuch', rigid='Bip01 Spine2')
 
 
-ALL = (bluza_kaptur, kurtka_kieszenie, koszula, kurtka_skorzana, dres_gora, parka, chinosy, dresy, jeansy, bojowki, rekawiczki, rekawiczki_skora, trampki, buty_bieg, buty_robocze,
+ALL = (bluza_kaptur, kurtka_kieszenie, koszula, kurtka_skorzana, dres_gora, kurtka_puchowa, parka, chinosy, dresy, jeansy, bojowki, rekawiczki, rekawiczki_skora, trampki, buty_bieg, buty_robocze,
        komin, kominiarka, czapka_daszek, czapka_zimowa, okulary, lancuch)
 if __name__ == '__main__':
     only = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else []
