@@ -126,9 +126,11 @@ static func btn(text: String, cb: Callable, kind := "", small := false) -> Butto
 		b.add_theme_stylebox_override("normal", sb(Color(0, 0, 0, 0), r, Color(0, 0, 0, 0), 0, pad))
 		b.add_theme_stylebox_override("hover", sb(Color(1, 1, 1, 0.06), r, Color(0, 0, 0, 0), 0, pad))
 		b.add_theme_stylebox_override("pressed", sb(Color(1, 1, 1, 0.1), r, Color(0, 0, 0, 0), 0, pad))
-	elif small:
+	else:
+		# zwykły przycisk (także duży, np. odpowiedź w rozmowie): grafit bez granatowego odcienia
 		b.add_theme_stylebox_override("normal", sb(Color(1, 1, 1, 0.04), r, Color(1, 1, 1, 0.13), 1, pad))
 		b.add_theme_stylebox_override("hover", sb(Color(1, 1, 1, 0.09), r, Color(1, 1, 1, 0.24), 1, pad))
+		b.add_theme_stylebox_override("pressed", sb(Color(1, 1, 1, 0.14), r, Color(1, 1, 1, 0.3), 1, pad))
 	b.pressed.connect(func():
 		Sfx.play("click")
 		cb.call())

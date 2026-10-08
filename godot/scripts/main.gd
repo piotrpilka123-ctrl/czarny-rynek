@@ -3321,6 +3321,7 @@ func _test_ui(what: String) -> void:
 		"pause": ui.show_pause()
 		"skill": ui.skill_check("Ważenie: 5 g marihuany", 1.0, func(_h): pass)
 		"dialog": talk_stasiu()
+		"zdzichu": zdzichu_talk()
 		"property": ui.open_property("garaz")
 		"deal", "deal2", "deal3", "deal4", "deal5", "deal6":
 			G.add_pack(G.S.inv, "dym", 100, 6)
