@@ -1064,6 +1064,25 @@ func pawn_price(id: String) -> float:
 	return maxf(1.0, round(float(D.ITEMS[id].pawn) * (1.0 + (h * 2.0 - 1.0) * D.PAWN_SWING)))
 
 
+## --- Zdzichu spod monopolowego: za piwo (raz dziennie) „nic nie widział” — śledztwo trochę stygnie
+const BEER_PRICE := 6
+const BEER_INVEST := 6.0
+
+func beer_ready() -> bool:
+	return int(S.get("beer_day", 0)) != day()
+
+
+func beer_give() -> bool:
+	if not beer_ready() or float(S.cash) < float(BEER_PRICE):
+		return false
+	S.cash = float(S.cash) - float(BEER_PRICE)
+	S.stats.spent = float(S.stats.get("spent", 0.0)) + float(BEER_PRICE)
+	S["beer_day"] = day()
+	add_invest(-BEER_INVEST)
+	Sfx.play("cash")
+	return true
+
+
 ## --- jedzenie na mieście (kebab, piekarnia): najedzony Kuba ma więcej kondycji
 func fed() -> bool:
 	return S != null and float(S.get("fed_until", 0.0)) > float(S.t)

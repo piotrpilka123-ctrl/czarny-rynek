@@ -905,6 +905,18 @@ func run() -> void:
 	S.t = floorf(S.t / 1440.0) * 1440.0 + 8.0 * 60.0
 	ok(not G.snack_buy("bulka") and S.cash == 1.0, "bez gotówki piekarnia nic nie sprzeda")
 	S.erase("fed_until")
+	# Zdzichu: piwo raz dziennie studzi śledztwo
+	var inv_b: float = S.invest
+	S.invest = 30.0
+	S.cash = 50.0
+	S.erase("beer_day")
+	var beer1: bool = G.beer_ready() and G.beer_give() and absf(S.invest - (30.0 - G.BEER_INVEST)) < 0.01 and S.cash == 50.0 - float(G.BEER_PRICE)
+	ok(beer1 and not G.beer_ready() and not G.beer_give() and S.cash == 50.0 - float(G.BEER_PRICE), "piwo dla Zdzicha: śledztwo −%d, ale tylko raz na dzień" % int(G.BEER_INVEST))
+	S.t += 1440.0
+	ok(G.beer_ready(), "następnego dnia Zdzichu znów ma pragnienie")
+	S.t -= 1440.0
+	S.erase("beer_day")
+	S.invest = inv_b
 	S.cash = cash_sn
 	S.t = t_shop
 	G.world.shops_tick()

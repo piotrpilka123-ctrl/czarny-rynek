@@ -482,7 +482,7 @@ func _build_static() -> void:
 	# (siedzi na skrzynce pod ścianą; wcześniej stał zgięty wpół jak zombie)
 	_static({"x": 34.9, "z": 11.3, "rot": 0.3, "pose": "sit", "y": 0.02, "name": "Zdzichu",
 		"look": {"model": "m07", "kind": "jacket", "top": "4a4538", "bottom": "2b2622", "beard": true, "hair": "hair_simpleparted", "hair_color": "7a7a7a", "seed": 35},
-		"lines": ["Kierowniku… poratuj złotówką…", "Ja tu wszystko widzę. Wszyściutko. Ale nic nie mówię.", "Zimno dziś, co?"]})
+		"lines": ["Kierowniku… poratuj złotówką…", "Ja tu wszystko widzę. Wszyściutko. Ale nic nie mówię.", "Zimno dziś, co?"], "act": func(): G.main.zdzichu_talk()})
 	# potencjalni klienci „z rozmowy”
 	_static({"x": 96.2, "z": 86.2, "rot": 1.2, "pose": "kneel", "name": "Marek", "label": "Marek — mechanik",
 		"look": G.cust_def("marek").look, "act": func(): _talk_meet("marek")})
