@@ -111,7 +111,9 @@ const RECIPES := {
 		"stages": [{"name": "Sadzonki", "to": 0.2}, {"name": "Wzrost", "to": 0.6}, {"name": "Kwitnienie", "to": 1.0}],
 		"modes": [{"name": "Lampy 18/6", "speed": 1.0, "smell": 1.0, "power": 1.0, "water": 1.0, "pur": 0, "desc": "Zwykły cykl światła."},
 			{"name": "Lampy 24/0", "speed": 1.35, "smell": 1.3, "power": 2.0, "water": 1.4, "pur": -4, "desc": "Rośnie o 1/3 szybciej, ale żre prąd i wodę, mocniej pachnie i wychodzi trochę słabsza."}]},
-	"amfetamina": {"name": "Amfetamina", "station": "lab", "product": "szron", "lvl": 5, "input": {"chemia": 1}, "hours": 5.0, "yield": 28.0, "pur": 72,
+	# wydajności liczone od ceny zestawu (800 zł): amfetamina ok. 22 zł/g (u Wiktora 32), metamfetamina 80 zł/g, kokaina 120 zł/g —
+	# im droższy towar, tym większy zysk z jednej wymiany; przy dawnych 28 g własna amfetamina prawie nie była tańsza niż z hurtu
+	"amfetamina": {"name": "Amfetamina", "station": "lab", "product": "szron", "lvl": 5, "input": {"chemia": 1}, "hours": 5.0, "yield": 36.0, "pur": 72,
 		"smell": 34.0, "power": 8.0,
 		"stages": [{"name": "Reakcja", "to": 0.45, "hold": "Przelej i schłodź"}, {"name": "Krystalizacja", "to": 0.85}, {"name": "Suszenie", "to": 1.0}],
 		"modes": [{"name": "Niska temp.", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Wolno i czysto: najlepszy towar, najmniej smrodu."},
@@ -124,7 +126,7 @@ const RECIPES := {
 			{"name": "Średnia temp.", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
 			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.22, "desc": "Szybko, śmierdząco i z ryzykiem przypalenia."}]},
 	# kokaina: już nie z hurtu — oczyszczasz pastę w tym samym laboratorium; najdłuższa i najdroższa robota, ale najdroższy towar
-	"kokaina": {"name": "Kokaina", "station": "lab", "product": "snieg", "lvl": 10, "input": {"chemia": 3}, "hours": 11.0, "yield": 14.0, "pur": 78,
+	"kokaina": {"name": "Kokaina", "station": "lab", "product": "snieg", "lvl": 10, "input": {"chemia": 3}, "hours": 11.0, "yield": 20.0, "pur": 78,
 		"smell": 30.0, "power": 9.0,
 		"stages": [{"name": "Ekstrakcja", "to": 0.35, "hold": "Odlej rozpuszczalnik"}, {"name": "Oczyszczanie", "to": 0.8, "hold": "Przefiltruj"}, {"name": "Suszenie", "to": 1.0}],
 		"modes": [{"name": "Dokładnie", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Dwa razy przez filtr: wolno, ale czysto."},
