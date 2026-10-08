@@ -1016,6 +1016,9 @@ func start_chase(c: Dictionary) -> void:
 	var pp: Vector3 = G.player.global_position
 	c.state = "chase"
 	c.alert.visible = true
+	# policjant w pościgu ma zaciętą minę
+	if c.get("rig") != null:
+		Chars.emote(c.rig, "zlosc", 1.0, 12.0)
 	c.last_seen = G.now
 	c.notice = 1.0
 	c.lure = false
@@ -1229,6 +1232,20 @@ func update(dt: float) -> void:
 		Chars.set_active(n.rig, dp3 < 60.0)
 		if dp3 < 60.0:
 			var pose_now: String = "talk" if (n.track and dp3 < 3.4) else n.pose
+			# mimika: z bliska widać, że postacie żyją — co kilka sekund uśmiech, zdziwienie albo grymas (zależnie od tego,
+			# co robią), a gdy gracz podchodzi pierwszy raz od dłuższej chwili, przywitanie uśmiechem
+			if dp3 < 22.0:
+				n["emo_t"] = float(n.get("emo_t", randf_range(1.0, 6.0))) - dt
+				if dp3 < 3.4 and float(n.get("greet_t", 0.0)) <= 0.0:
+					Chars.emote(n.rig, "usmiech", 1.0, 3.0)
+					n["greet_t"] = 40.0
+				elif float(n.emo_t) <= 0.0:
+					var pool: Array = ["usmiech", "usmiech", "zdziwienie"] if String(n.pose) in ["sit_talk", "talk", "sit", "dance", "dance2", "dance4"] else ["smutek", "zlosc", "zdziwienie", "usmiech"]
+					if String(n.pose) == "junkie":
+						pool = ["smutek", "smutek", "zlosc"]
+					Chars.emote(n.rig, String(pool.pick_random()), randf_range(0.5, 0.9), randf_range(2.0, 4.0))
+					n.emo_t = randf_range(5.0, 12.0)
+			n["greet_t"] = maxf(0.0, float(n.get("greet_t", 0.0)) - dt)
 			if n.has("sip_t"):
 				# piwosz: siedzi, a co jakiś czas podnosi butelkę do ust na półtorej sekundy
 				if float(n.sip_on) > 0.0:
@@ -1239,6 +1256,8 @@ func update(dt: float) -> void:
 					if float(n.sip_t) <= 0.0:
 						n.sip_on = 1.7
 						n.sip_t = randf_range(6.0, 13.0)
+						# po łyku zadowolona mina
+						Chars.emote(n.rig, "usmiech", 0.8, 3.5)
 			Chars.animate(n.rig, dt, 0.0, pose_now)
 			if n.has("anim_speed"):
 				n.rig.anim.speed_scale = float(n.anim_speed)
