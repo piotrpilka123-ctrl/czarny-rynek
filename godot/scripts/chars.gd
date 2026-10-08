@@ -766,6 +766,7 @@ instance uniform vec4 w_shoes = vec4(0.0);
 instance uniform vec4 w_gloves = vec4(0.0);
 instance uniform float w_plaid = 0.0;
 instance uniform vec4 w_hide = vec4(0.0);
+instance uniform vec4 w_plastic = vec4(0.0);   // manekin: całe ciało w kolorze tworzywa
 varying vec4 reg;
 void vertex() {
 	vec4 r = vec4(0.0);
@@ -798,10 +799,10 @@ void fragment() {
 	c = mix(c, srgb(w_pants.rgb) * shade, smoothstep(0.42, 0.58, reg.y) * w_pants.a);
 	c = mix(c, srgb(w_shoes.rgb) * shade, smoothstep(0.72, 0.9, reg.z) * w_shoes.a);
 	c = mix(c, srgb(w_gloves.rgb) * shade, smoothstep(0.42, 0.58, reg.w) * w_gloves.a);
-	ALBEDO = c;
-	ROUGHNESS = 0.84;
+	ALBEDO = mix(c, srgb(w_plastic.rgb), w_plastic.a);
+	ROUGHNESS = mix(0.84, 0.42, w_plastic.a);
 	SPECULAR = 0.3;
-	if (normal_on > 0.5) {
+	if (normal_on > 0.5 && w_plastic.a < 0.5) {
 		NORMAL_MAP = texture(tex_normal, UV).rgb;
 	}
 }
@@ -1071,6 +1072,53 @@ static func _hair_cards(rig: Dictionary, show: bool) -> void:
 				keep[key] = mi.get_surface_override_material(sf)
 			mi.set_surface_override_material(sf, keep[key] if show else People._hidden())
 	rig["hair_src"] = keep
+
+
+## Manekin sklepowy: sylwetka z gładkiego tworzywa, zastygła w pozie, ubrana w rzeczy uszyte tak samo jak na bohaterze —
+## w sklepie widać dokładnie to, co się kupuje.
+static func mannequin(gear: Dictionary, pose := "", plastic := Color(0.80, 0.78, 0.73)) -> Dictionary:
+	var rig := make({"model": String(D.PLAYER_LOOK.model), "seed": 11, "no_blob": true})
+	if rig.is_empty() or not rig.get("person", false):
+		return rig
+	dress(rig, gear)
+	_hair_cards(rig, false)
+	var skel: Skeleton3D = rig.skel
+	var pm := StandardMaterial3D.new()
+	pm.albedo_color = plastic
+	pm.roughness = 0.42
+	for c in skel.get_children():
+		if not (c is MeshInstance3D) or rig.wear.has(c):
+			continue
+		var mi: MeshInstance3D = c
+		for sf in range(mi.mesh.get_surface_count()):
+			var cur: Material = mi.get_surface_override_material(sf)
+			var src: Material = mi.mesh.surface_get_material(sf)
+			var nm := (src.resource_name if src != null else "").to_lower()
+			if nm.ends_with("opacity"):
+				continue
+			if not (cur is ShaderMaterial):
+				mi.set_surface_override_material(sf, pm)
+		mi.set_instance_shader_parameter("w_plastic", Color(plastic.r, plastic.g, plastic.b, 1.0))
+	# zastygła poza: bez mrugania, oddechu i gadania
+	var fc = rig.get("face")
+	if fc != null and is_instance_valid(fc):
+		(fc as Node).process_mode = Node.PROCESS_MODE_DISABLED
+	rig["pose"] = pose
+	return rig
+
+
+## zatrzymuje postać w pozie (manekin). Wołać po dodaniu do sceny — poza drzewem animacja nie ustawia kości.
+static func freeze(rig: Dictionary, at := 0.4) -> void:
+	if rig.is_empty() or not rig.has("anim"):
+		return
+	var ap: AnimationPlayer = rig.anim
+	var anim: String = POSES.get(String(rig.get("pose", "")), "Idle")
+	if not ap.has_animation(anim):
+		return
+	rig.cur = anim
+	ap.play(anim, 0.0)
+	ap.advance(at)
+	ap.pause()
 
 
 ## ubiera postać w rzeczy z pól ekwipunku: gear = {pole: id przedmiotu}

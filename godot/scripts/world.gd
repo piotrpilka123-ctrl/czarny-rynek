@@ -10,6 +10,7 @@ const Interior = preload("res://scripts/interior.gd")
 const Signs = preload("res://scripts/signs.gd")
 const Facade = preload("res://scripts/facade.gd")
 const Details = preload("res://scripts/details.gd")
+const Chars = preload("res://scripts/chars.gd")
 
 const X0 := -210.0
 const Z0 := -171.0
@@ -5234,14 +5235,25 @@ func _clothes_room() -> void:
 	var wn: Dictionary = Interior.window(g, Vector3(cx - 2.2, 1.6, d * 0.5), 1.8, 1.3, "n", "sheer", false)
 	g.get_child(g.get_child_count() - 1).rotation.y = PI
 	windows.append(wn)
-	# manekin w oknie wystawowym: marynarka przodem do ulicy
-	var mk := Stations.model("manekin")
-	if mk != null:
-		Interior._tint(mk, Color(0.2, 0.3, 0.42))
-		mk.position = Vector3(cx - 2.6, 0.0, d * 0.5 - 0.5)
-		mk.rotation.y = 0.25
-		g.add_child(mk)
-		add_col(cx - 2.85, cx - 2.35, d * 0.5 - 0.75, d * 0.5 - 0.25, 1.6, true, -1.0)
+	# manekiny w oknie wystawowym i przy ladzie: ubrane w to, co naprawdę wisi w sklepie
+	var plinth := Models.mat("cfc8b8", 0.6)
+	for e in [[-2.75, d * 0.5 - 0.55, 0.3, {"glowa": "czapka_daszek_czerwona", "gora": "dres_gora_czerwona", "spodnie": "dresy_czarne", "buty": "buty_bieg_biale"}],
+			[-1.7, d * 0.5 - 0.5, -0.2, {"glowa": "czapka_zimowa_szara", "gora": "kurtka_puchowa", "spodnie": "jeansy_jasne", "buty": "trampki"}],
+			[w * 0.5 - 2.9, -d * 0.5 + 0.5, 0.35, {"gora": "kurtka_skorzana", "spodnie": "jeansy_czarne", "buty": "buty_robocze"}]]:
+		var mx: float = cx + float(e[0])
+		var mzz: float = e[1]
+		var front: float = PI if mzz > 0.0 else 0.0     # ci w oknie stoją przodem do ulicy, ten przy ladzie do sali
+		Models.cyl(g, 0.3, 0.32, 0.07, Vector3(mx, 0.035, mzz), plinth, Vector3.ZERO, 20)
+		var mrig: Dictionary = Chars.mannequin(e[3])
+		if not mrig.is_empty():
+			mrig.root.position = Vector3(mx, 0.07, mzz)
+			mrig.root.rotation.y = front + float(e[2])
+			g.add_child(mrig.root)
+			if mrig.root.is_inside_tree():
+				Chars.freeze(mrig)
+			else:
+				mrig.root.tree_entered.connect(func(): Chars.freeze(mrig), CONNECT_ONE_SHOT)
+		add_col(mx - 0.3, mx + 0.3, mzz - 0.3, mzz + 0.3, 1.8, true, -1.0)
 		rects.pop_back()
 	Interior.shoes(g, Vector3(cx + 0.9, 0.0, 2.6), 0.4, "5a3a1a")
 	Interior.shoes(g, Vector3(cx + 1.3, 0.0, 2.7), -0.3, "1c1c20")
