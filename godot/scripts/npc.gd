@@ -136,6 +136,15 @@ func _pick_next(n: Dictionary, weighted: bool) -> void:
 	if opts.is_empty():
 		return
 	var pick: int = opts.pick_random()
+	if n.kind == "citizen" and float(n.get("panic_until", 0.0)) > G.now:
+		# W panice wolno zawrócić: wybierz istniejącą ścieżkę oddalającą od pościgu.
+		var best := -1.0
+		var player_at := Vector2(G.player.global_position.x, G.player.global_position.z)
+		for link in cur.links:
+			var away := Vector2(float(wp[link].x), float(wp[link].z)).distance_squared_to(player_at)
+			if away > best:
+				best = away
+				pick = int(link)
 	if weighted and opts.size() > 1:
 		# policja chętniej patroluje „gorące” okolice
 		var tot := 0.0
@@ -273,7 +282,7 @@ func _static(o: Dictionary) -> Dictionary:
 		n.interact = {"label": func(): return "Zagadaj: " + String(n.name), "range": o.get("range", 2.6), "act": o.act}
 	elif not n.lines.is_empty():
 		n.interact = {"label": func(): return "Zagadaj: " + String(n.name), "range": 2.6, "act": func():
-			var line: String = n.lines.pick_random()
+			var line: String = smalltalk(n, n.lines)
 			Chars.say(rig, clampf(float(line.length()) / 16.0, 1.5, 6.0))
 			G.ui.dialog({"name": n.name, "lines": [line]})}
 	Chars.animate(rig, 0.0, 0.0, n.pose)
@@ -1132,6 +1141,7 @@ func update(dt: float) -> void:
 		want_active = 6
 	if G.rain > 0.4:
 		want_active = mini(want_active, 4)
+	var street_alarm: bool = outside and G.S.wanted and any_chase()
 	var can_street: bool = outside and int(G.S.lvl) >= 3 and G.packed_total(G.S.inv) > 0 and not G.S.wanted
 	max_susp = 0.0
 	for n in citizens:
@@ -1148,6 +1158,12 @@ func update(dt: float) -> void:
 			if dp > 55.0 and n.state != "talk":
 				_roll_identity(n)
 		n.icon.visible = can_street and n.user and dp < 16.0 and not n.refused and G.S.t - float(n.last_deal) > 240.0
+		if street_alarm and dp < 14.0 and n.state != "talk" and G.now >= float(n.get("alarm_check", 0.0)):
+			n["alarm_check"] = G.now + 1.0
+			if G.world.los(n.x, n.z, pp.x, pp.z):
+				n["panic_until"] = G.now + 5.0
+				n.idle = 0.0
+		var panicking: bool = float(n.get("panic_until", 0.0)) > G.now
 		var sp := 0.0
 		var pose := ""
 		if n.state == "talk":
@@ -1166,11 +1182,11 @@ func update(dt: float) -> void:
 			var dz: float = n.tz - n.z
 			var d := sqrt(dx * dx + dz * dz)
 			if d < 0.35:
-				if randf() < 0.22:
+				if not panicking and randf() < 0.22:
 					n.idle = randf_range(2.0, 8.0)
 				_pick_next(n, false)
 			else:
-				sp = n.speed * (1.3 if G.rain > 0.3 else 1.0)
+				sp = maxf(float(n.speed), 2.8) if panicking else n.speed * (1.3 if G.rain > 0.3 else 1.0)
 				n.x += dx / d * sp * dt
 				n.z += dz / d * sp * dt
 				n.rot = atan2(dx, dz)
@@ -1607,17 +1623,43 @@ func _fire(c: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- rozmowy
+## Mieszkańcy komentują dzień i pogodę; ich własne kwestie wracają co drugą rozmowę.
+func smalltalk(n: Dictionary, fallback: Array = []) -> String:
+	var pool: Array = fallback.duplicate()
+	var turn := int(n.get("smalltalk_count", 0))
+	if pool.is_empty() or turn % 2 == 0:
+		if G.S.wanted:
+			pool = ["Nie zatrzymuj się tu, policja krąży po osiedlu.", "Znowu syreny. Ja niczego nie widziałem.", "Nie wciągaj mnie w swoje sprawy. Idź już."]
+		elif G.rain > 0.4:
+			pool = ["Leje od rana. Jeszcze chwila i cały chodnik będzie pod wodą.", "Byle do domu. Znowu zostawiłem parasol przy drzwiach.", "Uważaj na kałużę przy krawężniku. Auto przejedzie i po spodniach."]
+		elif G.is_night():
+			pool = ["Z Neonu znowu bas niesie po całym osiedlu.", "O tej porze wolę główną ulicą. Za garażami różnie bywa.", "Jutro na rano, a sąsiedzi dalej robią imprezę."]
+		elif G.hour() < 9.0:
+			pool = ["Jeszcze kawy nie wypiłem. Daj mi chwilę.", "Do piekarni idę. Póki bułki są ciepłe.", "Znowu autobus uciekł mi sprzed nosa."]
+	if pool.is_empty():
+		pool = ["Co tam?", "No hej.", "Słucham?", "Spokojnie dziś na osiedlu. Oby tak zostało."]
+	var previous := String(n.get("last_smalltalk", ""))
+	var choices: Array = []
+	for candidate in pool:
+		if String(candidate) != previous:
+			choices.append(candidate)
+	var line: String = (choices if not choices.is_empty() else pool).pick_random()
+	n["last_smalltalk"] = line
+	n["smalltalk_count"] = turn + 1
+	return line
+
+
 func approach_citizen(n: Dictionary) -> void:
 	if any_chase():
-		G.notify("Nie teraz!", "bad")
+		G.notify(smalltalk(n), "warn")
 		return
 	n.state = "talk"
 	n.talk_t = 3.0
 	if int(G.S.lvl) < 3:
-		G.ui.dialog({"name": n.name, "lines": [["Znamy się?", "Nie mam czasu.", "Czego chcesz?", "Nie znam cię, kolego."].pick_random(), {"n": "", "t": "(Obcy zaczną z Tobą rozmawiać o interesach od poziomu 3.)"}]})
+		G.ui.dialog({"name": n.name, "lines": [smalltalk(n, ["Znamy się?", "Nie mam czasu.", "Czego chcesz?", "Nie znam cię, kolego."]), {"n": "", "t": "(Obcy zaczną z Tobą rozmawiać o interesach od poziomu 3.)"}]})
 		return
 	if G.packed_total(G.S.inv) <= 0:
-		G.ui.dialog({"name": n.name, "lines": [["Co tam?", "No hej.", "Słucham?"].pick_random()]})
+		G.ui.dialog({"name": n.name, "lines": [smalltalk(n)]})
 		return
 	if G.S.t - float(n.last_deal) < 240.0:
 		G.ui.dialog({"name": n.name, "lines": ["Już coś od ciebie brałem. Daj mi chwilę, dobra?"]})
@@ -1695,7 +1737,7 @@ func _sting_chase(n: Dictionary) -> void:
 
 func deal_with_customer(n: Dictionary) -> void:
 	if any_chase():
-		G.notify("Nie teraz!", "bad")
+		G.notify(smalltalk(n), "warn")
 		return
 	var o: Dictionary = n.order
 	var def: Dictionary = n.def
