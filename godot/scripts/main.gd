@@ -3096,7 +3096,14 @@ func _test_ui(what: String) -> void:
 			G.S.items["pakiet_procesowy"] = 1
 			G.S.items["pakiet_finalny"] = 1
 			world.refresh_furniture("garage")
-			ui.open_station("garage", 0)
+			if what == "labwork":
+				teleport("garage", Vector3(float(D.ROOMS.garage.cx), 0.0, 1.8), 0.0)
+				G.busy = false
+				G.test_mode = false
+				print("LAB_WORK_STARTED ", lab_care.play("load", "garage", 0, "kokaina"))
+				get_tree().create_timer(3.2).timeout.connect(func(): G.test_mode = true)
+			else:
+				ui.open_station("garage", 0)
 		"dostawy":
 			G.add_pack(G.S.inv, "dym", 100, 3)
 			_test_order("dominik")
@@ -3563,6 +3570,8 @@ func _shot() -> void:
 		last_us = now_us
 		if i == 30 and args.has("ui"):
 			_test_ui(String(args.ui))
+		if i == 40 and args.has("labpose") and lab_care.active:
+			lab_care.set_meta("preview_phase", float(args.labpose))
 		if i == 36 and args.has("demo_step") and ui.inv.demo_tween != null and ui.inv.demo_tween.is_valid():
 			ui.inv.demo_tween.custom_step(float(args.demo_step))
 		if i == 30 and args.has("prostage") and G.prologue != null:

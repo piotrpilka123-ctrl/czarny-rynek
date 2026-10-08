@@ -2610,13 +2610,13 @@ func _plant_card_fill() -> void:
 	plant_card.visible = true
    # pomiary wydajności: podpowiedź zostaje na ekranie
 
-func set_prompt(text: String, progress := -1.0) -> void:
+func set_prompt(text: String, progress := -1.0, show_key := true) -> void:
 	if test_prompt_lock and text == "":
 		return
 	if text == "":
 		prompt.visible = false
 		return
-	var bb := "[b][color=#4ade80][%s][/color][/b]  %s" % [G.kn("use"), text]
+	var bb := ("[b][color=#4ade80][%s][/color][/b]  %s" % [G.kn("use"), text]) if show_key else text
 	if l_prompt.text != bb:
 		l_prompt.text = bb
 	prompt_bar.visible = progress >= 0.0
