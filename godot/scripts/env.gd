@@ -37,8 +37,8 @@ const KEYS := [
 	[4.6, "night", 215.0, 0.17, Color(0.55, 0.65, 1.0), 0.045, 0.026],
 	[6.0, "dusk", 92.0, 0.5, Color(1.0, 0.6, 0.38), 0.5, 0.011],
 	[7.6, "late", 108.0, 1.1, Color(1.0, 0.82, 0.58), 0.68, 0.007],
-	[9.8, "day", 135.0, 1.55, Color(1.0, 0.95, 0.88), 0.8, 0.0038],
-	[15.2, "day", 228.0, 1.55, Color(1.0, 0.95, 0.88), 0.8, 0.0038],
+	[9.8, "day", 135.0, 1.42, Color(1.0, 0.95, 0.88), 0.8, 0.0038],
+	[15.2, "day", 228.0, 1.42, Color(1.0, 0.95, 0.88), 0.8, 0.0038],
 	[17.0, "late", 250.0, 1.15, Color(1.0, 0.8, 0.55), 0.68, 0.006],
 	[18.7, "dusk", 268.0, 0.55, Color(1.0, 0.56, 0.34), 0.52, 0.009],
 	[20.3, "night", 120.0, 0.17, Color(0.55, 0.65, 1.0), 0.045, 0.024],
@@ -360,11 +360,13 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		sun.light_energy = sun_e * (1.0 - ov * 0.8)
 		# słońce nisko nad ulicą zalewało kadr białą łuną — snop we mgle jest teraz dużo słabszy
 		sun.light_volumetric_fog_energy = lerpf(0.22, 0.6, night)
-		# nocą do światła nieba dochodzi słabe, niebieskawe wypełnienie — cienie nie są smoliście czarne
-		env.ambient_light_sky_contribution = lerpf(1.0, 0.5, night)
-		# (dawniej mocno niebieskie i jasne: dalekie budynki świeciły granatem na tle brunatnego nieba)
-		env.ambient_light_color = Color(0.15, 0.17, 0.23)
-		env.ambient_light_energy = lerpf(0.9, 1.05, night)
+		# Do światła nieba dochodzi wypełnienie kolorem: nocą słabe i niebieskawe, w dzień jasne, chłodne.
+		# Samo niebo prawie nie doświetla cieni (nawet czterokrotnie wzmocnione), więc elewacje od północy
+		# były w południe niemal czarne.
+		env.ambient_light_sky_contribution = lerpf(0.3, 0.5, night)
+		# (nocne dawniej mocno niebieskie i jasne: dalekie budynki świeciły granatem na tle brunatnego nieba)
+		env.ambient_light_color = Color(0.6, 0.66, 0.75).lerp(Color(0.16, 0.19, 0.27), night)
+		env.ambient_light_energy = lerpf(1.2, 1.7, night) * (1.0 - ov * 0.25)
 		env.tonemap_exposure = lerpf(0.92, 1.2, night) * bright
 		env.glow_hdr_threshold = lerpf(1.6, 0.85, night)
 		env.fog_light_color = (sun_c * 0.5 + Color(0.4, 0.45, 0.5) * 0.5) * lerpf(1.0, 0.08, night)
