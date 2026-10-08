@@ -2304,10 +2304,20 @@ func _buildings() -> void:
 	_sign("FOR SALE\ncall 600 100 …", Vector3(190.0, hd(190.0, -51.0) + 4.6, -51.9), Color(0.95, 0.85, 0.2), 90, 0.0, 0.007, 10)
 
 
+## roleta zamkniętego sklepu: blacha trapezowa pomalowana na kolor lokalu. („rusted_shutter” wyglądał jak ciemny mur,
+## a w cieniu jak czarna dziura — zardzewiałe rolety to teraz ta sama blacha w rdzawej farbie.)
+const SHUTTER_TINT := {"SCRAP YARD": Color(0.74, 0.5, 0.36), "FUNERAL HOME": Color(0.5, 0.52, 0.56), "BAKERY": Color(0.88, 0.76, 0.58),
+	"KEBAB": Color(0.82, 0.8, 0.76), "ELA'S HAIR SALON": Color(0.72, 0.62, 0.78), "SECOND HAND": Color(0.8, 0.8, 0.8)}
+
+func _shutter_mat(shutter: String, title: String) -> Material:
+	var tint: Color = SHUTTER_TINT.get(title, Color(0.7, 0.55, 0.45) if shutter == "rusted_shutter" else Color(0.8, 0.8, 0.8))
+	return Props.pbr("painted_metal_shutter", 0.5, tint)
+
+
 func _shopfront(x: float, zw: float, title: String, color: Color, shutter: String, closed: bool, dz := 1.0) -> void:
 	var z := zw + dz * 0.06
 	var gy := hd(x, zw + dz)
-	Models.box(city, Vector3(5.2, 2.5, 0.12), Vector3(x, gy + 1.4, z), Props.pbr(shutter, 0.5, Color(0.8, 0.8, 0.8)) if closed else Models.mat("0c1216", 0.1, 0.4))
+	Models.box(city, Vector3(5.2, 2.5, 0.12), Vector3(x, gy + 1.4, z), _shutter_mat(shutter, title) if closed else Models.mat("1c2228", 0.3, 0.1))
 	_wall(Signs.shop(title, color, 2.9, not closed), x, 3.05, z + dz * 0.1, 0.0 if dz > 0.0 else PI)
 	if not closed:
 		var li := OmniLight3D.new()
