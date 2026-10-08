@@ -123,6 +123,13 @@ const RECIPES := {
 		"modes": [{"name": "Niska temp.", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Wolno i czysto."},
 			{"name": "Średnia temp.", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
 			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.22, "desc": "Szybko, śmierdząco i z ryzykiem przypalenia."}]},
+	# kokaina: już nie z hurtu — oczyszczasz pastę w tym samym laboratorium; najdłuższa i najdroższa robota, ale najdroższy towar
+	"kokaina": {"name": "Kokaina", "station": "lab", "product": "snieg", "lvl": 10, "input": {"chemia": 3}, "hours": 11.0, "yield": 14.0, "pur": 78,
+		"smell": 30.0, "power": 9.0,
+		"stages": [{"name": "Ekstrakcja", "to": 0.35, "hold": "Odlej rozpuszczalnik"}, {"name": "Oczyszczanie", "to": 0.8, "hold": "Przefiltruj"}, {"name": "Suszenie", "to": 1.0}],
+		"modes": [{"name": "Dokładnie", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Dwa razy przez filtr: wolno, ale czysto."},
+			{"name": "Zwyczajnie", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
+			{"name": "Na skróty", "speed": 1.5, "smell": 1.5, "power": 1.3, "pur": -10, "burn": 0.15, "desc": "Szybko, ale towar słabszy i co siódma partia jest do wyrzucenia."}]},
 }
 const DRY_HOURS := 8.0
 ## uprawa w doniczkach: ile doniczek mieści kryjówka, tempo bez lampy, kara do jakości za brak światła
@@ -195,15 +202,15 @@ const ITEMS := {
 	"lancuch": {"name": "Łańcuch z tombaku", "icon": "ub_lancuch", "size": 0.5, "w": 90.0, "unit": "szt.", "look": {"acc": "chain", "bone": "Bip01 Spine2"}, "slot": "szyja", "price": 650, "lvl": 5,
 		"stats": {"charm": 1.03, "attention": 1.03}, "desc": "Wygląda na złoto. Klienci traktują Cię poważniej — policja też."},
 	# --- warianty szyte z tych samych wykrojów (look.model = wykrój, look.tint = barwienie tkaniny)
-	"bluza_czarna": {"name": "Czarna bluza z kapturem", "icon": "ub_bluza", "size": 1.0, "w": 330.0, "unit": "szt.", "look": {"color": "1e1f23", "hood": true, "model": "bluza_kaptur", "tint": "4a4a50"}, "slot": "gora", "price": 340, "lvl": 3,
+	"bluza_czarna": {"name": "Czarna bluza z kapturem", "icon": "ub_bluza_czarna", "size": 1.0, "w": 330.0, "unit": "szt.", "look": {"color": "1e1f23", "hood": true, "model": "bluza_kaptur", "tint": "4a4a50"}, "slot": "gora", "price": 340, "lvl": 3,
 		"stats": {"vis_night": 0.9, "cap": 2}, "desc": "Ta sama bluza, tylko czarna. Po zmroku prawie Cię nie widać."},
-	"kurtka_czarna": {"name": "Czarna kurtka robocza", "icon": "ub_kurtka", "size": 1.0, "w": 400.0, "unit": "szt.", "look": {"color": "25262a", "collar": true, "model": "kurtka_kieszenie", "tint": "55555c"}, "slot": "gora", "price": 640, "lvl": 5,
+	"kurtka_czarna": {"name": "Czarna kurtka robocza", "icon": "ub_kurtka_czarna", "size": 1.0, "w": 400.0, "unit": "szt.", "look": {"color": "25262a", "collar": true, "model": "kurtka_kieszenie", "tint": "55555c"}, "slot": "gora", "price": 640, "lvl": 5,
 		"stats": {"cap": 4, "conceal": 0.9, "vis_night": 0.92}, "desc": "Cztery kieszenie i ciemny kolor: dużo zmieścisz, mało kto zauważy."},
-	"dresy_czarne": {"name": "Czarne dresy", "icon": "ub_dresy", "size": 1.0, "w": 300.0, "unit": "szt.", "look": {"color": "1c1d21", "model": "dresy", "tint": "55565c"}, "slot": "spodnie", "price": 190, "lvl": 2,
+	"dresy_czarne": {"name": "Czarne dresy", "icon": "ub_dresy_czarne", "size": 1.0, "w": 300.0, "unit": "szt.", "look": {"color": "1c1d21", "model": "dresy", "tint": "55565c"}, "slot": "spodnie", "price": 190, "lvl": 2,
 		"stats": {"speed": 1.02, "stamina": 1.04, "vis_night": 0.96}, "desc": "Wygodne jak zwykłe dresy, a po ciemku mniej rzucają się w oczy."},
-	"jeansy_czarne": {"name": "Czarne jeansy", "icon": "ub_jeansy", "size": 1.0, "w": 340.0, "unit": "szt.", "look": {"color": "202126", "model": "jeansy", "tint": "4c4c58"}, "slot": "spodnie", "price": 260, "lvl": 3,
+	"jeansy_czarne": {"name": "Czarne jeansy", "icon": "ub_jeansy_czarne", "size": 1.0, "w": 340.0, "unit": "szt.", "look": {"color": "202126", "model": "jeansy", "tint": "4c4c58"}, "slot": "spodnie", "price": 260, "lvl": 3,
 		"stats": {"attention": 0.95, "charm": 1.01}, "desc": "Porządne spodnie na miasto. Patrol patrzy na Ciebie jak na zwykłego przechodnia."},
-	"bojowki_czarne": {"name": "Czarne bojówki", "icon": "ub_bojowki", "size": 1.0, "w": 370.0, "unit": "szt.", "look": {"color": "24252a", "cargo": true, "model": "bojowki", "tint": "505056"}, "slot": "spodnie", "price": 430, "lvl": 4,
+	"bojowki_czarne": {"name": "Czarne bojówki", "icon": "ub_bojowki_czarne", "size": 1.0, "w": 370.0, "unit": "szt.", "look": {"color": "24252a", "cargo": true, "model": "bojowki", "tint": "505056"}, "slot": "spodnie", "price": 430, "lvl": 4,
 		"stats": {"cap": 3, "conceal": 0.9, "vis_night": 0.95}, "desc": "Kieszenie na udach jak w zwykłych bojówkach, do tego nocny kolor."},
 	"bluza_kaptur": {"name": "Bluza z kapturem", "icon": "ub_bluza", "size": 1.0, "w": 320.0, "unit": "szt.", "look": {"color": "5b6f8c", "hood": true}, "slot": "gora", "price": 240, "lvl": 2,
 		"stats": {"vis_night": 0.94, "cap": 2}, "desc": "Kaptur na głowę, ręce w kieszeni-kangurce. Dwa dodatkowe miejsca na towar."},
@@ -639,6 +646,7 @@ var WIKTOR_BOX := {"x": 70.0, "z": -57.9, "ry": 3.14159}
 const HINTS := [
 	"Cenę podbijasz w wiadomości. Kilka procent klient zwykle przełknie, przy większej podwyżce odbije kontrofertą albo zerwie rozmowę.",
 	"Przy wymianie możesz jeszcze podbić cenę. Jeśli przesadzisz, klient jej nie przyjmie, wróci do swojej i zapamięta, że próbowałeś.",
+	"U Wiktora dostaniesz tylko zioło i amfetaminę. Metę i kokainę robi się samemu — w laboratorium, gdy urządzisz pod nie lokal.",
 	"Dosyp klientowi gram ponad zamówienie, a zapamięta to na długo. Zadowolony klient zamawia więcej i mniej się targuje.",
 	"Możesz dać mniej, niż klient zamówił, i liczyć jak za całość — ale jak się zorientuje, drugi raz patrzy Ci na ręce.",
 	"Nie handluj na oczach policji. Nocą jest mniej świadków, ale patrole są czujniejsze.",
