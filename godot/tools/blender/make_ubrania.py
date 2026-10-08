@@ -573,7 +573,7 @@ DOWN = Vector((0, 0, -1))
 NECK_CO = Vector((0, -0.08, 1.515))
 NECK_NO = Vector((0, -0.312, 0.95)).normalized()
 ZC = 0.9          # tułów powłoki kończy się równym cięciem na biodrach; niżej jest doszyty dół
-WRIST = 1.09      # mankiet kończy się tuż za nadgarstkiem (zakrywa rękaw namalowany na ciele)
+WRIST = 1.12      # mankiet kończy się tuż za nadgarstkiem (zakrywa rękaw namalowany na ciele)
 SLEEVE = 0.62     # rękaw powłoki kończy się równym cięciem w połowie przedramienia; dalej jest doszyty
 
 
@@ -618,6 +618,10 @@ def _top(B, hem, off, smooth, flare=1.03, wrist=0.8, wrinkle=1.0, extra=None):
         return co.z > ZC - 0.1 and abs(co.x) < 0.3 and legs_w(w) > 0.3
     def off2(co, w):
         o = off(co, w)
+        if abs(co.x) < 0.3 and co.z < 1.1:
+            # w pasie góra odstaje na tyle, żeby schować pasek, szlufki i kieszenie spodni (przebijały na plecach)
+            k = min(1.0, (1.1 - co.z) / 0.07)
+            o = max(o, 0.026 * k * k * (3 - 2 * k))
         if abs(co.x) < 0.3 and co.z < 1.0:
             o = max(o, 0.012 + 0.02 * min(1.0, (1.0 - co.z) / 0.06))
         return o
@@ -641,7 +645,22 @@ def _top(B, hem, off, smooth, flare=1.03, wrist=0.8, wrinkle=1.0, extra=None):
                      max(2, int((ZC - hem) / 0.035) + 1), 1.0, _skirt_w(B, bm, ZC - hem))
         if extra is not None:
             extra(bm)
-        clear(B, bm, 0.005)
+        # W pasie góra trzyma większy odstęp od ciała. Ciało ma tam wymodelowane szlufki i patki własnych spodni:
+        # mocniej wygładzona góra kładła się na tych guzach, a mniej wygładzone spodnie przebijały przez nią plamami.
+        waist = [v for v in bm.verts if not v.is_boundary and abs(v.co.x) < 0.3 and 0.86 < v.co.z < 1.12]
+        for rnd in range(3):
+            for v in bm.verts:
+                g = 0.005
+                if abs(v.co.x) < 0.3 and v.co.z < 1.1:
+                    k = min(1.0, (1.1 - v.co.z) / 0.07)
+                    g += 0.019 * k * k * (3 - 2 * k)
+                loc, nrm, _, _ = B.tree.find_nearest(v.co)
+                if loc is not None and (v.co - loc).dot(nrm) < g:
+                    v.co = loc + nrm * g
+            if rnd < 2:
+                # odsunięte guzy rozchodzą się w gładkie wybrzuszenie zamiast pojedynczych garbów
+                for _ in range(3):
+                    bmesh.ops.smooth_vert(bm, verts=waist, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
     bm, lps = shell(B, pick, off2, smooth, wrinkle=wrinkle, post=post)
     neck = pick_loops(lps, lambda c: c.z > 1.42 and abs(c.x) < 0.1)
     neck = [_neck_ring(neck)] if neck else []
@@ -1044,6 +1063,7 @@ def chinosy():
 
 
 ZL = 0.23         # nogawki powłoki kończą się równym cięciem nad kostką; niżej są doszyte
+ZW = 1.0          # linia pasa spodni
 
 
 def _leg_axis(B, sd, z):
@@ -1067,6 +1087,8 @@ def _legs(B, off, smooth, hem=(0.084, 0.096), taper=0.9, cuff=None):
         return min(off(co, w), 0.009) if co.z > 0.88 else off(co, w)
     def post(bm):
         cut(bm, Vector((0, 0, ZL)), -Z, lambda c: c.z < 0.42)
+        # równa linia pasa (na wysokości bioder); wyżej spodnie i tak chowają się pod górą
+        cut(bm, Vector((0, 0, ZW)), Z, lambda c: c.z > 0.9)
         for sd in ('L', 'R'):
             sx = 1 if sd == 'L' else -1
             on_leg = lambda m, sx=sx: abs(m.z - ZL) < 0.002 and m.x * sx > 0
@@ -1226,13 +1248,13 @@ def rekawiczki():
     B = Body()
     suede = mat('skora_rekawiczki', 'b0915a', 0.95)
     rib = mat('sciagacz_rekawiczki', '9c8d58', 0.95)
-    bm, tree, wrists = _hands(B, lambda co, w: 0.0045)
+    bm, tree, wrists = _hands(B, lambda co, w: 0.0045, 0.95)
     ob = to_object(B, bm, 'rekawiczki', [suede, rib])
-    paint(ob, lambda c, n: along(B, c, 'Forearm', 'Hand') < 0.97, 1)
+    paint(ob, lambda c, n: along(B, c, 'Forearm', 'Hand') < 1.03, 1)
     parts = []
     for lp in wrists:
         c = sum(lp, Vector()) / len(lp)
-        parts.append(band(lp, 0.005, rib, 'sciagacz', 0.001, 1.8))
+        parts.append(band(lp, 0.004, rib, 'sciagacz', 0.0005, 1.8))
     finish(B, ob, parts, 'rekawiczki')
 
 
@@ -1241,15 +1263,15 @@ def rekawiczki_skora():
     B = Body()
     lea = mat('skora_czarna', '1e1611', 0.55)
     metal = mat('metal_klamra', 'b9bcc2', 0.3, 0.9)
-    bm, tree, wrists = _hands(B, lambda co, w: 0.003, 0.82)
+    bm, tree, wrists = _hands(B, lambda co, w: 0.003, 0.93)
     ob = to_object(B, bm, 'rekawiczki_skora', [lea, metal])
     parts = []
     for lp in wrists:
         c = sum(lp, Vector()) / len(lp)
         d = _arm_dir(B, c)
         parts.append(band(lp, 0.005, lea, 'lamowka', 0.001, 1.4))
-        parts.append(band(lp, 0.006, lea, 'pasek', 0.003, 1.8, d * 0.045))
-        loc, nrm, _, _ = tree.find_nearest(c + d * 0.045 + Vector((0, -0.05, 0)))
+        parts.append(band(lp, 0.005, lea, 'pasek', 0.002, 1.8, d * 0.03))
+        loc, nrm, _, _ = tree.find_nearest(c + d * 0.03 + Vector((0, -0.05, 0)))
         bk = rbox('klamra', (0.016, 0.012, 0.004), metal, 0.001, tuple(loc + nrm * 0.006))
         bk.rotation_euler = nrm.to_track_quat('Z', 'Y').to_euler()
         parts.append(bk)
