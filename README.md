@@ -87,7 +87,9 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
   tym dłuższa robota i większy zysk z jednej wymiany. Synteza śmierdzi: bez filtra węglowego rośnie ryzyko nalotu.
 - **Ubrania**: w „Taniej Odzieży” (manekiny pokazują, co wisi w sklepie) kupisz bluzy, kurtki, spodnie, buty, czapki
   i dodatki — także w wersjach kolorystycznych. Każda rzecz ma małą cechę (kieszenie, bieg, widoczność nocą, uwaga
-  patroli), a założone ubranie widać na postaci.
+  patroli), a założone ubranie widać na postaci. Na liście w sklepie wystarczy najechać na rzecz, żeby ją przymierzyć.
+  Dobrane rzeczy tworzą **komplety** z własną premią (garnitur, dres, nocny strój, „po szychcie”); szafa podpowiada,
+  czego brakuje do kompletu. Ubrania podbijają ceny u klientów łącznie najwyżej o 15%.
 
 ## Sterowanie
 

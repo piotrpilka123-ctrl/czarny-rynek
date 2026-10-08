@@ -1225,6 +1225,37 @@ func _tab_wear() -> void:
 		wr.add_child(wn)
 		if wid != "":
 			wr.add_child(_marks(G.stat_marks(D.ITEMS[wid].get("stats", {})), false))
+	# komplet: aktywny (z premią) albo ten, do którego brakuje jednej rzeczy
+	var sets: Array = G.gear_sets()
+	var near: Dictionary = G.gear_set_near()
+	if not sets.is_empty() or not near.is_empty():
+		var kr := K.hbox(6)
+		iv.add_child(kr)
+		var kl := K.lbl("Komplet", 11, K.C_DIM)
+		kl.custom_minimum_size = Vector2(84, 0)
+		kr.add_child(kl)
+		var kn := K.lbl("", 12, K.C_TXT)
+		kn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		kn.clip_text = true
+		kr.add_child(kn)
+		if not sets.is_empty():
+			var names: Array = []
+			var sum := {}
+			for gs in sets:
+				names.append(String(gs.name))
+				for sk in gs.stats:
+					sum[sk] = (float(sum.get(sk, 0.0)) + float(gs.stats[sk])) if sk == "cap" else (float(sum.get(sk, 1.0)) * float(gs.stats[sk]))
+			kn.text = ", ".join(names)
+			kr.tooltip_text = String(sets[0].desc)
+			kr.add_child(_marks(G.stat_marks(sum), false))
+		else:
+			var slot_name := ""
+			for se2 in D.GEAR_SLOTS:
+				if String(se2[0]) == String(near.slot):
+					slot_name = String(se2[1]).to_lower()
+			kn.text = "%s — brakuje: %s" % [String(near.set.name), slot_name]
+			kn.add_theme_color_override("font_color", K.C_DIM)
+			kr.tooltip_text = String(near.set.desc)
 	# prawa strona: wieszak
 	var right := _frame(W_SIDE * 2.0 - 48.0, H_BODY)
 	row.add_child(right)

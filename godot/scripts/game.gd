@@ -302,6 +302,13 @@ func outfit_stat(key: String, def := 1.0) -> float:
 		var st: Dictionary = D.ITEMS[id].get("stats", {})
 		if st.has(key):
 			v = (v + float(st[key])) if key == "cap" else (v * float(st[key]))
+	# komplety: dobrane rzeczy dają razem coś ekstra
+	for gs in gear_sets():
+		var ss: Dictionary = gs.stats
+		if ss.has(key):
+			v = (v + float(ss[key])) if key == "cap" else (v * float(ss[key]))
+	if key == "charm":
+		v = minf(v, D.CHARM_CAP)
 	# po szpitalu: obolały szybciej się męczy i wolniej biega
 	if hurt():
 		if key == "speed":
@@ -319,6 +326,36 @@ func gear(slot: String) -> String:
 
 func is_gear(id: String) -> bool:
 	return D.ITEMS.has(id) and D.ITEMS[id].has("slot")
+
+
+## komplety, które masz teraz na sobie (w każdym wymaganym polu jedna z pasujących rzeczy)
+func gear_sets() -> Array:
+	var out := []
+	if S == null or not S.has("gear"):
+		return out
+	for gs in D.GEAR_SETS:
+		var ok := true
+		for slot in gs.need:
+			if not (gs.need[slot] as Array).has(gear(String(slot))):
+				ok = false
+				break
+		if ok:
+			out.append(gs)
+	return out
+
+
+## komplet, do którego brakuje już tylko jednej rzeczy: {set, slot} albo {} (podpowiedź w szafie)
+func gear_set_near() -> Dictionary:
+	if S == null or not S.has("gear"):
+		return {}
+	for gs in D.GEAR_SETS:
+		var miss := []
+		for slot in gs.need:
+			if not (gs.need[slot] as Array).has(gear(String(slot))):
+				miss.append(String(slot))
+		if miss.size() == 1 and gs.need.size() > 1:
+			return {"set": gs, "slot": miss[0]}
+	return {}
 
 
 ## zakłada ubranie z plecaka; to, co było na tym miejscu, wraca do plecaka
@@ -342,8 +379,11 @@ func gear_off(slot: String) -> bool:
 	var id := gear(slot)
 	if id == "":
 		return false
-	var lost_cap := float(D.ITEMS[id].get("stats", {}).get("cap", 0.0))
-	if carry_total() + float(D.ITEMS[id].size) > float(capacity()) - lost_cap + 0.01:
+	# ile miejsca zostanie bez tej rzeczy (jej kieszenie, a czasem i premia kompletu, znikają razem z nią)
+	S.gear[slot] = ""
+	var cap_after := float(capacity())
+	S.gear[slot] = id
+	if carry_total() + float(D.ITEMS[id].size) > cap_after + 0.01:
 		notify("Nie masz gdzie tego schować — %s pełne." % ("kieszenie" if bag_name() == "Kieszenie" else "plecak"), "warn")
 		return false
 	S.gear[slot] = ""

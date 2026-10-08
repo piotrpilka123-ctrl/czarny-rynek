@@ -283,6 +283,19 @@ const ITEMS := {
 		"stats": {"attention": 0.98, "speed": 0.99}, "desc": "W takich chodzi pół osiedla. Ciężkie, ale nikt na nie nie patrzy."},
 }
 ## pola ubioru wokół postaci w ekwipunku: [id, nazwa, strona (-1 lewa, 1 prawa), wysokość na sylwetce 0..1 od góry]
+## Komplety: dobrane rzeczy dają razem coś ekstra, ponad własne cechy. `need` = pole → rzeczy, z których jedna musi być na sobie.
+const GEAR_SETS := [
+	{"id": "garnitur", "name": "Garnitur", "need": {"gora": ["marynarka"], "spodnie": ["spodnie_garnitur"], "buty": ["polbuty"]}, "stats": {"attention": 0.94},
+		"desc": "Marynarka, spodnie w kant i półbuty. Patrol bierze Cię za urzędnika i patrzy w inną stronę."},
+	{"id": "dres", "name": "Dres w komplecie", "need": {"gora": ["dres_gora", "dres_gora_czerwona"], "spodnie": ["dresy", "dresy_czarne"], "buty": ["buty_bieg", "buty_bieg_biale", "buty_bieg_czarne"]},
+		"stats": {"speed": 1.02, "stamina": 1.05}, "desc": "Bluza dresowa, dresy i buty do biegania. Nic nie krępuje ruchów."},
+	{"id": "noc", "name": "Nocny strój", "need": {"glowa": ["czapka_zimowa", "czapka_daszek_czarna"], "gora": ["bluza_czarna", "kurtka_czarna"], "spodnie": ["dresy_czarne", "jeansy_czarne", "bojowki_czarne"]},
+		"stats": {"vis_night": 0.94}, "desc": "Od czapki po nogawki na czarno. Po zmroku zlewasz się z murem."},
+	{"id": "robotnik", "name": "Po szychcie", "need": {"gora": ["kurtka_kieszenie", "kurtka_czarna", "kurtka_jeans"], "spodnie": ["bojowki", "bojowki_czarne"], "buty": ["buty_robocze"]},
+		"stats": {"attention": 0.96, "cap": 2}, "desc": "Kurtka, bojówki i robocze buty. Wyglądasz jak ktoś po zmianie, a w kieszeniach mieścisz dwie rzeczy więcej."},
+]
+## Ubranie pomaga w cenach, ale nie robi gry za gracza: łączny wpływ wszystkiego, co masz na sobie, na ceny u klientów.
+const CHARM_CAP := 1.15
 const GEAR_SLOTS := [["glowa", "Czapka", 1, 0.06], ["szyja", "Dodatek", -1, 0.17], ["gora", "Góra", 1, 0.33], ["dlonie", "Rękawiczki", 1, 0.52], ["spodnie", "Spodnie", -1, 0.66], ["buty", "Buty", -1, 0.9]]
 const SIZE_PACK := 1.0
 const SIZE_BULK := 1.0

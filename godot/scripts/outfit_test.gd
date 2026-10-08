@@ -206,6 +206,36 @@ static func run(T) -> void:
 	var gbase: Dictionary = G.new_state()
 	G._merge(gbase, JSON.parse_string(JSON.stringify(S)))
 	T.ok(String(gbase.gear.get("gora", "")) == "kurtka_kieszenie" and int(gbase.items.get("bluza_kaptur", 0)) == 1, "założone ubrania i te w plecaku zapisują się")
+	# --- komplety: dobrane rzeczy dają premię, niekompletne — podpowiedź; ceny mają limit
+	var gear_keep: Dictionary = (S.get("gear", {}) as Dictionary).duplicate()
+	S.gear = {"gora": "marynarka", "spodnie": "spodnie_garnitur", "buty": "trampki"}
+	var att_parts: float = float(D.ITEMS.marynarka.stats.attention) * float(D.ITEMS.spodnie_garnitur.stats.attention)
+	var near0: Dictionary = G.gear_set_near()
+	T.ok(G.gear_sets().is_empty() and absf(G.outfit_stat("attention") - att_parts) < 0.001 and not near0.is_empty() and String(near0.set.id) == "garnitur" and String(near0.slot) == "buty",
+		"garnitur bez półbutów to jeszcze nie komplet — szafa podpowiada, czego brakuje")
+	S.gear.buty = "polbuty"
+	var sets1: Array = G.gear_sets()
+	T.ok(sets1.size() == 1 and String(sets1[0].id) == "garnitur" and absf(G.outfit_stat("attention") - att_parts * float(D.GEAR_SETS[0].stats.attention)) < 0.001, "komplet „Garnitur” dokłada własną premię (patrole %.2f)" % G.outfit_stat("attention"))
+	S.gear["szyja"] = "lancuch"
+	S.gear["dlonie"] = "rekawiczki_skora"
+	var raw_charm := 1.0
+	for gsl in S.gear:
+		raw_charm *= float(D.ITEMS[String(S.gear[gsl])].get("stats", {}).get("charm", 1.0))
+	T.ok(raw_charm > D.CHARM_CAP and absf(G.outfit_stat("charm") - D.CHARM_CAP) < 0.001, "ubrania podbijają ceny najwyżej o %d%% (z samych metek wyszłoby %d%%)" % [int(round((D.CHARM_CAP - 1.0) * 100.0)), int(round((raw_charm - 1.0) * 100.0))])
+	S.gear = {"gora": "kurtka_jeans", "spodnie": "bojowki", "buty": "buty_robocze"}
+	var cap_set: int = G.capacity()
+	S.gear.buty = "trampki"
+	T.ok(cap_set == G.capacity() + 2, "komplet „Po szychcie” daje dwa miejsca w kieszeniach, dopóki jest cały")
+	var set_ids := {}
+	var set_ok := true
+	for gs0 in D.GEAR_SETS:
+		set_ids[String(gs0.id)] = true
+		for sl0 in gs0.need:
+			for it0 in gs0.need[sl0]:
+				if not D.ITEMS.has(String(it0)) or String(D.ITEMS[String(it0)].slot) != String(sl0):
+					set_ok = false
+	T.ok(set_ok and set_ids.size() == D.GEAR_SETS.size(), "komplety składają się z rzeczy, które istnieją i pasują do swoich pól")
+	S.gear = gear_keep
 	_cut_tests(T)
 	G.S = keep
 	G.main.teleport(back_loc, back_pos, 0.0)

@@ -3181,6 +3181,12 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "wear")
 			ui.inv.wear_sel = {"wear": "biegacz", "wear2": "kominiarka", "wear3": "garnitur"}[what]
 			ui.inv.render()
+		"komplet", "komplet2":
+			# zrzut: szafa z kompletem „Garnitur” (komplet2: bez butów — podpowiedź, czego brakuje)
+			for gid3 in (["marynarka", "spodnie_garnitur", "polbuty"] if what == "komplet" else ["marynarka", "spodnie_garnitur"]):
+				G.S.items[gid3] = 1
+				G.gear_wear(gid3)
+			ui.open_inventory("", "wear")
 		"czat", "czat2":
 			# zrzut: rozmowa z klientem w telefonie — nowe zamówienie z kaflami odpowiedzi ("czat2": negocjacja sumy)
 			var co := _test_order("dominik", false)
