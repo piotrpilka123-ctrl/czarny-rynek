@@ -31,16 +31,27 @@ kliknięcie, przytrzymanie LPM, przeciągnięcie, puszczenie oraz wybór i potwi
   a po umówionej porze termin, do którego czeka. Pierwsze spotkanie objaśnia czas gry,
   minimapę, pełną mapę i składanie zamówionej wagi z paczek. Indeksy fabuły bez zmian.
 
-## Aktualny blok
+## Ostatni ukończony blok
 
-- npc.gd: kontekstowe kwestie pogody/pory dnia/pościgu, brak natychmiastowego
+- 880eb61, npc.gd: kontekstowe kwestie pogody/pory dnia/pościgu, brak natychmiastowego
   powtarzania tej samej kwestii. Własne kwestie stałych mieszkańców wracają co drugą rozmowę.
 - Przechodnie przy widocznym pościgu (LOS, do 14 m) przestają stać, przyspieszają
   na 5 sekund i na kolejnym skrzyżowaniu wybierają istniejącą ścieżkę oddalającą
   od gracza. Sprawdzanie LOS najwyżej raz na sekundę na pobliskiego przechodnia.
 - Ostatnie polecenie Piotra: dodać własne pomysły, żeby gra i dzielnica bardziej żyły.
-- Do ukończenia: pełny test i commit tego bloku. Potem sprawdzić reakcje w rendererze,
-  następnie pogłębiać harmonogramy mieszkańców i drobne sytuacje uliczne.
+- 639 testów OK. Oddzielny przebieg ze sceną gry potwierdził brak powtórzeń kwestii,
+  zmianę tematu nocą i reakcję prawdziwego przechodnia na pościg (LOS i wyzerowane stanie).
+  Nie oglądano jeszcze zachowania przy pościgu w rendererze — to następna kontrola.
+- Kontrole wizualne: samouczek-potwierdzenie.png, nawierzchnia-final.png w
+  /Users/macbook/codex-podglad. Pokaz potwierdzenia ma widoczną rękę nad oknem.
+- Stan Git po blokach czysty, nic nie wypchnięto na GitHub.
+
+## Następne konkretne zadanie
+
+Obejrzeć pościg z przechodniami w rendererze, potem pogłębić harmonogramy mieszkańców
+lub dodać drobne sytuacje uliczne z gestami. Unikać kolejnych statycznych dekoracji
+jako jedynego sposobu ożywienia mapy. Sprawdzić też pokaz przenoszenia kokainy
+w prologu i jego potwierdzenie przy różnych proporcjach ekranu.
 
 ## Następne bloki
 
