@@ -118,7 +118,54 @@ static func make(name: String, height := 0.0, fit := 0.0, shadows := true) -> No
 	root.set_meta("size", ab.size * s)
 	if not shadows:
 		_no_shadow(inst)
+	if path.ends_with("dom_tv.glb"):
+		_tv_on(inst)
 	return root
+
+
+## Włączony telewizor: ekran świeci rozmytym, powoli zmieniającym się obrazem. Wyłączony ekran był w pokoju
+## smoliście czarną plamą, a przecież telewizor rzuca na pokój niebieską poświatę.
+const SH_TV := """shader_type spatial;
+render_mode unshaded;
+uniform vec2 p0 = vec2(0.0);
+uniform vec2 sz = vec2(1.0);
+varying vec2 suv;
+float blob(vec2 uv, vec2 c, float r) { return smoothstep(r, 0.0, length(uv - c)); }
+void vertex() {
+	// siatka ekranu nie ma rozłożonych UV — położenie na ekranie liczone z jego wymiarów
+	suv = (VERTEX.xy - p0) / sz;
+}
+void fragment() {
+	vec2 uv = suv;
+	float t = TIME * 0.22;
+	// „program”: kilka barwnych plam, które wędrują i co kilka sekund zmieniają układ (cięcie montażowe)
+	float cut = floor(TIME / 4.6);
+	vec2 sh = vec2(fract(sin(cut * 12.9898) * 43758.5), fract(sin(cut * 78.233) * 12543.1));
+	vec3 col = mix(vec3(0.05, 0.07, 0.12), vec3(0.10, 0.13, 0.2), uv.y);
+	col += vec3(0.30, 0.38, 0.55) * blob(uv, vec2(0.3 + 0.2 * sin(t + sh.x * 6.0), 0.45 + 0.15 * cos(t * 1.3)), 0.55);
+	col += vec3(0.45, 0.32, 0.22) * blob(uv, vec2(0.7 + 0.15 * cos(t * 0.8 + sh.y * 6.0), 0.55), 0.4 + 0.2 * sh.x);
+	col += vec3(0.12, 0.3, 0.2) * blob(uv, vec2(sh.y, 0.2 + 0.6 * sh.x), 0.35);
+	// linie obrazu i lekkie przyciemnienie przy krawędziach
+	col *= 0.9 + 0.1 * sin(uv.y * 520.0);
+	vec2 e = smoothstep(vec2(0.0), vec2(0.04), uv) * smoothstep(vec2(0.0), vec2(0.04), 1.0 - uv);
+	col *= 0.55 + 0.45 * e.x * e.y;
+	ALBEDO = col * 0.75;
+}
+"""
+static var _tv_mat: ShaderMaterial = null
+
+
+static func _tv_on(n: Node) -> void:
+	for m in n.find_children("Ekran*", "MeshInstance3D", true, false):
+		if _tv_mat == null:
+			var sh := Shader.new()
+			sh.code = SH_TV
+			_tv_mat = ShaderMaterial.new()
+			_tv_mat.shader = sh
+			var box: AABB = (m as MeshInstance3D).mesh.get_aabb()
+			_tv_mat.set_shader_parameter("p0", Vector2(box.position.x, box.position.y))
+			_tv_mat.set_shader_parameter("sz", Vector2(maxf(box.size.x, 0.001), maxf(box.size.y, 0.001)))
+		(m as MeshInstance3D).material_override = _tv_mat
 
 
 static func _no_shadow(n: Node) -> void:

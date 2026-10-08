@@ -348,6 +348,8 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 			var pane: StandardMaterial3D = wn.pane
 			pane.emission = Color(0.1, 0.14, 0.26).lerp(sun_c.lerp(Color(0.78, 0.86, 0.98), 0.6), day)
 			pane.emission_energy_multiplier = lerpf(0.22, 1.25, day)
+			# nocą szyba jest ciemnym granatem także w świetle lampy z pokoju (jasna wyglądała jak dzień za oknem)
+			pane.albedo_color = Color(0.09, 0.11, 0.17).lerp(Color(0.55, 0.66, 0.78), day)
 			var wl: Light3D = wn.light
 			wl.light_energy = float(wn.base) * day
 			wl.light_color = sun_c.lerp(Color(1.0, 0.96, 0.9), 0.5)
