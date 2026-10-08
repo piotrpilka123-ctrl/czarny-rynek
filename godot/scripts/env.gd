@@ -48,6 +48,8 @@ const KEYS := [
 var we: WorldEnvironment
 var env: Environment
 var sky_mat: ShaderMaterial
+const ROOM_AMBIENT := {"club": [Color(0.55, 0.42, 0.95), 0.6], "lab": [Color(0.72, 0.62, 1.0), 0.4], "basement": [Color(1.0, 0.86, 0.7), 0.24]}
+var _amb_loc := ""
 var sun: DirectionalLight3D
 var rain_fx: GPUParticles3D
 var rain := 0.0
@@ -334,12 +336,20 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 			env.fog_enabled = false
 			env.volumetric_fog_enabled = false
 		else:
+			_amb_loc = ""
 			env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 			env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 			env.fog_enabled = true
 			env.volumetric_fog_enabled = fog_on
 	if inside:
 		sun.light_energy = 0.0
+		# światło otoczenia zależy od wnętrza: w klubie jest tylko neon, więc sufit i góra ścian były smoliście czarne —
+		# dostają słabą, fioletową poświatę; pozostałe pokoje zostają przy ciepłym, przygaszonym świetle
+		if loc != _amb_loc:
+			_amb_loc = loc
+			var amb: Array = ROOM_AMBIENT.get(loc, [Color(1.0, 0.9, 0.78), 0.16])
+			env.ambient_light_color = amb[0]
+			env.ambient_light_energy = amb[1]
 		env.tonemap_exposure = 1.0 * bright
 		env.glow_hdr_threshold = 1.0
 		# okna: w dzień jasne szyby i plama światła na podłodze, nocą granat i łuna miasta

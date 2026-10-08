@@ -5576,7 +5576,7 @@ func _club_room() -> void:
 	var w: float = R.w
 	var d: float = R.d
 	var h: float = R.h
-	var g := _room("club", "concrete_floor_worn_001", "concrete_wall_008", "1a1420", Color(0.2, 0.17, 0.26), 0.5)
+	var g := _room("club", "concrete_floor_worn_001", "concrete_wall_008", "3a3050", Color(0.3, 0.26, 0.4), 0.5)
 	_club_walls(g, cx, w, d, h)
 	_club_extras(g, cx, w, d, h)
 	# bramka z wykrywaczem tuż za drzwiami
@@ -5722,7 +5722,7 @@ func _lab_room() -> void:
 	var w: float = R.w
 	var d: float = R.d
 	var h: float = R.h
-	var g := _room("lab", "concrete_floor_worn_001", "factory_brick", "262423", Color(0.6, 0.56, 0.54), 0.5)
+	var g := _room("lab", "concrete_floor_worn_001", "factory_brick", "4a4644", Color(0.6, 0.56, 0.54), 0.5)
 	var steel := Models.mat("2b2e33", 0.45, 0.7)
 	# dwie słabe, zimne świetlówki — resztę światła dają halogeny na statywach
 	# [x, z, moc, czy rzuca cień] — plamy ciepłego światła pod kloszami, reszta hali tonie w półmroku
