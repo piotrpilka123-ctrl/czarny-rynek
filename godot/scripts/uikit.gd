@@ -1,11 +1,12 @@
 extends RefCounted
 ## Klocki interfejsu: kolory, style, przyciski, ikony (Lucide, licencja ISC).
 
-const C_BG := Color(0.035, 0.043, 0.062, 0.96)
-const C_PANEL := Color(0.055, 0.067, 0.094, 0.95)
-const C_CARD := Color(0.085, 0.102, 0.15, 1.0)
-const C_CARD2 := Color(0.11, 0.13, 0.19, 1.0)
-const C_LINE := Color(0.17, 0.2, 0.27)
+# tła okien: grafit bez granatowego odcienia (ten sam ton co panel sprzedaży i ekwipunek)
+const C_BG := Color(0.036, 0.04, 0.05, 0.96)
+const C_PANEL := Color(0.048, 0.053, 0.066, 0.95)
+const C_CARD := Color(0.074, 0.08, 0.096, 1.0)
+const C_CARD2 := Color(0.1, 0.107, 0.127, 1.0)
+const C_LINE := Color(0.17, 0.18, 0.215)
 const C_TXT := Color(0.9, 0.91, 0.94)
 const C_DIM := Color(0.56, 0.59, 0.66)
 const C_ACC := Color(0.29, 0.87, 0.5)
@@ -106,12 +107,15 @@ static func btn(text: String, cb: Callable, kind := "", small := false) -> Butto
 	var pad := 8 if small else 12
 	var r := 7 if small else 8
 	if kind == "go":
-		b.add_theme_stylebox_override("normal", sb(Color(0.13, 0.62, 0.3), r, Color(0.09, 0.5, 0.25), 1, pad))
-		b.add_theme_stylebox_override("hover", sb(Color(0.18, 0.75, 0.38), r, Color(0.09, 0.5, 0.25), 1, pad))
-		b.add_theme_stylebox_override("pressed", sb(Color(0.1, 0.5, 0.25), r, Color(0.09, 0.5, 0.25), 1, pad))
-		b.add_theme_color_override("font_color", Color(0.02, 0.1, 0.04))
-		b.add_theme_color_override("font_hover_color", Color(0.02, 0.1, 0.04))
-		b.add_theme_color_override("font_pressed_color", Color(0.02, 0.1, 0.04))
+		# główna czynność: jasna obwódka i biały napis zamiast zielonej plamy (kolor zostaje dla ostrzeżeń)
+		b.add_theme_stylebox_override("normal", sb(Color(1, 1, 1, 0.09), r, Color(1, 1, 1, 0.38), 1, pad))
+		b.add_theme_stylebox_override("hover", sb(Color(1, 1, 1, 0.16), r, Color(1, 1, 1, 0.52), 1, pad))
+		b.add_theme_stylebox_override("pressed", sb(Color(1, 1, 1, 0.22), r, Color(1, 1, 1, 0.6), 1, pad))
+		b.add_theme_stylebox_override("disabled", sb(Color(1, 1, 1, 0.02), r, Color(1, 1, 1, 0.08), 1, pad))
+		b.add_theme_color_override("font_color", Color(0.96, 0.97, 0.98))
+		b.add_theme_color_override("font_hover_color", Color.WHITE)
+		b.add_theme_color_override("font_pressed_color", Color.WHITE)
+		b.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.3))
 	elif kind == "bad":
 		b.add_theme_stylebox_override("normal", sb(Color(0.4, 0.11, 0.11), r, Color(0.6, 0.15, 0.15), 1, pad))
 		b.add_theme_stylebox_override("hover", sb(Color(0.52, 0.14, 0.14), r, Color(0.6, 0.15, 0.15), 1, pad))
@@ -123,8 +127,8 @@ static func btn(text: String, cb: Callable, kind := "", small := false) -> Butto
 		b.add_theme_stylebox_override("hover", sb(Color(1, 1, 1, 0.06), r, Color(0, 0, 0, 0), 0, pad))
 		b.add_theme_stylebox_override("pressed", sb(Color(1, 1, 1, 0.1), r, Color(0, 0, 0, 0), 0, pad))
 	elif small:
-		b.add_theme_stylebox_override("normal", sb(Color(0.11, 0.135, 0.2), r, Color(0.2, 0.23, 0.32), 1, pad))
-		b.add_theme_stylebox_override("hover", sb(Color(0.15, 0.185, 0.27), r, Color(0.28, 0.32, 0.48), 1, pad))
+		b.add_theme_stylebox_override("normal", sb(Color(1, 1, 1, 0.04), r, Color(1, 1, 1, 0.13), 1, pad))
+		b.add_theme_stylebox_override("hover", sb(Color(1, 1, 1, 0.09), r, Color(1, 1, 1, 0.24), 1, pad))
 	b.pressed.connect(func():
 		Sfx.play("click")
 		cb.call())

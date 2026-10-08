@@ -1118,7 +1118,7 @@ func _open_modal(title: String, sub := "", dock := "center", width := 900.0, min
 	# okno wymiany jest ciasne: bez dużego tytułu, z wąskimi marginesami i mniejszymi odstępami
 	var tight := dock == "deal"
 	modal_head.visible = not tight
-	modal_box.add_theme_stylebox_override("panel", Trade.panel_style(12) if tight else (Trade.panel_style(18) if minimal else K.sb(Color(0.045, 0.055, 0.08, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20)))
+	modal_box.add_theme_stylebox_override("panel", Trade.panel_style(12) if tight else (Trade.panel_style(18) if minimal else K.sb(Color(0.042, 0.047, 0.059, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20)))
 	# okna sklepów: mniejszy tytuł i mały przycisk zamknięcia, jak w ekwipunku
 	modal_title.add_theme_font_size_override("font_size", 19 if minimal else 26)
 	modal_close.text = "Esc" if minimal else "Zamknij  [Esc]"
@@ -1128,8 +1128,8 @@ func _open_modal(title: String, sub := "", dock := "center", width := 900.0, min
 		else:
 			modal_close.remove_theme_stylebox_override(st)
 	if not minimal:
-		modal_close.add_theme_stylebox_override("normal", K.sb(Color(0.11, 0.135, 0.2), 7, Color(0.2, 0.23, 0.32), 1, 8))
-		modal_close.add_theme_stylebox_override("hover", K.sb(Color(0.15, 0.185, 0.27), 7, Color(0.28, 0.32, 0.48), 1, 8))
+		modal_close.add_theme_stylebox_override("normal", K.sb(Color(1, 1, 1, 0.04), 7, Color(1, 1, 1, 0.13), 1, 8))
+		modal_close.add_theme_stylebox_override("hover", K.sb(Color(1, 1, 1, 0.09), 7, Color(1, 1, 1, 0.24), 1, 8))
 	K.clear(modal_foot)
 	shop_hint = null
 	modal_inner.add_theme_constant_override("separation", 0 if tight else 10)
