@@ -35,7 +35,7 @@ klienci zaczynają o nie pytać dopiero wtedy, gdy masz je skąd wziąć.
 Nie ma długu, odsetek ani kar za spóźnienie. To, co odnosisz Wiktorowi ponad zeszyt za towar, jest Twoim **wkładem**:
 kolejne progi to awanse z nagrodą (Goniec — plecak i więcej klientów, Detalista — większy zeszyt, Dealer — tańszy hurt, Zaufany — garaż
 za pół ceny, Prawa ręka — jeszcze tańszy hurt), a kto trzyma tempo, dostaje premię. Przy 25 000 zł zostajesz wspólnikiem
-(ok. 30–37 dni gry; 1 godzina gry = 60 s). Co rano Wiktor daje też **zlecenie dnia** — mały cel na dziś (sprzedać
+(ok. 25–32 dni gry; 1 godzina gry = 60 s). Co rano Wiktor daje też **zlecenie dnia** — mały cel na dziś (sprzedać
 kilka gramów, zrobić utarg, zanieść gotówkę do skrzynki, być u klientów na czas). Premia za wykonanie idzie na wkład,
 co trzecie zlecenie z rzędu liczy się podwójnie, a niewykonane po prostu przepada. Przy kolejnych awansach Wiktor
 dzwoni i dokłada kawałek sprawy „kto nas sprzedał”.
@@ -78,6 +78,12 @@ po kawalerce: zapis gry, skrytka, waga — dopiero potem Wiktor wysyła po pierw
   nie za plecy (stożki widać na mapie). W pościgu przytrzymaj X, żeby wyrzucić towar.
 - **Miasto**: GPS prowadzi ulicami i ścieżkami, ale w płotach są dziury — kto zna teren, pójdzie na skróty.
 - **Kryjówki**: garaż i piwnica do kupienia; meblujesz je sam (B) — stół z wagą, regały, namiot uprawowy.
+- **Laboratorium**: stół laboratoryjny z hurtowni i „zestaw do udrażniania rur” od Stasia. Z jednego zestawu wychodzi
+  ok. 36 g amfetaminy (taniej niż u Wiktora), z dwóch 20 g metamfetaminy, z trzech 20 g kokainy — im droższy towar,
+  tym dłuższa robota i większy zysk z jednej wymiany. Synteza śmierdzi: bez filtra węglowego rośnie ryzyko nalotu.
+- **Ubrania**: w „Taniej Odzieży” (manekiny pokazują, co wisi w sklepie) kupisz bluzy, kurtki, spodnie, buty, czapki
+  i dodatki — także w wersjach kolorystycznych. Każda rzecz ma małą cechę (kieszenie, bieg, widoczność nocą, uwaga
+  patroli), a założone ubranie widać na postaci.
 
 ## Sterowanie
 

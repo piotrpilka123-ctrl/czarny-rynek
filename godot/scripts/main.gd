@@ -3075,6 +3075,23 @@ func _test_ui(what: String) -> void:
 			ui.open_pack(player.loc if player.loc != "out" else "safe")
 		"station0", "station1", "station2", "station3", "station4", "station9": ui.open_station("garage", int(what.trim_prefix("station")))
 		"hideout": ui.open_hideout("garage")
+		"kryjowka", "labui":
+			# zrzut: urządzony garaż z laboratorium (stół roboczy, stół laboratoryjny, regał, lampa, filtr, suszarka);
+			# "labui" otwiera od razu okno stołu laboratoryjnego
+			G.S.lvl = 10
+			G.S.cash = 90000.0
+			G.buy_property("garaz")
+			for fd in [["stol", -1.6, -3.6, 0], ["lab", 1.4, -3.5, 0], ["regal", 2.3, 1.6, 1], ["filtr", 2.3, -0.9, 0], ["suszarka", -2.2, 1.4, 0], ["lampa", 0.0, -1.0, 0], ["zbiornik", -2.3, -0.9, 0]]:
+				G.furn_buy_place("garage", String(fd[0]), float(fd[1]), float(fd[2]), int(fd[3]))
+			G.S.items["chemia"] = 6
+			world.refresh_furniture("garage")
+			teleport("garage", Vector3(float(D.ROOMS.garage.cx) - 0.4, 0.0, 2.6), 0.0)
+			player.pitch = deg_to_rad(-8.0)
+			if what == "labui":
+				var its: Array = G.S.hide.garage.items
+				for li in range(its.size()):
+					if String(its[li].f) == "lab":
+						ui.open_station("garage", li)
 		"bench_work", "bench_mix":
 			G.add_bulk(G.S.inv, "dym", 80, 18.0)
 			G.S.items["majeranek"] = 6
