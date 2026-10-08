@@ -808,8 +808,14 @@ func ambient(outside: bool, night: float, rain: float) -> void:
 ## Żyjące miasto w tle — z nagrań, które gra już ma: przytłumiony gwar ludzi za dnia i co kilkadziesiąt sekund
 ## coś z daleka (trzaśnięcie drzwi, skrzypnięcie, łomot w śmietnik, kroki, syrena gdzieś na mieście).
 ## To namiastka: prawdziwe tło (ruch uliczny, ptaki, psy, tramwaj) wymaga nowych nagrań na otwartej licencji.
+## Gdy w assets/sfx/miasto/ leżą nagrania (tools/make_miasto.py: dzien.wav, ptaki.wav, pies_N.wav), tło gra z nich:
+## ruch uliczny w pętli, ptaki o świcie i ciszej w dzień, nocą pies w oddali. Bez plików zostaje namiastka.
+const CITY_DIR := "res://assets/sfx/miasto/"
 var city_murmur: AudioStreamPlayer = null
 var city_fx: AudioStreamPlayer = null
+var city_birds: AudioStreamPlayer = null
+var city_real := false
+var _city_dogs: Array = []
 var _city_next := 12.0
 var _city_last := 0
 
@@ -822,25 +828,57 @@ func _city_tick(outside: bool, night: float) -> void:
 		city_fx = AudioStreamPlayer.new()
 		city_fx.bus = city_murmur.bus
 		add_child(city_fx)
-		party_prepare()
-		if party_sounds.has("gwar_baru"):
-			city_murmur.stream = party_sounds["gwar_baru"]
-			city_murmur.pitch_scale = 0.82
+		var day := _loop_wav(CITY_DIR + "dzien.wav")
+		if day != null:
+			city_murmur.stream = day
+			city_real = true
+		else:
+			party_prepare()
+			if party_sounds.has("gwar_baru"):
+				city_murmur.stream = party_sounds["gwar_baru"]
+				city_murmur.pitch_scale = 0.82
+		var birds := _loop_wav(CITY_DIR + "ptaki.wav")
+		if birds != null:
+			city_birds = AudioStreamPlayer.new()
+			city_birds.bus = city_murmur.bus
+			city_birds.volume_db = -70.0
+			city_birds.stream = birds
+			add_child(city_birds)
+		for k in range(1, 6):
+			if ResourceLoader.exists(CITY_DIR + "pies_%d.wav" % k):
+				_city_dogs.append(load(CITY_DIR + "pies_%d.wav" % k))
 	if city_murmur.stream != null:
 		if not city_murmur.playing:
 			city_murmur.play(randf() * 4.0)
 		# gwar słychać w dzień na dworze; nocą i w mieszkaniu prawie znika
 		var m := (-41.0 - night * 16.0) if outside else -62.0
+		if city_real:
+			# nagrany ruch uliczny: w dzień wyraźny, nocą daleki szum, w mieszkaniu przez zamknięte okno
+			m = (-26.0 - night * 11.0) if outside else -50.0
 		city_murmur.volume_db = lerpf(city_murmur.volume_db, m, 0.03)
+	if city_birds != null:
+		var b := city_birds_level(G.hour() if G.S != null else 12.0) if outside else 0.0
+		if b > 0.01 and not city_birds.playing:
+			city_birds.play(randf() * 3.0)
+		city_birds.volume_db = lerpf(city_birds.volume_db, (-48.0 + b * 22.0) if b > 0.01 else -70.0, 0.03)
+		if city_birds.playing and city_birds.volume_db < -66.0:
+			city_birds.stop()
 	var now := Time.get_ticks_msec()
 	_city_next -= float(now - _city_last) / 1000.0 if _city_last > 0 else 0.0
 	_city_last = now
 	if _city_next > 0.0 or not outside or city_fx.playing:
 		return
 	_city_next = randf_range(14.0, 42.0) * (1.0 + night * 0.8)
-	var pick: Array = [["door_close", -19.0, 0.8], ["creak", -22.0, 0.75], ["thud", -18.0, 0.7], ["lomot", -27.0, 0.6], ["impactmetal", -22.0, 0.7], ["syrena", -33.0, 0.92]].pick_random()
+	var picks: Array = [["door_close", -19.0, 0.8], ["creak", -22.0, 0.75], ["thud", -18.0, 0.7], ["lomot", -27.0, 0.6], ["impactmetal", -22.0, 0.7], ["syrena", -33.0, 0.92]]
+	if night > 0.4 and not _city_dogs.is_empty():
+		# nocą najczęściej słychać psa gdzieś za blokami
+		for _k in range(4):
+			picks.append(["pies", -23.0, 1.0])
+	var pick: Array = picks.pick_random()
 	var st: AudioStream = null
-	if String(pick[0]) == "syrena":
+	if String(pick[0]) == "pies":
+		st = _city_dogs.pick_random()
+	elif String(pick[0]) == "syrena":
 		var pth := "res://assets/sfx/syrena_wail.wav"
 		if night > 0.3 and ResourceLoader.exists(pth):
 			st = load(pth)
@@ -863,6 +901,13 @@ func _city_tick(outside: bool, night: float) -> void:
 		tw.tween_interval(3.5)
 		tw.tween_property(city_fx, "volume_db", -60.0, 2.5)
 		tw.tween_callback(city_fx.stop)
+
+
+## jak głośno śpiewają ptaki o danej godzinie (0…1): najgłośniej o świcie, w dzień cicho, od zmierzchu wcale
+static func city_birds_level(h: float) -> float:
+	var dawn := clampf(1.0 - absf(h - 6.2) / 2.6, 0.0, 1.0)
+	var day := 0.32 if (h >= 8.0 and h < 18.5) else 0.0
+	return maxf(dawn, day)
 
 
 # ---------------------------------------------------------------- synteza (w wątku roboczym)

@@ -227,7 +227,7 @@ const ITEMS := {
 	"marynarka": {"name": "Marynarka", "icon": "ub_marynarka", "size": 1.0, "w": 500.0, "unit": "szt.", "look": {"color": "3a3f4c", "collar": true}, "slot": "gora", "price": 1100, "lvl": 6,
 		"stats": {"charm": 1.06, "attention": 0.95, "cap": 1}, "desc": "Z białą koszulą pod spodem. Klienci z grubym portfelem płacą chętniej, patrol bierze Cię za urzędnika."},
 	"spodnie_garnitur": {"name": "Spodnie od garnituru", "icon": "ub_spodnie_garnitur", "size": 1.0, "w": 330.0, "unit": "szt.", "look": {"color": "3a3f4c"}, "slot": "spodnie", "price": 520, "lvl": 5,
-		"stats": {"charm": 1.03, "attention": 0.96}, "desc": "Zaprasowany kant i skórzany pasek. Do marynarki i do klubu."},
+		"stats": {"charm": 1.04, "attention": 0.95}, "desc": "Zaprasowany kant i skórzany pasek. Do marynarki i do klubu."},
 	"polbuty": {"name": "Skórzane półbuty", "icon": "ub_polbuty", "size": 1.0, "w": 380.0, "unit": "szt.", "look": {"color": "3a2619"}, "slot": "buty", "price": 480, "lvl": 5,
 		"stats": {"charm": 1.03, "noise": 1.05, "speed": 0.99}, "desc": "Wypastowane, na obcasie. Robią wrażenie, ale stukają po chodniku i gorzej się w nich biega."},
 	"trampki_wysokie": {"name": "Wysokie trampki", "icon": "ub_trampki_wysokie", "size": 1.0, "w": 340.0, "unit": "szt.", "look": {"color": "8a2f2a"}, "slot": "buty", "price": 260, "lvl": 2,

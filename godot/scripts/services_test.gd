@@ -175,6 +175,13 @@ static func run(T) -> void:
 	T.ok(sm_n >= 4 and boiler_ok and G.world.smoke_mats.size() == sm_n, "z kominów unosi się dym (%d kolumn; kotłownia dymi u wylotu, 24 m nad ziemią)" % sm_n)
 
 	# --- głosy: każda postać ma swoją barwę (stałą), Kuba też mówi, kobiece imiona dostają głosy kobiece
+	# tło miasta: ptaki najgłośniej o świcie, ciszej w dzień, nocą wcale; bez nagrań gra dawne tło i nic się nie wysypuje
+	T.ok(Sfx.city_birds_level(6.2) > 0.95 and Sfx.city_birds_level(13.0) > 0.2 and Sfx.city_birds_level(13.0) < 0.5 and Sfx.city_birds_level(23.0) == 0.0 and Sfx.city_birds_level(2.0) == 0.0,
+		"ptaki w tle: świt %.2f, południe %.2f, noc %.2f" % [Sfx.city_birds_level(6.2), Sfx.city_birds_level(13.0), Sfx.city_birds_level(23.0)])
+	Sfx._city_tick(true, 0.0)
+	Sfx._city_tick(true, 1.0)
+	Sfx._city_tick(false, 1.0)
+	T.ok(Sfx.city_murmur != null and Sfx.city_real == ResourceLoader.exists(Sfx.CITY_DIR + "dzien.wav"), "tło miasta: nagrania grają, gdy są w plikach; bez nich zostaje namiastka")
 	var v_w: Array = Sfx.voice_for("Wiktor")
 	var v_k: Array = Sfx.voice_for("Ty")
 	var v_m: Array = Sfx.voice_for("Mama")
