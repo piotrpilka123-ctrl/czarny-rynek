@@ -524,6 +524,10 @@ func tip_show(title: String, text: String, secs := 11.0) -> void:
 	tw.chain().tween_callback(cc.queue_free)
 
 
+func _sms_in_view(cid: String) -> bool:
+	return cid != "" and mode == "phone" and phone != null and phone.visible and phone.app == "sms" and phone.chat_id == cid
+
+
 ## telefon trzymany pionowo stoi pośrodku ekranu: karta podpowiedzi nie może leżeć u góry na środku, bo zasłania jego nagłówek
 func _tip_side() -> bool:
 	return mode == "phone" and phone != null and phone.visible and not phone._landscape and not (inv != null and inv.visible)
@@ -650,7 +654,14 @@ func _toast_show(text: String, kind: String) -> void:
 	tw.tween_property(p, "modulate:a", 1.0, 0.18)
 
 
+var sms_cid := ""                    # czyja wiadomość wisi w banerze
+
 func _on_sms(cid: String, text: String) -> void:
+	sms_cid = cid
+	# rozmowa z tą osobą jest właśnie otwarta w telefonie: wiadomość widać w dymku, baner byłby powtórką
+	if _sms_in_view(cid):
+		phone.refresh()
+		return
 	sms_name.text = G.contact_name(cid)
 	sms_text.text = text if text.length() < 110 else text.substr(0, 108) + "…"
 	sms_banner.visible = true
@@ -2144,7 +2155,8 @@ func _process_ui(dt: float) -> void:
 		_deal_tick(dt)
 	if sms_t > 0.0:
 		sms_t -= dt
-		if sms_t <= 0.0:
+		if sms_t <= 0.0 or _sms_in_view(sms_cid):
+			sms_t = 0.0
 			sms_banner.visible = false
 	if zone_t > 0.0:
 		zone_t -= dt
