@@ -3088,10 +3088,14 @@ func _test_ui(what: String) -> void:
 			var kp := String(args.get("kpos", "-0.4,2.6,0,-8")).split(",")
 			teleport("garage", Vector3(float(D.ROOMS.garage.cx) + float(kp[0]), 0.0, float(kp[1])), deg_to_rad(float(kp[2])))
 			player.pitch = deg_to_rad(float(kp[3]))
-			if what == "labui":
-				var its: Array = G.S.hide.garage.items
-				for li in range(its.size()):
-					if String(its[li].f) == "lab":
+			var its: Array = G.S.hide.garage.items
+			for li in range(its.size()):
+				if String(its[li].f) == "lab":
+					# --cook: synteza w toku (zawartość naczyń i żar pod kolbą)
+					if args.has("cook"):
+						G.Prod.start("garage", li, "amfetamina")
+						world.refresh_furniture("garage")
+					if what == "labui":
 						ui.open_station("garage", li)
 		"bench_work", "bench_mix":
 			G.add_bulk(G.S.inv, "dym", 80, 18.0)
