@@ -53,3 +53,5 @@ są jego opracowaniem i podlegają tej samej licencji. Okulary, łańcuch, faktu
 | pro_akcja.ogg | „Chase!” — Ted Kerr | https://opengameart.org/content/chase | CC0 |
 | pro_skradanie.mp3 | „Savage Ambush” — Ruskerdax | https://opengameart.org/content/savage-ambush | CC0 |
 | pro_final.mp3 | „Cinematic Epic Trailer – With SFX” (Cinematic Trailer Music) — Gregor Quendel | https://opengameart.org/content/cinematic-trailer-music-collection | CC-BY 4.0 |
+
+`godot/assets/sfx/party/impreza_stereo.wav`: 31,6 s stereo z istniejącego nagrania kyles „crowd partying cheering applause all around”, https://freesound.org/s/637468/, CC0. Korekcja pasma, dopasowanie głośności i krótkie wygaszenia; źródło jest w `godot/tools/audio_src/`. Muzyka prologu pozostaje bez zmian.

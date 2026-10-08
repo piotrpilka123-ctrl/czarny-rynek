@@ -1348,6 +1348,8 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 					amp = 0.62 if (float(c.idle) > 0.0 or c.state == "post") else 0.36
 				"search":
 					amp = 0.7
+		if G.prologue != null:
+			amp *= 0.45  # skupione sprawdzanie sektora, bez szerokiego bujania latarką
 		_scan(c, dt, amp)
 		c.look_t -= dt
 		if c.look_t <= 0.0:
@@ -1514,7 +1516,8 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 		if has_tgt:
 			var to := tgt - Vector2(c.x, c.z)
 			var face := atan2(to.x, to.y)
-			if c.state == "chase" or c.state == "investigate" or c.state == "search":
+			if c.state == "chase" or c.state == "investigate" or c.state == "search" or c.get("beat") != null:
+				# także patrol prologu omija przeszkody, zamiast przechodzić przez ścianę
 				# biegnie trasą omijającą płoty, mury i auta; pod górę wolniej — tak jak gracz
 				var here := Vector2(c.x, c.z)
 				var path: PackedVector2Array = c.get("path", PackedVector2Array())
@@ -1532,8 +1535,13 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 				var h0 := _h(c.x, c.z)
 				var h1 := _h(c.x + dv.x / ln0 * 0.8, c.z + dv.y / ln0 * 0.8)
 				var step := minf(ln0, move_speed * dt * clampf(1.0 - maxf(0.0, (h1 - h0) / 0.8) * 0.75, 0.45, 1.0))
-				c.x += dv.x / ln0 * step
-				c.z += dv.y / ln0 * step
+				var next_pos := here + dv / ln0 * step
+				if G.world.grid_clear(here, next_pos) and not G.world.grid.is_point_solid(G.world._cell(next_pos.x, next_pos.y)):
+					c.x = next_pos.x
+					c.z = next_pos.y
+				else:
+					move_speed = 0.0
+					c.path_t = 0.0
 				if ln0 > 0.05:
 					face = atan2(dv.x, dv.y)
 			else:

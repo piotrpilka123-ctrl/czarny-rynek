@@ -18,6 +18,8 @@ var flashes: Array = []     # koguty radiowozów przed hutą
 var fire_lights: Array = [] # światła pożaru po wybuchach
 var cop_a = null
 var cop_b = null
+var _escape_i := 0
+const ESCAPE_ROUTE := [[176.0, -113.5], [166.0, -106.0], [153.0, -97.0], [142.0, -93.0]]
 var _grace := 0.0               # sekundy po powrocie pod drzwi, w których patrol jeszcze nie „łapie”
 var extra: Array = []           # patrole dostawione na czas prologu (znikają po nim)
 ## dalsze patrole (plan miasta): [x, z, x2, z2] chodzi tam i z powrotem, [x, z, obrót] stoi i się rozgląda
@@ -84,6 +86,13 @@ func gap() -> Vector2:
 	return P(130.6, -90.0)
 
 
+func escape_target() -> Vector2:
+	if _escape_i < ESCAPE_ROUTE.size():
+		var point: Array = ESCAPE_ROUTE[_escape_i]
+		return P(float(point[0]), float(point[1]))
+	return gap()
+
+
 func run_end() -> Vector2:
 	return P(122.5, -77.0)
 
@@ -104,8 +113,8 @@ func step() -> Dictionary:
 			return {"text": func(): return "NALOT! Uciekaj tylnymi drzwiami — naceluj na nie i naciśnij [%s]." % G.kn("use"),
 				"done": func(): return false, "marker": func(): return {"loc": "lab", "x": M.world.lab_exit.x, "z": M.world.lab_exit.y}}
 		"escape":
-			return {"text": func(): return "Kucnij [%s] i trzymaj się cienia. Omijaj snopy latarek, poczekaj, aż patrol się odwróci. Dojdź do dziury w siatce za torami." % G.kn("crouch"),
-				"done": func(): return false, "marker": func(): return {"loc": "out", "x": gap().x, "z": gap().y}}
+			return {"text": func(): return "Kucnij [%s] i trzymaj się cienia. Omijaj snopy latarek, poczekaj, aż patrol się odwróci. Idź do znacznika w cieniu, wzdłuż ściany huty. Kolejne punkty prowadzą do podwiniętej siatki za torami." % G.kn("crouch"),
+				"done": func(): return false, "marker": func(): return {"loc": "out", "x": escape_target().x, "z": escape_target().y}}
 		"run":
 			return {"text": func(): return "Jesteś za siatką. Teraz biegiem [%s] między garaże!" % G.kn("sprint"),
 				"done": func(): return false, "marker": func(): return {"loc": "out", "x": run_end().x, "z": run_end().y}}
@@ -192,41 +201,30 @@ func _party() -> void:
 	U.cut.move_child(_party_fx, 0)
 	Sfx.party_solo(true)
 	Sfx.party_play()
-	Sfx.party_sfx("gwar_baru", -6.0)
 	# [czas, co, …] — "T:tekst" = napis; "P" = wycinek nagrania [nazwa, od, długość, dB, wysokość]; reszta to zdarzenia.
 	# Okrzyki i wiwaty rozbawionej grupy (jak w czołówce „Far Cry 3”), pod spodem gwar bawiącego się tłumu;
 	# każdy kawałek śpiewu pada tylko raz.
 	var ev := [
 		[2.6, "T:— Kuba! Kuba, chodź tu! Polej mu!"],
-		[3.2, "P", "tlum", 0.0, 7.8, -9.0, 1.0],
-		[4.6, "P", "okrzyki_1", 0.0, 3.0, -1.0, 1.0],
-		[6.4, "P", "wiwat_1", 0.0, 0.0, 1.0, 1.0],
+		[3.2, "P", "impreza_stereo", 0.0, 31.6, -7.0, 1.0],
+		[6.4, "P", "wiwat_1", 0.0, 1.28, -8.0, 1.0],
 		[7.2, "T:— Jeszcze jedną. Ostatnią. Słowo."],
-		[8.7, "P", "spiew", 3.7, 1.3, -7.0, 1.0],
-		[9.9, "P", "wiwat_3", 0.0, 0.0, -1.0, 1.0],
-		[10.9, "P", "tlum", 0.0, 7.8, -7.0, 1.0],
-		[11.4, "P", "brawa_bar", 0.0, 5.4, -1.0, 1.0], [12.0, "DROP"], [12.1, "P", "okrzyki_2", 0.0, 3.8, -1.0, 1.0],
-		[12.2, "P", "wiwat_4", 0.0, 0.0, 1.5, 1.0],
+		[9.9, "P", "wiwat_3", 0.0, 2.7, -10.0, 1.0],
+		[12.0, "DROP"],
+		[12.2, "P", "wiwat_4", 0.0, 2.25, -6.0, 1.0],
 		[13.4, "T:(ktoś sypie kreskę na blat)"],
 		[14.4, "LINE"],
-		[14.2, "P", "spiew", 0.25, 2.9, -8.0, 1.0],
 		[18.3, "T:— O kurwa. O, tak. Podgłośnij to!"],
-		[19.0, "P", "spiew", 7.1, 3.55, -4.0, 1.04],
-		[18.6, "P", "tlum", 0.0, 7.8, -7.0, 1.0],
-		[20.6, "P", "wiwat_2", 0.0, 0.0, 0.0, 1.0],
+		[20.6, "P", "wiwat_2", 0.0, 2.3, -9.0, 1.0],
 		[22.3, "T:— Która to doba? Trzecia? Czwarta?"],
-		[23.2, "P", "spiew", 11.05, 3.6, -5.0, 1.0],
-		[24.6, "P", "wiwat_1", 0.0, 0.0, 1.0, 1.07],
 		[26.0, "T:— Kuba, telefon. To znowu Siwy. Odbierzesz w końcu?"],
 		[26.2, "wibracja"],
 		[27.4, "SICK"],
 		# w drodze do łazienki impreza zostaje za plecami: okrzyki i śpiew cichną i robią się coraz niższe
-		[27.6, "P", "wiwat_5", 0.0, 0.0, 0.0, 0.96],
+		[27.6, "P", "wiwat_5", 0.0, 1.9, -13.0, 1.0],
 		[28.2, "T:— Zaraz. Zaraz, tylko —"],
 		[28.6, "STEPS"],
-		[29.1, "P", "spiew", 5.4, 1.2, -3.0, 1.0],
 		[29.8, "DOOR"],
-		[30.1, "P", "wiwat_2", 0.0, 0.0, 2.0, 0.92],
 		[30.5, "wymioty_1"],
 		[32.7, "wymioty_2"],
 		[34.4, "T:— Stary, ty w ogóle jeszcze żyjesz? Siwy mówi, że partia czeka."],
@@ -336,13 +334,13 @@ func _setup_world() -> void:
 		c.beat = null
 		if i >= 2 and i - 2 < FAR_PATROLS.size():
 			var fp: Array = FAR_PATROLS[i - 2]
-			var a0 := P(float(fp[0]), float(fp[1]))
+			var a0: Vector2 = W.near_free(float(fp[0]) * D.SC, float(fp[1]) * D.SC)
 			c.x = a0.x
 			c.z = a0.y
 			c.node.position = Vector3(a0.x, W.height(a0.x, a0.y), a0.y)
 			if fp.size() >= 4:
 				c.idle = 0.0
-				c.beat = [P(float(fp[2]), float(fp[3])), a0]
+				c.beat = [W.near_free(float(fp[2]) * D.SC, float(fp[3]) * D.SC), a0]
 				c.beat_i = 0
 			else:
 				c.node.rotation.y = float(fp[2])
@@ -420,9 +418,12 @@ func _reset_cops() -> void:
 		c0.susp = 0.0
 		c0.hear_t = 0.0
 		c0.look_t = 0.6
+		c0.path = PackedVector2Array()
+		c0.path_t = 0.0
 	_grace = 2.0
+	_escape_i = 0
 	if cop_a != null:
-		var a := P(134.0, -112.0)
+		var a: Vector2 = W.near_free(134.0 * D.SC, -112.0 * D.SC)
 		cop_a.x = a.x
 		cop_a.z = a.y
 		cop_a.idle = 99999.0
@@ -434,11 +435,11 @@ func _reset_cops() -> void:
 		cop_a.node.rotation.y = atan2(42.0, -8.0)
 		cop_a.node.position = Vector3(a.x, W.height(a.x, a.y), a.y)
 	if cop_b != null:
-		var b := P(168.0, -100.0)
+		var b: Vector2 = W.near_free(168.0 * D.SC, -100.0 * D.SC)
 		cop_b.x = b.x
 		cop_b.z = b.y
 		cop_b.idle = 0.0
-		cop_b.beat = [P(168.0, -60.0), P(168.0, -101.0)]
+		cop_b.beat = [W.near_free(168.0 * D.SC, -60.0 * D.SC), b]
 		cop_b.beat_i = 0
 		cop_b.notice = 0.0
 		cop_b.sees = false
@@ -589,6 +590,9 @@ func _process(dt: float) -> void:
 				Sfx.megaphone()
 				M.ui.shout(["WYCHODZIĆ Z RĘKAMI W GÓRZE!", "OTWIERAĆ! POLICJA!", "OSTATNIE OSTRZEŻENIE!"].pick_random())
 		"escape":
+			if Vector2(pp.x, pp.z).distance_to(escape_target()) < 2.2 and _escape_i < ESCAPE_ROUTE.size():
+				_escape_i += 1
+				M.nav_force = true
 			if G.busy:
 				return
 			if not pl.crouching and t > 3.5 and not _hinted.has("crouch"):

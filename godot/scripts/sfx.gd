@@ -513,7 +513,7 @@ func party_prepare() -> void:
 		p.bus = "Impreza"
 		add_child(p)
 		party_fx.append(p)
-	for n in ["okrzyki_1", "okrzyki_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wciagniecie", "wiwat_1", "wiwat_2", "wiwat_3", "wiwat_4", "wiwat_5", "tlum", "wymioty_1", "wymioty_2", "wibracja"]:
+	for n in ["impreza_stereo", "okrzyki_1", "okrzyki_2", "gwar_baru", "brawa_bar", "spiew", "wciaganie_1", "wciaganie_2", "wciagniecie", "wiwat_1", "wiwat_2", "wiwat_3", "wiwat_4", "wiwat_5", "tlum", "wymioty_1", "wymioty_2", "wibracja"]:
 		for ext in ["ogg", "wav"]:
 			var path := "res://assets/sfx/party/%s.%s" % [n, ext]
 			if ResourceLoader.exists(path):
@@ -553,16 +553,21 @@ func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.
 	if muted or not party_sounds.has(name):
 		return null
 	var p: AudioStreamPlayer = _party_voice()
+	var previous_tween: Tween = p.get_meta("cut_tween", null)
+	if previous_tween != null and previous_tween.is_valid():
+		previous_tween.kill()
+	p.set_meta("cut_tween", null)
 	p.bus = "Efekty" if close else "Impreza"
 	p.stream = party_sounds[name]
 	p.volume_db = db
 	p.set_meta("base", pitch)
-	p.pitch_scale = pitch * (1.0 if close else party_low_k)
+	p.pitch_scale = pitch * (1.0 if close else maxf(0.9, party_low_k))
 	p.play(from)
 	if dur > 0.0:
 		var st: AudioStream = p.stream
 		var tw := create_tween()
 		tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		p.set_meta("cut_tween", tw)
 		tw.tween_interval(dur)
 		tw.tween_property(p, "volume_db", -50.0, 0.18)
 		tw.tween_callback(func():
@@ -591,7 +596,7 @@ func party_low(k: float) -> void:
 	party_low_k = clampf(k, 0.5, 1.0)
 	for p in party_fx:
 		if p.playing and p.bus == "Impreza":
-			p.pitch_scale = float(p.get_meta("base", 1.0)) * party_low_k
+			p.pitch_scale = float(p.get_meta("base", 1.0)) * maxf(0.9, party_low_k)
 
 
 ## Robienie kreski tuż przy uchu: siekanie kartą po blacie (dwie serie), zgarnianie w kreskę, dwa stuknięcia
