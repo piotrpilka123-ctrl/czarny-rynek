@@ -109,6 +109,19 @@ static func run(T) -> void:
 		if not D.ITEMS.has(oid0) or not D.ITEMS[oid0].has("slot") or D.OUTFITS.has(oid0) and not D.ITEMS.has(oid0):
 			only_pieces = false
 	T.ok(offer.size() == pieces and only_pieces, "na wieszaku wisi %d ubrań na sztuki i ani jednego całego stroju" % offer.size())
+	# przymiarka: najechanie na rzecz ubiera w nią postać w podglądzie, ale niczego nie kupuje ani nie zakłada
+	var gear_before: String = JSON.stringify(S.get("gear", {}))
+	var sig0: String = G.ui.inv._dress_sig
+	G.ui.inv.try_set("gora", "parka")
+	var sig1: String = G.ui.inv._dress_sig
+	var worn_n := 0
+	for wn0 in G.ui.inv.rig.get("wear", []):
+		if is_instance_valid(wn0):
+			worn_n += 1
+	T.ok(sig1 != sig0 and sig1.contains("parka") and worn_n > 0 and JSON.stringify(S.get("gear", {})) == gear_before and G.item("parka") == 0,
+		"przymiarka w sklepie: parka na postaci w podglądzie, w ekwipunku bez zmian")
+	G.ui.inv.try_clear("parka")
+	T.ok(G.ui.inv._dress_sig == sig0 and G.ui.inv.try_on.is_empty(), "po zjechaniu z rzeczy podgląd wraca do tego, co masz na sobie")
 	var lvl_keep := int(S.lvl)
 	var cash_keep := float(S.cash)
 	S.lvl = 1

@@ -3161,6 +3161,14 @@ func _test_ui(what: String) -> void:
 			ui.open_inventory("", "wear")
 			ui.inv.wear_sel = {"wear": "biegacz", "wear2": "kominiarka", "wear3": "garnitur"}[what]
 			ui.inv.render()
+		"ciuchy":
+			# zrzut: lista zakupów przy lustrze w „Taniej Odzieży” (--lvl=N, --cash=N)
+			G.S.cash = float(args.get("cash", "2500"))
+			G.S.lvl = int(args.get("lvl", "4"))
+			teleport("ciuchy", Vector3(float(D.ROOMS.ciuchy.cx) - 2.0, 0.0, 1.2), 0.0)
+			ui.open_inventory("", "wear")
+			if ui.tip_box != null and is_instance_valid(ui.tip_box):
+				ui.tip_box.queue_free()
 		"org":
 			_test_order("dominik")
 			ui.open_inventory("", "org")

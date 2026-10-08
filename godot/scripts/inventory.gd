@@ -176,11 +176,30 @@ func set_rig(outfit_id: String) -> void:
 
 ## ubrania z pól ekwipunku na postaci w podglądzie (przebudowa tylko wtedy, gdy coś się zmieniło)
 var _dress_sig := ""
+var try_on := {}                # przymierzana rzecz: {pole: id} — tylko w podglądzie, nic nie zmienia w ekwipunku
+
+
+func try_set(slot: String, id: String) -> void:
+	if String(try_on.get(slot, "")) == id and try_on.size() == 1:
+		return
+	try_on = {slot: id}
+	_dress()
+
+
+func try_clear(id := "") -> void:
+	if try_on.is_empty() or (id != "" and not try_on.values().has(id)):
+		return
+	try_on = {}
+	_dress()
 
 func _dress(force := false) -> void:
 	if rig.is_empty() or G.S == null:
 		return
 	var gear: Dictionary = G.S.get("gear", {})
+	if not try_on.is_empty():
+		# przymiarka: rzecz spod kursora na liście sklepu zastępuje na chwilę to, co jest w danym polu
+		gear = gear.duplicate()
+		gear.merge(try_on, true)
 	var sig := rig_outfit + "|" + JSON.stringify(gear)
 	if sig == _dress_sig and not force:
 		return
@@ -316,6 +335,7 @@ func drag_demo(to_right: bool) -> void:
 
 func close() -> void:
 	ask_close()
+	try_on = {}
 	if visible and room == "wiktor":
 		G.box_settle()
 		if G.main != null:
@@ -1240,6 +1260,12 @@ func _tab_wear() -> void:
 			var glocked: bool = int(S.lvl) < int(gd.lvl)
 			var gc := K.panel(T._flat(0.07 if worn else 0.03, 0.4 if worn else 0.0, 9, 6, 7))
 			list.add_child(gc)
+			if not worn:
+				# najechanie = przymiarka na postaci obok (bez kupowania i bez zakładania)
+				gc.mouse_entered.connect(func(): try_set(slot, iid))
+				gc.mouse_exited.connect(func():
+					if not gc.get_global_rect().has_point(gc.get_global_mouse_position()):
+						try_clear(iid))
 			var gh := K.hbox(10)
 			gc.add_child(gh)
 			var gi := K.icon(String(gd.icon), 44, K.C_TXT)
@@ -1268,7 +1294,7 @@ func _tab_wear() -> void:
 			gh.add_child(gb)
 	if wear_offer.is_empty():
 		list.add_child(K.wrap("Nie masz jeszcze ubrań na zmianę.", 12, T.C_LOW))
-	hint.text = "cechy na czerwono szkodzą  •  lepsze rzeczy odblokowują kolejne poziomy"
+	hint.text = "najedź na rzecz, żeby ją przymierzyć  •  cechy na czerwono szkodzą  •  lepsze rzeczy odblokowują kolejne poziomy"
 
 
 ## znaczniki cech: wartość z ikoną, jedna pod drugą (zielone pomagają, czerwone szkodzą)
