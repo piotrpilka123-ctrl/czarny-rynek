@@ -87,7 +87,7 @@ func build(ui_ref) -> void:
 	sbar.add_child(K.icon("wifi", 14, K.C_TXT))
 	sbar.add_child(K.icon("battery_medium", 16, K.C_TXT))
 	# ekran
-	var sp := K.panel(K.sb(Color(0.05, 0.06, 0.085), 18, Color(0, 0, 0, 0), 0, 0))
+	var sp := K.panel(K.sb(Color(0.046, 0.05, 0.062), 18, Color(0, 0, 0, 0), 0, 0))
 	sp.custom_minimum_size = Vector2(372, 600)
 	sp.clip_contents = true
 	v.add_child(sp)
@@ -115,7 +115,7 @@ func build(ui_ref) -> void:
 	sv = K.vbox(0)
 	sv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	screen.add_child(sv)
-	var hp := K.panel(K.sb(Color(0.07, 0.085, 0.12), 0, Color(0, 0, 0, 0), 0, 10))
+	var hp := K.panel(K.sb(Color(0.066, 0.071, 0.086), 0, Color(0, 0, 0, 0), 0, 10))
 	sv.add_child(hp)
 	head = K.hbox(8)
 	hp.add_child(head)
@@ -422,7 +422,7 @@ func _home() -> void:
 		_pop(b, 0.03 * grid.get_child_count())
 		var n := _badge(id)
 		if n > 0:
-			var bp := K.panel(K.sb(K.C_BAD, 9, Color(0.05, 0.06, 0.085), 2, 5))
+			var bp := K.panel(K.sb(K.C_BAD, 9, Color(0.046, 0.05, 0.062), 2, 5))
 			bp.position = Vector2(42, -6)
 			bp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			bp.add_child(K.lbl(str(n), 11, Color.WHITE))
@@ -626,7 +626,7 @@ func _order_footer(order: Dictionary) -> void:
 	var per_txt := ("%d" % int(round(per))) if absf(per - round(per)) < 0.05 else ("%.1f" % per).replace(".", ",")
 	# --- karta: co, za ile, gdzie, kiedy
 	var edge := K.C_ACC if accepted else K.C_WARN
-	var card := K.panel(K.sb(Color(0.075, 0.09, 0.13), 14, Color(edge.r, edge.g, edge.b, 0.55), 1, 10))
+	var card := K.panel(K.sb(Color(0.07, 0.076, 0.092), 14, Color(edge.r, edge.g, edge.b, 0.55), 1, 10))
 	footer.add_child(card)
 	var cv := K.vbox(4)
 	card.add_child(cv)

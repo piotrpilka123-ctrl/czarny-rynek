@@ -200,7 +200,7 @@ func _shadow(c: Control, size := 4) -> void:
 ## wspólny styl kart HUD-u: ciemne, półprzezroczyste, z delikatną ramką i cieniem
 func _hud_card() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.045, 0.055, 0.078, 0.8)
+	sb.bg_color = Color(0.042, 0.047, 0.059, 0.8)
 	sb.set_corner_radius_all(14)
 	sb.set_border_width_all(1)
 	sb.border_color = Color(1, 1, 1, 0.09)
@@ -441,7 +441,7 @@ func _build_hud() -> void:
 	bc.offset_bottom = -22.0
 	bc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(bc)
-	build_hint = K.panel(K.sb(Color(0.03, 0.04, 0.06, 0.9), 12, K.C_BLUE, 1, 14))
+	build_hint = K.panel(K.sb(Color(0.032, 0.036, 0.046, 0.9), 12, K.C_BLUE, 1, 14))
 	build_hint.visible = false
 	bc.add_child(build_hint)
 	l_build = K.rich("", 14)
@@ -837,7 +837,7 @@ func cut_cards(cards: Array) -> void:
 		slot.custom_minimum_size = Vector2(292, 62)
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cut_cards_box.add_child(slot)
-		var p := K.panel(K.sb(Color(0.035, 0.045, 0.065, 0.9), 10, Color(1, 1, 1, 0.14), 1, 10))
+		var p := K.panel(K.sb(Color(0.036, 0.04, 0.05, 0.9), 10, Color(1, 1, 1, 0.14), 1, 10))
 		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		p.size = Vector2(292, 62)
 		p.position = Vector2(-70, 0)
@@ -1124,7 +1124,7 @@ func _build_modal() -> void:
 	hrow.add_child(deal_side)
 	deal_side_body = K.vbox(8)
 	deal_side.add_child(deal_side_body)
-	modal_box = K.panel(K.sb(Color(0.045, 0.055, 0.08, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20))
+	modal_box = K.panel(K.sb(Color(0.042, 0.047, 0.059, 0.97), 16, Color(1, 1, 1, 0.1), 1, 20))
 	modal_box.custom_minimum_size = Vector2(900, 0)
 	hrow.add_child(modal_box)
 	var v := K.vbox(10)
@@ -2021,7 +2021,7 @@ func show_controls(back := "") -> void:
 		menu_root = null
 	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.62)
 	controls_back = back
-	var box := K.panel(K.sb(Color(0.045, 0.055, 0.078, 0.97), 16, Color(1, 1, 1, 0.1), 1, 24))
+	var box := K.panel(K.sb(Color(0.042, 0.047, 0.059, 0.97), 16, Color(1, 1, 1, 0.1), 1, 24))
 	screen_box.add_child(box)
 	var v := K.vbox(12)
 	box.add_child(v)
@@ -2309,7 +2309,7 @@ var call_hint: RichTextLabel
 var call_slide := 0.0
 
 func _build_call() -> void:
-	call_card = K.panel(K.sb(Color(0.03, 0.04, 0.06, 0.96), 18, Color(0.3, 0.9, 0.55, 0.5), 1, 14))
+	call_card = K.panel(K.sb(Color(0.032, 0.036, 0.046, 0.96), 18, Color(0.3, 0.9, 0.55, 0.5), 1, 14))
 	call_card.custom_minimum_size = Vector2(330, 0)
 	call_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	call_card.visible = false
@@ -2508,7 +2508,7 @@ func _build_aim_menu() -> void:
 		aim_rows.append({"row": row, "key": key, "icon": ic, "text": tx, "note": note})
 	var hint := K.lbl("kółko myszy / 1–4 • [%s] wykonaj" % G.kn("use"), 10, Color(1, 1, 1, 0.5))
 	aim_menu.add_child(hint)
-	plant_card = K.panel(K.sb(Color(0.03, 0.04, 0.06, 0.9), 10, Color(1, 1, 1, 0.12), 1, 12))
+	plant_card = K.panel(K.sb(Color(0.032, 0.036, 0.046, 0.9), 10, Color(1, 1, 1, 0.12), 1, 12))
 	plant_card.set_anchors_preset(Control.PRESET_CENTER)
 	plant_card.position = Vector2(-300, -110)
 	plant_card.custom_minimum_size = Vector2(250, 0)

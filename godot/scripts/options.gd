@@ -24,7 +24,7 @@ func build(u) -> void:
 	var cc := CenterContainer.new()
 	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(cc)
-	var box := K.panel(K.sb(Color(0.045, 0.055, 0.078, 0.98), 16, Color(1, 1, 1, 0.1), 1, 22))
+	var box := K.panel(K.sb(Color(0.042, 0.047, 0.059, 0.98), 16, Color(1, 1, 1, 0.1), 1, 22))
 	box.custom_minimum_size = Vector2(820, 560)
 	cc.add_child(box)
 	var v := K.vbox(12)

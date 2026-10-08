@@ -15,9 +15,9 @@ static func _tile(U, s: Dictionary, on: bool) -> Control:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(0, 52)
-	b.add_theme_stylebox_override("normal", K.sb(Color(0.13, 0.17, 0.24) if on else Color(0.085, 0.102, 0.15), 9, K.C_ACC if on else Color(1, 1, 1, 0.07), 1, 8))
-	b.add_theme_stylebox_override("hover", K.sb(Color(0.13, 0.16, 0.23), 9, K.C_ACC if on else Color(1, 1, 1, 0.2), 1, 8))
-	b.add_theme_stylebox_override("pressed", K.sb(Color(0.07, 0.085, 0.12), 9, K.C_ACC, 1, 8))
+	b.add_theme_stylebox_override("normal", K.sb(Color(0.12, 0.128, 0.15) if on else Color(0.074, 0.08, 0.096), 9, K.C_ACC if on else Color(1, 1, 1, 0.07), 1, 8))
+	b.add_theme_stylebox_override("hover", K.sb(Color(0.12, 0.128, 0.15), 9, K.C_ACC if on else Color(1, 1, 1, 0.2), 1, 8))
+	b.add_theme_stylebox_override("pressed", K.sb(Color(0.066, 0.071, 0.086), 9, K.C_ACC, 1, 8))
 	b.pressed.connect(func():
 		Sfx.play("click")
 		U.bench.sel = s
@@ -150,8 +150,8 @@ static func _num_row(parent: Node, label: String, value: int, lo: int, hi: int, 
 	ed.max_length = 4
 	ed.select_all_on_focus = true
 	ed.add_theme_font_size_override("font_size", 17)
-	ed.add_theme_stylebox_override("normal", K.sb(Color(0.03, 0.04, 0.06), 8, Color(1, 1, 1, 0.18), 1, 8))
-	ed.add_theme_stylebox_override("focus", K.sb(Color(0.03, 0.04, 0.06), 8, K.C_ACC, 1, 8))
+	ed.add_theme_stylebox_override("normal", K.sb(Color(0.032, 0.036, 0.046), 8, Color(1, 1, 1, 0.18), 1, 8))
+	ed.add_theme_stylebox_override("focus", K.sb(Color(0.032, 0.036, 0.046), 8, K.C_ACC, 1, 8))
 	ed.text_submitted.connect(func(t: String): on_set.call(clampi(int(t), lo, hi)))
 	ed.focus_exited.connect(func():
 		if ed.text.strip_edges() != "" and int(ed.text) != value:

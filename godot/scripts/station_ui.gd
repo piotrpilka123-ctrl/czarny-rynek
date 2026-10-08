@@ -39,7 +39,7 @@ static func _bar_row(parent: Node, ic: String, label: String, v: float, col: Col
 ## pasek z podsumowaniem kryjówki: zapach, prąd, ryzyko nalotu
 static func hide_strip(U, room: String, with_button := true) -> Control:
 	var st: Dictionary = G.Prod.stats(room)
-	var p := K.panel(K.sb(Color(0.07, 0.085, 0.12), 9, K.C_LINE, 1, 10))
+	var p := K.panel(K.sb(Color(0.066, 0.071, 0.086), 9, K.C_LINE, 1, 10))
 	var h := K.hbox(16)
 	p.add_child(h)
 	h.add_child(K.icon_label("house", String(D.ROOMS[room].name), 13, K.C_TXT, 15))

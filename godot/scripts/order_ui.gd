@@ -21,7 +21,7 @@ static func build(PH) -> Control:
 	ear.custom_minimum_size = Vector2(5, 56)
 	ear.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(ear)
-	var sp := K.panel(K.sb(Color(0.05, 0.06, 0.085), 18, Color(0, 0, 0, 0), 0, 12))
+	var sp := K.panel(K.sb(Color(0.046, 0.05, 0.062), 18, Color(0, 0, 0, 0), 0, 12))
 	sp.custom_minimum_size = Vector2(W_SCREEN, H_SCREEN)
 	sp.clip_contents = true
 	h.add_child(sp)
@@ -120,8 +120,8 @@ static func render(PH) -> void:
 	ed.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
 	ed.tooltip_text = "Wpisz, ile gramów chcesz zamówić"
 	ed.add_theme_font_size_override("font_size", 14)
-	ed.add_theme_stylebox_override("normal", K.sb(Color(0.03, 0.04, 0.06), 8, Color(1, 1, 1, 0.18), 1, 8))
-	ed.add_theme_stylebox_override("focus", K.sb(Color(0.03, 0.04, 0.06), 8, K.C_ACC, 1, 8))
+	ed.add_theme_stylebox_override("normal", K.sb(Color(0.032, 0.036, 0.046), 8, Color(1, 1, 1, 0.18), 1, 8))
+	ed.add_theme_stylebox_override("focus", K.sb(Color(0.032, 0.036, 0.046), 8, K.C_ACC, 1, 8))
 	sz.add_child(ed)
 	sz.add_child(K.lbl("g", 12, K.C_DIM))
 	var plus := K.btn("+", func(): st.g = mini(max_g, int(st.g) + 1); render(PH), "", true)
@@ -214,7 +214,7 @@ static func _tile(PH, c: Dictionary, on: bool) -> Control:
 	b.add_theme_stylebox_override("normal", K.sb(base, 12, pc if on else Color(pc.r, pc.g, pc.b, 0.3), 2 if on else 1, 6))
 	b.add_theme_stylebox_override("hover", K.sb(Color(pc.r, pc.g, pc.b, 0.26), 12, pc, 2 if on else 1, 6))
 	b.add_theme_stylebox_override("pressed", K.sb(Color(pc.r, pc.g, pc.b, 0.32), 12, pc, 2, 6))
-	b.add_theme_stylebox_override("disabled", K.sb(Color(0.08, 0.09, 0.12), 12, K.C_LINE, 1, 6))
+	b.add_theme_stylebox_override("disabled", K.sb(Color(0.074, 0.08, 0.096), 12, K.C_LINE, 1, 6))
 	var pid: String = c.p
 	b.pressed.connect(func():
 		Sfx.play("click")

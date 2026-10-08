@@ -545,7 +545,7 @@ func _cash_row(st: Dictionary) -> Control:
 
 ## slot wyposażenia przy postaci (kolumna 0/1, wiersz 0/1)
 func _slot(view: Control, cx: int, cy: int, ic: String, cap: String, val: String, sub: String) -> void:
-	var p := K.panel(K.sb(Color(0.05, 0.062, 0.088, 0.9), 9, Color(1, 1, 1, 0.1), 1, 8))
+	var p := K.panel(K.sb(Color(0.048, 0.053, 0.066, 0.9), 9, Color(1, 1, 1, 0.1), 1, 8))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.custom_minimum_size = Vector2(112, 0)
 	view.add_child(p)
