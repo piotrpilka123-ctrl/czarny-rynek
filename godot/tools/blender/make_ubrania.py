@@ -525,7 +525,22 @@ def finish(B, ob, parts, name, bind=None, rigid=None, weigh=None):
         ob.select_set(True)
         bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_apply=True, export_yup=True, export_animations=False, export_skins=False)
     else:
+        # detale (kieszenie, guziki, lamówki) trzymają się materiału: wagi biorą z najbliższego punktu powłoki, nie z ciała —
+        # inaczej przy kroku odrywały się od doszytego dołu kurtki, który ma własne wagi
+        shell_kd = None
+        if weigh is None and not bind and n0 > 0 and any(v.groups for v in me.vertices[:n0]):
+            shell_kd = KDTree(n0)
+            for v in me.vertices[:n0]:
+                shell_kd.insert(v.co, v.index)
+            shell_kd.balance()
+            shell_g = [[(g.group, g.weight) for g in v.groups] for v in me.vertices[:n0]]
         for v in me.vertices:
+            if shell_kd is not None and v.index >= n0:
+                _, si, _ = shell_kd.find(v.co)
+                if shell_g[si]:
+                    for gi, x in shell_g[si]:
+                        ob.vertex_groups[gi].add([v.index], x, 'REPLACE')
+                    continue
             if v.index >= n0 or not v.groups:
                 if bind and v.index >= n0:
                     for bn, x in bind.items():

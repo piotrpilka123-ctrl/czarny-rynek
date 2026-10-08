@@ -122,7 +122,7 @@ func _overlay() -> void:
 	ln.custom_minimum_size = Vector2(0, 4)
 	title_box.add_child(ln)
 	var t2 := Label.new()
-	t2.text = "SPŁAĆ DŁUG.  ZBUDUJ IMPERIUM.  NIE DAJ SIĘ ZŁAPAĆ."
+	t2.text = "WEJDŹ DO EKIPY.  ZBUDUJ IMPERIUM.  NIE DAJ SIĘ ZŁAPAĆ."
 	t2.add_theme_font_override("font", _font("barlowc"))
 	t2.add_theme_font_size_override("font_size", 30)
 	t2.add_theme_color_override("font_color", Color(0.86, 0.9, 0.94))
@@ -405,7 +405,7 @@ func run() -> void:
 		{"name": "poscig", "bars": 2, "big": "POLICJA NIE ŚPI.", "setup": s16_setup, "tick": s16_tick},
 		{"name": "kryjowka", "bars": 2, "box": false, "sub": "URZĄDŹ WŁASNĄ KRYJÓWKĘ", "top": true, "setup": s17_setup, "tick": s17_tick, "end": s17_end},
 		{"name": "umiejetnosci", "bars": 2, "box": false, "h": 14.3, "day": 16, "setup": s18_setup, "tick": s18_tick, "end": ui_end},
-		{"name": "park", "bars": 2, "big": "SPŁAĆ DŁUG.", "setup": s19_setup, "tick": s19_tick},
+		{"name": "park", "bars": 2, "big": "WEJDŹ DO EKIPY.", "setup": s19_setup, "tick": s19_tick},
 		{"name": "noc", "bars": 2, "big": "ALBO MIASTO CIĘ POŻRE.", "setup": s20_setup, "ready": s20_ready, "tick": s20_tick},
 		{"name": "tytul", "bars": 4, "title": true, "fade_out": 30, "setup": s21_setup, "ready": s21_ready, "tick": s21_tick},
 	]

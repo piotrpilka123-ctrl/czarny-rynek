@@ -1868,7 +1868,7 @@ func show_title() -> void:
 	opts.visible = false
 	(screen as ColorRect).color = Color(0.02, 0.03, 0.05, 0.12)
 	var sv := G.save_summary()
-	_menu_column(118, "CZARNY\nRYNEK", "SPŁAĆ DŁUG.  ZBUDUJ IMPERIUM.  NIE DAJ SIĘ ZŁAPAĆ.", [
+	_menu_column(118, "CZARNY\nRYNEK", "WEJDŹ DO EKIPY.  ZBUDUJ IMPERIUM.  NIE DAJ SIĘ ZŁAPAĆ.", [
 		_menu_btn("Kontynuuj", func(): G.main.start_game(true), ("Dzień %d  •  %s  •  zapis: %s" % [int(sv.day), G.money(sv.cash), String(sv.when)]) if not sv.is_empty() else "Brak zapisu", not sv.is_empty()),
 		_menu_btn("Nowa gra", func(): G.main.start_game(false)),
 		_menu_btn("Opcje", func(): open_options("title")),

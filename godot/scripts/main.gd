@@ -2564,7 +2564,8 @@ func _apply_test_args() -> void:
 			world.rooms.safe.add_child(rg.root)
 			rg.root.position = Vector3(float(R.cx) + (k - 1) * (0.5 if zoom_y > 0.0 else 0.85), 0.0, -1.0)
 			rg.root.rotation.y = ry
-			Chars.animate(rg, 0.0, 0.0, "")
+			# --wearspeed=1.4 (chód) / 5 (bieg), --wearpose=sit|crouch… — ubranie w ruchu, nie tylko na stojąco
+			Chars.animate(rg, 0.0, float(args.get("wearspeed", "0")), String(args.get("wearpose", "")))
 			Chars.dress(rg, gear)
 			k += 1
 		for lx in [-1.6, 1.6]:
