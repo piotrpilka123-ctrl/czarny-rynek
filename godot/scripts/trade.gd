@@ -277,14 +277,9 @@ static func ask(U, p: String, pur: int, g: int, have: int) -> void:
 	var cc := CenterContainer.new()
 	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# okienko wyskakuje nad samym oknem wymiany (tam, gdzie upuściłeś paczkę), nie na środku ekranu
-	var mb: Rect2 = U.modal_box.get_global_rect()
-	var full: Vector2 = U.root.size
-	if mb.size.y > 40.0:
-		cc.offset_left = mb.position.x
-		cc.offset_right = -(full.x - mb.end.x)
-		cc.offset_top = mb.position.y - 30.0
-		cc.offset_bottom = -(full.y - mb.end.y)
+	dim.set_meta("cc", cc)
 	dim.add_child(cc)
+	_ask_anchor(U)
 	var box := K.panel(K.sb(Color(0.05, 0.057, 0.072, 0.99), 10, Color(1, 1, 1, 0.26), 1, 12))
 	box.custom_minimum_size = Vector2(264, 0)
 	cc.add_child(box)
@@ -578,7 +573,23 @@ static func build(U) -> void:
 
 
 ## podświetlenie tacy, gdy coś jest przeciągane (wołane co klatkę z ui._deal_tick)
+## Okienko „ile” trzyma się panelu sprzedaży. Panel układa się dopiero klatkę po narysowaniu (i przesuwa, gdy zmieni się
+## jego treść), więc położenie jest poprawiane na bieżąco — jednorazowy pomiar potrafił wyrzucić okienko pod górną krawędź.
+static func _ask_anchor(U) -> void:
+	if U.deal_ask_box == null or not is_instance_valid(U.deal_ask_box) or not U.deal_ask_box.has_meta("cc"):
+		return
+	var cc: Control = U.deal_ask_box.get_meta("cc")
+	var mb: Rect2 = U.modal_box.get_global_rect()
+	var full: Vector2 = U.root.size
+	if mb.size.y > 40.0 and mb.position.y > 60.0:
+		cc.offset_left = mb.position.x
+		cc.offset_right = -(full.x - mb.end.x)
+		cc.offset_top = mb.position.y - 30.0
+		cc.offset_bottom = -(full.y - mb.end.y)
+
+
 static func tick(U) -> void:
+	_ask_anchor(U)
 	if U.deal_zone == null or not is_instance_valid(U.deal_zone):
 		return
 	var hot: bool = U.get_viewport().gui_is_dragging()

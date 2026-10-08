@@ -373,6 +373,18 @@ func run() -> void:
 		await frames(8)
 		U.deal_holding = false
 		ok(float(U.deal.hold) <= 0.001 and not U.deal.over, "z pustą tacą nie da się niczego podać")
+		# okienko „ile paczek” wyskakuje nad panelem sprzedaży, nawet gdy otworzy się je tuż po przebudowie okna
+		U._render_deal()
+		U.Trade.ask(U, "dym", 100, 1, 3)
+		await frames(3)
+		var ask_ok := false
+		if U.deal_ask_box != null and is_instance_valid(U.deal_ask_box):
+			var acc: Control = U.deal_ask_box.get_meta("cc")
+			var abox: Rect2 = (acc.get_child(0) as Control).get_global_rect()
+			var mbox: Rect2 = U.modal_box.get_global_rect()
+			ask_ok = abox.position.y > 80.0 and abox.intersects(mbox.grow(40.0)) and abox.end.y <= U.root.size.y
+		ok(ask_ok, "okienko ilości stoi przy panelu sprzedaży, a nie pod górną krawędzią ekranu")
+		U.Trade.ask_close(U)
 		G.deal_autofill(U.deal)
 		U._render_deal()
 		ok(int(U.deal.base) == int(o.agreed) and int(U.deal.pct) == 0 and G.deal_read(U.deal, 0) == "sure", "wymiana zaczyna się od umówionej ceny — bez przywitań i gadek")
