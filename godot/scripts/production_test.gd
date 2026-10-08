@@ -50,6 +50,22 @@ static func run(T) -> void:
 	T.ok(P.plant_seed(room, 2), "drugi krzak rośnie bez lampy")
 	var j: Dictionary = P.plant_of(room, 0)
 	var dark: Dictionary = P.plant_of(room, 2)
+	var pot_model: Node3D = G.world.pot_nodes[room][0]
+	G.world.update_stations()
+	var plant_model := pot_model.get_node("Plant") as MeshInstance3D
+	var seed_model := pot_model.get_node("Seed") as Node3D
+	T.ok(seed_model.visible and not plant_model.visible, "po sadzeniu widać nasiono — roślina nie pojawia się natychmiast")
+	var old_progress: float = j.prog
+	j.prog = 0.04
+	G.world.update_stations()
+	T.ok(plant_model.visible and not seed_model.visible, "po wykiełkowaniu liście zastępują widoczne nasiono")
+	var volume_models := true
+	for stage in range(1, 4):
+		var mesh: ArrayMesh = G.main.Stations.plant_mesh(stage)
+		volume_models = volume_models and mesh.get_surface_count() > 0 and mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size() > 100
+	T.ok(volume_models, "wszystkie etapy wczytują modele z Blendera zamiast płaskich kart")
+	j.prog = old_progress
+	G.world.update_stations()
 	T.ok(P.plant_stage(j) == "Sadzonki" and P.pot_label(room, 0).contains("sadzonki") and P.pot_label(room, 1) == "Pusta doniczka", "start: etap „Sadzonki”")
 	var menu1: Array = G.main.pot_menu(room, 0)
 	var ids: Array = []

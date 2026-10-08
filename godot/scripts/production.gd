@@ -479,6 +479,8 @@ static func plant_info(room: String, i: int) -> Dictionary:
 	var f := plant_forecast(room, i)
 	var lm := light_at(room, float(pt.x), float(pt.z))
 	var notes: Array = []
+	if float(pl.prog) < 0.03:
+		notes.append(["Nasiono kiełkuje w ziemi. Pierwsze liście pojawią się z upływem czasu.", "info"])
 	if float(pl.water) <= 0.0:
 		notes.append(["Sucha ziemia — nie rośnie i marnieje!", "bad"])
 	elif float(pl.water) < 25.0:

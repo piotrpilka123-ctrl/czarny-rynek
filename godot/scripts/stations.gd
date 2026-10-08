@@ -7,6 +7,8 @@ const Props = preload("res://scripts/props.gd")
 
 static var _plant_mats := {}
 static var _plant_mesh: ArrayMesh = null
+static var _solid_plant_meshes := {}
+static var _solid_plant_materials := {}
 static var _mats := {}
 
 
@@ -17,7 +19,10 @@ static func _m(key: String, c: String, rough := 0.8, metal := 0.0, emit := 0.0, 
 
 
 ## karta rośliny: dwa skrzyżowane prostokąty wysokości 1 m, początek układu u podstawy łodygi
-static func plant_mesh() -> ArrayMesh:
+static func plant_mesh(stage := 1) -> ArrayMesh:
+	var solid := _solid_plant(stage)
+	if solid != null:
+		return solid
 	if _plant_mesh != null:
 		return _plant_mesh
 	var st := SurfaceTool.new()
@@ -67,6 +72,61 @@ static func plant_material_wilt(stage: int) -> StandardMaterial3D:
 		m.backlight = Color(0.14, 0.12, 0.03)
 		_plant_mats[key] = m
 	return _plant_mats[key]
+
+
+## Wspólna siatka z Blendera: jedna instancja zasobu na etap, bez kosztu per doniczkę.
+static func _solid_plant(stage: int) -> ArrayMesh:
+	stage = clampi(stage, 1, 3)
+	if _solid_plant_meshes.has(stage): return _solid_plant_meshes[stage]
+	var root := model("roslina_%d" % stage)
+	if root == null: return null
+	var shape := _find(root, "Roslina") as MeshInstance3D
+	if shape == null or not (shape.mesh is ArrayMesh):
+		root.free()
+		return null
+	var mesh := shape.mesh as ArrayMesh
+	_solid_plant_meshes[stage] = mesh
+	for weak in [false, true]:
+		var materials: Array = []
+		for index in range(mesh.get_surface_count()):
+			var source := mesh.surface_get_material(index) as StandardMaterial3D
+			var material := source.duplicate() as StandardMaterial3D if source != null else StandardMaterial3D.new()
+			material.cull_mode = BaseMaterial3D.CULL_DISABLED
+			material.roughness = 0.93
+			material.metallic = 0.0
+			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+			material.backlight_enabled = true
+			material.backlight = Color(0.1, 0.16, 0.06)
+			material.emission_enabled = true
+			material.emission_texture = material.albedo_texture
+			material.emission = material.albedo_color
+			material.emission_energy_multiplier = 0.055
+			if weak:
+				material.albedo_color *= Color(1.0, 0.77, 0.42)
+				material.emission *= Color(1.0, 0.77, 0.42)
+			materials.append(material)
+		_solid_plant_materials["%d:%s" % [stage, weak]] = materials
+	root.free()
+	return mesh
+
+
+static func _plant_appearance(plant_n: MeshInstance3D, stage: int, weak: bool) -> void:
+	var mesh := _solid_plant(stage)
+	if mesh == null:
+		plant_n.material_override = plant_material_wilt(stage) if weak else plant_material(stage)
+		return
+	if plant_n.mesh != mesh: plant_n.mesh = mesh
+	plant_n.material_override = null
+	var materials: Array = _solid_plant_materials["%d:%s" % [stage, weak]]
+	for index in range(materials.size()):
+		plant_n.set_surface_override_material(index, materials[index])
+	plant_n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+
+static func _seed_marker(parent: Node3D) -> void:
+	var seed := Models.sphere(parent, 0.008, Vector3(0, POT_H + 0.002, 0), _m("seed_mark", "76624a", 0.96), Vector3(1, 0.55, 0.75), false, 6)
+	seed.name = "Seed"
+	seed.visible = false
 
 
 # ---------------------------------------------------------------- doniczka z krzakiem
@@ -121,6 +181,7 @@ static func pot_node() -> Node3D:
 		pl0.position = Vector3(0, POT_H - 0.025, 0)
 		pl0.visible = false
 		made.add_child(pl0)
+		_seed_marker(made)
 		return made
 	var g := Node3D.new()
 	var plastic := _m("pot2", "9a5a3c", 0.85)
@@ -151,6 +212,7 @@ static func pot_node() -> Node3D:
 	pl.position = Vector3(0, POT_H + 0.005, 0)
 	pl.visible = false
 	g.add_child(pl)
+	_seed_marker(g)
 	return g
 
 
@@ -165,7 +227,9 @@ static func refresh_pot(n: Node3D, pl, seed_k := 0.0) -> void:
 	var fert := _find(n, "Fert") as Node3D
 	if plant_n == null:
 		return
-	plant_n.visible = pl != null
+	plant_n.visible = pl != null and float(pl.prog) >= 0.03
+	var seed := n.get_node_or_null("Seed") as Node3D
+	if seed != null: seed.visible = pl != null and float(pl.prog) < 0.03
 	if fert != null:
 		fert.visible = pl != null and bool(pl.fert)
 	var wet := float(pl.water) / 100.0 if pl != null else 0.3
@@ -178,7 +242,7 @@ static func refresh_pot(n: Node3D, pl, seed_k := 0.0) -> void:
 	var stage := 1 if prog < 0.2 else (2 if prog < 0.6 else 3)
 	var dry: bool = float(pl.water) <= 5.0
 	var weak: bool = dry or float(pl.health) < 45.0
-	plant_n.material_override = plant_material_wilt(stage) if weak else plant_material(stage)
+	_plant_appearance(plant_n, stage, weak)
 	var hgt := plant_height(prog, seed_k)
 	var slim := 0.88 if bool(pl.trim) else 1.0
 	plant_n.scale = Vector3(hgt * slim, hgt * (0.8 if dry else 1.0), hgt * slim)
@@ -314,10 +378,10 @@ static func shears() -> Node3D:
 
 static func plant(stage: int, h: float) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	mi.mesh = plant_mesh()
-	mi.material_override = plant_material(stage)
+	mi.mesh = plant_mesh(stage)
+	_plant_appearance(mi, stage, false)
 	mi.scale = Vector3(h, h, h)
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	return mi
 
 
@@ -411,7 +475,7 @@ static func refresh_rack(n: Node3D, j) -> void:
 		if on:
 			var prog := float(j.prog)
 			var stage := 1 if prog < 0.2 else (2 if prog < 0.6 else 3)
-			pl.material_override = plant_material(stage)
+			_plant_appearance(pl, stage, false)
 			var hgt := lerpf(0.2, 1.22, clampf(prog, 0.0, 1.0)) * (0.92 + 0.08 * sin(i * 2.1))
 			var dry: bool = j.has("water") and float(j.water) <= 5.0
 			pl.scale = Vector3(hgt, hgt * (0.82 if dry else 1.0), hgt)

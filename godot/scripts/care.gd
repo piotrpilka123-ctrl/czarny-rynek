@@ -136,6 +136,22 @@ func _particles() -> CPUParticles3D:
 			p.initial_velocity_min = 0.25
 			p.initial_velocity_max = 0.5
 			p.gravity = Vector3(0, -5.0, 0)
+		"seed":
+			var grains := SphereMesh.new()
+			grains.radius = 0.004
+			grains.height = 0.006
+			grains.radial_segments = 6
+			grains.rings = 3
+			mesh = grains
+			m.albedo_color = Color(0.23, 0.16, 0.1)
+			p.amount = 12
+			p.lifetime = 0.5
+			p.one_shot = true
+			p.explosiveness = 0.9
+			p.spread = 50.0
+			p.initial_velocity_min = 0.08
+			p.initial_velocity_max = 0.15
+			p.gravity = Vector3(0, -1.8, 0)
 		_:
 			var qm := QuadMesh.new()
 			qm.size = Vector2(0.05, 0.022)
