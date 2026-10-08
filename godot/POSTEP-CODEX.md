@@ -70,3 +70,21 @@ Nie pushować GitHuba bez polecenia. Przy każdej zmianie wizualnej oglądać wy
 nie polegać na samym teście headless. tools/commit.sh uruchamia pełny test.
 Otwarto automatyzację heartbeat „dopracowanie-czarnego-rynku”, co 30 minut w tym czacie.
 Na „stop”/„stoo” wyłączyć ją i zaprzestać pracy.
+
+
+## Nowe polecenia Piotra i aktualna kolejność
+
+- 7ba6a2d: odgłosy imprezy w prologu zmienione na ciągłe stereo tłumu + pojedyncze
+  krótkie wiwaty, bez nakładania obcego śpiewu i tych samych okrzyków. Muzyka/jej ustawienia
+  bez zmian. Nowy plik CC0 pochodzi z istniejącego źródła, nie było pobierania.
+- 7ba6a2d: patrole po stałych odcinkach też używają siatki omijającej kolizje;
+  pozycje startowe i końce obchodów na wolnych komórkach. Skupione ruchy latarek.
+  Ucieczka ma kolejne cele wzdłuż bezpiecznej trasy, zamiast jednej strzałki przez przeszkody.
+  639 testów OK. Pierwszy screenshot był niepoprawnym wywołaniem bez --intro — NIE używać
+  prolog-ucieczka.png jako dowodu kontroli; poprawne uruchomienie ma --autostart --intro --prostage=escape.
+- Najnowsze zadania: zróżnicować budynki; poprawić płoty i usunąć bezsensowne/nadmierne
+  przejścia; szczególnie poprawić tekstury pustaków. Nie gubić tych zadań w kolejnych blokach.
+- Wprowadzany nowy pustak z Blendera: dwie otwarte komory, porowaty beton, sfazowane
+  krawędzie. Podgląd /Users/macbook/codex-podglad/pustak.png obejrzany; do pełnego testu.
+- Pracować oszczędniej tokenowo: krótkie odczyty i raporty, celowe screenshoty,
+  utrzymać pełne testy i faktyczny postęp. Kontynuacja do „stop” nadal obowiązuje.

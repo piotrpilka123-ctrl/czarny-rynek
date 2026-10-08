@@ -46,7 +46,7 @@ static func pbr(name: String, scale := 0.5, tint := Color.WHITE, triplanar := tr
 
 
 ## stare modele z paczek zastąpione własnymi z Blendera (ta sama nazwa w kodzie i w danych mebli)
-const OWN := {"painted_wooden_table": "dom_biurko", "classic_laptop": "dom_laptop", "painted_wooden_chair_01": "dom_krzeslo", "painted_wooden_cabinet": "dom_szafa",
+const OWN := {"cinderblock": "pustak_beton", "painted_wooden_table": "dom_biurko", "classic_laptop": "dom_laptop", "painted_wooden_chair_01": "dom_krzeslo", "painted_wooden_cabinet": "dom_szafa",
 	"coffeetable_01": "dom_stolik", "sofa_02": "dom_kanapa", "television_02": "dom_tv", "old_bed_frame": "dom_lozko"}
 
 static func _path(name: String) -> String:
