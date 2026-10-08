@@ -3,6 +3,10 @@ extends RefCounted
 ## podejrzliwość patroli (w tym kominiarka), świadków, ceny u klientów; szafa w ekwipunku; zapis.
 
 
+const Chars = preload("res://scripts/chars.gd")
+const Models = preload("res://scripts/models.gd")
+
+
 static func run(T) -> void:
 	var keep: Dictionary = G.S
 	G.S = G.new_state()
@@ -189,6 +193,107 @@ static func run(T) -> void:
 	var gbase: Dictionary = G.new_state()
 	G._merge(gbase, JSON.parse_string(JSON.stringify(S)))
 	T.ok(String(gbase.gear.get("gora", "")) == "kurtka_kieszenie" and int(gbase.items.get("bluza_kaptur", 0)) == 1, "założone ubrania i te w plecaku zapisują się")
+	_cut_tests(T)
 	G.S = keep
 	G.main.teleport(back_loc, back_pos, 0.0)
 	await T.frames(2)
+
+
+## krój uszytych ubrań (assets/wear): każda rzecz ma wykrój, nogawki sięgają buta, rękawy nadgarstka, buty mają rozmiar buta,
+## warianty kolorystyczne farbują tkaninę (a nie gumę i lampasy) i nic nie jest smoliście czarne
+static func _wear_box(id: String) -> AABB:
+	var ps: PackedScene = Chars._wear_load(id)
+	var box := AABB()
+	if ps == null:
+		return box
+	var inst: Node = ps.instantiate()
+	var first := true
+	for n in inst.find_children("*", "MeshInstance3D", true, false):
+		var b: AABB = (n as MeshInstance3D).mesh.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	inst.free()
+	return box
+
+
+static func _cut_tests(T) -> void:
+	var slots := {}
+	for gs in D.GEAR_SLOTS:
+		slots[String(gs[0])] = true
+	var missing: Array = []
+	var patterns := {}
+	for id in D.ITEMS:
+		var it: Dictionary = D.ITEMS[id]
+		if not slots.has(String(it.get("slot", ""))):
+			continue
+		var gid := String(it.get("look", {}).get("model", id))
+		patterns[gid] = String(it.slot)
+		if Chars._wear_load(gid) == null:
+			missing.append(id)
+	T.ok(missing.is_empty() and patterns.size() >= 20, "każde ubranie ma swój wykrój w plikach (brak: %s)" % str(missing))
+	var legs_bad: Array = []
+	var tops_bad: Array = []
+	var shoes_bad: Array = []
+	for gid in patterns:
+		var b := _wear_box(gid)
+		match String(patterns[gid]):
+			"spodnie":
+				# nogawka kończy się przy bucie (nie nad kostką i nie w podłodze), pas powyżej bioder
+				if b.position.y > 0.13 or b.position.y < 0.05 or b.end.y < 0.95:
+					legs_bad.append("%s %.2f–%.2f" % [gid, b.position.y, b.end.y])
+			"gora":
+				# rękawy sięgają za nadgarstki (dłonie w pozie spoczynkowej są ok. 0,6 m od osi ciała), dół zakrywa pas spodni
+				if b.size.x < 1.2 or b.position.y > 0.9:
+					tops_bad.append("%s %.2f %.2f" % [gid, b.size.x, b.position.y])
+			"buty":
+				# para butów: podeszwa na ziemi, długość buta 27–33 cm, niskie do kostki, robocze za kostkę (ze skarpetą pod nogawką)
+				if b.position.y < -0.005 or b.position.y > 0.02 or b.size.z < 0.27 or b.size.z > 0.34 or b.end.y > 0.3:
+					shoes_bad.append("%s %.3f %.2f %.2f" % [gid, b.position.y, b.size.z, b.end.y])
+	T.ok(legs_bad.is_empty(), "nogawki spodni sięgają buta (%s)" % str(legs_bad))
+	T.ok(tops_bad.is_empty(), "rękawy sięgają za nadgarstki, a dół góry zakrywa pas (%s)" % str(tops_bad))
+	T.ok(shoes_bad.is_empty(), "buty stoją na ziemi i mają rozmiar buta (%s)" % str(shoes_bad))
+	# farbowanie wariantów
+	var dye := Color("2a2b2f")
+	var ps: PackedScene = Chars._wear_load("dresy")
+	var inst: Node = ps.instantiate()
+	var mesh: Mesh = (inst.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
+	var main := Chars._main_color(mesh)
+	var knit_ok := false
+	var stripe_ok := false
+	for sf in range(mesh.get_surface_count()):
+		var src := mesh.surface_get_material(sf)
+		var out := Chars._fabric_mat(src, dye, main) as BaseMaterial3D
+		var nm := String(src.resource_name)
+		if nm == "dzianina_dresy":
+			knit_ok = absf(out.albedo_color.r - dye.r) < 0.02 and absf(out.albedo_color.b - dye.b) < 0.02
+		if nm == "dzianina_lampas":
+			stripe_ok = out.albedo_color.v > 0.8
+	inst.free()
+	T.ok(knit_ok and stripe_ok, "czarne dresy: tkanina dostaje barwę wariantu, białe lampasy zostają białe")
+	ps = Chars._wear_load("buty_bieg")
+	inst = ps.instantiate()
+	mesh = (inst.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
+	main = Chars._main_color(mesh)
+	var upper_ok := false
+	var foam_ok := false
+	for sf in range(mesh.get_surface_count()):
+		var src2 := mesh.surface_get_material(sf)
+		var out2 := Chars._fabric_mat(src2, Color("2c2c31"), main) as BaseMaterial3D
+		if String(src2.resource_name) == "plotno_bieg":
+			upper_ok = out2.albedo_color.s < 0.15 and out2.albedo_color.v < 0.3
+		if String(src2.resource_name) == "guma_pianka":
+			foam_ok = out2.albedo_color.v > 0.85
+	inst.free()
+	T.ok(upper_ok and foam_ok, "czarne buty do biegania: cholewka grafitowa (bez rudego odcienia), pianka podeszwy zostaje biała")
+	var vanta: Array = []
+	for gid in patterns:
+		var ps3: PackedScene = Chars._wear_load(gid)
+		var inst3: Node = ps3.instantiate()
+		for n in inst3.find_children("*", "MeshInstance3D", true, false):
+			var m3: Mesh = (n as MeshInstance3D).mesh
+			for sf in range(m3.get_surface_count()):
+				var fm := Chars._fabric_mat(m3.surface_get_material(sf))
+				if fm is BaseMaterial3D and maxf((fm as BaseMaterial3D).albedo_color.r, maxf((fm as BaseMaterial3D).albedo_color.g, (fm as BaseMaterial3D).albedo_color.b)) < Models.BLACK_FLOOR - 0.001:
+					vanta.append("%s/%s" % [gid, m3.surface_get_material(sf).resource_name])
+		inst3.free()
+	T.ok(vanta.is_empty(), "żadna tkanina nie jest smoliście czarna (%s)" % str(vanta))

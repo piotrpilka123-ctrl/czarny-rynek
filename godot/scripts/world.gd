@@ -5499,9 +5499,16 @@ func _club_extras(g: Node3D, cx: float, w: float, d: float, h: float) -> void:
 		Models.box(ex, Vector3(0.05, 0.014, 3.2), Vector3(cx + sxx * 0.75, 0.009, d * 0.5 - 4.1), Models.mat("b08a3c", 0.4, 0.8), Vector3.ZERO, false)
 	# --- dwa lustrzane filary przy parkiecie, z obręczą LED
 	# (z dala od wysokich stolików: jeden filar stoi między parkietem a barem, drugi bliżej wejścia)
+	var pillar_m := Models.mat("4f4c5b", 0.38, 0.4)
 	for pz in [0.6, -3.9]:
 		var px := cx + 2.3
-		Models.box(ex, Vector3(0.44, h, 0.44), Vector3(px, h * 0.5, pz), chrome)
+		# okładzina z ciemnego, szczotkowanego metalu: czysty chrom nie ma tu czego odbijać i wychodził smoliście czarny
+		Models.box(ex, Vector3(0.44, h, 0.44), Vector3(px, h * 0.5, pz), pillar_m)
+		for ang in range(4):
+			# pionowe listwy na narożnikach łapią światło neonów
+			var cxo := 0.215 * (1.0 if ang % 2 == 0 else -1.0)
+			var czo := 0.215 * (1.0 if ang < 2 else -1.0)
+			Models.box(ex, Vector3(0.03, h, 0.03), Vector3(px + cxo, h * 0.5, pz + czo), Models.mat("8a8794", 0.3, 0.6), Vector3.ZERO, false)
 		for yy in [0.9, 2.2, 3.4]:
 			Models.box(ex, Vector3(0.48, 0.05, 0.48), Vector3(px, yy, pz), Models.mat("3be8ff" if yy > 2.0 else "ff3bd0", 0.4, 0.0, 2.6), Vector3.ZERO, false)
 		add_col(px - 0.24, px + 0.24, pz - 0.24, pz + 0.24, h, true, -1.0)

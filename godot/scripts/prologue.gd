@@ -697,7 +697,7 @@ func _boom() -> void:
 	arig.root.visible = false
 	# bandyta w prawdziwych ciuchach: czarna bluza, bojówki, skórzane rękawiczki, robocze buty, kominiarka
 	Chars.dress(arig, {"glowa": "kominiarka", "gora": "bluza_kaptur", "spodnie": "bojowki", "dlonie": "rekawiczki_skora", "buty": "buty_robocze"},
-		{"gora": Color(0.2, 0.2, 0.22), "spodnie": Color(0.28, 0.28, 0.3), "buty": Color(0.35, 0.33, 0.32)})
+		{"gora": Color(0.2, 0.2, 0.22), "spodnie": Color(0.28, 0.28, 0.3), "buty": Color(0.2, 0.17, 0.15)})
 	var pipe: Node3D = Chars.hold(arig, "rurka", Transform3D(Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0)), Vector3(0.09, 0.03, 0.0)))
 	# koniec rurki (w jej własnym układzie): ten z dwóch końców, który jest dalej od dłoni — za nim pójdzie kamera
 	var tip_local := Vector3.ZERO

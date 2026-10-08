@@ -905,16 +905,21 @@ static func _wear_load(id: String) -> PackedScene:
 
 
 ## materiał ubrania: kolor z modelu, faktura tkaniny rozpoznana po początku nazwy (dzianina_, dzins_, plotno_, skora_, sciagacz_, guma_, krata_)
-static func _fabric_mat(src: Material, tint := Color.WHITE) -> Material:
+static func _fabric_mat(src: Material, dye := Color.WHITE, main := Color.WHITE) -> Material:
 	if src == null:
 		return null
-	if tint != Color.WHITE:
-		# ciemniejszy wariant tej samej tkaniny (np. czarna bluza bandyty)
-		var tk := "%s|%s" % [String(src.resource_name), tint.to_html()]
+	if dye != Color.WHITE:
+		# wariant kolorystyczny: główna tkanina (kolor `main`) dostaje barwę `dye`, reszta zachowuje swój stosunek jasności
+		var tk := "%s|%s|%s" % [String(src.resource_name), dye.to_html(), main.to_html()]
 		if not _fabric_mats.has(tk):
 			var base: Material = _fabric_mat(src).duplicate()
-			if base is BaseMaterial3D and not String(src.resource_name).begins_with("metal"):
-				(base as BaseMaterial3D).albedo_color = Models.no_vanta((base as BaseMaterial3D).albedo_color * tint)
+			if base is BaseMaterial3D and _dyeable(String(src.resource_name)):
+				var c := (base as BaseMaterial3D).albedo_color
+				var k := c.get_luminance() / maxf(0.02, main.get_luminance())
+				# białe lampasy, sznurówki i nici zostają sobą; farbuje się tkanina zbliżona jasnością do głównej
+				if k < 2.0 and not (c.s < 0.14 and c.v > 0.62):
+					k = clampf(k, 0.62, 1.7)
+					(base as BaseMaterial3D).albedo_color = Models.no_vanta(Color(dye.r * k, dye.g * k, dye.b * k, c.a))
 			_fabric_mats[tk] = base
 		return _fabric_mats[tk]
 	var nm := String(src.resource_name)
@@ -949,6 +954,22 @@ static func _fabric_mat(src: Material, tint := Color.WHITE) -> Material:
 	return out
 
 
+## guma podeszew, metal, skarpety i futerko nie zmieniają koloru razem z tkaniną
+static func _dyeable(nm: String) -> bool:
+	if nm.begins_with("metal") or nm.begins_with("guma"):
+		return false
+	for part in ["skarpeta", "futerko", "nic", "guzik"]:
+		if nm.contains(part):
+			return false
+	return true
+
+
+## kolor głównej tkaniny uszytej rzeczy (pierwsza powierzchnia siatki)
+static func _main_color(mesh: Mesh) -> Color:
+	var m := mesh.surface_get_material(0) if mesh != null and mesh.get_surface_count() > 0 else null
+	return (m as BaseMaterial3D).albedo_color if m is BaseMaterial3D else Color(0.5, 0.5, 0.5)
+
+
 ## ubranie szyte na szkielet: siatka z pliku przechodzi na szkielet postaci i dostaje skórę liczoną z jego pozy spoczynkowej
 static func _wear_skinned(rig: Dictionary, id: String, tint := Color.WHITE) -> bool:
 	var ps := _wear_load(id)
@@ -980,8 +1001,9 @@ static func _wear_skinned(rig: Dictionary, id: String, tint := Color.WHITE) -> b
 		mi.skeleton = NodePath("..")
 		mi.skin = sk
 		mi.extra_cull_margin = 0.6
+		var main := _main_color(mi.mesh)
 		for sf in range(mi.mesh.get_surface_count()):
-			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf), tint))
+			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf), tint, main))
 		_set_layer(mi, 2)
 		rig.wear.append(mi)
 		ok = true
@@ -997,8 +1019,9 @@ static func _wear_rigid(rig: Dictionary, id: String, bone: String, tint := Color
 	var inst: Node3D = ps.instantiate()
 	for n in inst.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = n
+		var main := _main_color(mi.mesh)
 		for sf in range(mi.mesh.get_surface_count()):
-			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf), tint))
+			mi.set_surface_override_material(sf, _fabric_mat(mi.mesh.surface_get_material(sf), tint, main))
 	_on_bone(rig, bone, inst, Transform3D())
 	return true
 
@@ -1067,7 +1090,7 @@ static func dress(rig: Dictionary, gear: Dictionary, tints := {}) -> void:
 	# uszyte ubrania i dodatki z plików; czego nie ma w plikach, to po staremu (przebarwienie i proste bryły)
 	var made := {}
 	for slot in look:
-		# wariant kolorystyczny korzysta z wykroju innej rzeczy (look.model) i barwi tkaninę (look.tint)
+		# wariant kolorystyczny korzysta z wykroju innej rzeczy (look.model) i farbuje główną tkaninę na look.tint
 		var gid := String(look[slot].get("model", gear[slot]))
 		var bone := String(look[slot].get("bone", ""))
 		var tn: Color = tints.get(slot, col(look[slot].tint) if look[slot].has("tint") else Color.WHITE)
