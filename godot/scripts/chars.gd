@@ -768,19 +768,27 @@ instance uniform float w_plaid = 0.0;
 instance uniform vec4 w_hide = vec4(0.0);
 instance uniform vec4 w_plastic = vec4(0.0);   // manekin: całe ciało w kolorze tworzywa
 varying vec4 reg;
+varying float neck_w;
 void vertex() {
 	vec4 r = vec4(0.0);
+	float nk = 0.0;
 	for (int i = 0; i < 4; i++) {
 		int rg = bone_region[int(BONE_INDICES[i])];
 		float w = BONE_WEIGHTS[i];
-		if (rg == 1) { r.x += w; } else if (rg == 2) { r.y += w; } else if (rg == 3) { r.z += w; } else if (rg == 4) { r.w += w; }
+		if (rg == 1) { r.x += w; } else if (rg == 2) { r.y += w; } else if (rg == 3) { r.z += w; } else if (rg == 4) { r.w += w; } else if (rg == 5) { nk += w; }
 	}
 	reg = r;
+	neck_w = nk;
 }
 vec3 srgb(vec3 c) { return pow(c, vec3(2.2)); }
 void fragment() {
 	// ciało pod uszytym ubraniem nie jest rysowane (nic nie przebija przez materiał)
 	if (dot(step(vec4(0.5), reg), w_hide) > 0.5) {
+		discard;
+	}
+	// podstawa szyi: punkty, które choć trochę idą za tułowiem, też znikają pod górą — granica widocznej skóry
+	// wypada wtedy wyżej, pod wykończeniem dekoltu, a nie poszarpana w środku kołnierza
+	if (w_hide.x > 0.5 && reg.x + neck_w * 0.45 >= 0.5) {
 		discard;
 	}
 	vec3 base = texture(tex_albedo, UV).rgb;
@@ -822,6 +830,8 @@ static func _bone_region(bone: String) -> int:
 		return 2
 	if b.contains("spine") or b.contains("clavicle") or b.contains("upperarm") or b.contains("forearm"):
 		return 1
+	if b.contains("neck"):
+		return 5
 	return 0
 
 

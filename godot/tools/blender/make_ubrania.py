@@ -697,6 +697,44 @@ def _neck_ring(lps, n=60):
     return ring
 
 
+def _neck_fill(B, ring, parts, material=None, rise=0.044, name='podkoszulek'):
+    """Wypełnienie dekoltu: pas od brzegu ubrania do szyi (wykończenie podkoszulka). Ciało pod górą jest ukrywane według
+    wag kości, więc dolna granica widocznej skóry szyi jest poszarpana — bez tego pasa było ją widać w kołnierzu.
+    Górny brzeg przylega do szyi: promień mierzony wyżej, gdzie jest już sama szyja."""
+    if material is None:
+        material = mat('dzianina_podkoszulek', 'e4e2dc', 0.9)
+    c = sum(ring, Vector()) / len(ring)
+    n = len(ring)
+    rad = []
+    for p in ring:
+        e = Vector((p.x - c.x, p.y - c.y, 0)).normalized()
+        best = 1.0
+        for dz in (rise, rise + 0.012, rise + 0.024):
+            o = Vector((c.x, c.y, p.z + dz))
+            loc, _, _, _ = B.tree.ray_cast(o + e * 0.2, -e, 0.2)
+            if loc is not None:
+                best = min(best, (loc - o).dot(e))
+        r_out = (Vector((p.x, p.y, 0)) - Vector((c.x, c.y, 0))).length
+        rad.append(max(0.04, min(r_out - 0.004, (best if best < 1.0 else 0.055) + 0.004)))
+    for _ in range(3):
+        rad = [(rad[k - 1] + 2 * rad[k] + rad[(k + 1) % n]) / 4 for k in range(n)]
+    vb = bmesh.new()
+    rows = []
+    for k, p in enumerate(ring):
+        e = Vector((p.x - c.x, p.y - c.y, 0)).normalized()
+        o = Vector((c.x, c.y, p.z + rise))
+        r_out = (Vector((p.x, p.y, 0)) - Vector((c.x, c.y, 0))).length
+        rows.append((vb.verts.new(p - Z * 0.012 + e * 0.005),
+                     vb.verts.new(Vector((c.x, c.y, p.z + rise * 0.45)) + e * (rad[k] + (r_out - rad[k]) * 0.35)),
+                     vb.verts.new(o + e * rad[k]),
+                     vb.verts.new(o + e * (rad[k] - 0.003) + Z * 0.004)))
+    for i in range(n):
+        for k in range(3):
+            vb.faces.new((rows[i][k], rows[i][k + 1], rows[(i + 1) % n][k + 1], rows[(i + 1) % n][k]))
+    bmesh.ops.recalc_face_normals(vb, faces=vb.faces[:])
+    parts.append(mesh_object(vb, name, material))
+
+
 def _collar_stand(ring, material, parts, height=0.038, lean=0.006, thick=0.004, name='stojka'):
     """stójka: gładki pas wokół szyi; u dołu szerszy (zakrywa pofałdowany brzeg powłoki), ku górze pochyla się do środka"""
     c = sum(ring, Vector()) / len(ring)
@@ -783,6 +821,7 @@ def bluza_kaptur():
     paint(ob, lambda c, n: c.z < 0.875 or _cuff(B, c), 1)
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts)
         _collar_stand(lp, rib, parts, 0.012, 0.002, 0.003, name='karczek')
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
@@ -828,6 +867,7 @@ def kurtka_kieszenie():
     ob = to_object(B, bm, 'kurtka_kieszenie', [cloth, dark, metal])
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts)
         _collar_stand(lp, dark, parts, 0.042, 0.007)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
@@ -865,6 +905,7 @@ def koszula():
     ob = to_object(B, bm, 'koszula', [plaid, btn])
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts, plaid, 0.044, 'stojka_wewn')
         _collar_stand(lp, plaid, parts, 0.012, 0.003)
         _collar_leaf(lp, plaid, parts, 0.016, (0.02, 0.03), (0.036, 0.052), 26.0, 'kolnierzyk', tree=tree)
     for lp in cuffs:
@@ -893,6 +934,7 @@ def kurtka_skorzana():
     ob = to_object(B, bm, 'kurtka_skorzana', [lea, dark, metal])
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts)
         _collar_stand(lp, lea, parts, 0.012, 0.003)
         _collar_leaf(lp, dark, parts, 0.018, (0.03, 0.04), (0.055, 0.085), 40.0, 'kolnierz', 0.004, tree=tree)
     for lp in cuffs:
@@ -927,6 +969,7 @@ def dres_gora():
     paint(ob, lambda c, n: c.z < 0.888 or _cuff(B, c), 1)
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts)
         _collar_stand(lp, rib, parts, 0.046, 0.005)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
@@ -981,6 +1024,7 @@ def kurtka_puchowa():
     paint(ob, lambda c, n: c.z < hem + 0.036 or _cuff(B, c, 0.97), 1)
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts)
         _collar_stand(lp, nylon, parts, 0.055, 0.004, 0.006)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
@@ -1011,6 +1055,7 @@ def marynarka():
     ob = to_object(B, bm, 'marynarka', [wool, dark, shirt, btn])
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts, shirt, 0.044, 'stojka_koszuli')
         _collar_stand(lp, shirt, parts, 0.016, 0.008, 0.003, 'kolnierzyk')
         _collar_leaf(lp, dark, parts, 0.008, (0.028, 0.036), (0.028, 0.036), 120.0, 'kolnierz', 0.004, tree=tree)
     for lp in cuffs:
@@ -1054,6 +1099,7 @@ def plaszcz():
     ob = to_object(B, bm, 'plaszcz', [wool, dark, btn, metal])
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts)
         _collar_stand(lp, wool, parts, 0.014, 0.003)
         _collar_leaf(lp, dark, parts, 0.02, (0.04, 0.05), (0.07, 0.11), 50.0, 'kolnierz', 0.005, tree=tree)
     for lp in cuffs:
@@ -1099,6 +1145,7 @@ def kurtka_jeans():
     ob = to_object(B, bm, 'kurtka_jeans', [denim, light, thread, metal])
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts)
         _collar_stand(lp, denim, parts, 0.012, 0.003)
         _collar_leaf(lp, denim, parts, 0.018, (0.03, 0.04), (0.045, 0.065), 34.0, 'kolnierz', 0.004, tree=tree)
     for lp in cuffs:
@@ -1138,6 +1185,7 @@ def sweter():
     paint(ob, lambda c, n: c.z < 0.9 or _cuff(B, c), 1)
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts, rib, 0.044, 'golf')
         _collar_stand(lp, rib, parts, 0.014, 0.002, 0.004, 'sciagacz_szyi')
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
@@ -1174,6 +1222,7 @@ def parka():
     ob = to_object(B, bm, 'parka', [cloth, dark, fur, metal])
     parts = []
     for lp in neck:
+        _neck_fill(B, lp, parts)
         _collar_stand(lp, dark, parts, 0.044, 0.006)
     for lp in cuffs:
         c = sum(lp, Vector()) / len(lp)
