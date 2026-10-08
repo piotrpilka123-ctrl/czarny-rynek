@@ -842,7 +842,7 @@ func tour_shots() -> Array:
 		{"icon": "ub_bojowki", "name": "Bojówki", "sub": "trzy miejsca więcej w kieszeniach"},
 		{"icon": "ub_czapka_daszek", "name": "Czapka z daszkiem", "sub": "trudniej Cię opisać"},
 		{"icon": "ub_kominiarka", "name": "Kominiarka", "sub": "nikt Cię nie rozpozna — patrol tak"}])
-	add.call("SKRZYNKA WIKTORA", "zeszyt • wkład • awanse", "Stara skrzynka gazowa na tyłach pawilonu. Tu zanosisz pieniądze: najpierw schodzi zeszyt za towar, reszta to Twój wkład — a z wkładu biorą się awanse u Wiktora.", float(D.WIKTOR_BOX.x), float(D.WIKTOR_BOX.z), 0.0, -1.0, 180.0, 0.55, [
+	add.call("SKRZYNKA WIKTORA", "zeszyt • wkład • awanse", "Stara skrzynka gazowa na tyłach pawilonu. Tu zanosisz pieniądze: najpierw schodzi zeszyt za towar, reszta to Twój wkład — a z wkładu biorą się awanse u Wiktora.", float(D.WIKTOR_BOX.x), float(D.WIKTOR_BOX.z), 0.0, -1.0, 180.0, 1.0, [
 		{"icon": "notes", "name": "Zeszyt", "sub": "najpierw spłata za wzięty towar"},
 		{"icon": "cash", "name": "Wkład", "sub": "reszta zostaje na Twoim koncie"},
 		{"icon": "award", "name": "Awans", "sub": "%s od %d zł wkładu" % [String(D.RANKS[1].name), int(D.RANKS[1].at)]}])

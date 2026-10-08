@@ -235,6 +235,16 @@ def bolts(prefix, pts, material, r=0.008, h=0.006, axis='Z'):
     return out
 
 
+def wz(color, kind):
+    """Kolor bazowy, po którym faktura `kind` wypali się na zadany kolor (szesnastkowo, jak na ekranie).
+    Faktury mnożą przez siebie kilka pasm o barwie bazowej (drewno i tkanina trzy, beton, karton i cegła dwa),
+    więc wypalony kolor to baza do potęgi i ciemne kolory wychodzą bez tej poprawki prawie czarne.
+    Starsze modele mają kolory dobrane na oko pod ten efekt — dlatego samych faktur nie zmieniam."""
+    n = {'drewno': 3, 'tkanina': 3, 'karton': 2, 'beton': 2, 'cegla': 2}.get(kind, 1)
+    c = tuple(int(color[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    return tuple(pow(min(1.0, pow(pow(v, 2.2) / 0.86, 1.0 / n)), 1 / 2.2) for v in c)
+
+
 def _pattern(nt, kind, base):
     """faktura materiału jako kolor (wyjście węzła) albo None: prążki sztruksu, słoje drewna, żeberka kartonu, pory betonu, splot tkaniny"""
     if not kind:

@@ -1724,6 +1724,22 @@ func _wiktor_box() -> void:
 	_place(m, bx, -57.0, PI)
 	Props.set_range(m, 90.0)
 	box_door = Stations._find(m, "Drzwi") as Node3D
+	# tyły pawilonu wokół skrzynki: zaplecze, na które nikt nie zagląda (kadr przelotu pokazywał tu gołą ścianę)
+	var keep: int = rng.state
+	_graffiti("", bx - 3.6, -57.0, 1.25, PI, Color.WHITE, 150)
+	_graffiti("", bx + 4.4, -57.0, 1.0, PI, Color.WHITE, 100)
+	_prop("pallet", bx + 2.3, -58.2, 0.25, 0.16, 0.0, false)
+	_prop("pallet_broken", bx + 2.6, -57.45, 1.45, 0.16, 0.0, false)
+	_prop("plastic_crate_01", bx + 2.2, -58.2, 0.5, 0.32, 0.0, true, 0.16)
+	_prop("plastic_crate_01", bx + 3.5, -57.9, -0.3, 0.32)
+	_prop("cardboard_box_01", bx - 1.9, -57.8, 0.4, 0.42)
+	_prop("cardboard_box_01", bx - 2.6, -58.0, -0.5, 0.36)
+	_prop("trashbag", bx - 1.2, -57.7, 0.9, 0.45, 0.0, false)
+	_prop("trashbag_1", bx - 3.3, -57.9, 2.2, 0.42, 0.0, false)
+	_prop("old_tyre", bx + 5.2, -57.7, 0.2, 0.22, 0.0, false)
+	_prop("can_rusted", bx + 0.9, -58.6, 0.7, 0.12, 0.0, false)
+	_prop("exterior_aircon_unit", bx - 5.0, -57.25, PI, 0.62, 0.0, true, 2.1)
+	rng.state = keep
 	inter.append({"loc": "out", "x": float(D.WIKTOR_BOX.x), "z": -57.0 * SC - 0.25, "y0": 0.85, "y1": 1.7, "r": 0.55, "reach": 2.6, "id": "wiktor_box",
 		"label": func(): return "Skrzynka Wiktora — włóż pieniądze" + ((" (zeszyt: %s)" % G.money(G.S.credit)) if float(G.S.credit) > 0.0 else ""),
 		"act": func(): G.main.open_box()})
@@ -2265,7 +2281,12 @@ func _buildings() -> void:
 	city.add_child(cl)
 	# szyldy przy Hutniczej
 	_shopfront(-75.0, 10.0, "PAWN SHOP", Color(0.95, 0.8, 0.2), "rusted_shutter", false)
-	_sign("WE BUY ANYTHING", Vector3(-75.0, hd(-75.0, 11.0) + 1.9, 10.2), Color(0.95, 0.8, 0.2), 34, 0.0, 0.006, 6)
+	# witryna z modelu: okno z kratą i zastawionymi rzeczami, drzwi, deska „WE BUY ANYTHING” (wcześniej czarny prostokąt)
+	var pw := Stations.model("lombard_witryna")
+	if pw != null:
+		Props.set_range(_place(pw, -75.0, 10.0 + 0.3 * INV, 0.0, 1.5, 0.3, 2.6), 80.0)
+	else:
+		_sign("WE BUY ANYTHING", Vector3(-75.0, hd(-75.0, 11.0) + 1.9, 10.2), Color(0.95, 0.8, 0.2), 34, 0.0, 0.006, 6)
 	inter.append({"loc": "out", "x": -75.0 * SC, "z": 10.6 * SC, "y0": 0.0, "y1": 2.4, "r": 1.6, "reach": 3.0, "id": "lombard",
 		"label": func(): return "Lombard — skup znalezisk, wagi" if G.pawn_open() else "Lombard — otwarte %d:00–%d:00" % [int(D.PAWN_OPEN[0]), int(D.PAWN_OPEN[1])],
 		"act": func(): G.main.pawn_talk()})
