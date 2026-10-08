@@ -895,6 +895,8 @@ func run() -> void:
 	S.t = floorf(S.t / 1440.0) * 1440.0 + 13.0 * 60.0
 	var stam0: float = G.player.max_stamina()
 	var sn_ok: bool = G.snack_buy("kebab") and S.cash == 100.0 - float(D.SNACKS.kebab.price) and G.fed() and absf(G.player.max_stamina() - stam0 * D.SNACK_STAMINA) < 0.01
+	var full_no: bool = not G.snack_buy("kebab") and S.cash == 100.0 - float(D.SNACKS.kebab.price)
+	ok(full_no, "po kebabie drugi od razu nie wejdzie — na zapas się nie najesz")
 	S.t += float(D.SNACKS.kebab.hours) * 60.0 + 1.0
 	var sn_point := false
 	for it_s in G.world.inter:

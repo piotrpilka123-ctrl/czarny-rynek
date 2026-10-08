@@ -1111,6 +1111,10 @@ func snack_buy(id: String) -> bool:
 	if float(S.cash) < float(sn.price):
 		notify("%s kosztuje %s — brakuje Ci gotówki." % [String(sn.name), money(sn.price)], "warn")
 		return false
+	# na zapas się nie najesz: syty jest się najwyżej 6 godzin naprzód
+	if float(S.get("fed_until", 0.0)) - float(S.t) > 6.0 * 60.0 - float(sn.hours) * 60.0 and fed():
+		notify("Jesteś jeszcze pełny — więcej nie zmieścisz.", "warn")
+		return false
 	S.cash = float(S.cash) - float(sn.price)
 	S.stats.spent = float(S.stats.get("spent", 0.0)) + float(sn.price)
 	S["fed_until"] = maxf(float(S.get("fed_until", 0.0)), float(S.t)) + float(sn.hours) * 60.0
