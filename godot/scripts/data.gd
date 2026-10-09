@@ -314,7 +314,7 @@ const PEOPLE_COP := ["pm3", "pm6", "pm4", "pm3"]
 ## wspólnik z laboratorium (prolog)
 const SIWY_LOOK := {"model": "m18", "kind": "hoodie", "seed": 51, "tall": 1.02, "walk": "Walk_Stiff"}
 
-const PLAYER_LOOK := {"model": "m10", "kind": "dres", "top": "14161a", "top2": "e8e6e0", "bottom": "14161a", "stripes": true, "shoes": "e4e4e0", "hair": "hair_buzzed", "seed": 77, "skin": 0.25}
+const PLAYER_LOOK := {"model": "m10", "face":"m01", "player":true, "kind": "dres", "top": "14161a", "top2": "e8e6e0", "bottom": "14161a", "stripes": true, "shoes": "e4e4e0", "hair": "hair_buzzed", "seed": 77, "skin": 0.85}
 const CAP_BASE := 30
 const STASH_BASE := 200
 

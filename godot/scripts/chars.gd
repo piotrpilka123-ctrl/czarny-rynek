@@ -696,6 +696,18 @@ static func _make_person(o: Dictionary, rng: RandomNumberGenerator, female: bool
 	var p: Dictionary = People.instance(model, String(o.get("face", "")))
 	var inst: Node3D = p.model
 	var skel: Skeleton3D = p.skel
+	if o.get("player",false):
+		for mi in skel.get_children():
+			if not mi is MeshInstance3D: continue
+			for sf in range(mi.mesh.get_surface_count()):
+				var src:Material=mi.mesh.surface_get_material(sf)
+				var cur:Material=mi.get_surface_override_material(sf)
+				if src!=null and String(src.resource_name).to_lower().ends_with("head") and cur is StandardMaterial3D:
+					var skin_mat:StandardMaterial3D=cur.duplicate()
+					skin_mat.roughness=0.65
+					skin_mat.normal_scale=0.7
+					skin_mat.texture_filter=BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+					mi.set_surface_override_material(sf,skin_mat)
 	female = People.is_female(model)
 	var k: float = float(o.get("tall", rng.randf_range(0.97, 1.045)))
 	var build: float = o.get("build", rng.randf_range(0.97, 1.04))
@@ -711,7 +723,7 @@ static func _make_person(o: Dictionary, rng: RandomNumberGenerator, female: bool
 		root.add_child(_blob(k))
 	var kind_name: String = o.get("kind", "hoodie")
 	var rig := {"root": root, "model": inst, "skel": skel, "body": p.body, "anim": ap, "height": float(p.top) * k, "cur": "", "female": female, "phase": rng.randf(),
-		"walk": o.get("walk", pick_walk(rng, female, kind_name)), "idle_t": 0.0, "person": true}
+		"walk": o.get("walk", pick_walk(rng, female, kind_name)), "idle_t": 0.0, "person": true,"player":o.get("player",false)}
 	play(rig, "Idle")
 	ap.seek(rng.randf() * 3.0, true)
 	add_face(rig, rng)
@@ -767,6 +779,7 @@ instance uniform vec4 w_gloves = vec4(0.0);
 instance uniform float w_plaid = 0.0;
 instance uniform vec4 w_hide = vec4(0.0);
 instance uniform vec4 w_plastic = vec4(0.0);   // manekin: całe ciało w kolorze tworzywa
+instance uniform vec4 w_skin = vec4(0.0);
 varying vec4 reg;
 varying float neck_w;
 void vertex() {
@@ -806,6 +819,7 @@ void fragment() {
 	c = mix(c, top * shade, smoothstep(0.42, 0.58, reg.x) * w_top.a);
 	c = mix(c, srgb(w_pants.rgb) * shade, smoothstep(0.42, 0.58, reg.y) * w_pants.a);
 	c = mix(c, srgb(w_shoes.rgb) * shade, smoothstep(0.72, 0.9, reg.z) * w_shoes.a);
+	c = mix(c, srgb(w_skin.rgb)*shade, clamp(reg.w+neck_w,0.0,1.0)*w_skin.a);
 	c = mix(c, srgb(w_gloves.rgb) * shade, smoothstep(0.42, 0.58, reg.w) * w_gloves.a);
 	ALBEDO = mix(c, srgb(w_plastic.rgb), w_plastic.a);
 	ROUGHNESS = mix(0.84, 0.42, w_plastic.a);
@@ -1181,6 +1195,7 @@ static func dress(rig: Dictionary, gear: Dictionary, tints := {}) -> void:
 		mi.set_instance_shader_parameter("w_gloves", tint.call("dlonie"))
 		mi.set_instance_shader_parameter("w_plaid", 1.0 if look.get("gora", {}).get("plaid", false) else 0.0)
 		mi.set_instance_shader_parameter("w_hide", hide)
+		mi.set_instance_shader_parameter("w_skin",Color(0.82,0.73,0.66,1.0) if rig.get("player",false) else Color(0,0,0,0))
 	# --- głowa: czapka z daszkiem albo zimowa
 	var head: Dictionary = look.get("glowa", {})
 	if head.has("hat"):

@@ -25,11 +25,13 @@ var vp: SubViewport
 var vpc: SubViewportContainer
 var rig := {}
 var pivot: Node3D
-var bag_mesh: MeshInstance3D
+var bag_mesh: Node3D
 var rig_outfit := ""          # strój pokazany na podglądzie postaci
 var wear_sel := ""            # strój oglądany w zakładce „Ubrania”
 var spin := 0.0
+var spin_rest:=0.0
 var spin_drag := false
+var preview_motion:=0
 var ask := {}                # otwarte okno wyboru ilości: {e, from, to, max, step, v}
 var ask_box: Control = null
 var ask_big: Label
@@ -136,23 +138,16 @@ func set_rig(outfit_id: String) -> void:
 	var look: Dictionary = D.PLAYER_LOOK.duplicate()
 	look["no_blob"] = true
 	look["model"] = String(od.model)
-	look["face"] = String(D.PLAYER_LOOK.model)
+	look["face"] = String(D.PLAYER_LOOK.get("face",D.PLAYER_LOOK.model))
 	look["mask"] = bool(od.get("mask", false))
 	look["tall"] = 1.0
 	look["build"] = 1.0
 	rig = Chars.make(look)
 	pivot.add_child(rig.root)
 	rig.anim.process_mode = Node.PROCESS_MODE_ALWAYS
-	Chars.animate(rig, 0.0, 0.0, "")
+	Chars.animate(rig, 0.0, [0.0,2.4,5.5][preview_motion], "")
 	# plecak na plecach (widoczny po zakupie)
-	bag_mesh = MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.3, 0.4, 0.16)
-	bag_mesh.mesh = bm
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.16, 0.2, 0.17)
-	mat.roughness = 0.9
-	bag_mesh.material_override = mat
+	bag_mesh = load("res://scripts/player_backpack.gd").new()
 	var skel: Skeleton3D = rig.skel
 	var bone := ""
 	for cand in ["Bip01 Spine2", "spine_03", "spine_02", "Spine2", "Chest", "spine_01"]:
@@ -166,8 +161,8 @@ func set_rig(outfit_id: String) -> void:
 		ba.add_child(bag_mesh)
 		if bone.begins_with("Bip01"):
 			# kość szkieletu Biped: oś X w górę kręgosłupa, Y do przodu, Z w bok
-			bm.size = Vector3(0.4, 0.16, 0.3)
-			bag_mesh.position = Vector3(0.04, -0.18, 0)
+			bag_mesh.basis=Basis(Vector3(0,0,-1),Vector3(1,0,0),Vector3(0,-1,0))
+			bag_mesh.position = Vector3(-0.12, -0.145, 0)
 		else:
 			bag_mesh.position = Vector3(0, 0.02, -0.17)
 	else:
@@ -213,17 +208,14 @@ func _bag_refresh() -> void:
 	_dress(true)
 	bag_mesh.visible = G.S != null and G.S.has("upg") and G.upg("plecak1")
 	var big: bool = G.S != null and G.S.has("upg") and G.upg("plecak2")
-	var bmesh := bag_mesh.mesh as BoxMesh
-	if bmesh.size.x > 0.39:
-		bmesh.size = Vector3(0.5, 0.2, 0.34) if big else Vector3(0.4, 0.16, 0.3)
-	else:
-		bmesh.size = Vector3(0.34, 0.5, 0.2) if big else Vector3(0.3, 0.4, 0.16)
+	bag_mesh.configure(big,float(G.carry_total())/maxf(1.0,float(G.capacity())))
 
 
 func _char_view(w: float, h: float) -> Control:
 	if vpc != null and is_instance_valid(vpc):
 		vpc.queue_free()
 	var holder := Control.new()
+	holder.tooltip_text="Przeciągnij: obrót postaci. Prawy przycisk: stanie / chód / bieg."
 	holder.custom_minimum_size = Vector2(w, h)
 	var glow := ColorRect.new()
 	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -243,10 +235,14 @@ func _char_view(w: float, h: float) -> Control:
 
 
 func _spin_input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.button_index==MOUSE_BUTTON_RIGHT and ev.pressed:
+		preview_motion=(preview_motion+1)%3
+		Chars.animate(rig,0.0,[0.0,2.4,5.5][preview_motion])
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
 		spin_drag = ev.pressed
 	elif ev is InputEventMouseMotion and spin_drag:
 		spin += ev.relative.x * 0.012
+		spin_rest=spin
 
 
 func _process(dt: float) -> void:
@@ -255,8 +251,10 @@ func _process(dt: float) -> void:
 	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		spin_drag = false
 	if not spin_drag:
-		spin = lerpf(spin, sin(Time.get_ticks_msec() * 0.0005) * 0.35, minf(1.0, dt * 1.2))
+		spin = lerpf(spin, spin_rest+sin(Time.get_ticks_msec() * 0.0005) * 0.08, minf(1.0, dt * 1.2))
 	pivot.rotation.y = spin
+	if bag_mesh!=null:
+		bag_mesh.motion=float(preview_motion)
 
 
 # ---------------------------------------------------------------- otwieranie

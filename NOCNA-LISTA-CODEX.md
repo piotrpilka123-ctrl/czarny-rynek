@@ -7,6 +7,8 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 ## Pilne poprawki zgłoszone przez Piotra
 
 Najnowsze polecenia — przed dalszym ogólnym audytem:
+- [ ] Priorytet Piotra: modele postaci, animacje, realistyczna biała postać gracza i interaktywny ubiór. Pierwszy blok: jaśniejsza twarz/dłonie, detale materiału skóry, podgląd chodu/biegu, nowy plecak z Blendera. Pozostają pełne animacje obsługi plecaka i dalszy przegląd ubrań/postaci.
+- [x] Wymienić odrzucony obły plecak: płaski tył, ciemny nylon, kieszenie, suwaki i szelki; obniżone mocowanie do kości. Dwa rozmiary i objętość zależna od zapełnienia; natywny podgląd obejrzany.
 - [x] Poprawić toalety: model ceramiczny z wnętrzem misy, deską, pokrywą i zbiornikiem; obejrzany w Godocie.
 - [x] Poprawić wiszące narzędzia garażu: przestrzenne klucze, piła, młotek, śrubokręty i kombinerki z Blendera.
 - [x] Cienie w pokoju początkowym, w tym krzesła: lampka rzuca cienie, skorygowana odległość cienia od powierzchni; porównanie renderów ON/OFF.

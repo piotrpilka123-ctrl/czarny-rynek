@@ -609,3 +609,26 @@ Natywne podglądy klub-schody.png, klub-balkon.png, klub-loze.png obejrzane;
 bez dźwięku, po wolne.sh. Nie deklaruje to perfekcji całej gry ani końca audytu.
 Następny pilny blok: wielopokojowe lokale do kupienia. Graphify nadal wskazuje
 starszy JS; nie powtarzano nieprzydatnego zapytania do tego samego indeksu.
+
+## 2026-10-09 — priorytet postaci gracza i poprawiony plecak
+
+Piotr przekierował pracę na modele/animacje postaci, jasną skórę gracza,
+materiały ubrań i plecak. Pierwszy proceduralny obły model został odrzucony;
+zastąpiono go assets/models/gracz_plecak.glb z generatora Blender
+tools/blender/make_player_backpack.py. Płaski panel tylny, ciemny nylon,
+oddzielne kieszenie, obszycia, zęby zamków, suwaki, szelki z regulatorami i uchwyt.
+3392 ściany, jeden mesh, tekstura zabrudzeń 512 px. Mocowanie obniżone na plecy.
+Skrypt player_backpack.gd odpowiada za rozmiar ulepszenia, grubość zależną
+od zapełnienia i delikatne ruchy wtórne; nie zmienia pojemności ani ekonomii.
+
+Gracz zachowuje sylwetki strojów, ma twarz m01 zamiast m10; zachowano tekstury
+albedo/normal, zmieniono szorstkość i filtrowanie głowy. Jasny odcień dłoni/szyi
+jest osobnym parametrem gracza, rękawiczki nadal przykrywają skórę.
+PPM w podglądzie przełącza stanie/chód/bieg, obrót zostaje w wybranej orientacji.
+Dotyczy to podglądu ekwipunku; nie dodano jeszcze pełnego ciała do kamery FPS
+ani animacji zdejmowania/otwierania plecaka — całe polecenie nie jest odhaczone.
+
+Natywne gracz-przod.png, gracz-plecak.png i osobne podglądy viewportu obejrzane.
+player_visual_check.gd sprawdza mocowanie do kości i przełączenie Walk/Jog_Fwd;
+bez dźwięku, po wolne.sh. Pełny runtest.sh: 769 OK, 0 błędów. Automatyzacja
+otrzymała nowy priorytet; wielopokojowe lokale nadal czekają, nie zmieniono ich.
