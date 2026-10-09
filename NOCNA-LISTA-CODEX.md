@@ -7,7 +7,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 ## Pilne poprawki zgłoszone przez Piotra
 
 - [x] Naprawić rzeczywiste celowanie w laptop i pozostałe przedmioty; zapis z celownika.
-- [ ] Rośliny: ponowna poprawa, gęstsze liście i realistyczniejsza sylwetka — dotychczasowy wygląd nie został zaakceptowany.
+- [x] Rośliny: ponowna poprawa, gęstsze liście i realistyczniejsza sylwetka — dotychczasowy wygląd nie został zaakceptowany.
 
 ## Wykonane
 
@@ -133,3 +133,10 @@ Podpunkt 9a [x]: lokalna reputacja za rzeczywiste dostawy; dzienny limit,
 pamięć klientów i zapis. Progi 20/50/80 dają lokalnej sieci rabat prowizji
 1/2/3 punkty procentowe. Telefon pokazuje dzielnicę, stan i następny cel.
 Punkt 9 nadal otwarty: pomocnicy produkcji, ich kontakty, koszty i kolejne cele.
+
+Pilne poprawki: fd64cbd naprawa celowania/zapisu, 721 testów OK i zapis
+na dysk w izolowanej instancji. Kolejna wersja roślin: gęstsze korony, boczne
+pędy, szersze liście, mniejsze kwiatostany; lampy uprawowe z rzeczywistymi
+cieniami, materiały liści reagują na światło. Renderer porównany światło/cienie
+włączone i wyłączone; nie jest to deklaracja perfekcji ani akceptacja przez Piotra.
+Po nowych uwagach użytkownika wrócić do tych modeli. Następne: pomocnicy 9b.

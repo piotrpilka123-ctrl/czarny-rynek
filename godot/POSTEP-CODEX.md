@@ -386,3 +386,28 @@ Pełny test finalnego kodu wymagany przed commitem.
 Następny priorytet użytkownika: rośliny mają być gęstsze i bardziej realistyczne,
 przed kontynuacją pomocników. Wcześniejsze odhaczenie roślin oznaczało pierwszą
 wersję, nie akceptację ich wyglądu przez Piotra.
+
+
+## Poprawa roślin po uwagach Piotra — gęstość i oświetlenie
+
+Trzy modele przebudowane w Blenderze. Więcej pięter i bocznych pędów,
+wachlarze 5–7 szerszych, ząbkowanych listków o różnych nachyleniach; dodatkowe
+liście wewnątrz korony. Mniejsze, ciemniejsze i mniej regularne kwiatostany
+zamiast dużych jasnych stożków. Siatka i atlas nadal wspólne dla danego etapu.
+Nie zmieniono czasu wzrostu, plonu, jakości ani kosztów produkcji.
+
+Źródło zgłoszenia cieni: grow_lamp miała shadow_enabled=false. Zamiast
+Omni dodano skierowane w dół SpotLight z cieniami (jedna mapa zamiast sześciu
+na światło), lekko zmniejszony bias. Liście: per-pixel PBR, bez własnej emisji,
+zachowane obustronne materiały. Mają reagować na rzeczywiste lampy, nie świecić
+same. Renderer: rosliny-gestsze.png / rosliny-swiatlo.png obejrzane; porównanie
+rosliny-uv-cienie.png, rosliny-uv-bez-cieni-test.png i rosliny-uv-wylaczone-test.png.
+Kontrola obrazu na roślinach/podłożu: zmiana światła 0,01287, cieni 0,01651
+(średnia bezwzględna różnica RGB 0..1). Podczas próby wyłączono odświeżanie
+stanowisk, aby gra nie przywracała ustawień testowych co ułamek sekundy.
+
+Pełny test finalnych zasobów i kodu: 721 OK, 0 błędów. Podgląd med 1280×720,
+po 120 klatkach: 58 FPS, 104 draw calls; pomiar lokalny, nie całej gry.
+Wygląd pozostaje otwarty na ocenę Piotra; nie deklarować realizmu/perfekcji
+po samym headless. Priorytet naprawy interakcji i cieni wykonany.
+Następny niewykonany blok: pomocnicy produkcji 9b.

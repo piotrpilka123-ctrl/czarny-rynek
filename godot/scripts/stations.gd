@@ -97,10 +97,8 @@ static func _solid_plant(stage: int) -> ArrayMesh:
 			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 			material.backlight_enabled = true
 			material.backlight = Color(0.1, 0.16, 0.06)
-			material.emission_enabled = true
-			material.emission_texture = material.albedo_texture
-			material.emission = material.albedo_color
-			material.emission_energy_multiplier = 0.055
+			material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+			material.emission_enabled = false
 			if weak:
 				material.albedo_color *= Color(1.0, 0.77, 0.42)
 				material.emission *= Color(1.0, 0.77, 0.42)
@@ -254,14 +252,18 @@ static func refresh_pot(n: Node3D, pl, seed_k := 0.0) -> void:
 static func grow_lamp() -> Node3D:
 	var made := model("lampa_led")
 	if made != null:
-		var led0 := OmniLight3D.new()
+		var led0 := SpotLight3D.new()
 		led0.name = "Led"
 		led0.position = Vector3(0, 1.68, 0)
 		led0.light_color = Color(0.86, 0.36, 1.0)
 		led0.light_energy = 0.6
-		led0.omni_range = 3.6
-		led0.omni_attenuation = 0.9
-		led0.shadow_enabled = false
+		led0.spot_range = 3.6
+		led0.spot_angle = 62.0
+		led0.rotation.x = -PI/2.0
+		led0.spot_attenuation = 0.8
+		led0.shadow_enabled = true
+		led0.shadow_bias = 0.03
+		led0.shadow_normal_bias = 0.25
 		made.add_child(led0)
 		return made
 	var g := Node3D.new()
@@ -286,14 +288,18 @@ static func grow_lamp() -> Node3D:
 		for sz in [-0.22, 0.22]:
 			Models.cyl(g, 0.006, 0.006, 0.9, Vector3(sx, h + 0.47, sz), steel, Vector3.ZERO, 4).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	Models.cyl(g, 0.008, 0.008, 0.9, Vector3(0.7, h + 0.47, 0.0), _m("cable", "0c0c0e", 0.8), Vector3(0, 0, 0.05), 4).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var led := OmniLight3D.new()
+	var led := SpotLight3D.new()
 	led.name = "Led"
 	led.position = Vector3(0, h - 0.3, 0)
 	led.light_color = Color(0.86, 0.36, 1.0)
 	led.light_energy = 0.6
-	led.omni_range = 3.6
-	led.omni_attenuation = 0.9
-	led.shadow_enabled = false
+	led.spot_range = 3.6
+	led.spot_angle = 62.0
+	led.rotation.x = -PI/2.0
+	led.spot_attenuation = 0.8
+	led.shadow_enabled = true
+	led.shadow_bias = 0.03
+	led.shadow_normal_bias = 0.25
 	g.add_child(led)
 	return g
 
