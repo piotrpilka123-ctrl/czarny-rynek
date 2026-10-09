@@ -170,6 +170,10 @@ func set_rig(outfit_id: String) -> void:
 		rig.root.add_child(bag_mesh)
 		bag_mesh.position = Vector3(0, 1.2, -0.2)
 	_bag_refresh()
+	var reach = load("res://scripts/backpack_reach.gd").new()
+	reach.name="BackpackReach"
+	if reach.bind(skel, bag_mesh): skel.add_child(reach)
+	else: reach.free()
 
 
 ## ubrania z pól ekwipunku na postaci w podglądzie (przebudowa tylko wtedy, gdy coś się zmieniło)
@@ -245,15 +249,17 @@ func _spin_input(ev: InputEvent) -> void:
 		spin_rest=spin
 
 func preview_pose(mode:int) -> void:
+	if bag_mesh!=null: bag_mesh.cancel_reach()
 	preview_motion=clampi(mode,0,2)
 	Chars.animate(rig,0.0,[0.0,2.4,5.5][preview_motion])
 	if bag_mesh!=null: bag_mesh.motion=float(preview_motion)
 
 func inspect_backpack() -> void:
 	if bag_mesh==null or not bag_mesh.visible: return
+	if bag_mesh.interacting: return
 	preview_pose(0)
 	spin_rest=PI
-	bag_mesh.opened=not bag_mesh.opened
+	bag_mesh.inspect()
 	if is_instance_valid(backpack_button):
 		backpack_button.text="Zamknij kieszeń" if bag_mesh.opened else "Obejrzyj plecak"
 
@@ -439,6 +445,7 @@ func drag_demo(to_right: bool) -> void:
 
 
 func close() -> void:
+	if bag_mesh!=null: bag_mesh.cancel_reach()
 	demo_stop()
 	ask_close()
 	try_on = {}

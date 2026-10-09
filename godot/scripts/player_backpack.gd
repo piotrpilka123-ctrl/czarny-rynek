@@ -9,6 +9,18 @@ var opening:=0.0
 var lid:Node3D
 var zipper:Node3D
 var zipper_start:=Vector3.ZERO
+var interacting:=false
+var interaction_time:=0.0
+var reach_weight:=0.0
+func inspect() -> bool:
+	if interacting: return false
+	opened=not opened
+	interacting=true
+	interaction_time=0.0
+	return true
+func cancel_reach():
+	interacting=false
+	reach_weight=0.0
 func _ready():
 	process_mode=Node.PROCESS_MODE_ALWAYS
 	shell=Node3D.new()
@@ -28,7 +40,13 @@ func configure(big:bool,ratio:float):
 func _process(dt:float):
 	if shell==null: return
 	phase+=dt
-	opening=move_toward(opening,1.0 if opened else 0.0,dt*2.4)
+	var step:=dt
+	if interacting:
+		interaction_time+=dt
+		step=clampf(interaction_time-0.30,0.0,dt)
+		reach_weight=smoothstep(0.0,0.30,interaction_time)*(1.0-smoothstep(0.72,1.12,interaction_time))
+		if interaction_time>=1.12: cancel_reach()
+	opening=move_toward(opening,1.0 if opened else 0.0,step*2.4)
 	# Najpierw jedzie suwak, dopiero potem uchyla się klapa; zamknięcie w odwrotnej kolejności.
 	if zipper!=null: zipper.position=zipper_start-Vector3(0.192*minf(1.0,opening*1.8),0,0)
 	if lid!=null: lid.rotation.x=-0.65*clampf((opening-0.45)/0.55,0,1)
