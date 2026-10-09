@@ -25,7 +25,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 2. [x] Produkcja: amfetamina 1 slot składnika, meta 2, kokaina 3. Większe partie
        odpowiednie dla dealerów, realny koszt w grze, czas i ryzyko. Fikcyjne pakiety
        procesowe, bez rzeczywistych instrukcji chemicznych. Symulacja marży i tempa.
-3. [ ] Rozszerzyć teren za garażami z sensownym dojściem i funkcją w rozgrywce.
+3. [x] Rozszerzyć teren za garażami z sensownym dojściem i funkcją w rozgrywce.
 4. [ ] Jezioro/brzeg, otoczenie, ścieżki; granice terenu i nawigacja muszą pasować.
 5. [ ] Osiedle gangu: odrębne budynki, kontrolowane wejście, ostrzeżenie i ryzyko
        na początku; późniejszy dostęp zależny od postępu/kontaktów.
@@ -74,3 +74,14 @@ Drobne cząstki ziemi zamiast dużych płaskich fragmentów. Prognoza informuje 
 676 testów OK. Podgląd etapów w Blenderze i uprawy w rendererze obejrzane;
 960×540, jakość średnia: ok. 59 FPS w krótkim podglądzie, nie gwarancja całej rozgrywki.
 Teraz punkt 3: rzeczywiste rozszerzenie mapy za garażami, następnie jezioro i osiedle gangu.
+
+
+49a71c6: południowy teren poszerzony o 78 jednostek planu (43,68 m w grze).
+Zaplecze z warsztatami, placem, przejściem, ławką, koszami, detalami i Romanem.
+Przesunięto południową granicę, tło i kolizje; zsynchronizowano limit ruchu, mapę
+oraz nawigację. Nowe połączenia tras są obliczane po kolizjach.
+683 testy OK, w tym ruch poza starą granicą, dojście, połączenia i szczelność granicy.
+Renderer zaplecza obejrzany. Naprawiono również wybór celu dealer_* w cur_target.
+Następny punkt: 4 — jezioro z brzegiem. Miejsce na południowym zapleczu,
+orientacyjnie centrum (90,217), promienie ok. (31,19) w jednostkach planu;
+nie zalewać istniejącej furtki (83,193), zabudowy ani połączeń drogi.

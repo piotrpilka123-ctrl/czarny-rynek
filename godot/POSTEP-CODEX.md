@@ -172,3 +172,21 @@ Materiały zweryfikowane: aktywny materiał oraz tekstura atlasu obecne, bez pus
 białych materiałów. W podglądzie garażu 59 FPS (med, 960×540) — pomiar poglądowy.
 Punkt 2 listy odhaczony. Następne zadanie: rozszerzenie mapy za garażami (punkt 3),
 jezioro (4), osiedle gangu (5). Nie rozpoczynać kolejnego przepisywania roślin zamiast mapy.
+
+
+## 49a71c6 — rzeczywiste rozszerzenie zaplecza za garażami
+
+World.NZ 229→281, MAP_H 684→840, południowy brzeg 169,2→247,2. Nowe warsztaty,
+plac, nawierzchnie, jeden sensowny ciąg ścieżek, ławka, dwa kosze, Roman i otoczenie.
+Przesunięto mur/kolizje, drzewa i południowy pierścień tła. Gracz nie jest cofany na
+stary limit; telefon ma Backyards, nowe krawędzie grafu po grid_path omijają przeszkody.
+Wykryto i poprawiono wcześniejszy błąd: cur_target ignorował dealer_* mimo przycisku
+telefonu. Nowy test obejmuje faktyczny wybór celu dealera.
+
+Pierwsze przebiegi wykryły lampę nad trawnikiem, starą kontrolę granicy i dwa brakujące
+narożniki. Dodano chodnik, dopasowano kontrolę do nowej granicy, zamknięto narożniki.
+Ostatecznie 683 testy OK, 0 błędów; 6 kontroli nowego terenu plus pełny obwód granicy.
+Podglądy zaplecze-garazy.png / zaplecze-final.png obejrzane w rendererze.
+NOCNA-LISTA punkt 3 odhaczony. Następny 4: jezioro; punkt 5: osiedle gangu.
+Plan jeziora: rejon (90,217), promienie (31,19), z zachowaniem furtki (83,193),
+nawierzchni i warsztatów; to propozycja miejsca, jeszcze nie gotowa woda.
