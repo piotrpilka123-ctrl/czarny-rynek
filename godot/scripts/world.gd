@@ -6371,7 +6371,7 @@ func _lake() -> void:
 	lake_surface.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var shader := Shader.new()
 	shader.code = """shader_type spatial;
-render_mode blend_mix, depth_prepass_alpha, cull_disabled;
+render_mode cull_disabled;
 global uniform float wet;
 uniform sampler2D depth_map : filter_linear, repeat_disable;
 uniform vec4 lake_rect;
@@ -6388,7 +6388,7 @@ void fragment() {
  float shore = smoothstep(0.01,0.08,depth);
  ROUGHNESS = mix(0.9,0.22 + wet*0.12,shore);
  SPECULAR = 0.65 * shore;
- ALPHA = smoothstep(0.0,0.045,depth) * 0.9;
+ if (depth < 0.01) { discard; }
 }
 """
 	var material := ShaderMaterial.new()
