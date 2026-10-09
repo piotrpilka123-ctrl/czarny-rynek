@@ -12,12 +12,20 @@ parts=[rbox('Komora',(.31,.145,.405),cloth,.038,(0,0,0),segs=5),
        rbox('Kieszen_przednia',(.26,.052,.19),cloth,.023,(0,-.083,-.066),segs=5),
        rbox('Gorna_kieszen',(.235,.025,.063),cloth,.012,(0,-.084,.103),segs=4)]
 weather(parts,512,.16,.12,samples=8)
+lid=bpy.data.objects.new('Klapa_kieszeni',None)
+bpy.context.collection.objects.link(lid)
+lid.location=(0,-.084,.135)
+parts[3].parent=lid
+parts[3].location=(0,0,-.032)
+rbox('Wnetrze_kieszeni',(.22,.012,.048),web,.004,(0,-.078,.103),segs=2)
+moving=[]
 # Obszycia paneli, dwie linie zamków i widoczne uchwyty.
 for z,w,y in [(.137,.228,-.097),(.021,.245,-.114)]:
     tube('Zamek',[(-w/2,y,z),(w/2,y,z)],.0022,web,6)
     for i in range(24):
         rbox('Zabek',(.0018,.002,.0028),metal,.0005,(-w/2+i*w/23,y-.001,z),segs=1)
-    rbox('Uchwyt_suwaka',(.009,.004,.022),metal,.002,(w/2-.018,y-.006,z-.01),segs=3)
+    slider=rbox('Suwak_glowny' if z>.1 else 'Uchwyt_suwaka',(.009,.004,.022),metal,.002,(w/2-.018,y-.006,z-.01),segs=3)
+    if z>.1: moving.append(slider)
 tube('Obszycie',[(-.125,-.104,.008),(-.13,-.103,-.135),(-.11,-.102,-.16),(.11,-.102,-.16),(.13,-.103,-.135),(.125,-.104,.008)],.0015,seam,6)
 for side in [-1,1]:
     x=side*.10
@@ -29,5 +37,5 @@ for side in [-1,1]:
     rbox('Regulator',(.033,.012,.024),metal,.002,(x,.20,-.075),segs=2)
     rbox('Boczna_kieszen',(.027,.095,.13),web,.012,(side*.158,-.003,-.09),segs=4)
 tube('Uchwyt',[(-.05,.035,.19),(-.045,.03,.23),(.045,.03,.23),(.05,.035,.19)],.007,web,8)
-join('Plecak',[o for o in bpy.context.scene.objects if o.type=='MESH'])
+join('Plecak',[o for o in bpy.context.scene.objects if o.type=='MESH' and o!=parts[3] and o not in moving])
 export('gracz_plecak')

@@ -32,6 +32,7 @@ var spin := 0.0
 var spin_rest:=0.0
 var spin_drag := false
 var preview_motion:=0
+var backpack_button:Button
 var ask := {}                # otwarte okno wyboru ilości: {e, from, to, max, step, v}
 var ask_box: Control = null
 var ask_big: Label
@@ -205,7 +206,7 @@ func _dress(force := false) -> void:
 
 
 func _bag_refresh() -> void:
-	_dress(true)
+	_dress()
 	bag_mesh.visible = G.S != null and G.S.has("upg") and G.upg("plecak1")
 	var big: bool = G.S != null and G.S.has("upg") and G.upg("plecak2")
 	bag_mesh.configure(big,float(G.carry_total())/maxf(1.0,float(G.capacity())))
@@ -236,13 +237,25 @@ func _char_view(w: float, h: float) -> Control:
 
 func _spin_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.button_index==MOUSE_BUTTON_RIGHT and ev.pressed:
-		preview_motion=(preview_motion+1)%3
-		Chars.animate(rig,0.0,[0.0,2.4,5.5][preview_motion])
+		preview_pose((preview_motion+1)%3)
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
 		spin_drag = ev.pressed
 	elif ev is InputEventMouseMotion and spin_drag:
 		spin += ev.relative.x * 0.012
 		spin_rest=spin
+
+func preview_pose(mode:int) -> void:
+	preview_motion=clampi(mode,0,2)
+	Chars.animate(rig,0.0,[0.0,2.4,5.5][preview_motion])
+	if bag_mesh!=null: bag_mesh.motion=float(preview_motion)
+
+func inspect_backpack() -> void:
+	if bag_mesh==null or not bag_mesh.visible: return
+	preview_pose(0)
+	spin_rest=PI
+	bag_mesh.opened=not bag_mesh.opened
+	if is_instance_valid(backpack_button):
+		backpack_button.text="Zamknij kieszeń" if bag_mesh.opened else "Obejrzyj plecak"
 
 
 func _process(dt: float) -> void:
@@ -448,7 +461,7 @@ func has_stash() -> bool:
 func render() -> void:
 	demo_stop()
 	var S: Dictionary = G.S
-	_dress()
+	_bag_refresh()
 	l_cash.text = G.money(S.cash)
 	l_clock.text = "%s  •  dzień %d" % [G.clock(), G.day()]
 	K.clear(tabs_box)
@@ -1217,8 +1230,13 @@ func _tab_char() -> void:
 	var left := K.vbox(8)
 	left.custom_minimum_size = Vector2(W_MID + 60.0, H_BODY)
 	row.add_child(left)
-	var view := _char_view(W_MID + 60.0, 430.0)
+	var view := _char_view(W_MID + 60.0, 398.0)
 	left.add_child(view)
+	var poses:=K.hbox(4)
+	left.add_child(poses)
+	for i in range(3):
+		var pose_index:int=i
+		poses.add_child(K.btn(["Stanie","Chód","Bieg"][i],func(): preview_pose(pose_index),"",true))
 	var idc := _frame(W_MID + 60.0, 0, 12)
 	idc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(idc)
@@ -1275,6 +1293,10 @@ func _tab_char() -> void:
 		rv.add_child(K.wrap("Jeszcze żadnej. Punkty dostajesz za poziomy — wydasz je w telefonie, w aplikacji Rozwój.", 13, K.C_DIM))
 	rv.add_child(K.gap(4))
 	_title(rv, "wrench", "WYPOSAŻENIE")
+	if G.upg("plecak1"):
+		backpack_button=K.btn("Zamknij kieszeń" if bag_mesh.opened else "Obejrzyj plecak",inspect_backpack,"",true)
+		rv.add_child(backpack_button)
+		rv.add_child(K.lbl("Zapełnienie: %s / %s miejsc" %[G.units(G.carry_total()),G.units(G.capacity())],11,T.C_MID))
 	var anyu := false
 	for u in D.UPGRADES:
 		if G.upg(u.id):
@@ -1284,7 +1306,7 @@ func _tab_char() -> void:
 		rv.add_child(K.wrap("Nic. Plecak, lepszą wagę i skrytkę w podłodze kupisz w Sklepie u Stasia.", 13, K.C_DIM))
 	rv.add_child(K.spacer())
 	rv.add_child(K.btn("Otwórz drzewko umiejętności", func(): ui.open_phone("rozwoj"), "", true))
-	hint.text = "Przeciągnij postać myszą, żeby ją obrócić"
+	hint.text = "Przeciągnij, żeby obrócić  •  przyciski pod postacią pokazują ubrania podczas ruchu"
 
 
 # ---------------------------------------------------------------- zakładka: ubrania

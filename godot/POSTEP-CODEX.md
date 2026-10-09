@@ -632,3 +632,23 @@ Natywne gracz-przod.png, gracz-plecak.png i osobne podglądy viewportu obejrzane
 player_visual_check.gd sprawdza mocowanie do kości i przełączenie Walk/Jog_Fwd;
 bez dźwięku, po wolne.sh. Pełny runtest.sh: 769 OK, 0 błędów. Automatyzacja
 otrzymała nowy priorytet; wielopokojowe lokale nadal czekają, nie zmieniono ich.
+
+## 2026-10-09 — inspekcja plecaka i czytelne sterowanie animacjami
+
+W zakładce Postać dodano przyciski Stanie/Chód/Bieg oraz Obejrzyj plecak.
+Inspekcja zatrzymuje pozę i obraca postać plecami do kamery. Suwak jedzie wzdłuż
+zamka, następnie uchyla się klapa górnej kieszeni; zamknięcie odwraca kolejność.
+Generator zachowuje osobne elementy ruchome i ciemne wnętrze, reszta modelu
+pozostaje jednym meshem (łącznie 3446 ścian). Nie zmienia to ekwipunku ani ekonomii.
+Pokazywana objętość plecaka odświeża się po przeniesieniu towaru; poprzednio
+odświeżała się dopiero przy otwarciu całego ekwipunku. Nie przebudowuje się przy
+tym ubioru, gdy jego zestaw nie uległ zmianie. Widać również licznik zapełnienia.
+
+player_equipment_test.gd sprawdza brak darmowego plecaka, ruchome części,
+otwarcie/zamknięcie, niezmienny stan gry, wzrost wizualnego zapełnienia i trzy
+animacje. player_visual_check.gd dodatkowo otwiera i zamyka kieszeń w natywnym
+rendererze. gracz-kontrolki.png oraz gracz-kieszen-otwarta.png obejrzane,
+bez dźwięku i po wolne.sh. To animacja modelu podczas inspekcji, bez animowanych
+rąk zdejmujących plecak — szerszego polecenia dotyczącego postaci nie zamknięto.
+Końcowy pełny runtest.sh: 779 OK, 0 błędów; chk.sh bez błędów skryptów.
+Do repo dołączono również wyodrębnione tekstury plecaka i ich deskryptory importu.

@@ -1143,6 +1143,7 @@ func run() -> void:
 	await load("res://scripts/collision_test.gd").run(self)
 	load("res://scripts/music_test.gd").run(self)
 	await load("res://scripts/club_layout_test.gd").run(self)
+	await load("res://scripts/player_equipment_test.gd").run(self)
 
 	# --- prolog: nalot na laboratorium, ucieczka, eksplozje
 	if not M.args.has("noprologue"):
