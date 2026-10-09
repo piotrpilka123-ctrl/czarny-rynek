@@ -323,3 +323,11 @@ wejście, pozycja kamery, kapsuła, wyjście mimo przeszkody na zwykłym punkcie
 Obejrzane smietnik-przed.png / smietnik-po.png / smietnik-w-srodku.png.
 Szczegółowy szlif tekstur modeli nadal w punkcie 10. Następny 9: reputacja,
 kontakty i pomocnicy produkcji z kosztami oraz ograniczeniami.
+
+
+8339714: pełny finalny test podstawowego bloku 8 — 703 OK, 0 błędów.
+Dalsza kontrola rozdzieliła obrys nawigacji od osłony: ściany boczne/tylna
+blokują LOS, pełny obrys wiąże tylko AStar (op=false). Otwarty front nie jest
+już niewidzialną ścianą osłaniającą gracza, który po prostu wejdzie bez interakcji.
+Nowy test otwartego frontu i osłoniętego boku przechodzi; pełny test po tej
+korekcie zakończony pomyślnie. Grafika bez dalszych zmian od obejrzanego rendereru.

@@ -1559,10 +1559,19 @@ func _hide_shed(x: float, z: float, ry: float, search := true) -> bool:
 		collider.shape = box
 		collider.position = wall[1]
 		shelter_body.add_child(collider)
-	# Siatka patroli i osłona pozostają pełnym obrysem: kryjówka to osobna interakcja.
+		if box.size.y > 1.0:
+			var low := Vector2(INF,INF)
+			var high := Vector2(-INF,-INF)
+			for sx in [-1.0,1.0]:
+				for sz in [-1.0,1.0]:
+					var corner := Vector2(wall[1].x+sx*box.size.x*0.5,wall[1].z+sz*box.size.z*0.5).rotated(-ry)+Vector2(x,z)*SC
+					low = low.min(corner)
+					high = high.max(corner)
+			blocks.append({"x0":low.x,"x1":high.x,"z0":low.y,"z1":high.y,"h":2.2,"op":true})
+	# Siatka patroli zachowuje obrys; LOS blokują tylko ściany, otwarty front jest widoczny.
 	var rx := 2.6 if absf(sin(ry))<0.5 else 1.7
 	var rz := 1.7 if absf(sin(ry))<0.5 else 2.6
-	blocks.append({"x0":x*SC-rx,"x1":x*SC+rx,"z0":z*SC-rz,"z1":z*SC+rz,"h":2.3,"op":true})
+	blocks.append({"x0":x*SC-rx,"x1":x*SC+rx,"z0":z*SC-rz,"z1":z*SC+rz,"h":2.3,"op":false})
 	# wejście od otwartej strony; w środku kucasz między kontenerami
 	var f := Vector2(sin(ry), cos(ry))
 	var front := Vector2(x, z) + f * 2.6 * INV

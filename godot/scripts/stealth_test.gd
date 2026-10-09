@@ -302,6 +302,11 @@ static func run(T) -> void:
 			bad_exit += 1
 	T.ok(bad_exit == 0, "przed każdą kryjówką jest wolne miejsce na wyjście")
 	var h0: Dictionary = W.hides[0]
+	var front_dir := Vector2(sin(float(h0.rot)+PI),cos(float(h0.rot)+PI))
+	var shelter_inside := Vector2(h0.x,h0.z)
+	var shelter_front := Vector2(h0.ox,h0.oz)+front_dir*0.5
+	var shelter_side := shelter_inside+Vector2(-front_dir.y,front_dir.x)*4.0
+	T.ok(W.los(shelter_inside.x,shelter_inside.y,shelter_front.x,shelter_front.y) and not W.los(shelter_inside.x,shelter_inside.y,shelter_side.x,shelter_side.y), "wiata osłania bokiem, ale otwarty front nie daje niewidzialnej ściany")
 	_cop_at(c, Vector2(float(h0.ox) + 40.0, float(h0.oz) + 40.0), Vector2(900.0, 900.0))
 	_put(P, Vector2(float(h0.ox), float(h0.oz)))
 	M.hide_enter(h0)
