@@ -22,7 +22,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 
 1. [x] Dealerzy: rekrutacja, przekazanie rzeczywistych paczek, powolna sprzedaż,
        prowizja, zapas i fizyczny odbiór gotówki; zapis stanu, samouczek, panel telefonu.
-2. [ ] Produkcja: amfetamina 1 slot składnika, meta 2, kokaina 3. Większe partie
+2. [x] Produkcja: amfetamina 1 slot składnika, meta 2, kokaina 3. Większe partie
        odpowiednie dla dealerów, realny koszt w grze, czas i ryzyko. Fikcyjne pakiety
        procesowe, bez rzeczywistych instrukcji chemicznych. Symulacja marży i tempa.
 3. [ ] Rozszerzyć teren za garażami z sensownym dojściem i funkcją w rozgrywce.
@@ -63,6 +63,14 @@ Osobny audyt jednej partii dealerów i opis ograniczeń w EKONOMIA-SIECI.md.
 
 
 Podpunkt 2a [x]: menu laboratorium w świecie + animacje i jednokrotne skutki czynności
-(2692af9, aa8e909; 674 testy). Podpunkt 2b [ ]: lepsze rośliny, sadzenie i uprawa.
+(2692af9, aa8e909; 674 testy). Podpunkt 2b [x]: lepsze rośliny, sadzenie i uprawa (57a3dcb).
 Końcowe dopracowanie światła laboratorium i podgląd zakończone: f2a57be, 673 testy OK. Nie odhaczać całego punktu 2
 przed poprawą roślin oraz sprawdzeniem wyniku.
+
+
+57a3dcb: trzy modele roślin z Blendera (wspólne siatki/tekstury, gałązki, liście,
+kwiatostany, cienie); po sadzeniu widoczne nasiono, liście dopiero po wykiełkowaniu.
+Drobne cząstki ziemi zamiast dużych płaskich fragmentów. Prognoza informuje o kiełkowaniu.
+676 testów OK. Podgląd etapów w Blenderze i uprawy w rendererze obejrzane;
+960×540, jakość średnia: ok. 59 FPS w krótkim podglądzie, nie gwarancja całej rozgrywki.
+Teraz punkt 3: rzeczywiste rozszerzenie mapy za garażami, następnie jezioro i osiedle gangu.

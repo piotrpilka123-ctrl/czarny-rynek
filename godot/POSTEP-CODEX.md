@@ -156,3 +156,19 @@ f2a57be zapisany po pełnym teście: 673 OK, 0 błędów.
 
 Następny podpunkt listy: rzeczywista poprawa modeli roślin i sadzenia/uprawy,
 nie ponowne przepisywanie już gotowego menu laboratorium. Po roślinach mapa.
+
+
+## 57a3dcb — rośliny i sadzenie (676 testów OK)
+
+tools/blender/make_rosliny.py → roslina_1/2/3.glb. Łodyga, gałązki i składane liście;
+modele współdzielone przez wszystkie doniczki. Materiały normalne/więdnące cached,
+subtelne doświetlenie, cienie. Stare karty pozostają tylko awaryjnym fallbackiem.
+Nowa roślina przez pierwsze 3% cyklu jest widocznym nasionem, nie gotową sadzonką.
+Woda/wzrost/zdrowie/plon i koszt zachowane. Seed FX to drobinki ziemi; opis kiełkowania.
+Test sprawdza nasiono, pojawienie liści oraz wczytanie wszystkich 3 siatek z Blendera.
+
+Obejrzane: /Users/macbook/codex-podglad/rosliny-etapy.png i rosliny-3d.png.
+Materiały zweryfikowane: aktywny materiał oraz tekstura atlasu obecne, bez pustych
+białych materiałów. W podglądzie garażu 59 FPS (med, 960×540) — pomiar poglądowy.
+Punkt 2 listy odhaczony. Następne zadanie: rozszerzenie mapy za garażami (punkt 3),
+jezioro (4), osiedle gangu (5). Nie rozpoczynać kolejnego przepisywania roślin zamiast mapy.
