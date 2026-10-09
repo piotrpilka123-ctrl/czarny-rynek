@@ -232,3 +232,22 @@ rozpoznawalna zabudowa całej mapy, potem płoty/przejścia i śmietniki.
 wyłączenie rzeczywistej kolizji po przyznaniu przepustki. Naprawiono również
 referencję bramy: czyszczenie kolizji zieleni zmienia indeksy blocks, dlatego
 brama zachowuje własny słownik zamiast zapamiętanego indeksu.
+
+
+## Budynki — podpunkt 6a: dachy i profile wejść
+
+Kamienice nie mają już jednego dachu: deterministyczne warianty szarego dachu
+z eternitu, rdzawej blachy i czterospadowego dachu w chłodnym kolorze. Kalenica
+biegnie po dłuższej osi, wysokość zależy od rozpiętości w metrach gry. Niskie
+warsztaty nie dostają wysokiego dachu jak czteropiętrowa kamienica. Dopasowano
+wysokość kominów, dodano obrzeża płaskich dachów bloków w kolorze akcentu.
+Wspólne materiały PBR mapowane w przestrzeni świata, bez rozciągania faktury
+wraz z długością bryły. Wejścia dekoracyjne: betonowy daszek, pochylona blacha
+na wspornikach albo szerszy ganek. Rzeczywiste drzwi i trasy zachowane.
+
+Podglądy dachy-hutnicza.png, dachy-osiedle.png, wejscia-osiedle.png obejrzane
+w /Users/macbook/codex-podglad. Pełna weryfikacja: 698 testów OK, 0 błędów.
+Ujęcie lotnicze średnia jakość: 21 FPS przy 2128 draw calls; widok większości
+miasta, nie porównanie wydajności ulicy. Dalszy audyt wydajności pozostaje
+w punkcie 12. Punkt 6 nadal otwarty: indywidualne partery/bryły i kontrola
+tekstur przy chodniku, potem punkt 7 (płoty i przejścia).

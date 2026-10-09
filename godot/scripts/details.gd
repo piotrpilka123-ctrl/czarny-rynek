@@ -254,9 +254,17 @@ static func entrance(W: Node3D, pos: Vector3, rot_y: float, accent: Color, label
 	# schodki i podest
 	Models.box(g, Vector3(2.5, 0.16, 1.5), Vector3(0, 0.08, 0.75), conc)
 	Models.box(g, Vector3(2.9, 0.08, 1.9), Vector3(0, 0.02, 0.9), conc)
-	# daszek z obróbką blacharską
-	Models.box(g, Vector3(2.7, 0.13, 1.7), Vector3(0, 2.52, 0.85), conc)
-	Models.box(g, Vector3(2.76, 0.05, 1.76), Vector3(0, 2.6, 0.85), Models.mat("2a2c30", 0.6, 0.4), Vector3.ZERO, false)
+	# Wejścia różnią się profilem daszku: beton, pochylona blacha albo szerszy ganek.
+	var profile := posmod(int(round(pos.x*3.0+pos.z*5.0)),3)
+	var canopy_w := 3.15 if profile == 2 else 2.7
+	var canopy_d := 1.9 if profile == 2 else 1.7
+	if profile != 1:
+		Models.box(g,Vector3(canopy_w,0.13,canopy_d),Vector3(0,2.52,canopy_d*0.5),conc)
+	var trim := Models.mat("2a2c30",0.6,0.4)
+	Models.box(g,Vector3(canopy_w+0.06,0.05,canopy_d+0.06),Vector3(0,2.6,canopy_d*0.5),trim,Vector3(0.09 if profile == 1 else 0.0,0,0),false)
+	if profile == 1:
+		for cx in [-0.95,0.95]:
+			Models.box(g,Vector3(0.045,0.045,1.35),Vector3(cx,2.42,0.65),trim,Vector3(-0.16,0,0),false)
 	# ścianka boczna (raz z lewej, raz z prawej) — malowana w kolorze bloku
 	var side := -1.0 if rng.randf() < 0.5 else 1.0
 	var wing := Props.pbr("grey_plaster_03", 0.5, accent.lerp(Color(0.8, 0.8, 0.76), 0.35))

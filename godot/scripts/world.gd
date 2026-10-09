@@ -1230,18 +1230,18 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 	var rm := Models.mat("1a1a1c", 0.95)
 	Models.box(city, Vector3(w + 0.3, 0.35, d + 0.3), Vector3((x0 + x1) * 0.5, top + 0.1, (z0 + z1) * 0.5), rm)
 	if key.begins_with("kam") or key == "cegla2":
-		var pm := PrismMesh.new()
-		pm.size = Vector3(d + 0.8, 3.6, w + 0.8)
-		var roof := MeshInstance3D.new()
-		roof.mesh = pm
-		roof.material_override = Props.pbr("asbestos_sheet", 0.35, Color(0.55, 0.5, 0.5))
-		roof.position = Vector3((x0 + x1) * 0.5, top + 2.0, (z0 + z1) * 0.5)
-		roof.rotation.y = PI / 2.0
+		var roof_style := posmod(int(x0*7.0+z0*11.0),3)
+		var rise := clampf(minf(w,d)*SC*0.28,1.2,3.8)
+		var roof := _tenement_roof(w+0.8,d+0.8,rise,roof_style)
+		roof.position = Vector3((x0+x1)*0.5,top+0.28,(z0+z1)*0.5)
 		city.add_child(roof)
+		blds.back()["roof_style"] = roof_style
 		var px2 := x0 + 4.0
 		while px2 < x1 - 2.0:
-			Models.box(city, Vector3(0.9, 2.4, 0.9), Vector3(px2, top + 2.6, (z0 + z1) * 0.5 + rng.randf_range(-3.0, 3.0)), Props.pbr("factory_brick", 0.5, Color(0.7, 0.6, 0.55)))
-			px2 += rng.randf_range(7.0, 12.0)
+			var chimney_z := (z0+z1)*0.5 + rng.randf_range(-3.0,3.0)
+			# Komin przecina połać; niski warsztat nie dostaje komina wiszącego nad dachem.
+			Models.box(city,Vector3(0.9,1.8,0.9),Vector3(px2,top+rise*0.65+0.6,chimney_z),Props.pbr("factory_brick",0.5,Color(0.7,0.6,0.55)))
+			px2 += rng.randf_range(7.0,12.0)
 	elif h > 12.0:
 		var k := 0
 		var px := x0 + 6.0
@@ -1251,6 +1251,13 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 				Models.cyl(city, 0.03, 0.04, 5.0, Vector3(px + 1.0, top + 4.5, (z0 + z1) * 0.5), rm, Vector3.ZERO, 5)
 			px += 14.0
 			k += 1
+	if plyta:
+		var coping := Models.mat(accent.lerp(Color(0.37,0.38,0.38),0.7),0.85)
+		for zedge in [z0,z1]:
+			Models.box(city,Vector3(w,0.48,0.2),Vector3((x0+x1)*0.5,top+0.25,zedge),coping)
+		for xedge in [x0,x1]:
+			Models.box(city,Vector3(0.2,0.48,d),Vector3(xedge,top+0.25,(z0+z1)*0.5),coping)
+		blds.back()["roof_style"] = 3
 	if plyta and opt.get("balc", true):
 		_balconies(blds.back())
 	elif (key.begins_with("kam") or key == "cegla2") and opt.get("balc", true):
@@ -6534,3 +6541,47 @@ func gang_tick() -> void:
 	if p.x > -109*SC and p.x < -17*SC and p.z > 184*SC and p.z < 239*SC:
 		G.player.global_position = Vector3(at.x,height(at.x,178*SC),178*SC)
 		G.notify("Strażnik wyprowadza Cię za bramę. Najpierw zdobądź zaufanie Wiktora.","warn")
+
+
+## Dwa dachy dwuspadowe i czterospadowy, z kalenicą wzdłuż dłuższej bryły.
+## Triplanar w metrach świata utrzymuje skalę blachy pomimo skali miasta.
+func _tenement_roof(w: float,d: float,rise: float,style: int) -> Node3D:
+	var group := Node3D.new()
+	group.name = "TenementRoof"
+	var tint: Color = [Color(0.54,0.5,0.47),Color(0.56,0.36,0.27),Color(0.37,0.43,0.44)][style]
+	var material := Props.pbr("asbestos_sheet" if style == 0 else "rusty_corrugated_iron",0.42,tint)
+	if style != 2:
+		var mesh := PrismMesh.new()
+		mesh.size = Vector3(minf(w,d),rise,maxf(w,d))
+		var roof := MeshInstance3D.new()
+		roof.mesh = mesh
+		roof.material_override = material
+		roof.position.y = rise*0.5
+		roof.rotation.y = PI/2.0 if w >= d else 0.0
+		group.add_child(roof)
+	else:
+		# Cztery połacie; krótsza kalenica zostawia trójkątne końce.
+		var a := Vector3(-w*0.5,0,-d*0.5)
+		var b := Vector3(w*0.5,0,-d*0.5)
+		var c := Vector3(w*0.5,0,d*0.5)
+		var e := Vector3(-w*0.5,0,d*0.5)
+		var along_x := w >= d
+		var r0 := Vector3(-w*0.27,rise,0) if along_x else Vector3(0,rise,-d*0.27)
+		var r1 := Vector3(w*0.27,rise,0) if along_x else Vector3(0,rise,d*0.27)
+		var triangles: Array = [[a,b,r1],[a,r1,r0],[b,c,r1],[c,e,r0],[c,r0,r1],[e,a,r0]] if along_x else [[a,b,r0],[b,c,r1],[b,r1,r0],[c,e,r1],[e,a,r0],[e,r0,r1]]
+		var surface := SurfaceTool.new()
+		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for triangle in triangles:
+			var normal: Vector3 = (triangle[1]-triangle[0]).cross(triangle[2]-triangle[0]).normalized()
+			if normal.y < 0: normal = -normal
+			for point in triangle:
+				surface.set_normal(normal)
+				surface.set_uv(Vector2(point.x,point.z))
+				surface.add_vertex(point)
+		var roof := MeshInstance3D.new()
+		roof.mesh = surface.commit()
+		var two_sided := material.duplicate() as StandardMaterial3D
+		two_sided.cull_mode = BaseMaterial3D.CULL_DISABLED
+		roof.material_override = two_sided
+		group.add_child(roof)
+	return group

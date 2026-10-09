@@ -97,3 +97,9 @@ zabudowanie gospodarcze, mur z jedną bramą, Borys i strażnik. Dostęp: poziom
 i ranga Dealer u Wiktora; podczas pościgu odmowa. Fizyczna brama, kolizja,
 LOS i nawigacja synchronizowane z zapisywaną przepustką. Podglądy bramy
 i dziedzińca obejrzane. Następny punkt 6: odrębność zabudowy całej mapy.
+
+Podpunkt 6a [x]: trzy warianty dachów kamienic (różny profil, kolor i kierunek
+kalenicy), wysokość połaci dopasowana do szerokości; obramowania dachów bloków
+w kolorze elewacji, trzy profile daszków wejściowych. 698 testów OK, renderer
+Hutniczej, osiedla i wejścia obejrzany. Punkt 6 pozostaje otwarty: partery,
+kształty wyróżniających się budynków i kontrola skali tekstur z poziomu ulicy.
