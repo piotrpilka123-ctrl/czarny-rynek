@@ -123,3 +123,8 @@ przeszukiwania. Kamera przy chowaniu rzeczywiście kuca i patrzy na wyjście,
 bez podwójnego [E]. Wejście tylko z bliska na zewnątrz, wyjście wybiera wolny
 punkt albo czeka na zwolnienie przejścia. Pamięć policji zachowana. Dalszy szlif
 samych kontenerów/tekstur w pełnym audycie grafiki (10). Następny punkt 9.
+
+Podpunkt 9a [x]: lokalna reputacja za rzeczywiste dostawy; dzienny limit,
+pamięć klientów i zapis. Progi 20/50/80 dają lokalnej sieci rabat prowizji
+1/2/3 punkty procentowe. Telefon pokazuje dzielnicę, stan i następny cel.
+Punkt 9 nadal otwarty: pomocnicy produkcji, ich kontakty, koszty i kolejne cele.

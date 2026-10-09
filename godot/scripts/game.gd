@@ -1,6 +1,7 @@
 extends Node
 
 const Prod = preload("res://scripts/production.gd")
+const Reputation = preload("res://scripts/reputation.gd")
 const Dealers = preload("res://scripts/dealers.gd")
 const Market = preload("res://scripts/market.gd")
 ## Rdzeń rozgrywki: stan, czas, towar (hurt → skrytka → porcjowanie → sprzedaż),
@@ -116,7 +117,7 @@ func new_state() -> Dictionary:
 		"items": {"notes": 1, "woreczki": D.START_BAGS, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
-		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "weather": null,
+		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "reputation": {}, "weather": null,
 		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "dealers": {}, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0, "hospital": 0, "box_paid": 0.0},
@@ -3092,11 +3093,13 @@ func deal_finish(d: Dictionary, res: Dictionary) -> void:
 ## bags: które paczki idą z ręki do ręki — [{pur, g, n}]; bez tej listy schodzi g woreczków po 1 g (stary sposób, testy)
 func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, mx: float, credit := false, bags: Array = []) -> Dictionary:
 	var total: float = round(price * g)
+	var delivered := 0
 	if bags.is_empty():
-		take_pack(S.inv, p, pur, g)
+		delivered = take_pack(S.inv,p,pur,g)
 	else:
 		for b in bags:
-			take_pack(S.inv, p, int(b.pur), int(b.n), int(b.g))
+			delivered += take_pack(S.inv,p,int(b.pur),int(b.n),int(b.g))*int(b.g)
+	if delivered == g and g > 0: Reputation.retail(ctx,g,pur)
 	var paid := total
 	var owed := 0.0
 	var st = ctx.who.get("st")

@@ -1549,7 +1549,7 @@ func _update_cops(dt: float, pp: Vector3, outside: bool) -> void:
 					path = G.world.grid_path(here, tgt)
 					c.path_t = 0.4
 					c.path_goal = tgt
-				while path.size() > 1 and here.distance_to(path[0]) < 0.45:
+				while path.size() > 1 and here.distance_to(path[0]) < 0.45 and G.world.grid_clear(here,path[1]):
 					path.remove_at(0)
 				c.path = path
 				var nxt: Vector2 = path[0] if not path.is_empty() else tgt

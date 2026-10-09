@@ -15,6 +15,16 @@ static func position(id: String) -> Vector2:
 	var dealer := definition(id)
 	return G.world.near_free(float(dealer.x) * D.SC, float(dealer.z) * D.SC) if not dealer.is_empty() else Vector2.ZERO
 
+static func zone(id: String) -> Dictionary:
+	var dealer := definition(id)
+	return G.zone_at(float(dealer.x)*D.SC,float(dealer.z)*D.SC) if not dealer.is_empty() else {}
+
+static func commission(id: String) -> float:
+	var dealer := definition(id)
+	if dealer.is_empty(): return 0.0
+	var territory := zone(id)
+	return float(dealer.commission)-G.Reputation.discount(String(territory.get("id","")))
+
 static func near(id: String) -> bool:
 	return G.player != null and G.player.loc == "out" and Vector2(G.player.global_position.x, G.player.global_position.z).distance_to(position(id)) <= 3.0
 
@@ -32,7 +42,7 @@ static func hire(id: String) -> bool:
 	G.S.cash -= float(dealer.fee)
 	G.S.stats.spent += float(dealer.fee)
 	G.S.dealers[id] = {"stock": G.new_store(), "cash": 0.0, "sold": 0, "paused": false, "next": G.S.t + 120.0, "empty_notified": false}
-	G.chat("info", "%s dołącza do Twojej sieci. Przyjdź z zapakowanym towarem; prowizja %d%%. Pieniądze odbierasz u niego osobiście." % [dealer.name, int(float(dealer.commission) * 100)])
+	G.chat("info", "%s dołącza do Twojej sieci. Przyjdź z zapakowanym towarem; prowizja %d%%. Pieniądze odbierasz u niego osobiście." % [dealer.name, int(round(commission(id)*100))])
 	G.tip("dealerzy", "Własna sieć", "Mati i Darek sprzedają przekazane paczki w godzinach pracy. W telefonie → Dealerzy sprawdzisz zapas i rozliczenie oraz włączysz trasę. Towar i pieniądze przekazuj osobiście; prowizja jest już potrącona z rozliczenia.", 15.0)
 	return true
 
@@ -81,7 +91,7 @@ static func tick() -> void:
 		for batch in G.stacks(state.stock, "bulk"):
 			var sold: float = G.take_bulk(state.stock, String(batch.p), int(batch.pur), minf(float(left), float(batch.n)))
 			var quality: float = clampf(0.85 + float(batch.pur) * 0.0015, 0.85, 1.0)
-			state.cash += round(G.market_price(String(batch.p), int(batch.pur)) * sold * quality * (1.0 - float(dealer.commission)))
+			state.cash += round(G.market_price(String(batch.p), int(batch.pur)) * sold * quality * (1.0 - commission(String(id))))
 			state.sold += int(sold)
 			G.S.stats.sold += int(sold)
 			left -= int(sold)

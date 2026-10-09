@@ -37,3 +37,10 @@ To wariant bez prądu, sprzętu, podróży i wpadek; nie jest gwarantowanym zysk
 Narzędzie: `godot/tools/dealer_balance.gd` uruchamiane headless z Dummy audio.
 Symulacja dotychczasowej kampanii przy dwóch botach dała wspólnika w dniach 19 i 23,
 ale bez produkcji i sieci dealerów — mierzy więc tylko ścieżkę bezpośrednich dostaw.
+
+
+Lokalna reputacja (9a): rabat prowizji maksymalnie 3 punkty procentowe, po
+80 pkt w terenie dealera. Mati: udział gracza 65→68% (+4,62% dochodu);
+Darek: 60→63% (+5%). Ceny, zapas i tempo nie wzrastają. Wynik za rzeczywiste
+dostawy, limit 12/dobę i raz na klienta, bez punktów za ponowne przekładanie
+zapasu dealerów. Nie jest to nowa emisja pieniędzy, tylko mniejsza prowizja.

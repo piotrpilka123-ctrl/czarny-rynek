@@ -1199,12 +1199,17 @@ func _deliveries() -> void:
 
 func _dealers() -> void:
 	_header("Dealerzy", "Twoja sieć sprzedaży")
+	body.add_child(K.wrap("Udane dostawy w dzielnicy budują reputację: do 12 pkt dziennie, raz na klienta. Progi 20 / 50 / 80 zmniejszają prowizję lokalnej sieci o 1 / 2 / 3 punkty procentowe.",12,K.C_DIM))
 	body.add_child(K.wrap("Spotkaj się osobiście, donieś paczki i odbierz zarobek. Sprzedaż 8–23, po prowizji. Przy śledztwie 65+ wstrzymują pracę.", 12, K.C_DIM))
 	for dealer in G.Dealers.DEFS:
 		var id: String = dealer.id
 		var card := K.card(body)
 		card.add_child(K.head(String(dealer.name), 17))
-		card.add_child(K.wrap("Prowizja %d%% • zapas do %d g • do %d g na godzinę" % [int(float(dealer.commission) * 100), int(dealer.cap), int(dealer.pace)], 12, K.C_DIM))
+		var zone: Dictionary = G.Dealers.zone(id)
+		var zone_id: String = zone.get("id","")
+		card.add_child(K.wrap("%s: %s • reputacja %d/100" % [zone.get("name",""),G.Reputation.title(zone_id),G.Reputation.score(zone_id)],12,K.C_TXT))
+		card.add_child(K.wrap("Pełny rabat lokalnej sieci" if G.Reputation.score(zone_id)>=80 else "Kolejny rabat przy %d pkt (brakuje %d)." % [G.Reputation.next_goal(zone_id),G.Reputation.next_goal(zone_id)-G.Reputation.score(zone_id)],12,K.C_DIM))
+		card.add_child(K.wrap("Prowizja %d%% • zapas do %d g • do %d g na godzinę" % [int(round(G.Dealers.commission(id)*100)), int(dealer.cap), int(dealer.pace)], 12, K.C_DIM))
 		if G.S.dealers.has(id):
 			var state: Dictionary = G.S.dealers[id]
 			card.add_child(K.wrap("Zapas: %d g • do odbioru: %s" % [G.Dealers.stock(id), G.money(state.cash)], 13, K.C_TXT))

@@ -3806,7 +3806,7 @@ func talk_dealer(id: String) -> void:
 			if G.Dealers.hire(id): talk_dealer(id)
 			else: G.notify(G.Dealers.requirement(id), "warn")})
 		choices.append({"label": "Jeszcze wrócę."})
-		ui.dialog({"name": dealer.name, "lines": ["Ty donosisz zapakowany towar, ja sprzedaję okolicznym. Biorę %d%%, resztę odbierasz tutaj. Bez zapasu nie ma sprzedaży." % int(float(dealer.commission) * 100), reason if reason != "" else "Możemy zaczynać."], "choices": choices})
+		ui.dialog({"name": dealer.name, "lines": ["Ty donosisz zapakowany towar, ja sprzedaję okolicznym. Biorę %d%%, resztę odbierasz tutaj. Bez zapasu nie ma sprzedaży." % int(round(G.Dealers.commission(id)*100)), reason if reason != "" else "Możemy zaczynać."], "choices": choices})
 		return
 	var state: Dictionary = G.S.dealers[id]
 	for product in dealer.products:

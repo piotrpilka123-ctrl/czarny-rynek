@@ -331,3 +331,28 @@ blokują LOS, pełny obrys wiąże tylko AStar (op=false). Otwarty front nie jes
 już niewidzialną ścianą osłaniającą gracza, który po prostu wejdzie bez interakcji.
 Nowy test otwartego frontu i osłoniętego boku przechodzi; pełny test po tej
 korekcie zakończony pomyślnie. Grafika bez dalszych zmian od obejrzanego rendereru.
+
+
+## Punkt 9a — lokalna reputacja i cele sieci
+
+Reputation zapisuje wynik osobno dla dzielnic. Udana dostawa odpowiedniego towaru
+(czystość co najmniej 55) daje 2–3 pkt; najwyżej 12 pkt na dobę w dzielnicy,
+raz na klienta. Rozdzielanie paczki ani samo przekazanie zapasu dealerowi nie
+podnosi wyniku. Hook complete_sale rejestruje reputację dopiero po rzeczywistym
+zdjęciu pełnej liczby gramów z plecaka; lokacja z zamówienia lub sprzedaży ulicznej.
+
+Progi 20/50/80: Kojarzony/Zaufany/Ustawiony; prowizja dealera w tej dzielnicy
+spada o 1/2/3 punkty procentowe. Maksimum Mati 35→32%, Darek 40→37%:
+przychód po prowizji rośnie najwyżej o ok. 4,6%/5%, tempo i ceny pozostają
+niezmienione. Reputacja sama nie daje gotówki. Telefon Dealerzy pokazuje nazwę
+terenu, reputację, skuteczną prowizję i liczbę punktów do następnego celu.
+Ogłoszenia tylko przy przekroczeniu progu. Starsze zapisy zaczynają od pustego
+stanu; zapis zachowuje dzienną pamięć klientów.
+
+9 nowych kontroli: dostawa, powtórzenia, słaby/pusty towar, limit dnia, zapis,
+nowy dzień, maksymalny rabat, oddzielne dzielnice i brak darmowej gotówki,
+migracja. Pierwszy pełny test przeszedł; końcowy test po dopracowaniu telefonu
+wymagany przed commitem. reputacja-dealerzy.png obejrzany w rendererze.
+Punkt 9 pozostaje otwarty do pomocników produkcji i kontaktów. Następny blok 9b:
+pomoc w garażu, własna rekrutacja i wynagrodzenie, ograniczenie do dostępnego
+sprzętu oraz zasobów, jasny cel rozwoju. Nie przechodzić jeszcze do punktu 10.
