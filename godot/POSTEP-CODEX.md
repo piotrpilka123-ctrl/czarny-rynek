@@ -190,3 +190,20 @@ Podglądy zaplecze-garazy.png / zaplecze-final.png obejrzane w rendererze.
 NOCNA-LISTA punkt 3 odhaczony. Następny 4: jezioro; punkt 5: osiedle gangu.
 Plan jeziora: rejon (90,217), promienie (31,19), z zachowaniem furtki (83,193),
 nawierzchni i warsztatów; to propozycja miejsca, jeszcze nie gotowa woda.
+
+
+## Jezioro — punkt 4
+
+4fb65d5 / 4deb777: zagłębiony zbiornik za zapleczem (90,217), brzeg i pętla ścieżek,
+ławka/kosz, Pan Józek w godzinach 6–20, cel Old Reservoir w telefonie, kolor w minimapie.
+Głębokie komórki zablokowane w nawigacji; nowe krawędzie grafu scalają wspólne punkty,
+żeby brzeg był połączony z zapleczem. Krótkie trasy także sprawdzają siatkę kolizji.
+Gracz brodzi wolniej przy brzegu; nie schodzi do głębokiej wody. Pozycja starego zapisu
+na nowym dnie przenoszona na brzeg. Kontrole brzegu, furtki, trasy minimapy i pozycji.
+689 testów OK po poprawieniu typów w nowym teście.
+
+Renderer obejrzany: jezioro.png, jezioro-brzeg.png, jezioro-final.png i jezioro-odbicia.png
+w /Users/macbook/codex-podglad. Transparentny wariant dawał mleczną obwódkę; użyto
+odcięcia według głębokości i stonowanych odbić. Ostatni shader zapisany w 3682ef4
+po pełnym teście: 689 OK, 0 błędów. Punkt 4 odhaczony; następny 5: osiedle gangu.
+Dalszy szlif naturalności brzegu/otoczenia zostaje częścią pełnego przeglądu grafiki.

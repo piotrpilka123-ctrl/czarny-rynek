@@ -26,7 +26,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
        odpowiednie dla dealerów, realny koszt w grze, czas i ryzyko. Fikcyjne pakiety
        procesowe, bez rzeczywistych instrukcji chemicznych. Symulacja marży i tempa.
 3. [x] Rozszerzyć teren za garażami z sensownym dojściem i funkcją w rozgrywce.
-4. [ ] Jezioro/brzeg, otoczenie, ścieżki; granice terenu i nawigacja muszą pasować.
+4. [x] Jezioro/brzeg, otoczenie, ścieżki; granice terenu i nawigacja muszą pasować.
 5. [ ] Osiedle gangu: odrębne budynki, kontrolowane wejście, ostrzeżenie i ryzyko
        na początku; późniejszy dostęp zależny od postępu/kontaktów.
 6. [ ] Budynki: różnice brył, parterów, dachów, wejść i detali, spójna skala tekstur.
@@ -85,3 +85,9 @@ Renderer zaplecza obejrzany. Naprawiono również wybór celu dealer_* w cur_tar
 Następny punkt: 4 — jezioro z brzegiem. Miejsce na południowym zapleczu,
 orientacyjnie centrum (90,217), promienie ok. (31,19) w jednostkach planu;
 nie zalewać istniejącej furtki (83,193), zabudowy ani połączeń drogi.
+
+
+Punkt 4: 4fb65d5, 4deb777, 3682ef4 — jezioro, brzeg, ścieżki, cel telefonu,
+Józek, brodzenie i ochrona starej pozycji zapisu. Nawigacja omija głęboką wodę.
+689 testów OK, ostateczny podgląd jezioro-odbicia.png obejrzany w rendererze.
+Naturalność otoczenia można dalej szlifować w punkcie 10. Następny punkt 5: osiedle gangu.
