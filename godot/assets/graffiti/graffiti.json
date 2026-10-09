@@ -1,0 +1,427 @@
+{
+ "poster_00": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_01": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_02": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_03": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_04": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_05": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_06": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_07": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_08": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_09": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_10": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_11": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_12": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "poster_13": {
+  "w": 0.7058823529411765,
+  "h": 1,
+  "kind": "poster"
+ },
+ "tag_00": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_01": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_02": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_03": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_04": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_05": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_06": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_07": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_08": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_09": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_10": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_11": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_12": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_13": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_14": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_15": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_16": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_17": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_18": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_19": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_20": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_21": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_22": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "tag_23": {
+  "w": 2,
+  "h": 1,
+  "kind": "tag"
+ },
+ "throw_00": {
+  "w": 2,
+  "h": 1,
+  "kind": "throw"
+ },
+ "throw_01": {
+  "w": 2,
+  "h": 1,
+  "kind": "throw"
+ },
+ "throw_02": {
+  "w": 2,
+  "h": 1,
+  "kind": "throw"
+ },
+ "throw_03": {
+  "w": 2,
+  "h": 1,
+  "kind": "throw"
+ },
+ "throw_04": {
+  "w": 2,
+  "h": 1,
+  "kind": "throw"
+ },
+ "throw_05": {
+  "w": 2,
+  "h": 1,
+  "kind": "throw"
+ },
+ "throw_06": {
+  "w": 2,
+  "h": 1,
+  "kind": "throw"
+ },
+ "throw_07": {
+  "w": 2,
+  "h": 1,
+  "kind": "throw"
+ },
+ "piece_00": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_01": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_02": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_03": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_04": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_05": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_06": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_07": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_08": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "piece_09": {
+  "w": 2,
+  "h": 1,
+  "kind": "piece"
+ },
+ "slogan_00": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_01": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_02": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_03": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_04": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_05": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_06": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_07": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_08": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_09": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_10": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "slogan_11": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "slogan"
+ },
+ "ghost_00": {
+  "w": 1.0,
+  "h": 1,
+  "kind": "ghost"
+ },
+ "ghost_01": {
+  "w": 1.0,
+  "h": 1,
+  "kind": "ghost"
+ },
+ "ghost_02": {
+  "w": 1.0,
+  "h": 1,
+  "kind": "ghost"
+ },
+ "ghost_03": {
+  "w": 2.0,
+  "h": 1,
+  "kind": "ghost"
+ },
+ "ghost_04": {
+  "w": 2.0,
+  "h": 1,
+  "kind": "ghost"
+ },
+ "ghost_05": {
+  "w": 2.0,
+  "h": 1,
+  "kind": "ghost"
+ },
+ "ghost_06": {
+  "w": 2.6666666666666665,
+  "h": 1,
+  "kind": "ghost"
+ },
+ "num_3": {
+  "w": 1,
+  "h": 1,
+  "kind": "number"
+ },
+ "num_5": {
+  "w": 1,
+  "h": 1,
+  "kind": "number"
+ },
+ "num_7": {
+  "w": 1,
+  "h": 1,
+  "kind": "number"
+ },
+ "num_9": {
+  "w": 1,
+  "h": 1,
+  "kind": "number"
+ },
+ "num_11": {
+  "w": 1,
+  "h": 1,
+  "kind": "number"
+ },
+ "num_13": {
+  "w": 1,
+  "h": 1,
+  "kind": "number"
+ },
+ "stain_00": {
+  "w": 1,
+  "h": 1,
+  "kind": "stain"
+ },
+ "stain_01": {
+  "w": 1,
+  "h": 1,
+  "kind": "stain"
+ },
+ "stain_02": {
+  "w": 1,
+  "h": 1,
+  "kind": "stain"
+ },
+ "stain_03": {
+  "w": 1,
+  "h": 1,
+  "kind": "stain"
+ }
+}

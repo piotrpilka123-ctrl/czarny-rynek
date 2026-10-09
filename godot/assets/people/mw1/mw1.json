@@ -1,0 +1,15 @@
+{
+ "source": "Professions/Wood_Male_01",
+ "parts": {
+  "body": {
+   "color": "mw1_body.jpg",
+   "prefix": "m110",
+   "normal": "mw1_body_n.jpg"
+  },
+  "head": {
+   "color": "mw1_head.jpg",
+   "prefix": "m110",
+   "normal": "mw1_head_n.jpg"
+  }
+ }
+}

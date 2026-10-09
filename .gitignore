@@ -1,0 +1,31 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# pamięć podręczna importu Godota — odtwarza się sama przy pierwszym uruchomieniu
+godot/.godot/
+
+# własna muzyka gracza nigdy nie trafia do repozytorium
+godot/muzyka/*
+!godot/muzyka/CZYTAJ.txt
+game/muzyka/*
+!game/muzyka/CZYTAJ.txt
+
+# zwiastun 1080p przekracza limit GitHuba (100 MB na plik); w repo jest wersja 720p
+zwiastun/czarny-rynek-zwiastun.mp4
+
+# oryginały tekstur sprzed filtrowania (są w historii repo)
+godot/tools/tex_orig/
+
+# lokalne zaplecze pracy — publikowany jest wyłącznie aktualny projekt gry
+/game/
+/screenshots/
+/zwiastun/
+/EKONOMIA-SIECI.md
+/NOCNA-LISTA-CODEX.md
+/PLAN-ROZGRYWKI.md
+/SYMULACJA-*.csv
+/godot/POSTEP-CODEX.md
+/godot/chk.sh
+/godot/shot.sh
+/godot/tools/

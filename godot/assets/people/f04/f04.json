@@ -1,0 +1,19 @@
+{
+ "source": "Adults/Female_Adult_04",
+ "parts": {
+  "body": {
+   "color": "f04_body.jpg",
+   "prefix": "f004",
+   "normal": "f04_body_n.jpg"
+  },
+  "head": {
+   "color": "f04_head.jpg",
+   "prefix": "f004",
+   "normal": "f04_head_n.jpg"
+  },
+  "opacity": {
+   "color": "f04_opacity.png",
+   "prefix": "f004"
+  }
+ }
+}

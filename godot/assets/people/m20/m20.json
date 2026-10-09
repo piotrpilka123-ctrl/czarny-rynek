@@ -1,0 +1,15 @@
+{
+ "source": "Adults/Male_Adult_20",
+ "parts": {
+  "body": {
+   "color": "m20_body.jpg",
+   "prefix": "m027",
+   "normal": "m20_body_n.jpg"
+  },
+  "head": {
+   "color": "m20_head.jpg",
+   "prefix": "m027",
+   "normal": "m20_head_n.jpg"
+  }
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "source": "Adults/Male_Adult_07",
+ "parts": {
+  "body": {
+   "color": "m07_body.jpg",
+   "prefix": "m013",
+   "normal": "m07_body_n.jpg"
+  },
+  "head": {
+   "color": "m07_head.jpg",
+   "prefix": "m013",
+   "normal": "m07_head_n.jpg"
+  },
+  "opacity": {
+   "color": "m07_opacity.png",
+   "prefix": "m013"
+  }
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "source": "Professions/Gardener_Male_01",
+ "parts": {
+  "body": {
+   "color": "mg1_body.jpg",
+   "prefix": "m106",
+   "normal": "mg1_body_n.jpg"
+  },
+  "head": {
+   "color": "mg1_head.jpg",
+   "prefix": "m106",
+   "normal": "mg1_head_n.jpg"
+  },
+  "opacity": {
+   "color": "mg1_opacity.png",
+   "prefix": "m106"
+  }
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "source": "Professions/Sports_Female_02",
+ "parts": {
+  "body": {
+   "color": "fs2_body.jpg",
+   "prefix": "f013",
+   "normal": "fs2_body_n.jpg"
+  },
+  "head": {
+   "color": "fs2_head.jpg",
+   "prefix": "f013",
+   "normal": "fs2_head_n.jpg"
+  },
+  "opacity": {
+   "color": "fs2_opacity.png",
+   "prefix": "f013"
+  }
+ }
+}
