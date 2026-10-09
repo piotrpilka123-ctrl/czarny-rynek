@@ -16,9 +16,11 @@ const X0 := -210.0
 const Z0 := -171.0
 const CELL := 1.5
 const NX := 281
-const NZ := 229
+const NZ := 281
 const MAP_W := 840
-const MAP_H := 684
+const MAP_H := 840
+const SOUTH_LIMIT := 247.2
+const BACKYARD_AT := Vector2(70.0, 183.0)
 ## Skala planu miasta: wszystko jest o 38% bliżej siebie niż w projekcie.
 const SC := 0.56
 const INV := 1.0 / 0.56
@@ -422,6 +424,12 @@ func _paint() -> void:
 	_pr(5, ISLE[0], ISLE[1], ISLE[2], ISLE[3])
 	# betonowe obejście boiska przed blokiem (pod czerwoną płytą)
 	_pr(2, COURT[0] - 1.5, COURT[1] - 1.5, COURT[2] + 1.5, COURT[3] + 1.5)
+	# przejście za garażami i mały plac zaplecza
+	_pr(3, 89.0, 164.0, 95.0, 180.0)
+	_pr(4, 63.0, 175.0, 96.0, 190.0)
+	_pr(1, 78.0, 174.0, 86.0, 191.0)
+	_pr(3, 45.0, 183.0, 70.0, 199.0)
+	_pr(2, 43.0, 168.0, 63.0, 189.0)
 	# --- oznakowanie
 	var x := -204.0
 	while x < 204.0:
@@ -1057,9 +1065,11 @@ func build(loader = null) -> void:
 	_backdrop()
 	_border_gates()
 	_bus_loop()
+	_backyard_extension()
 	_curb_lines()
 	_hide_spots()
 	_build_grid()
+	_backyard_graph()
 	if loader != null:
 		await loader.step(66.0, "Furnishing the hideouts")
 	_interiors()
@@ -3848,26 +3858,28 @@ func _backdrop() -> void:
 		pr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		city.add_child(pr)
 	# granice mapy: kolizja, wysoki mur i gęsta zabudowa tuż za nim — żadnych pustych pól po horyzont
-	add_col(-214.0, -209.0, -175.0, 175.0, 6.0)
-	add_col(209.0, 214.0, -175.0, 175.0, 6.0)
+	add_col(-214.0, -209.0, -175.0, 253.0, 6.0)
+	add_col(209.0, 214.0, -175.0, 253.0, 6.0)
 	add_col(-214.0, 214.0, -175.0, -169.5, 6.0)
-	add_col(-214.0, 214.0, 169.5, 175.0, 6.0)
+	add_col(-214.0, 214.0, 247.5, 253.0, 6.0)
 	for i in range(4):
 		rects.pop_back()
 	var wm := Props.pbr("dirty_concrete", 0.22, Color(0.62, 0.62, 0.6))
 	var wtop := Models.mat("4a4a48", 0.9)
-	var xw := -204.0
-	while xw < 204.0:
-		for zz in [-169.2, 169.2]:
-			if xw > 131.0 and xw < 145.0:
+	var xw := -216.0
+	while xw < 216.0:
+		for zz in [-169.2, SOUTH_LIMIT]:
+			if zz < 0.0 and xw > 131.0 and xw < 145.0:
 				# tu stoi portal kolejowy
 				continue
 			var gy := hd(xw + 6.0, zz)
+			add_col(xw, xw + 12.0, zz - 0.3, zz + 0.3, 4.7, true, gy - 0.4)
+			rects.pop_back()
 			Models.box(city, Vector3(11.9, 4.6, 0.4), Vector3(xw + 6.0, gy + 1.9, zz), wm)
 			Models.box(city, Vector3(12.0, 0.14, 0.56), Vector3(xw + 6.0, gy + 4.25, zz), wtop, Vector3.ZERO, false)
 		xw += 12.0
 	var zw := -168.0
-	while zw < 168.0:
+	while zw < 246.0:
 		for xx in [-208.8, 208.8]:
 			if xx < 0.0 and zw + 6.0 > 0.0 and zw + 6.0 < 40.0:
 				# tu stoi portal tunelu
@@ -3886,7 +3898,7 @@ func _backdrop() -> void:
 		var t := rng.randf_range(-0.9, 0.9)
 		match side:
 			0: _graffiti(tags[rng.randi_range(0, 11)], t * 200.0, -168.95, rng.randf_range(1.2, 2.4), 0.0, GC[rng.randi_range(0, 5)], rng.randi_range(110, 220))
-			1: _graffiti(tags[rng.randi_range(0, 11)], t * 200.0, 168.95, rng.randf_range(1.2, 2.4), PI, GC[rng.randi_range(0, 5)], rng.randi_range(110, 220))
+			1: _graffiti(tags[rng.randi_range(0, 11)], t * 200.0, SOUTH_LIMIT - 0.25, rng.randf_range(1.2, 2.4), PI, GC[rng.randi_range(0, 5)], rng.randi_range(110, 220))
 			2: _graffiti(tags[rng.randi_range(0, 11)], -208.55, t * 160.0, rng.randf_range(1.2, 2.4), PI / 2.0, GC[rng.randi_range(0, 5)], rng.randi_range(110, 220))
 			_: _graffiti(tags[rng.randi_range(0, 11)], 208.55, t * 160.0, rng.randf_range(1.2, 2.4), -PI / 2.0, GC[rng.randi_range(0, 5)], rng.randi_range(110, 220))
 	var tr := RandomNumberGenerator.new()
@@ -3896,7 +3908,7 @@ func _backdrop() -> void:
 	while ta < 202.0:
 		for sz in [-1.0, 1.0]:
 			if not (ta > 126.0 and ta < 150.0):
-				line.append(Vector2(ta + tr.randf_range(-3.0, 3.0), sz * (173.5 + tr.randf_range(0.0, 4.0))))
+				line.append(Vector2(ta + tr.randf_range(-3.0, 3.0), sz * ((251.5 if sz > 0.0 else 173.5) + tr.randf_range(0.0, 4.0))))
 		ta += tr.randf_range(13.0, 19.0)
 	ta = -160.0
 	while ta < 162.0:
@@ -3907,7 +3919,7 @@ func _backdrop() -> void:
 		ta += tr.randf_range(13.0, 19.0)
 	for tp2 in line:
 		var bt := Props.tree(tr.randi(), tr.randf_range(1.5, 2.1), tr.randf_range(0.55, 0.9))
-		bt.position = Vector3(tp2.x, hd(clampf(tp2.x, -205.0, 205.0), clampf(tp2.y, -166.0, 166.0)) - 0.2, tp2.y)
+		bt.position = Vector3(tp2.x, hd(clampf(tp2.x, -205.0, 205.0), clampf(tp2.y, -166.0, 244.0)) - 0.2, tp2.y)
 		bt.scale *= Vector3(INV, 1.0, INV)
 		Props._no_shadow(bt)
 		Props.set_range(bt, 190.0)
@@ -3917,7 +3929,7 @@ func _backdrop() -> void:
 	var keys := ["plyta", "plyta2", "kamA", "kamB", "cegla2", "kamC", "plyta", "cegla"]
 	var px := -230.0
 	while px < 230.0:
-		for zz2 in [-190.0, 190.0]:
+		for zz2 in [-190.0, 268.0]:
 			var w := rng.randf_range(24.0, 38.0)
 			var hh := rng.randf_range(4.0, 11.0) * 3.0
 			var kk: String = keys[rng.randi_range(0, keys.size() - 1)]
@@ -3970,7 +3982,8 @@ func _backdrop() -> void:
 			var c2 := along + w2 * 0.5
 			var size2 := Vector3(w2, h2, 14.0)
 			var pos2 := Vector3(c2, 0.0, (214.0 + off) * (-1.0 if side == 0 else 1.0))
-			var gy2b := hd(clampf(c2, -205.0, 205.0), 166.0 * (-1.0 if side == 0 else 1.0))
+			if side == 1: pos2.z += 78.0
+			var gy2b := hd(clampf(c2, -205.0, 205.0), -166.0 if side == 0 else 244.0)
 			var skip := false
 			if side >= 2:
 				size2 = Vector3(14.0, h2, w2)
@@ -4066,7 +4079,7 @@ func _bus_loop() -> void:
 const GATE_E := Vector2(208.8, 24.0)
 
 func _border_gates() -> void:
-	for zz in [-169.2, 169.2]:
+	for zz in [-169.2, SOUTH_LIMIT]:
 		var pm := Stations.model("portal_kolejowy")
 		if pm == null:
 			break
@@ -6256,3 +6269,46 @@ func update_stations() -> void:
 					any = true
 			Stations.refresh_lamp(ln, any, int(it2.get("mode", 0)))
 
+
+
+## Zaplecze poza dawną południową granicą; miejsce pod dalszy brzeg i osiedle.
+func _backyard_extension() -> void:
+	building(44.0, 170.0, 61.0, 188.0, 4.2, "cegla2", Color(0.68, 0.55, 0.43), Color(0.38, 0.42, 0.4), 0.22, false, {"blind": 1, "balc": false})
+	building(112.0, 171.0, 125.0, 188.0, 3.6, "kamB", Color(0.65, 0.68, 0.57), Color(0.4, 0.48, 0.4), 0.15, false, {"balc": false})
+	_wall(Signs.shop("REPAIR YARD", Color(0.62, 0.55, 0.4), 2.8, false), 52.0, 2.9, 169.9, 0.0)
+	_bench(69.0, 188.0, PI)
+	_bin(74.0, 187.0, 0.4)
+	_bin(114.0, 190.0, 1.2)
+	_prop("pallet", 64.0, 180.0, 0.2, 0.16)
+	_prop("wooden_crate_02", 64.0, 180.0, 0.1, 0.48, 0.0, false, 0.16)
+	_prop("old_tyre", 105.0, 185.0, 0.4, 0.16, 0.0, false)
+	_prop("cinderblock", 114.0, 184.0, 0.2, 0.24, 0.0, false)
+	_lamp(82.0, 179.0, PI)
+	_fence_run(62.0, 193.0, 111.0, 193.0, "siatka", 1.5, [], [], [83.0])
+	var random_ext := RandomNumberGenerator.new()
+	random_ext.seed = 8421
+	for point in [Vector2(30,177), Vector2(20,201), Vector2(13,232), Vector2(38,228), Vector2(127,203), Vector2(170,226), Vector2(-140,220), Vector2(-180,193)]:
+		var tree := Props.tree(random_ext.randi(), 1.65, 0.72)
+		tree.position = Vector3(point.x, hd(point.x, point.y), point.y)
+		tree.scale *= Vector3(INV, 1.0, INV)
+		Props.set_range(tree, 150.0)
+		city.add_child(tree)
+
+
+## Krawędzie nowej sieci są wyznaczone po zbudowaniu kolizji, a nie na ślepo przez płoty.
+func _backyard_graph() -> void:
+	var previous := _wp_add(Vector2(108.5, 110.0) * SC)
+	if grid.is_point_solid(_cell(float(wp[previous].x), float(wp[previous].z))):
+		var free := near_free(float(wp[previous].x), float(wp[previous].z))
+		wp[previous].x = free.x
+		wp[previous].z = free.y
+	for destination in [Vector2(92,170), BACKYARD_AT, Vector2(83,193), Vector2(70,202), Vector2(37,213), Vector2(20,231)]:
+		var start := Vector2(float(wp[previous].x), float(wp[previous].z))
+		var goal := near_free(destination.x * SC, destination.y * SC)
+		var route := grid_path(start, goal)
+		for point in route:
+			if Vector2(float(wp[previous].x), float(wp[previous].z)).distance_to(point) < 0.2: continue
+			var index := wp.size()
+			wp.append({"x": point.x, "z": point.y, "links": [], "i": index, "quiet": true, "extension": true})
+			_wp_link(previous, index)
+			previous = index

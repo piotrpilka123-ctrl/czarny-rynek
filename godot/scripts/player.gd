@@ -246,7 +246,7 @@ func _physics_process(dt: float) -> void:
 	gp = global_position
 	if outside:
 		gp.x = clampf(gp.x, -208.4 * D.SC, 208.4 * D.SC)
-		gp.z = clampf(gp.z, -168.8 * D.SC, 168.8 * D.SC)
+		gp.z = clampf(gp.z, -168.8 * D.SC, (G.world.SOUTH_LIMIT - 0.4) * D.SC)
 		gp.y = G.world.height(gp.x, gp.z)
 	else:
 		gp.y = 0.0

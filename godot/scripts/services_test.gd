@@ -712,16 +712,16 @@ static func run(T) -> void:
 	var ea := -206.0
 	while ea <= 206.0:
 		edge.append(Vector2(ea, -171.0))
-		edge.append(Vector2(ea, 171.0))
+		edge.append(Vector2(ea, G.world.SOUTH_LIMIT))
 		ea += 3.0
 	ea = -168.0
-	while ea <= 168.0:
+	while ea <= G.world.SOUTH_LIMIT - 1.0:
 		edge.append(Vector2(-210.5, ea))
 		edge.append(Vector2(210.5, ea))
 		ea += 3.0
 	var holes := 0
 	for ep in edge:
-		bq.position = Vector3(ep.x * D.SC, G.world.hd(clampf(ep.x, -208.0, 208.0), clampf(ep.y, -169.0, 169.0)) + 1.2, ep.y * D.SC)
+		bq.position = Vector3(ep.x * D.SC, G.world.hd(clampf(ep.x, -208.0, 208.0), clampf(ep.y, -169.0, G.world.SOUTH_LIMIT)) + 1.2, ep.y * D.SC)
 		if space.intersect_point(bq, 1).is_empty():
 			holes += 1
 	T.ok(holes == 0, "mur graniczny jest szczelny dookoła mapy (%d punktów, %d bez kolizji)" % [edge.size(), holes])

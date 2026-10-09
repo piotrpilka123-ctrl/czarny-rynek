@@ -42,6 +42,8 @@ func build() -> void:
 		_static({"x": at.x / D.SC, "z": at.y / D.SC, "rot": PI, "pose": "phone", "name": dealer.name,
 			"hours": [8.0, 23.0], "look": {"model": "m11" if id == "mati" else "m16", "seed": 81 if id == "mati" else 82},
 			"act": func(): G.main.talk_dealer(id)})
+	_static({"x": 72.0, "z": 182.0, "rot": 0.3, "pose": "arms", "name": "Roman", "hours": [6, 19],
+		"look": {"model": "m09", "seed": 94}, "lines": ["Tu kiedyś naprawiali wszystkie auta z osiedla. Dziś zostało tyle, co na paletach.", "W tych kontenerach czasem leży coś do sprzedania. Zenek w lombardzie skupuje części.", "Za furtką jest stary teren rekreacyjny. Jeszcze parę lat temu ludzie tu przychodzili po pracy."]})
 	_build_outskirts()
 	_build_edges()
 	_build_car()
