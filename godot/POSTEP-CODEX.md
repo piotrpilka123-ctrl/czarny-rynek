@@ -481,3 +481,29 @@ Próba tools/wolne.sh wykazała działającą sesję gracza (PID 41329); nie otw
 nowego okna ani nie przerywano gry. Natywny podgląd pozostaje do sprawdzenia przy
 wolnej sesji; nie deklarować perfekcji na podstawie samego headless/Blendera.
 Następny blok 9d: pomoc przy laboratorium i pozostałej produkcji, koszty i symulacja.
+
+
+## 9d — Igor i wsparcie pozostałej produkcji
+
+Kontakt w Black Court (-55,207); rekrutacja osobista: przepustka, poziom 10,
+50 reputacji Garage Row, garaż z laboratorium, 1800 zł. Wykonuje rzeczywisty
+zatrzymany etap w garażu za 120 zł, do 2 dziennie, co godzinę przez całą dobę.
+Etap musi oczekiwać co najmniej 8 minut; nie tworzy wsadu, nie nastawia i nie
+odbiera partii ani nie poprawia jakości. Brak gotówki/pauza/policja/limit
+pozostawiają pracę graczowi. Production.proceed ma opcję nieprzewijania zegara,
+żeby wywołanie z on_tick nie powodowało reentrantnych kroków czasu.
+
+Telefon Pomocnicy ma drugi kontakt, stan, płace i pauzę. Bez przepustki trasa
+prowadzi do bramy Black Court, zamiast przez zamknięty mur; po odblokowaniu do
+Igora. Zapis nowej umowy, licznika i płac; starszy zapis nie zatrudnia sam.
+10 nowych kontroli, pełna seria 745 OK / 0 błędów, audyt panelu 0 uwag
+(79 kontrolek). Symulacja 6 wariantów amfa/meta/koks, manualnie lub z pomocą:
+netto po wsadzie/bagach/płacach 950 / 1584 / 6360 zł, przy niezmienionym plonie
+72/60/90 g. Szczegóły, założenia i ograniczenia w EKONOMIA-SIECI.md i CSV.
+
+tools/wolne.sh nadal wykazuje działającą grę; nie otwierano okien i nie zakłócano
+sesji. Igor i panel pozostają do oględzin natywnych przy wolnej sesji; brak
+nowej animacji pracy Igora, Roman już ma prezentację (9c). Punkt 9 zamknięty
+jako pierwsza wersja reputacji/kontaktów/płatnej delegacji; kolejne usprawnienia
+w ramach punktów 10–12. Następny 10: pełny przegląd grafiki, ze szczególnym
+uwzględnieniem uwag Piotra o roślinach, świetle oraz kontroli celowania.

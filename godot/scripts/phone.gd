@@ -1238,6 +1238,16 @@ func _workers() -> void:
 	else:
 		card.add_child(K.wrap(G.Workers.requirement() if G.Workers.requirement()!="" else "Podejdź do Romana. Rekrutacja: 450 zł.",12,K.C_DIM))
 	card.add_child(K.btn("Prowadź do Romana",func(): G.S.track="worker_roman"; G.S.nav_on=true; G.nav_dirty.emit(); ui.close_all()))
+	var lab := K.card(body)
+	lab.add_child(K.head("Igor • laboratorium",17))
+	lab.add_child(K.wrap("Całodobowe kontrole co godzinę. 120 zł za wykonany etap, maks. 2 / 240 zł dziennie. Sam dostarczasz wsad, nastawiasz i odbierasz partie.",12,K.C_DIM))
+	if G.S.labstaff.is_empty():
+		lab.add_child(K.wrap(G.LabStaff.requirement() if G.LabStaff.requirement()!="" else "Podejdź do Igora: rekrutacja 1800 zł.",12,K.C_DIM))
+	else:
+		var assistant: Dictionary = G.S.labstaff
+		lab.add_child(K.wrap("%s • dziś %d/2 • płace %s"%[assistant.status,assistant.actions_today,G.money(assistant.paid)],12,K.C_TXT))
+		lab.add_child(K.btn("Wznów" if assistant.paused else "Wstrzymaj",func(): assistant.paused=not assistant.paused; render()))
+	lab.add_child(K.btn("Prowadź do Igora" if G.flag("gang_pass") else "Prowadź do bramy Black Court",func(): G.S.track="lab_helper"; G.S.nav_on=true; G.nav_dirty.emit(); ui.close_all()))
 	body.add_child(K.head("Reputacja dzielnic",15))
 	body.add_child(K.wrap("Poziom 8, własny garaż, lampa i 20 reputacji w Garage Row otwierają współpracę.",12,K.C_DIM))
 	for zone in D.ZONES:

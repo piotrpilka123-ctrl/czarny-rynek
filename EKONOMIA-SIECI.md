@@ -82,3 +82,29 @@ wstecz. Większa uprawa wymaga dodatkowego doglądania: przy 10 roślinach w 18/
 przy pielęgnacji samym pomocnikiem uzyskano 424 g zamiast 600 g przy pełnej pielęgnacji,
 a dealer sprzedał tylko 268 g — nie traktować całego plonu jako gotówki.
 Pełne wyniki: SYMULACJA-PRACOWNIKA.csv.
+
+
+## Igor — asystent laboratorium (9d)
+
+1800 zł rekrutacji, 120 zł za przejęty etap, maks. 2 czynności / 240 zł na dobę.
+Dyżur 24 h, sprawdzanie co godzinę, etap czeka minimum 8 minut; pomocnik nie
+przyspiesza pracy względem gracza. Start, wsad i odbiór należą do właściciela.
+Brak pracy/gotówki, pauza lub pościg = brak opłaty i obsługi. Limit wymusza
+własną obsługę większej liczby stanowisk; nie jest pełną automatyzacją linii.
+
+Symulacja 6 wariantów, jedna rzeczywista partia + sprzedaż przez Matiego/Darka.
+Tryb produkcji normalny, zdrowie 100%, surowce faktycznie zużywane, plon/czystość
+liczone przez Prod, sprzedaż ograniczona tempem, zapasem i prowizją dealerów.
+
+| Partia | Ręcznie | Z Igorem | Płace | Czas ręcznie / Igor |
+|---|---:|---:|---:|---:|
+| Amfetamina 72 g, 80% | 1070 zł | 950 zł | 120 zł | 8,17 / 8,33 h |
+| Metamfetamina 60 g, 80% | 1824 zł | 1584 zł | 240 zł | 14,33 / 15,33 h |
+| Kokaina 90 g, 85% | 6600 zł | 6360 zł | 240 zł | 22,50 / 23,33 h |
+
+Wynik po wsadzie, woreczkach i płacach; bez prądu, sprzętu, rekrutacji, podróży,
+nalotów i zmiany popytu. To nie ta sama symulacja co wcześniejszy audyt gotowych
+partii: tutaj produkcja wylicza rzeczywistą czystość. Igor nie zwiększa plonu,
+powoduje opóźnienie do godzinnej kontroli i koszt. CSV: SYMULACJA-ASYSTENTA-LAB.csv;
+narzędzie tools/lab_staff_balance.gd. Zmniejszenie liczby ręcznych etapów to
+korzyść, nie emisja darmowych pieniędzy ani gwarancja końcowego balansu.

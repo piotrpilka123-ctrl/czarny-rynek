@@ -50,6 +50,7 @@ func build() -> void:
 		"look": {"model":"m11","seed":116}, "act":func(): G.main.talk_gang()})
 	_static({"x": -51.0, "z": 188.0, "rot": 0.0, "pose": "arms", "name": "Strażnik Black Court",
 		"look": {"model":"m16","seed":117}, "lines":["Tu pilnujemy swoich. Wiktor za ciebie ręczy, więc możesz zostać. Nie sprowadzaj policji."]})
+	_static({"x":-55.0,"z":207.0,"rot":0.3,"pose":"phone","name":"Igor","look":{"model":"m12","seed":146},"act":func(): G.main.talk_lab_staff()})
 	_build_outskirts()
 	_build_edges()
 	_build_car()

@@ -1699,6 +1699,8 @@ func _order_target(o: Dictionary) -> Dictionary:
 
 
 func _place_target(id: String) -> Dictionary:
+	if id == "lab_helper":
+		return {"id":id,"label":"Igor — pomoc w laboratorium" if G.flag("gang_pass") else "Igor — najpierw brama Black Court","loc":"out","x":(-55.0 if G.flag("gang_pass") else -68.0)*D.SC,"z":(207.0 if G.flag("gang_pass") else 179.0)*D.SC,"color":C_PLACE}
 	if id == "worker_roman":
 		return {"id":id,"label":"Roman — pomoc w uprawie","loc":"out","x":72.0*D.SC,"z":182.0*D.SC,"color":C_PLACE}
 	if id == "gang":
@@ -1765,7 +1767,7 @@ func cur_target() -> Dictionary:
 			if not dt.is_empty():
 				return dt
 			S.track = null
-		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or t == "backyards" or t == "lake" or t == "gang" or t == "worker_roman" or String(t).begins_with("dealer_") or String(t).begins_with("prop:"):
+		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or t == "backyards" or t == "lake" or t == "gang" or t == "worker_roman" or t == "lab_helper" or String(t).begins_with("dealer_") or String(t).begins_with("prop:"):
 			var pt := _place_target(t)
 			if not pt.is_empty():
 				return pt
@@ -1804,6 +1806,7 @@ func nav_targets() -> Array:
 	out.append({"id": "shop", "label": "Sklep u Stasia"})
 	out.append({"id": "ciuchy", "label": "Tania Odzież (ubrania)"})
 	out.append({"id": "backyards", "label": "Backyards (za garażami)"})
+	out.append({"id":"lab_helper","label":"Igor (asystent laboratorium)"})
 	out.append({"id":"worker_roman","label":"Roman (pomocnik uprawy)"})
 	out.append({"id":"gang","label":"Black Court (teren gangu)"})
 	out.append({"id": "lake", "label": "Old Reservoir (jezioro)"})
@@ -3883,3 +3886,16 @@ func talk_worker() -> void:
 		var state: Dictionary = G.S.workers.roman
 		choices.push_front({"label":"Wznów pracę" if state.paused else "Wstrzymaj pracę","act":func(): state.paused=not state.paused; talk_worker()})
 		ui.dialog({"name":"Roman","lines":["%s. Wizyty: %d, podlane rośliny: %d. Dziś zapłacono %s/240 zł."%[state.status,state.visits,state.watered,G.money(state.paid)]],"choices":choices})
+
+
+func talk_lab_staff() -> void:
+	if not G.LabStaff.near(): return
+	var choices: Array = [{"label":"Do później."}]
+	if G.S.labstaff.is_empty():
+		var reason: String = G.LabStaff.requirement()
+		if reason.is_empty(): choices.push_front({"label":"Zatrudnij: 1800 zł","act":func(): if G.LabStaff.hire(): talk_lab_staff()})
+		ui.dialog({"name":"Igor","lines":["Doglądam zatrzymanych etapów w twoim garażu: 120 zł za czynność, najwyżej dwie na dobę. Sprawdzam co godzinę, także nocą. Wsad, start i odbiór partii zostają u ciebie. Nie przejmę całej linii.",reason if reason!="" else "Możemy zaczynać."],"choices":choices})
+	else:
+		var state: Dictionary = G.S.labstaff
+		choices.push_front({"label":"Wznów" if state.paused else "Wstrzymaj","act":func(): state.paused=not state.paused; talk_lab_staff()})
+		ui.dialog({"name":"Igor","lines":["%s. Czynności dziś %d/2, zapłacono %s."%[state.status,state.actions_today,G.money(state.paid)]],"choices":choices})

@@ -1,0 +1,7 @@
+assisted,g,labor,net,production_hours,pur,recipe,sold_day,sold_g
+False,72.0,0,1070.0,8.17,80,amfetamina,3,72
+True,72.0,120,950.0,8.33,80,amfetamina,3,72
+False,60.0,0,1824.0,14.33,80,metamfetamina,5,60
+True,60.0,240,1584.0,15.33,80,metamfetamina,5,60
+False,90.0,0,6600.0,22.5,85,kokaina,8,90
+True,90.0,240,6360.0,23.33,85,kokaina,8,90

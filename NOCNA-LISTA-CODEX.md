@@ -39,7 +39,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
        sensowne furtki i przełazy, bez psucia prologu i tras NPC.
 8. [x] Śmietniki i kraty: własne spójne modele, wejście, widok ze środka, bezpieczne
        wychodzenie i czytelne celowanie. Kontrola chowania przy obserwującym patrolu.
-9. [ ] Lokalna reputacja i kontakty, kolejne cele, pomocnicy produkcji; ograniczenia
+9. [x] Lokalna reputacja i kontakty, kolejne cele, pomocnicy produkcji; ograniczenia
        i wydatki zamiast darmowego dochodu.
 10. [ ] Pełny przegląd grafiki: wszystkie modele/tekstury, dzień/noc/deszcz, wnętrza,
         telefon i interfejs; usuwać przenikanie, powtórzenia, nadmierną czerń i rozciągnięcia.
@@ -158,3 +158,11 @@ Bez dodatkowego podlewania/opłat z animacji. Wybiera wolne miejsce, nie pojawia
 w kolizji. Weryfikacja silnika i render Blender bez okna, bo sesja gracza działała.
 Pozostaje kontrola w natywnym rendererze przy wolnej sesji; następny 9d — pomoc
 przy innych rodzajach produkcji, z kosztami i symulacją.
+
+Podpunkt 9d [x]: Igor w Black Court, odpłatne doglądanie zatrzymanych etapów
+laboratorium w garażu. Rekrutacja 1800 zł, poziom 10, przepustka, 50 reputacji
+Garage Row i stanowisko. 120 zł za rzeczywiście wykonany etap, maks. 2/dobę;
+bez wsadu/startowania/odbioru partii, bez darmowego podnoszenia jakości.
+6 wariantów symulacji: po płacach nadal dodatnia marża, nie zwiększa plonu i tempa.
+745 testów OK, audyt Pomocnicy 0 uwag. Pierwsza wersja punktu 9 zamknięta;
+przegląd wizualny kontaktów i pracy w natywnym rendererze pozostaje w punkcie 10.

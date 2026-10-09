@@ -607,14 +607,14 @@ static func set_mode(room: String, idx: int, m: int) -> void:
 
 
 ## czynność kończąca etap (przelanie, filtrowanie…)
-static func proceed(room: String, idx: int) -> bool:
+static func proceed(room: String, idx: int, advance_clock := true) -> bool:
 	var j = job(room, idx)
 	if j == null or int(j.hold) < 0:
 		return false
 	j.hold = -1
 	j.hold_t = 0.0
 	j.prog = float(j.prog) + 0.0001
-	G.add_minutes(8.0)
+	if advance_clock: G.add_minutes(8.0)
 	return true
 
 
