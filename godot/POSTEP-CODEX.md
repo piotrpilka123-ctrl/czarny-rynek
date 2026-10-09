@@ -356,3 +356,11 @@ wymagany przed commitem. reputacja-dealerzy.png obejrzany w rendererze.
 Punkt 9 pozostaje otwarty do pomocników produkcji i kontaktów. Następny blok 9b:
 pomoc w garażu, własna rekrutacja i wynagrodzenie, ograniczenie do dostępnego
 sprzętu oraz zasobów, jasny cel rozwoju. Nie przechodzić jeszcze do punktu 10.
+
+
+d1ab651: końcowo 713 testów OK, 0 błędów; audyt telefonu Dealerzy 0 uwag
+(82 kontrolki). Jeden przebieg ujawnił patrol stojący podczas przeszukiwania:
+zbyt wcześnie pomijał bliski punkt zakrętu, próbował ścinać przez przeszkodę.
+Teraz pomija punkt tylko przy wolnym odcinku do następnego. Pełny test po
+korekcie przechodzi, w tym ruch/przeczesywanie i prolog. Następny nadal 9b:
+pomocnicy; rozbudować widok reputacji także o pozostałe odwiedzone dzielnice.
