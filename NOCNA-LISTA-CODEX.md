@@ -10,7 +10,7 @@ Najnowsze polecenia — przed dalszym ogólnym audytem:
 - [x] Sprawdzić brakujące kolizje płotków/doniczek wskazanych jako „potki”.
 - [x] Poprawić tekstury schodów.
 - [x] Bardziej imprezowa muzyka w budynkach; klub słyszany przez ściany ma być stłumiony i trochę cichszy.
-- [ ] Rozbudować klub: neonowy korytarz wejściowy, duża sala, osobne łazienki, górne balkony i loże VIP; domyślna muzyka bardziej klubowa.
+- [ ] Rozbudować klub: neonowy korytarz i dostępne osobne łazienki wykonane; nadal górne balkony/loże VIP z działającymi schodami. Domyślna muzyka klubowa gotowa.
 - [ ] Rozbudować lokale do kupienia o więcej pomieszczeń; zachować wyposażenie i zapis gracza.
 - [ ] Dealerami stają się duzi klienci, którzy sami proponują współpracę; początkowo nie ma dealerów na ulicy. Zachować istniejące kontrakty/zapas/pieniądze.
 - [ ] Dodać złomowisko na mapie (interpretacja „do mamy” z kontekstu mapy).
@@ -65,6 +65,12 @@ Rzeczywista zmiana → odpowiednia weryfikacja → pełny pomyślny test → lok
 Testy bez dźwięku. Przed oknem tools/wolne.sh. Krótkie odczyty i raporty oszczędzają
 tokeny; nie zastępują testów ani pracy. „Idealnie” traktować jako kierunek iteracji,
 nie deklarować perfekcji po samym teście headless.
+
+Preferencja Piotra: używać Graphify do odnajdywania zależności i powiązanych testów,
+aby ograniczać odczyty kodu. 2026-10-09: lokalny manifest wtyczki obecny, lecz brak
+aktywnych narzędzi Graphify w sesji; indeks projektu niepotwierdzony. Po połączeniu
+sprawdzić indeks i jego aktualność, pobierać krótkie wyniki, potwierdzać je w kodzie.
+Do tego czasu: celowe rg, krótkie fragmenty plików i aktualne notatki postępu.
 
 
 Doprecyzowanie produkcji przez Piotra: także laboratorium ma mieć dobre interakcyjne
@@ -177,3 +183,9 @@ bez wsadu/startowania/odbioru partii, bez darmowego podnoszenia jakości.
 6 wariantów symulacji: po płacach nadal dodatnia marża, nie zwiększa plonu i tempa.
 745 testów OK, audyt Pomocnicy 0 uwag. Pierwsza wersja punktu 9 zamknięta;
 przegląd wizualny kontaktów i pracy w natywnym rendererze pozostaje w punkcie 10.
+
+Graphify: bezpośredni MCP graphify działa po logowaniu CLI. Indeks GitHuba
+9676160 wskazuje starszy game/js/interiors.js (buildClub), nie aktualny Godot.
+Nie powtarzać zapytań do nieaktualnego grafu przy każdym bloku; użyć go ponownie
+po potwierdzonej aktualizacji indeksu lub wdrożeniu właściwego lokalnego indeksu.
+Nie pushować tylko w celu odświeżenia Graphify. Oszczędności tokenów nie zmierzono.

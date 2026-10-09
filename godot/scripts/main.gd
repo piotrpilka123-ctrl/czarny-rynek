@@ -3741,7 +3741,7 @@ func _record_klub() -> void:
 			"cam": func(_k: float): pass},
 		{"len": 110, "setup": func():
 			ui.close_all()
-			teleport("club", Vector3(cx, 0.0, 4.4), 0.0),
+			teleport("club", Vector3(cx, 0.0, float(D.ROOMS.club.d)*0.5-1.6), 0.0),
 			"cam": func(k: float):
 				var a := -0.5 + k * 1.5
 				cine_cam(Vector3(fx + sin(a) * 6.2, 2.5 - k * 0.5, -1.2 + cos(a) * 5.6), Vector3(fx, 1.1, -1.4), 58.0)},

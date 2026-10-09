@@ -448,7 +448,7 @@ const ROOMS := {
 	"basement": {"cx": 1300.0, "w": 9.0, "d": 10.0, "h": 2.4, "name": "Piwnica"},
 	"lab": {"cx": 1400.0, "w": 14.0, "d": 11.0, "h": 3.6, "name": "Laboratorium w Starej Hucie"},
 	"ciuchy": {"cx": 1500.0, "w": 8.0, "d": 6.4, "h": 2.9, "name": "Tania Odzież"},
-	"club": {"cx": 1600.0, "w": 15.0, "d": 12.0, "h": 4.2, "name": "Klub Neon"},
+	"club": {"cx": 1600.0, "w": 15.0, "d": 18.0, "h": 4.2, "name": "Klub Neon"},
 	"szpital": {"cx": 1700.0, "w": 7.6, "d": 6.2, "h": 2.8, "name": "Szpital miejski"},
 	"komisariat": {"cx": 1800.0, "w": 8.4, "d": 6.0, "h": 2.8, "name": "Komisariat III"},
 }

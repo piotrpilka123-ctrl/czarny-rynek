@@ -5708,20 +5708,6 @@ func _club_extras(g: Node3D, cx: float, w: float, d: float, h: float) -> void:
 	cs.rotation.y = PI
 	cs.shaded = false
 	ex.add_child(cs)
-	# --- toalety: dwoje drzwi w południowej ścianie po stronie lóż, nad nimi neony
-	var door_m := Models.mat("1b1620", 0.5, 0.2)
-	var k2 := 0
-	for txo in [1.5, 2.9]:
-		var tx := cx - w * 0.5 + float(txo)
-		Models.box(ex, Vector3(0.98, 2.1, 0.06), Vector3(tx, 1.05, d * 0.5 - 0.05), dark)
-		Models.box(ex, Vector3(0.86, 2.0, 0.05), Vector3(tx, 1.02, d * 0.5 - 0.075), door_m)
-		Models.box(ex, Vector3(0.03, 0.14, 0.04), Vector3(tx + 0.33, 1.02, d * 0.5 - 0.11), chrome)
-		var ws := Signs.text("WC ♀" if k2 == 0 else "WC ♂", "bebas", 70, Color(1.0, 0.3, 0.85) if k2 == 0 else Color(0.3, 0.95, 1.0), 0.006, 6, Color(0, 0, 0, 0.6))
-		ws.position = Vector3(tx, 2.35, d * 0.5 - 0.06)
-		ws.rotation.y = PI
-		ws.shaded = false
-		ex.add_child(ws)
-		k2 += 1
 	# --- czerwony chodnik od bramki w stronę parkietu
 	Models.box(ex, Vector3(1.5, 0.012, 3.2), Vector3(cx, 0.008, d * 0.5 - 4.1), Models.mat("5a1420", 0.95), Vector3.ZERO, false)
 	for sxx in [-1.0, 1.0]:
@@ -5751,6 +5737,63 @@ func _club_extras(g: Node3D, cx: float, w: float, d: float, h: float) -> void:
 	Props._no_shadow(ex)
 
 
+## Ściany nowych pomieszczeń mają kolizję zgodną z widoczną bryłą.
+func _club_partition(g: Node3D, size: Vector3, at: Vector3, material: Material) -> void:
+	Models.box(g, size, at, material)
+	add_col(at.x-size.x*0.5, at.x+size.x*0.5, at.z-size.z*0.5, at.z+size.z*0.5, at.y+size.y*0.5, true, at.y-size.y*0.5)
+	rects.pop_back()
+
+
+func _club_entrance(g: Node3D, cx: float) -> void:
+	var foyer := Node3D.new()
+	foyer.name = "NeonEntranceAndBathrooms"
+	g.add_child(foyer)
+	var dark := Models.mat("17131f", 0.75)
+	var wall := Props.pbr("concrete_wall_008", 0.5, Color(0.33, 0.38, 0.4))
+	var ceramic := Models.mat("e0e6df", 0.22)
+	var seat := Models.mat("151820", 0.4)
+	# Wejście otwiera się na parkiet; przejście szerokie na 2,7 m.
+	for side in [-1.0, 1.0]:
+		_club_partition(foyer, Vector3(0.16, 3.2, 4.2), Vector3(cx+side*1.45, 1.6, 6.9), dark)
+	Models.box(foyer, Vector3(3.0, 0.12, 4.2), Vector3(cx, 3.26, 6.9), dark)
+	for i in range(6):
+		var z := 5.0+i*0.65
+		var color := Color(1.0, 0.12, 0.62) if i%2==0 else Color(0.14, 0.8, 1.0)
+		var led := Models.mat(color, 0.3, 0.0, 2.2)
+		for side in [-1.0, 1.0]:
+			Models.box(foyer, Vector3(0.035, 2.9, 0.045), Vector3(cx+side*1.35, 1.5, z), led, Vector3.ZERO, false)
+		Models.box(foyer, Vector3(2.7, 0.035, 0.045), Vector3(cx, 2.95, z), led, Vector3.ZERO, false)
+		if i==1 or i==4:
+			var light := _room_light(foyer, cx, z, 2.75, 0.55, color, 3.0)
+			light.shadow_enabled = true
+	# Dwie łazienki od zachodniej strony foyer, każda z własnym wejściem.
+	for x in [-4.65, -1.85]:
+		_club_partition(foyer, Vector3(0.14, 2.85, 4.0), Vector3(cx+x, 1.425, 7.0), wall)
+	for bounds in [[-7.45,-6.65],[-5.45,-4.65],[-4.65,-4.0],[-2.8,-1.85]]:
+		var x0: float=bounds[0]
+		var x1: float=bounds[1]
+		_club_partition(foyer, Vector3(x1-x0, 2.85, 0.14), Vector3(cx+(x0+x1)*0.5, 1.425, 5.0), wall)
+	for door_x in [-6.05,-3.4]:
+		_club_partition(foyer, Vector3(1.2, 0.5, 0.14), Vector3(cx+door_x, 2.6, 5.0), wall)
+		var sign := Signs.text("WC", "bebas", 70, Color(0.3, 0.95, 1.0), 0.006, 6, Color(0,0,0,0.6))
+		sign.position=Vector3(cx+door_x,2.45,4.9)
+		foyer.add_child(sign)
+	for i in range(2):
+		var bx := cx-6.05+i*2.8
+		Models.box(foyer, Vector3(2.6,0.025,3.9), Vector3(bx,0.014,7.0), Models.mat("556066",0.4))
+		Models.box(foyer, Vector3(2.6,0.1,3.9), Vector3(bx,2.9,7.0), wall)
+		# Ceramika i czarna deska; bryła misy pozostawia miejsce na dojście.
+		Models.cyl(foyer, 0.18, 0.24, 0.3, Vector3(bx,0.15,8.35), ceramic, Vector3.ZERO, 16)
+		Models.sphere(foyer, 0.28, Vector3(bx,0.34,8.35), ceramic, Vector3(1,0.55,1.3))
+		Models.cyl(foyer, 0.22, 0.22, 0.035, Vector3(bx,0.46,8.35), seat, Vector3.ZERO, 20)
+		add_col(bx-0.23,bx+0.23,8.03,8.67,0.48,true,0.0)
+		rects.pop_back()
+		_club_partition(foyer, Vector3(0.48,0.58,0.22), Vector3(bx,0.46,8.7), ceramic)
+		_lm(foyer, "szp_umywalka", bx+1.31, 7.55, -PI/2.0, 0.0, Vector2(0.2,0.35))
+		var light := _room_light(foyer, bx, 6.8, 2.7, 0.65, Color(0.85,0.93,1.0), 3.5)
+		light.shadow_enabled = true
+
+
 func _club_room() -> void:
 	var R: Dictionary = D.ROOMS.club
 	var cx: float = R.cx
@@ -5760,6 +5803,7 @@ func _club_room() -> void:
 	var g := _room("club", "concrete_floor_worn_001", "concrete_wall_008", "3a3050", Color(0.3, 0.26, 0.4), 0.5)
 	_club_walls(g, cx, w, d, h)
 	_club_extras(g, cx, w, d, h)
+	_club_entrance(g, cx)
 	# bramka z wykrywaczem tuż za drzwiami
 	_lm(g, "klub_bramka", cx, d * 0.5 - 2.4, 0.0)
 	for sx in [-1.0, 1.0]:

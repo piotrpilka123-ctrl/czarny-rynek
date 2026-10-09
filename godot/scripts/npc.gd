@@ -422,7 +422,7 @@ func _build_club() -> void:
 		n.rig.anim.seek(rg.randf() * 4.0, true)
 		n.interact.act = func(): G.main.club_buyer(n)
 	# ludzie przy stolikach: stoją z drinkiem, gadają
-	for e in [[2.9, 2.6, 2.4, "talk", "Seba z ekipą"], [1.9, 2.3, -0.7, "dance4", "Paula"], [5.1, 3.5, 2.9, "arms", "Rysiek"], [-3.7, 4.3, 0.9, "talk", "Aga"], [-4.7, 4.1, -1.2, "dance4", "Ziomek Agi"]]:
+	for e in [[2.9, 2.6, 2.4, "talk", "Seba z ekipą"], [1.9, 2.3, -0.7, "dance4", "Paula"], [5.1, 3.5, 2.9, "arms", "Rysiek"], [-3.7, 3.5, 0.9, "talk", "Aga"], [-4.7, 3.4, -1.2, "dance4", "Ziomek Agi"]]:
 		var s2 := _static({"loc": "club", "x": cx + float(e[0]), "z": float(e[1]), "rot": float(e[2]), "pose": String(e[3]), "name": String(e[4]),
 			"look": {"model": (D.PEOPLE_F if String(e[4]).ends_with("a") else D.PEOPLE_M)[rg.randi() % 11], "female": String(e[4]).ends_with("a"), "seed": 340 + rg.randi() % 50},
 			"lines": ["Co?! Nie słyszę!", "Najlepsza impreza w mieście, mówię ci.", "Stary, widziałeś, kto siedzi w loży? Sama śmietanka.", "Postaw kolejkę, to pogadamy."]})

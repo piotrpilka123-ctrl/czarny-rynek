@@ -548,3 +548,22 @@ klientów, złomowisko, nowe miejsca spotkań. Pełny test finalnej muzyki przed
 
 Muzyka: końcowy pełny test 755 OK, 0 błędów. Następny konkretny blok:
 układ klubu i lokali, z kontrolą przejść, schodów i górnego poziomu gracza.
+
+
+## Klub — neonowe wejście i dwie dostępne łazienki
+
+Sala wydłużona 12 → 18 m: osobny tunel wejściowy długości 4,2 m z sześcioma
+ramami neonów, dwie łazienki z przejściami 1,2 m, ceramiką, umywalkami i oświetleniem.
+Usunięto poprzednie dekoracyjne drzwi WC w ścianie. Nadproża mają kolizję wyłącznie
+na wysokości nadproża, ściany/przedmioty odpowiadają widocznym bryłom. Prolog zaczyna
+klub przy nowym wejściu; dwoje gości przesuniętych poza ściany nowych pomieszczeń.
+Podglądy natywnego Godota bez dźwięku: klub-wejscie.png / klub-lazienka.png.
+Piętro VIP i schody pozostają do wykonania — całego klubu nie odhaczono.
+
+Graphify sprawdzony rzeczywistym zapytaniem: graf commit 9676160 zwraca starszy
+JavaScript game/js/interiors.js, nie aktualny kod Godota. Bezpośredni MCP działa,
+ale ten indeks nie zastępuje lokalnych odczytów i nie wykazano oszczędności tokenów.
+Unikać ponawiania nieprzydatnych zapytań do czasu aktualizacji właściwego indeksu.
+
+Końcowy pełny test: 759 OK, 0 błędów, cztery nowe kontrole rzeczywistej kapsuły
+we wejściu/łazienkach i kolizji ścian/wyposażenia. Oba podglądy obejrzane.
