@@ -456,3 +456,28 @@ za przeszłość, od nowej doby normalny limit. Testy płac dostosowane; nowy te
 migracji mieszanej doby. Symulacja ujawniła ograniczenie wydajności przy większej
 farmie: helper nie zastępuje całej obsługi, a niesprzedany plon nie jest gotówką.
 Pełny test przed commitem; audyt panelu. Następne nadal 9c / pełny balans 12.
+
+
+## 9c — widoczna praca Romana
+
+Opłacona wizyta zapisuje czas i prawdziwy punkt pielęgnacji. WorkerVisual pokazuje
+Romana w garażu przez 16 minut gry: ta sama postać co kontakt na zapleczu,
+animmacja doglądania na kolanach, konewka obok. Wybiera wolny punkt przy roślinie
+na podstawie rzeczywistej fizyki, z odstępem od gracza; przy braku miejsca nie
+pokazuje modelu w ścianie. Kontakt na zapleczu w tym czasie znika — bez duplikacji.
+Wizualizacja nie wywołuje pielęgnacji ani płac. Starsze umowy bez nowego zdarzenia
+pozostają poprawne. Wspólne zasoby postaci, model tworzony dopiero, gdy potrzebny.
+
+Pełny test: 735 OK, 0 błędów. Osobny tools/worker_visual_check.gd uruchamia
+rzeczywistą płatną wizytę i sprawdza: koszt 60 zł raz, model widoczny, miejsce
+mieści kapsułę, kolejne klatki nie naliczają opłat/wizyt, wygaśnięcie chowa model.
+WORKER VISUAL CHECK OK. Pose Fixing_Kneeling; głowa w sprawdzonym momencie
+na ok. 0,83 m zamiast pozycji stojącej. Na potrzeby eksportu zamrożono skinned
+mesh z rzeczywistych macierzy kości (samo przestawienie rest deformowało postać).
+Blender: roman-praca-blender.png obejrzany — klęczy i dogląda roślin, bez modelu
+w bryle mebla. To podgląd geometrii/pozy, nie kontrola identycznego światła Godota.
+
+Próba tools/wolne.sh wykazała działającą sesję gracza (PID 41329); nie otwierano
+nowego okna ani nie przerywano gry. Natywny podgląd pozostaje do sprawdzenia przy
+wolnej sesji; nie deklarować perfekcji na podstawie samego headless/Blendera.
+Następny blok 9d: pomoc przy laboratorium i pozostałej produkcji, koszty i symulacja.

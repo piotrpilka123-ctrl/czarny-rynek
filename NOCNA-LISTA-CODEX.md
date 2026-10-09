@@ -151,3 +151,10 @@ Punkt 9 nadal otwarty: pomoc przy pozostałej produkcji i prezentacja pracy w ś
 Uwagi Piotra do płac: przeprowadzono 18 wariantów / 7 dób na silniku gry;
 stawka Romana 12→60 zł, limit 48→240 zł/dobę, nadal maks. 4 wizyty.
 CSV i metodologia w EKONOMIA-SIECI.md; ochrona starych umów przed dopłatą wstecz.
+
+Podpunkt 9c [x]: Roman widoczny podczas opłaconej wizyty przy roślinach w garażu,
+poza wizytą wraca do kontaktu na zapleczu; animacja klęczącego doglądania i konewka.
+Bez dodatkowego podlewania/opłat z animacji. Wybiera wolne miejsce, nie pojawia się
+w kolizji. Weryfikacja silnika i render Blender bez okna, bo sesja gracza działała.
+Pozostaje kontrola w natywnym rendererze przy wolnej sesji; następny 9d — pomoc
+przy innych rodzajach produkcji, z kosztami i symulacją.

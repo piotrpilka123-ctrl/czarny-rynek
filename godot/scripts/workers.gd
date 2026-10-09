@@ -43,7 +43,7 @@ static func tick() -> void:
 		var plant = pot.pl
 		if plant==null or float(plant.prog)>=1.0 or float(plant.health)<=0.0: continue
 		if G.Prod.light_at("garage",float(pot.x),float(pot.z))<0: continue
-		if float(plant.water)<=35.0: thirsty.append(plant)
+		if float(plant.water)<=35.0: thirsty.append({"plant":plant,"x":float(pot.x),"z":float(pot.z)})
 		if thirsty.size()>=2: break
 	if thirsty.is_empty(): state.status="Uprawa nie potrzebuje podlewania"; return
 	if int(state.day_visits)>=4 or float(state.paid)+VISIT>DAILY_LIMIT: state.status="Wykorzystano cztery dzienne wizyty"; return
@@ -54,5 +54,8 @@ static func tick() -> void:
 	state.day_visits = int(state.day_visits)+1
 	state.visits = int(state.visits)+1
 	state.watered = int(state.watered)+thirsty.size()
-	for plant in thirsty: plant.water=100.0
+	for target in thirsty: target.plant.water=100.0
+	state.last_work=G.S.t
+	state.visual_until=G.S.t+16.0
+	state.work_at={"x":thirsty[0].x,"z":thirsty[0].z}
 	state.status="Podlano %d roślin • %s"%[thirsty.size(),G.clock()]

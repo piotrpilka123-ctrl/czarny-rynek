@@ -6,6 +6,7 @@ const WorldScript = preload("res://scripts/world.gd")
 const EnvScript = preload("res://scripts/env.gd")
 const PlayerScript = preload("res://scripts/player.gd")
 const NavScript = preload("res://scripts/nav.gd")
+const WorkerVisual = preload("res://scripts/worker_visual.gd")
 const NpcScript = preload("res://scripts/npc.gd")
 const UiScript = preload("res://scripts/ui.gd")
 const LoadingScript = preload("res://scripts/loading.gd")
@@ -131,6 +132,7 @@ func _ready() -> void:
 	care = CareScript.new()
 	add_child(care)
 	npcs.build()
+	add_child(WorkerVisual.new())
 	if loader != null:
 		await loader.step(95.0, "Charging your phone")
 	ui = UiScript.new()
@@ -2456,6 +2458,8 @@ func _apply_test_args() -> void:
 	var S: Dictionary = G.S
 	if args.has("hour"):
 		S.t = float(args.hour) * 60.0
+	if args.has("workerwork"):
+		S.workers.roman={"paused":false,"next":S.t+60.0,"day":G.day(),"paid":60.0,"day_visits":1,"visits":1,"watered":2,"status":"Podlano 2 rośliny","last_work":S.t,"visual_until":S.t+16.0,"work_at":{"x":-2.5,"z":-2.1}}
 	if args.has("cash"):
 		S.cash = float(args.cash)
 	if args.has("heat"):
