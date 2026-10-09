@@ -1246,11 +1246,22 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 		var k := 0
 		var px := x0 + 6.0
 		while px < x1 - 4.0:
-			Models.box(city, Vector3(3.2, 2.2, 3.4), Vector3(px, top + 1.2, (z0 + z1) * 0.5), Props.pbr("concrete_wall_008", 0.3, Color(0.7, 0.7, 0.7)))
+			var shed_h := 1.6 + float(posmod(int(x0+z0)+k,3))*0.4
+			Models.box(city,Vector3(3.2,shed_h,3.4),Vector3(px,top+shed_h*0.5+0.1,(z0+z1)*0.5),Props.pbr("concrete_wall_008",0.3,accent.lerp(Color(0.7,0.7,0.7),0.85)))
 			if k % 2 == 0:
 				Models.cyl(city, 0.03, 0.04, 5.0, Vector3(px + 1.0, top + 4.5, (z0 + z1) * 0.5), rm, Vector3.ZERO, 5)
 			px += 14.0
 			k += 1
+	# Bryły charakterystycznych lokali pozostają w obrębie obrysu budynku.
+	if key == "klub":
+		var crown := Models.mat("3c3445",0.8)
+		var sign_side := int(opt.get("front",1))
+		var sz := z1-0.5 if sign_side == 1 else z0+0.5
+		Models.box(city,Vector3(w*0.38,1.4,1.0),Vector3((x0+x1)*0.5,top+0.8,sz),crown)
+		Models.box(city,Vector3(w*0.23,0.5,1.0),Vector3((x0+x1)*0.5,top+1.75,sz),crown)
+	elif key == "urzad":
+		var cap := Models.mat(accent.lerp(Color(0.5,0.53,0.56),0.65),0.8)
+		Models.box(city,Vector3(w-1.0,0.28,1.2),Vector3((x0+x1)*0.5,top+0.26,z1-0.7),cap)
 	if plyta:
 		var coping := Models.mat(accent.lerp(Color(0.37,0.38,0.38),0.7),0.85)
 		for zedge in [z0,z1]:

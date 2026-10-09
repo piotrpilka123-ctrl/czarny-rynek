@@ -196,9 +196,24 @@ void fragment() {
 			col *= 1.0 - smoothstep(0.9, 0.925, f.y) * (1.0 - corn) * 0.4;
 			col *= 1.0 + corn * smoothstep(0.985, 0.95, f.y) * 0.12;
 			if (ground) {
-				col *= 0.74;
-				float groove = abs(fract(v / 0.42) - 0.5);
-				col *= mix(0.6, 1.0, smoothstep(0.02, 0.06, groove));
+				// Spójny profil całego domu, zamiast identycznego czarnego parteru.
+				int base_profile = int(mod(floor(b_seed * 3.0), 3.0));
+				if (base_profile == 0) {
+					col *= 0.82;
+					float groove = abs(fract(v / 0.42) - 0.5);
+					col *= mix(0.72, 1.0, smoothstep(0.018, 0.045, groove));
+				} else if (base_profile == 1) {
+					// Malowany parter z jaśniejszym nadprożem.
+					col = mix(col, tex * mix(b_wall, b_accent, 0.38) * 1.12, 0.7);
+					float belt = smoothstep(cellsz.y - 0.32, cellsz.y - 0.26, v);
+					col = mix(col, b_accent * 0.9, belt * 0.48);
+				} else {
+					// Kamienny cokół z fugami w metrach, niezależnie od szerokości domu.
+					col = mix(col, tex * vec3(0.68,0.65,0.59), 0.55);
+					vec2 joints = abs(fract(vec2(u / 0.85, v / 0.48)) - 0.5);
+					float seam = min(joints.x * 0.85, joints.y * 0.48);
+					col *= mix(0.78, 1.0, smoothstep(0.012, 0.032, seam));
+				}
 			}
 			vec3 bk = texture(alt_tex, vec2(u, v) * 0.33).rgb * vec3(0.95, 0.8, 0.72);
 			// ściana ogniowa (ślepa): prawie sama cegła, tynk tylko w łatach

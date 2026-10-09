@@ -251,3 +251,20 @@ Ujęcie lotnicze średnia jakość: 21 FPS przy 2128 draw calls; widok większo�
 miasta, nie porównanie wydajności ulicy. Dalszy audyt wydajności pozostaje
 w punkcie 12. Punkt 6 nadal otwarty: indywidualne partery/bryły i kontrola
 tekstur przy chodniku, potem punkt 7 (płoty i przejścia).
+
+
+## Budynki — podpunkt 6b: partery i rozpoznawalne sylwetki
+
+Kamienice mają trzy profile parteru wyznaczone osobno dla każdego domu: płytsze
+boniowanie, malowanie z pasem nad oknami lub cokół z fugami. Podziały obliczane
+w metrach świata, utrzymują rozmiar przy różnych długościach elewacji. Nie wszystkie
+partery są już jednakowo przyciemniane o 26%. Zachowano widoczne zużycie i cegłę
+spod tynku. Nadbudówki bloków różnią się wysokością i kolorem; klub dostał stopniowaną
+attykę, komisariat poziomy gzyms. Nowe bryły mieszczą się w obrysie budynków,
+nie zwężają chodników, nie blokują drzwi ani tras NPC.
+
+Renderer: partery-hutnicza.png, bryla-klubu.png, bryla-klubu-front.png obejrzane.
+Pełny test: 699 OK, 0 błędów (liczba zależy od warunkowej ścieżki dotychczasowych testów).
+Punkt 6 zamknięty jako pierwszy przegląd budynków łącznie z 6a; nie oznacza perfekcji
+każdego modelu. Kompletny przegląd nocy, deszczu, detali i wydajności pozostaje
+w punktach 10/12. Następny konkretny blok: 7 — audyt płotów, otworów i przejść.

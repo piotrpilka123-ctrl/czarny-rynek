@@ -29,7 +29,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 4. [x] Jezioro/brzeg, otoczenie, ścieżki; granice terenu i nawigacja muszą pasować.
 5. [x] Osiedle gangu: odrębne budynki, kontrolowane wejście, ostrzeżenie i ryzyko
        na początku; późniejszy dostęp zależny od postępu/kontaktów.
-6. [ ] Budynki: różnice brył, parterów, dachów, wejść i detali, spójna skala tekstur.
+6. [x] Budynki: różnice brył, parterów, dachów, wejść i detali, spójna skala tekstur.
 7. [ ] Płoty/przejścia: przegląd całej mapy, usunąć nadmiarowe i bezsensowne otwory;
        sensowne furtki i przełazy, bez psucia prologu i tras NPC.
 8. [ ] Śmietniki i kraty: własne spójne modele, wejście, widok ze środka, bezpieczne
@@ -103,3 +103,9 @@ kalenicy), wysokość połaci dopasowana do szerokości; obramowania dachów blo
 w kolorze elewacji, trzy profile daszków wejściowych. 698 testów OK, renderer
 Hutniczej, osiedla i wejścia obejrzany. Punkt 6 pozostaje otwarty: partery,
 kształty wyróżniających się budynków i kontrola skali tekstur z poziomu ulicy.
+
+Podpunkt 6b [x]: różne partery kamienic (boniowanie, malowanie, kamienny cokół),
+zróżnicowane nadbudówki bloków i sylwetki klubu/komisariatu. Skala podziałów
+w metrach świata, ulica Hutnicza i klub obejrzane w rendererze. 699 testów OK.
+Blok 6 zamknięty w zakresie pierwszego przeglądu; dalsza kontrola każdego miejsca,
+nocy/deszczu i przenikania pozostaje w punkcie 10. Następny punkt 7: płoty/przejścia.
