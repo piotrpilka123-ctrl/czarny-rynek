@@ -665,35 +665,44 @@ static func slide() -> Node3D:
 
 ## altanka śmietnikowa z kontenerami
 static func trash_shed() -> Node3D:
-	var ws: Node3D = StationsRef.model("ul_wiata")
-	if ws != null:
-		# wiata z modelu i trzy kontenery w różnych kolorach, każdy trochę inaczej dosunięty
-		var tints := [Color(0.2, 0.42, 0.28), Color(0.2, 0.33, 0.5), Color(0.62, 0.52, 0.16)]
-		for k0 in range(3):
-			var dm: Node3D = StationsRef.model("ul_kontener")
-			if dm == null:
-				break
-			dm.position = Vector3(-1.6 + k0 * 1.6, 0.06, -0.55 + 0.12 * (k0 % 2))
-			dm.rotation.y = 0.08 * (k0 - 1)
-			InteriorRef._tint(dm, tints[k0])
-			ws.add_child(dm)
-		set_range(ws, 110.0)
-		return ws
 	var g := Node3D.new()
-	var wall := pbr("concrete_wall_008", 0.4, Color(0.8, 0.8, 0.78))
-	Models.box(g, Vector3(5.0, 1.9, 0.18), Vector3(0, 0.95, -1.6), wall)
-	Models.box(g, Vector3(0.18, 1.9, 3.2), Vector3(-2.5, 0.95, 0), wall)
-	Models.box(g, Vector3(0.18, 1.9, 3.2), Vector3(2.5, 0.95, 0), wall)
-	Models.box(g, Vector3(5.4, 0.08, 3.6), Vector3(0, 2.05, 0), pbr("asbestos_sheet", 0.6))
-	var cols := ["2d5a3a", "2f4a6a", "6a5a2a"]
+	g.name = "TrashShelter"
+	var concrete := pbr("concrete_wall_008",0.45,Color(0.67,0.66,0.61))
+	var steel := Models.mat("48534c",0.72,0.45)
+	Models.box(g,Vector3(5.2,0.08,3.4),Vector3(0,0.02,0),concrete)
+	for side in [-1.0,1.0]:
+		Models.box(g,Vector3(0.12,0.86,3.4),Vector3(side*2.6,0.43,0),concrete)
+		for z in [-1.65,1.65]:
+			Models.box(g,Vector3(0.07,2.25,0.07),Vector3(side*2.6,1.125,z),steel)
+		# Górne kraty mają prawdziwe szczeliny, widoczne również z wnętrza.
+		for z in range(22):
+			Models.cyl(g,0.012,0.012,1.3,Vector3(side*2.6,1.52,-1.55+z*0.15),steel,Vector3.ZERO,5)
+		Models.box(g,Vector3(0.06,0.06,3.4),Vector3(side*2.6,1.03,0),steel)
+	Models.box(g,Vector3(5.2,1.9,0.12),Vector3(0,0.95,-1.7),concrete)
+	Models.box(g,Vector3(5.55,0.09,3.65),Vector3(0,2.28,0),pbr("rusty_corrugated_iron",0.45,Color(0.54,0.55,0.51)),Vector3(0.035,0,0))
+	Models.box(g,Vector3(5.58,0.14,0.06),Vector3(0,2.28,1.82),steel)
+	var colours := [Color(0.27,0.43,0.31),Color(0.28,0.37,0.47),Color(0.53,0.47,0.25)]
 	for k in range(3):
-		var c := Node3D.new()
-		c.position = Vector3(-1.6 + k * 1.6, 0, -0.5)
-		g.add_child(c)
-		Models.box(c, Vector3(1.3, 1.05, 0.95), Vector3(0, 0.68, 0), Models.mat(cols[k], 0.65, 0.2))
-		Models.box(c, Vector3(1.36, 0.07, 1.0), Vector3(0, 1.24, 0.0), Models.mat("1c1f22", 0.6, 0.2), Vector3(0.06 * (k - 1), 0, 0))
-		for wx in [-0.5, 0.5]:
-			Models.cyl(c, 0.08, 0.08, 0.06, Vector3(wx, 0.08, 0.38), Models.mat("111111", 0.9), Vector3(0, 0, PI / 2.0), 8)
+		var bin: Node3D = StationsRef.model("ul_kontener")
+		if bin == null: continue
+		InteriorRef._tint(bin,colours[k])
+		# Oblicz podstawę modelu: kółka mają opierać się o podest, nie wisieć nad nim.
+		var bottom := INF
+		var pending: Array = [{"node":bin,"xf":Transform3D.IDENTITY}]
+		while not pending.is_empty():
+			var entry: Dictionary = pending.pop_back()
+			var child: Node = entry.node
+			for descendant in child.get_children():
+				var transform: Transform3D = entry.xf
+				if descendant is Node3D: transform = transform*descendant.transform
+				pending.append({"node":descendant,"xf":transform})
+			if child is MeshInstance3D and child.mesh != null:
+				var bounds: AABB = entry.xf*child.get_aabb()
+				bottom = minf(bottom,bounds.position.y)
+		bin.position = Vector3(-1.6+k*1.6,0.06-(bottom if is_finite(bottom) else 0.0),-0.55+0.12*(k%2))
+		bin.rotation.y = 0.05*(k-1)
+		g.add_child(bin)
+	set_range(g,110.0)
 	return g
 
 

@@ -32,7 +32,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 6. [x] Budynki: różnice brył, parterów, dachów, wejść i detali, spójna skala tekstur.
 7. [x] Płoty/przejścia: przegląd całej mapy, usunąć nadmiarowe i bezsensowne otwory;
        sensowne furtki i przełazy, bez psucia prologu i tras NPC.
-8. [ ] Śmietniki i kraty: własne spójne modele, wejście, widok ze środka, bezpieczne
+8. [x] Śmietniki i kraty: własne spójne modele, wejście, widok ze środka, bezpieczne
        wychodzenie i czytelne celowanie. Kontrola chowania przy obserwującym patrolu.
 9. [ ] Lokalna reputacja i kontakty, kolejne cele, pomocnicy produkcji; ograniczenia
        i wydatki zamiast darmowego dochodu.
@@ -116,3 +116,10 @@ zachowane. Odgięta siatka ma oczka zamiast prostokąta przypominającego folię
 Nawigacja telefonu sprawdza gotową trasę i omija kolizje przez siatkę AStar.
 Nowe testy zamknięć, dojść przez furtki i tras telefonu; pełny test przed commitem.
 Następny punkt 8: śmietniki, kraty i chowanie.
+
+Punkt 8: nowa spójna wiata z pełnym dachem, prawdziwymi kratami i pustym
+wnętrzem w fizyce. Kontenery ustawione kółkami na podeście, mniejsze pole
+przeszukiwania. Kamera przy chowaniu rzeczywiście kuca i patrzy na wyjście,
+bez podwójnego [E]. Wejście tylko z bliska na zewnątrz, wyjście wybiera wolny
+punkt albo czeka na zwolnienie przejścia. Pamięć policji zachowana. Dalszy szlif
+samych kontenerów/tekstur w pełnym audycie grafiki (10). Następny punkt 9.

@@ -306,6 +306,8 @@ static func run(T) -> void:
 	_put(P, Vector2(float(h0.ox), float(h0.oz)))
 	M.hide_enter(h0)
 	T.ok(P.hidden and P.crouching and not c.know and Vector2(P.global_position.x - float(h0.x), P.global_position.z - float(h0.z)).length() < 0.1, "schowanie się w altance")
+	T.ok(P.fits_at(P.global_position,true), "wnętrze altanki nie ma pełnej kolizji w miejscu schowanego gracza")
+	T.ok(absf(P.cam.position.y-P.EYE_LOW)<0.01, "w kryjówce kamera rzeczywiście obniża się między kontenery")
 	_cop_at(c, Vector2(float(h0.ox), float(h0.oz)) + Vector2(sin(float(h0.rot) + PI), cos(float(h0.rot) + PI)) * 3.0, Vector2(float(h0.x), float(h0.z)))
 	T.ok(N.see_level(c.x, c.z, c.node.rotation.y, N.VIEW, true) == 0.0, "patrol stojący 3 m przed kryjówką Cię nie widzi")
 	M.interact()

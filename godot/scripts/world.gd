@@ -1548,21 +1548,32 @@ func _hide_shed(x: float, z: float, ry: float, search := true) -> bool:
 				break
 		if not found:
 			return false
-	if absf(sin(ry)) < 0.5:
-		_place(Props.trash_shed(), x, z, ry, 2.6, 1.7, 2.0)
-	else:
-		_place(Props.trash_shed(), x, z, ry, 1.7, 2.6, 2.0)
+	var shelter := _place(Props.trash_shed(),x,z,ry)
+	# Kolizja obejmuje ściany i dach, zostawiając pustą przestrzeń w środku.
+	var shelter_body := StaticBody3D.new()
+	shelter.add_child(shelter_body)
+	for wall in [[Vector3(5.2,2.2,0.16),Vector3(0,1.1,-1.7)],[Vector3(0.16,2.2,3.4),Vector3(-2.6,1.1,0)],[Vector3(0.16,2.2,3.4),Vector3(2.6,1.1,0)],[Vector3(5.55,0.15,3.65),Vector3(0,2.28,0)]]:
+		var collider := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = wall[0]
+		collider.shape = box
+		collider.position = wall[1]
+		shelter_body.add_child(collider)
+	# Siatka patroli i osłona pozostają pełnym obrysem: kryjówka to osobna interakcja.
+	var rx := 2.6 if absf(sin(ry))<0.5 else 1.7
+	var rz := 1.7 if absf(sin(ry))<0.5 else 2.6
+	blocks.append({"x0":x*SC-rx,"x1":x*SC+rx,"z0":z*SC-rz,"z1":z*SC+rz,"h":2.3,"op":true})
 	# wejście od otwartej strony; w środku kucasz między kontenerami
 	var f := Vector2(sin(ry), cos(ry))
 	var front := Vector2(x, z) + f * 2.6 * INV
 	var inside := Vector2(x, z) + f * 0.75 * INV
-	var h := {"x": inside.x * SC, "z": inside.y * SC, "ox": front.x * SC, "oz": front.y * SC, "rot": ry + PI, "name": "altanka śmietnikowa"}
+	var h := {"x": inside.x * SC, "z": inside.y * SC, "ox": front.x * SC, "oz": front.y * SC, "rot": ry + PI, "y": hd(x,z)+0.08, "name": "altanka śmietnikowa"}
 	hides.append(h)
 	var sid := "altanka_%d_%d" % [int(round(x)), int(round(z))]
-	inter.append({"loc": "out", "x": (x + f.x * 1.2 * INV) * SC, "z": (z + f.y * 1.2 * INV) * SC, "y0": 0.0, "y1": 1.5, "r": 1.6, "reach": 2.6, "id": sid,
+	inter.append({"loc": "out", "x": (x + f.x * 1.2 * INV) * SC, "z": (z + f.y * 1.2 * INV) * SC, "y0": 0.7, "y1": 1.4, "r": 0.8, "reach": 2.6, "id": sid,
 		"label": func(): return "Kontenery — już przeszukane" if G.bin_used(sid) else "Przeszukaj kontenery", "act": func(): G.main.search_bin(sid, "dumpster")})
 	inter.append({"loc": "out", "x": front.x * SC, "z": front.y * SC, "ax": front.x * SC, "az": front.y * SC, "y0": 0.45, "y1": 1.5, "r": 0.5, "reach": 2.3, "id": "hide",
-		"label": func(): return "[E] Schowaj się między kontenerami", "act": func(): G.main.hide_enter(h)})
+		"label": func(): return "Schowaj się między kontenerami", "act": func(): G.main.hide_enter(h)})
 	return true
 
 

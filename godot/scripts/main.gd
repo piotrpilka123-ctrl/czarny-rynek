@@ -1558,8 +1558,10 @@ func raided_inside() -> void:
 # ================================================================ skradanie: kryjówki i odciąganie patroli
 ## Chowa gracza w altance. Patrol, który to widział, wie, gdzie szukać.
 func hide_enter(h: Dictionary) -> void:
-	if player.hidden or G.busy:
+	if player.hidden or G.busy or player.loc != "out":
 		return
+	var entry := Vector2(float(h.ox),float(h.oz))
+	if Vector2(player.global_position.x,player.global_position.z).distance_to(entry)>3.0: return
 	var seen := false
 	for c in npcs.cops:
 		if c.sees or float(c.get("lvl", 0.0)) > 0.0:
@@ -1567,11 +1569,13 @@ func hide_enter(h: Dictionary) -> void:
 			c.inv = Vector2(float(h.x), float(h.z))
 			seen = true
 	hide_at = h
-	player.global_position = Vector3(float(h.x), world.height(float(h.x), float(h.z)), float(h.z))
-	player.yaw = float(h.rot) + PI
+	player.global_position = Vector3(float(h.x),float(h.get("y",world.height(float(h.x),float(h.z)))),float(h.z))
+	player.yaw = float(h.rot)
 	player.pitch = -0.05
 	player.set_crouch(true)
 	player.crouching = true
+	player.eye_y = player.EYE_LOW
+	player.cam.position.y = player.EYE_LOW
 	player.hidden = true
 	player.velocity = Vector3.ZERO
 	if player.flash.light_energy > 0.0:
@@ -1584,13 +1588,27 @@ func hide_enter(h: Dictionary) -> void:
 
 
 func hide_leave(_forced := false) -> void:
-	if not player.hidden:
-		return
-	player.hidden = false
-	var h := hide_at
-	hide_at = {}
+	if not player.hidden: return
+	var h: Dictionary = hide_at
 	if not h.is_empty():
-		player.global_position = Vector3(float(h.ox), world.height(float(h.ox), float(h.oz)), float(h.oz))
+		var exit_at := Vector2(float(h.ox),float(h.oz))
+		var forward := Vector2(sin(float(h.rot)+PI),cos(float(h.rot)+PI))
+		var candidates: Array = [exit_at,exit_at+forward*0.8,exit_at+Vector2(-forward.y,forward.x)*0.8,exit_at+Vector2(forward.y,-forward.x)*0.8,exit_at+forward*1.6]
+		var found := false
+		for candidate in candidates:
+			var position := Vector3(candidate.x,world.height(candidate.x,candidate.y),candidate.y)
+			if player.fits_at(position,true):
+				player.global_position = position
+				found = true
+				break
+		if not found and not _forced:
+			G.notify("Wyjście jest zastawione. Poczekaj chwilę.","warn")
+			return
+		if not found:
+			var free: Vector2 = world.near_free(exit_at.x,exit_at.y)
+			player.global_position = Vector3(free.x,world.height(free.x,free.y),free.y)
+	player.hidden = false
+	hide_at = {}
 	player.crouching = true
 	player.set_crouch(false)
 	# Wyjście nie wymazuje pamięci patrolu, który widział wejście.
@@ -2093,7 +2111,7 @@ func _tick(dt: float) -> void:
 		hold_inter = null
 		aim_hints.clear()
 		ui.set_aim(false)
-		ui.set_prompt("[%s] Wyjdź z kryjówki" % G.kn("use"))
+		ui.set_prompt("Wyjdź z kryjówki")
 		return
 	cur_inter = _find_interact()
 	ui.set_aim(cur_inter != null)

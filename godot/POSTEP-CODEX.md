@@ -298,3 +298,28 @@ kolizji i kryjówek roślin jak przy budynkach). Drzewa poza korytarzem zachowan
 plot-wyrwa-dojscie.png obejrzany: ścieżka wolna, siatka ma rzeczywiste oczka.
 Pełny ponowny test po korekcie zieleni zakończony pomyślnie; brak nowych błędów.
 Następny blok 8 nadal aktualny.
+
+
+## Śmietniki, kraty i chowanie — punkt 8
+
+Props.trash_shed: nowy model w Godocie, pełny dach z blachy, niski beton,
+stalowe słupy i prawdziwe pręty krat. Zachowano szczegółowe kontenery z Blendera,
+ujednolicono kolory i osadzenie kółek na podeście według granic siatki. Wiata
+nie ma już pełnego prostopadłościanu kolizji w środku: fizyka obejmuje ściany
+oraz dach; siatka patrolu nadal traktuje schowek jako osobną kryjówkę.
+
+Usunięte błędy chowania: kamera pozostawała na wysokości stojącego gracza
+(gałąź hidden pomijała obniżanie), kierunek po wejściu prowadził na kontenery,
+prompt pokazywał podwójne [E]. Teraz patrzysz ku wyjściu ze skulonej pozycji.
+Wejście wymaga zewnętrznej lokacji i bliskości. Wyjście sprawdza rzeczywistą
+fizykę kapsuły; przy przeszkodzie wybiera sąsiedni punkt. Jeśli wszystkie
+punkty zastawione, gracz pozostaje schowany. Pamięć obserwującego patrolu zachowana.
+Mniejsze pole przeszukiwania kontenerów (r 1.6→0.8, wysokość przy pokrywach).
+
+Weryfikacja: dwa nowe testy pustego wnętrza i wysokości kamery; pełna seria
+703 OK, 0 błędów przed końcową korektą kierunku/promptu. Wymagany pełny test
+finalnego kodu przed commitem. Osobny test w rendererze SHELTER PHYSICS OK:
+wejście, pozycja kamery, kapsuła, wyjście mimo przeszkody na zwykłym punkcie.
+Obejrzane smietnik-przed.png / smietnik-po.png / smietnik-w-srodku.png.
+Szczegółowy szlif tekstur modeli nadal w punkcie 10. Następny 9: reputacja,
+kontakty i pomocnicy produkcji z kosztami oraz ograniczeniami.
