@@ -6,10 +6,29 @@ static func run(T) -> void:
 	G.ui.open_inventory("","char")
 	await T.frames(3)
 	T.ok(not inv.bag_mesh.visible,"gracz: bez kupionego plecaka nie ma modelu ani darmowej pojemności")
+	var straps=inv.rig.root.find_child("BackpackStraps",true,false)
+	T.ok(straps!=null and not straps.visible,"gracz: bez plecaka nie widać też szelek")
 	G.S.upg.plecak1=true
 	inv.render()
 	await T.frames(3)
 	T.ok(inv.bag_mesh.visible and inv.bag_mesh.lid!=null and inv.bag_mesh.zipper!=null,"gracz: plecak ma osobną klapę i ruchomy suwak")
+	if straps!=null:
+		straps.update_straps()
+		var finite:bool=straps.ribbons.size()==2 and straps.control_points.size()==2
+		for ribbon in straps.ribbons:
+			var arrays:Array=ribbon.mesh.surface_get_arrays(0)
+			for vertex in arrays[Mesh.ARRAY_VERTEX]: finite=finite and vertex.is_finite()
+			finite=finite and arrays[Mesh.ARRAY_VERTEX].size()==100 and arrays[Mesh.ARRAY_TANGENT].size()==400
+		T.ok(finite,"gracz: obie miękkie szelki mają skończoną geometrię i tangenty materiału")
+		var shoulder:int=straps.arms[0][0]
+		var sk:Skeleton3D=inv.rig.skel
+		var before:Vector3=straps.control_points[0][1]
+		var saved_pose:Vector3=sk.get_bone_pose_position(shoulder)
+		sk.set_bone_pose_position(shoulder,saved_pose+Vector3(0,0.08,0))
+		straps.update_straps()
+		T.ok(before.distance_to(straps.control_points[0][1])>0.0001,"gracz: szelka podąża za rzeczywistą kością ramienia")
+		sk.set_bone_pose_position(shoulder,saved_pose)
+		straps.update_straps()
 	var store:=JSON.stringify(G.S)
 	inv.inspect_backpack()
 	inv.bag_mesh._process(0.3)

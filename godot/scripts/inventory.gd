@@ -174,6 +174,10 @@ func set_rig(outfit_id: String) -> void:
 	reach.name="BackpackReach"
 	if reach.bind(skel, bag_mesh): skel.add_child(reach)
 	else: reach.free()
+	var straps=load("res://scripts/backpack_straps.gd").new()
+	straps.name="BackpackStraps"
+	if straps.bind(skel,bag_mesh): skel.add_child(straps)
+	else: straps.free()
 
 
 ## ubrania z pól ekwipunku na postaci w podglądzie (przebudowa tylko wtedy, gdy coś się zmieniło)
@@ -207,6 +211,8 @@ func _dress(force := false) -> void:
 		return
 	_dress_sig = sig
 	Chars.dress(rig, gear)
+	var straps=rig.root.find_child("BackpackStraps",true,false)
+	if straps!=null: straps.fit_clothes()
 
 
 func _bag_refresh() -> void:
