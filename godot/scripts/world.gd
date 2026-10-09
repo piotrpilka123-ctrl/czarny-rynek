@@ -6385,9 +6385,10 @@ void fragment() {
  ALBEDO *= 0.95 + wave*0.035;
  NORMAL_MAP = normalize(vec3(wave*0.035,second*0.035,1.0))*0.5+0.5;
  NORMAL_MAP_DEPTH = 0.5;
- ROUGHNESS = 0.16 + wet*0.12;
- SPECULAR = 0.75;
- ALPHA = smoothstep(0.0,0.22,depth) * 0.9;
+ float shore = smoothstep(0.01,0.08,depth);
+ ROUGHNESS = mix(0.9,0.22 + wet*0.12,shore);
+ SPECULAR = 0.65 * shore;
+ ALPHA = smoothstep(0.0,0.045,depth) * 0.9;
 }
 """
 	var material := ShaderMaterial.new()
