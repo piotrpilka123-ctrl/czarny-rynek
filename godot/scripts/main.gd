@@ -1336,12 +1336,17 @@ func _aim_radius(it: Dictionary) -> float:
 
 
 ## Promień do przedniej krawędzi celu: żadnych interakcji przez ścianę.
-func _aim_clear(o: Vector3, dir: Vector3, distance: float) -> bool:
+func _aim_clear(o: Vector3, dir: Vector3, distance: float, target_collision: CollisionShape3D = null) -> bool:
 	if distance < 0.04:
 		return true
 	var ray := PhysicsRayQueryParameters3D.create(o, o + dir * distance)
 	ray.exclude = [player.get_rid()]
-	return get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
+	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+	if hit.is_empty(): return true
+	if target_collision != null and is_instance_valid(target_collision):
+		var object: CollisionObject3D = hit.collider
+		return object.shape_owner_get_owner(object.shape_find_owner(int(hit.shape))) == target_collision
+	return false
 
 
 ## wszystkie obiekty w zasięgu kilku metrów: [{it, pos (punkt celowania), miss, dist, hit}]
@@ -1384,7 +1389,7 @@ func _aim_scan() -> Array:
 		var hit: bool = facing and res.x <= radius and res.y <= reach
 		if hit:
 			var entry := maxf(0.0, res.y - sqrt(maxf(0.0, radius * radius - res.x * res.x)) - 0.04)
-			hit = _aim_clear(o, dir, entry)
+			hit = _aim_clear(o, dir, entry, it.get("collision"))
 		out.append({"it": it, "pos": Vector3(ax, (y0 + y1) * 0.5, az), "miss": res.x, "dist": res.y,
 			"hit": hit, "near": Vector2(ax - pp.x, az - pp.z).length() <= reach + 1.4})
 	return out
@@ -1395,8 +1400,11 @@ func _find_interact() -> Variant:
 	var bd := 1e9
 	var scan := _aim_scan()
 	for c in scan:
-		if c.hit and float(c.dist) < bd:
-			bd = c.dist
+		# Przy sąsiadujących małych przedmiotach środek celownika ma pierwszeństwo.
+		# Sama odległość wybierała wagę mimo patrzenia wprost na radio.
+		var score := float(c.dist)+float(c.miss)*3.0
+		if c.hit and score < bd:
+			bd = score
 			best = c
 	# znaczniki pobliskich obiektów: gracz widzi, na co może nacelować
 	aim_hints.clear()

@@ -1159,9 +1159,10 @@ func add_col(x0: float, x1: float, z0: float, z1: float, h := 4.0, solid := true
 	if solid:
 		var cs := CollisionShape3D.new()
 		var sh := BoxShape3D.new()
-		sh.size = Vector3(x1 - x0, h + 4.0, z1 - z0)
+		var physical_h := h + 4.0 if x0 < 500.0 else h - by
+		sh.size = Vector3(x1 - x0, physical_h, z1 - z0)
 		cs.shape = sh
-		cs.position = Vector3((x0 + x1) * 0.5, by + (h + 4.0) * 0.5, (z0 + z1) * 0.5)
+		cs.position = Vector3((x0 + x1) * 0.5, by + physical_h * 0.5, (z0 + z1) * 0.5)
 		body.add_child(cs)
 
 
@@ -4947,7 +4948,8 @@ func _rp(g: Node3D, name: String, x: float, z: float, ry := 0.0, h := 0.0, y := 
 	n.rotation.y = ry
 	g.add_child(n)
 	if col_x > 0.0:
-		add_col(x - col_x, x + col_x, z - col_z, z + col_z, 1.0, true, -1.0)
+		add_col(x - col_x, x + col_x, z - col_z, z + col_z, y+h if h>0.0 else 1.0, true, -1.0)
+		n.set_meta("interaction_collision",body.get_child(body.get_child_count()-1))
 		rects.pop_back()
 	return n
 
@@ -4972,7 +4974,7 @@ func _interiors() -> void:
 	_room_light(g, cx, 0.2, h - 0.1, 1.35, Color(1.0, 0.82, 0.58), 8.0)
 	Interior.rug(g, Vector3(cx - 1.7, 0, 0.75), Vector2(2.4, 1.6), 0.04)
 	# łóżko pod zachodnią ścianą
-	_rp(g, "old_bed_frame", cx - w * 0.5 + 0.62, -d * 0.5 + 1.1, 0.0, 1.0, 0.0, 0.55, 1.05)
+	var safe_bed := _rp(g, "old_bed_frame", cx - w * 0.5 + 0.62, -d * 0.5 + 1.1, 0.0, 1.0, 0.0, 0.55, 1.05)
 	var bedding: Node3D = Stations.model("dom_posciel")
 	if bedding != null:
 		# materac, skotłowana kołdra i poduszka z modelu (poduszka od strony ściany)
@@ -4983,7 +4985,7 @@ func _interiors() -> void:
 		Models.box(g, Vector3(0.84, 0.16, 1.86), Vector3(cx - w * 0.5 + 0.62, 0.42, -d * 0.5 + 1.1), Models.mat("b9b4a6", 0.95))
 		Models.box(g, Vector3(0.8, 0.07, 1.2), Vector3(cx - w * 0.5 + 0.62, 0.52, -d * 0.5 + 1.4), Models.mat("3d4f66", 0.95), Vector3(0, 0.05, 0))
 		Models.box(g, Vector3(0.55, 0.1, 0.36), Vector3(cx - w * 0.5 + 0.62, 0.54, -d * 0.5 + 0.42), Models.mat("d8d4c8", 0.95), Vector3(0, -0.1, 0.04))
-	inter.append({"loc": "safe", "x": cx - w * 0.5 + 0.62, "z": -d * 0.5 + 1.1, "y0": 0.1, "y1": 0.75, "r": 0.9, "reach": 2.5, "id": "bed",
+	inter.append({"loc": "safe", "x": cx - w * 0.5 + 0.62, "z": -d * 0.5 + 1.1, "y0": 0.1, "y1": 0.75, "r": 0.9, "reach": 2.5, "id": "bed", "collision":safe_bed.get_meta("interaction_collision",null),
 		"label": func(): return "Łóżko — sen", "act": func(): G.main.sleep()})
 	Interior.picture(g, Vector3(cx - w * 0.5 + 0.01, 1.55, -d * 0.5 + 1.0), PI / 2.0, 0.7, "pic_koncert")
 	Interior.picture(g, Vector3(cx - w * 0.5 + 0.01, 1.62, -d * 0.5 + 1.75), PI / 2.0, 0.5, "pic_boks")
@@ -5049,8 +5051,8 @@ func _interiors() -> void:
 	Interior.wall_shelf(g, Vector3(tx + 0.1, 1.72, -d * 0.5 + 0.01), 0.0, 1.0, 7)
 	_rp(g, "wall_clock", cx + 2.35, -d * 0.5 + 0.04, 0.0, 0.3, 1.82)
 	# skrytka: szafa
-	_rp(g, "painted_wooden_cabinet", cx + w * 0.5 - 0.32, 0.6, -PI / 2.0, 1.9, 0.0, 0.32, 0.66)
-	inter.append({"loc": "safe", "x": cx + w * 0.5 - 0.42, "z": 0.6, "y0": 0.1, "y1": 1.7, "r": 0.62, "reach": 2.5, "id": "stash_safe",
+	var safe_cabinet := _rp(g, "painted_wooden_cabinet", cx + w * 0.5 - 0.32, 0.6, -PI / 2.0, 1.9, 0.0, 0.32, 0.66)
+	inter.append({"loc": "safe", "x": cx + w * 0.5 - 0.42, "z": 0.6, "y0": 0.1, "y1": 1.7, "r": 0.62, "reach": 2.5, "id": "stash_safe", "collision":safe_cabinet.get_meta("interaction_collision",null),
 		"label": func(): return "Skrytka w szafie", "act": func(): G.ui.open_stash("safe")})
 	Interior.note(g, Vector3(cx + w * 0.5 - 0.01, 1.62, 1.75), -PI / 2.0, "BLAST AT THE OLD STEELWORKS\nPolice seek witnesses. One man detained.", 0.46, 0.3)
 	Interior.picture(g, Vector3(cx + w * 0.5 - 0.01, 1.55, 2.35), -PI / 2.0, 0.46, "pic_kalendarz")
@@ -5470,6 +5472,7 @@ func _lm(g: Node3D, name: String, x: float, z: float, ry := 0.0, y := 0.0, col :
 	g.add_child(n)
 	if col.x > 0.0:
 		add_col(x - col.x, x + col.x, z - col.y, z + col.y, 1.2, true, -1.0)
+		n.set_meta("interaction_collision",body.get_child(body.get_child_count()-1))
 		rects.pop_back()
 	return n
 
@@ -6222,6 +6225,7 @@ func refresh_furniture(room: String) -> void:
 		g.add_child(n)
 		var r := furn_rect(it)
 		# to, co wisi pod sufitem (lampa LED), nie blokuje przejścia
+		var interaction_collision: CollisionShape3D
 		if not f.get("hang", false):
 			var cs := CollisionShape3D.new()
 			var bs := BoxShape3D.new()
@@ -6229,10 +6233,11 @@ func refresh_furniture(room: String) -> void:
 			cs.shape = bs
 			cs.position = Vector3(cx + float(it.x), bs.size.y * 0.5, float(it.z))
 			fb.add_child(cs)
+			interaction_collision = cs
 		var idx := i
 		var ix: float = cx + float(it.x)
 		var iz: float = float(it.z)
-		var aim := {"loc": room, "x": ix, "z": iz, "y0": 0.1, "y1": maxf(0.6, float(f.h)), "reach": 2.6, "id": "furn_%d" % idx,
+		var aim := {"loc": room, "x": ix, "z": iz, "y0": 0.1, "y1": maxf(0.6, float(f.h)), "reach": 2.6, "id": "furn_%d" % idx, "collision":interaction_collision,
 			"r": clampf(maxf(float(f.size[0]), float(f.size[1])) * 0.5, 0.45, 1.0)}
 		match String(f["func"]):
 			"pack":

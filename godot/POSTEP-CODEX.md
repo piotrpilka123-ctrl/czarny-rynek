@@ -364,3 +364,25 @@ zbyt wcześnie pomijał bliski punkt zakrętu, próbował ścinać przez przeszk
 Teraz pomija punkt tylko przy wolnym odcinku do następnego. Pełny test po
 korekcie przechodzi, w tym ruch/przeczesywanie i prolog. Następny nadal 9b:
 pomocnicy; rozbudować widok reputacji także o pozostałe odwiedzone dzielnice.
+
+
+## Pilna regresja: celowanie i laptop
+
+Naprawiono wysokość kolizji we wnętrzach: add_col przenosił zapas z terenu
+(h+4) na meble, stół 0,8 m był niewidzialną przeszkodą do 4 m. Wnętrza kończą
+kolizję na wysokości obiektu, stół otrzymuje rzeczywistą wysokość modelu.
+Interakcja ignoruje wyłącznie własny CollisionShape celu (szafa, łóżko,
+meble kryjówek), nie cały wspólny StaticBody — ściany/inne meble nadal blokują.
+Wybór uwzględnia trafienie środkiem celownika, zamiast wybierać pobliską wagę
+podczas patrzenia na radio. Nie zwiększano promieni interakcji.
+
+Test samouczka teraz faktycznie celuje w laptop z dwóch pozycji i naciska
+interakcję, zamiast wywoływać lap.act bez celowania. Dodatkowe kontrole radia,
+wagi, szafy, łóżka, własnej/innej kolizji. Osobna instancja projektu
+CzarnyRynek-TestInterakcji potwierdziła LAPTOP TARGET AND DISK SAVE OK:
+rzeczywisty plik JSON, pozycja i flaga zapisu poprawne. Zapis gracza nietknięty.
+laptop-naprawiony.png obejrzany: prompt i potwierdzenie „Gra zapisana”.
+Pełny test finalnego kodu wymagany przed commitem.
+Następny priorytet użytkownika: rośliny mają być gęstsze i bardziej realistyczne,
+przed kontynuacją pomocników. Wcześniejsze odhaczenie roślin oznaczało pierwszą
+wersję, nie akceptację ich wyglądu przez Piotra.

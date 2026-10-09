@@ -4,6 +4,11 @@ Lista obejmuje polecenia Piotra z tego czatu. Praca trwa przez kolejne bloki i w
 co 30 minut, także przez noc. Na „stop”/„stoo” wyłączyć automatyzację. Po ukończeniu
 listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 
+## Pilne poprawki zgłoszone przez Piotra
+
+- [x] Naprawić rzeczywiste celowanie w laptop i pozostałe przedmioty; zapis z celownika.
+- [ ] Rośliny: ponowna poprawa, gęstsze liście i realistyczniejsza sylwetka — dotychczasowy wygląd nie został zaakceptowany.
+
 ## Wykonane
 
 - [x] Odczyt rozmowy Claude, projektu i dawnych list; dostęp do Godota i Blendera.

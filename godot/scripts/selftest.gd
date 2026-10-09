@@ -85,9 +85,23 @@ func run() -> void:
 			lap = it
 	ok(lap != null, "w kawalerce stoi laptop do zapisu gry")
 	if lap != null:
-		lap.act.call()
+		for offset in [Vector2(0,1.45),Vector2(0.65,1.5)]:
+			M.teleport("safe",Vector3(float(lap.x)+offset.x,0,float(lap.z)+offset.y),0)
+			await frames(4)
+			G.player.cam.look_at(Vector3(lap.x,0.96,lap.z),Vector3.UP)
+			var actual = M._find_interact()
+			ok(actual != null and String(actual.get("id",""))=="save_safe","celownik trafia laptop z normalnej pozycji gracza — stół nie blokuje zapisu")
+		M.interact()
 	G.story_tick()
 	ok(G.flag("tut_save") and G.cur_step().id == "room_stash", "zapis przy laptopie zalicza pierwszy krok")
+	for case in [["radio",Vector2(0,1.4),0.95],["pack_safe",Vector2(0,1.4),0.88],["stash_safe",Vector2(-1.3,0),1.0],["bed",Vector2(1.3,0),0.6]]:
+		for item in G.world.inter:
+			if item.get("id","")!=case[0]: continue
+			M.teleport("safe",Vector3(float(item.x)+case[1].x,0,float(item.z)+case[1].y),0)
+			await frames(3)
+			G.player.cam.look_at(Vector3(item.x,case[2],item.z),Vector3.UP)
+			var selected = M._find_interact()
+			ok(selected != null and selected.get("id","")==case[0],"celownik wybiera rzeczywisty obiekt w kawalerce: %s"%case[0])
 	# na start w kieszeni leży notes z numerami: samouczek każe przenieść go do szafy (samo otwarcie nie wystarcza)
 	var bag_sp: float = float(D.START_BAGS) * float(D.ITEMS.woreczki.size)
 	ok(G.item("notes") == 1 and G.item("woreczki") == D.START_BAGS and absf(G.carry_total() - (1.0 + bag_sp)) < 0.01 and String(G.cur_step().text.call()).contains("notes"), "na start: notes z numerami i %d woreczków w kieszeni; samouczek każe schować notes" % D.START_BAGS)
@@ -229,6 +243,13 @@ func run() -> void:
 	aim_wall.global_position = ray_from + Vector3.FORWARD
 	await frames(4)
 	ok(not M._aim_clear(ray_from, Vector3.FORWARD, 2.0), "ściana przed celem blokuje interakcję")
+	ok(M._aim_clear(ray_from,Vector3.FORWARD,2.0,aim_collision),"kolizja wybranego przedmiotu nie blokuje jego własnej interakcji")
+	var other_shape := CollisionShape3D.new()
+	other_shape.shape = aim_box
+	other_shape.position.z = 0.5
+	aim_wall.add_child(other_shape)
+	await frames(3)
+	ok(not M._aim_clear(ray_from,Vector3.FORWARD,2.0,aim_collision),"inny mebel we wspólnym body nadal zasłania wybrany przedmiot")
 	aim_wall.queue_free()
 	await frames(3)
 	ok(M._aim_clear(ray_from, Vector3.FORWARD, 2.0), "po usunięciu przeszkody interakcja znów ma linię wzroku")
