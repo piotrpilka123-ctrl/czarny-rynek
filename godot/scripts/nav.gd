@@ -102,7 +102,7 @@ func _nearest_edge(x: float, z: float) -> Dictionary:
 			if d < ad:
 				ad = d
 				any = {"a": int(n.i), "b": int(j), "p": q, "d": d}
-			if d < bd and (d < 1.2 or G.world.los(x, z, q.x, q.y)):
+			if d < bd and (d < 1.2 or (G.world.los(x, z, q.x, q.y) and G.world.grid_clear(Vector2(x, z), q))):
 				bd = d
 				best = {"a": int(n.i), "b": int(j), "p": q, "d": d}
 	# krawędź widoczna z punktu ma pierwszeństwo, o ile nie jest dużo dalej niż najbliższa
@@ -143,12 +143,14 @@ func find(ax: float, az: float, bx: float, bz: float) -> Array:
 	var W = G.world
 	var A := Vector2(ax, az)
 	var B := Vector2(bx, bz)
-	if A.distance_to(B) < 12.0 and W.los(ax, az, bx, bz) and absf(W.height(ax, az) - W.height(bx, bz)) < 1.5:
+	if A.distance_to(B) < 12.0 and W.los(ax, az, bx, bz) and W.grid_clear(A, B) and absf(W.height(ax, az) - W.height(bx, bz)) < 1.5:
 		return [A, B]
 	var ge := _nearest_edge(bx, bz)
 	var se := _nearest_edge(ax, az)
 	if ge.is_empty() or se.is_empty():
-		return [A, B]
+		var fallback: Array = [A]
+		fallback.append_array(Array(W.grid_path(A, B)))
+		return fallback
 	var gkey := Vector2(snappedf(ge.p.x, 0.5), snappedf(ge.p.y, 0.5))
 	if gkey != _goal_key:
 		_solve_edge(ge)

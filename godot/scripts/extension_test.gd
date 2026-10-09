@@ -56,3 +56,14 @@ static func run(T) -> void:
 	G.S.track = "lake"
 	T.ok(M.cur_target().id == "lake", "jezioro można wybrać jako cel trasy w telefonie")
 	G.S.track = saved_track
+
+	var shore_a: Vector2 = (W.LAKE_CENTER + Vector2(-1.1, -0.45) * W.LAKE_RADII) * D.SC
+	var shore_b: Vector2 = (W.LAKE_CENTER + Vector2(1.1, -0.45) * W.LAKE_RADII) * D.SC
+	T.ok(not W.grid_clear(shore_a, shore_b), "kontrola trasy jeziora obejmuje odcinek przecinający głęboką wodę")
+	var walking: Array = M.nav.find(shore_a.x, shore_a.y, shore_b.x, shore_b.y)
+	var dry_route := walking.size() > 1
+	for i in range(walking.size()-1):
+		for step in range(11):
+			var point: Vector2 = (walking[i] as Vector2).lerp(walking[i+1], float(step)/10.0)
+			dry_route = dry_route and W.water_depth(point.x, point.y) <= 0.4
+	T.ok(dry_route, "trasa minimapy wokół jeziora nie ścina drogi przez głęboką wodę")

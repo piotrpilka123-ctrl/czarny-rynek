@@ -6373,21 +6373,34 @@ func _lake() -> void:
 	shader.code = """shader_type spatial;
 render_mode blend_mix, depth_prepass_alpha, cull_disabled;
 global uniform float wet;
+uniform sampler2D depth_map : filter_linear, repeat_disable;
+uniform vec4 lake_rect;
 varying vec3 position;
 void vertex() { position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; VERTEX.y += sin(position.x*2.1 + TIME*1.2)*cos(position.z*1.9-TIME)*0.008; }
 void fragment() {
  float wave = sin(position.x*9.0 + TIME*2.0)*cos(position.z*11.0-TIME*1.4);
  float second = sin(position.x*13.0-position.z*7.0+TIME*1.8);
- ALBEDO = mix(vec3(0.08,0.19,0.17),vec3(0.12,0.25,0.24), wave*0.18+0.5);
+ float depth = texture(depth_map, (position.xz - lake_rect.xy) * lake_rect.zw).r;
+ ALBEDO = mix(vec3(0.20,0.27,0.21),vec3(0.07,0.16,0.17), smoothstep(0.05,1.2,depth));
+ ALBEDO *= 0.95 + wave*0.035;
  NORMAL_MAP = normalize(vec3(wave*0.035,second*0.035,1.0))*0.5+0.5;
  NORMAL_MAP_DEPTH = 0.5;
  ROUGHNESS = 0.16 + wet*0.12;
  SPECULAR = 0.75;
- ALPHA = 0.87;
+ ALPHA = smoothstep(0.0,0.22,depth) * 0.9;
 }
 """
 	var material := ShaderMaterial.new()
 	material.shader = shader
+	var depth_image := Image.create(128, 128, false, Image.FORMAT_RF)
+	var origin := (LAKE_CENTER - LAKE_RADII * 1.1) * SC
+	var size := LAKE_RADII * 2.2 * SC
+	for y in range(128):
+		for x in range(128):
+			var point := origin + Vector2(float(x) / 127.0, float(y) / 127.0) * size
+			depth_image.set_pixel(x, y, Color(water_depth(point.x, point.y), 0, 0, 1))
+	material.set_shader_parameter("depth_map", ImageTexture.create_from_image(depth_image))
+	material.set_shader_parameter("lake_rect", Vector4(origin.x, origin.y, 1.0 / size.x, 1.0 / size.y))
 	lake_surface.material_override = material
 	add_child(lake_surface)
 	_bench(54.0, 216.0, PI / 2.0)
