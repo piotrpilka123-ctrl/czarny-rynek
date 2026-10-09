@@ -28,21 +28,21 @@ Kod gry i scenariusz: Piotr Piłka (z pomocą Claude). Poniższe zasoby pochodz�
 
 Licencja MIT biblioteki Microsoft Rocketbox jest w `godot/assets/people/LICENSE-Microsoft-Rocketbox.md`
 (modele pobrane bez zmian, tekstury zmniejszone). Graffiti, plakaty, liście i trawa to własne tekstury gry,
-generowane skryptami z `godot/tools/` (czcionki z listy powyżej).
+generowane własnymi skryptami autora (czcionki z listy powyżej).
 
 Pełne teksty licencji czcionek są w `godot/assets/fonts/licencje/`, a licencja ikon Lucide w
 `godot/assets/icons/LICENSE.txt`.
 
 Muzyka (klub, radio w kawalerce, okna bloków) to nagrania na licencji CC0 z tabeli powyżej, w `godot/assets/music/`.
 Syrena, deszcz, szum miasta, stukot kolejki, odgłosy prologu i „mamrotanie” postaci są generowane przez grę
-(własna synteza). Modele z `godot/assets/models/` powstają ze skryptów Blendera w `godot/tools/blender/`.
+(własna synteza). Modele z `godot/assets/models/` powstają we własnych generatorach Blendera.
 Gra nie zawiera żadnych utworów chronionych prawem autorskim; pliki, które sam wrzucisz do `godot/muzyka/`,
 pozostają Twoje i nie są częścią projektu.
 
 ## Ubrania na postaci (godot/assets/wear)
 
 Siatki ubrań (bluza, kurtka, koszula, spodnie, rękawiczki, buty, komin, czapki) powstają skryptem
-`godot/tools/blender/make_ubrania.py` z powierzchni awatara Microsoft Rocketbox (licencja MIT, patrz wyżej) —
+autora w Blenderze z powierzchni awatara Microsoft Rocketbox (licencja MIT, patrz wyżej) —
 są jego opracowaniem i podlegają tej samej licencji. Okulary, łańcuch, faktury tkanin i wszystkie detale są własne.
 
 ## Muzyka prologu (godot/assets/music/pro_*)
@@ -54,4 +54,4 @@ są jego opracowaniem i podlegają tej samej licencji. Okulary, łańcuch, faktu
 | pro_skradanie.mp3 | „Savage Ambush” — Ruskerdax | https://opengameart.org/content/savage-ambush | CC0 |
 | pro_final.mp3 | „Cinematic Epic Trailer – With SFX” (Cinematic Trailer Music) — Gregor Quendel | https://opengameart.org/content/cinematic-trailer-music-collection | CC-BY 4.0 |
 
-`godot/assets/sfx/party/impreza_stereo.wav`: 31,6 s stereo z istniejącego nagrania kyles „crowd partying cheering applause all around”, https://freesound.org/s/637468/, CC0. Korekcja pasma, dopasowanie głośności i krótkie wygaszenia; źródło jest w `godot/tools/audio_src/`. Muzyka prologu pozostaje bez zmian.
+`godot/assets/sfx/party/impreza_stereo.wav`: 31,6 s stereo z istniejącego nagrania kyles „crowd partying cheering applause all around”, https://freesound.org/s/637468/, CC0. Korekcja pasma, dopasowanie głośności i krótkie wygaszenia; nagranie źródłowe zachowano w lokalnym zapleczu autora. Muzyka prologu pozostaje bez zmian.

@@ -16,3 +16,16 @@ zwiastun/czarny-rynek-zwiastun.mp4
 
 # oryginały tekstur sprzed filtrowania (są w historii repo)
 godot/tools/tex_orig/
+
+# lokalne zaplecze pracy — publikowany jest wyłącznie aktualny projekt gry
+/game/
+/screenshots/
+/zwiastun/
+/EKONOMIA-SIECI.md
+/NOCNA-LISTA-CODEX.md
+/PLAN-ROZGRYWKI.md
+/SYMULACJA-*.csv
+/godot/POSTEP-CODEX.md
+/godot/chk.sh
+/godot/shot.sh
+/godot/tools/

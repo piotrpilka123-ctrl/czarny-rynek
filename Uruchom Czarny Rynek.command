@@ -10,6 +10,11 @@ fi
 # po świeżym pobraniu z GitHuba Godot musi raz zaimportować modele i tekstury
 if [ ! -d "$DIR/godot/.godot/imported" ]; then
   echo "Pierwsze uruchomienie: importuję zasoby gry (to potrwa 1–3 minuty)…"
-  "$GODOT" --headless --path "$DIR/godot" --import > /dev/null 2>&1
+  # Import bez urządzenia GPU: backend zgodności działa również na świeżej kopii.
+  if ! "$GODOT" --headless --rendering-method gl_compatibility --path "$DIR/godot" --import > /dev/null 2>&1; then
+    echo "Import zasobów nie powiódł się. Otwórz godot/project.godot w edytorze Godota."
+    read -r _
+    exit 1
+  fi
 fi
 exec "$GODOT" --path "$DIR/godot" "$@"
