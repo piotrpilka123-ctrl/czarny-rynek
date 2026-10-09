@@ -44,3 +44,10 @@ Lokalna reputacja (9a): rabat prowizji maksymalnie 3 punkty procentowe, po
 Darek: 60→63% (+5%). Ceny, zapas i tempo nie wzrastają. Wynik za rzeczywiste
 dostawy, limit 12/dobę i raz na klienta, bez punktów za ponowne przekładanie
 zapasu dealerów. Nie jest to nowa emisja pieniędzy, tylko mniejsza prowizja.
+
+
+Roman (9b): 450 zł rekrutacji, 12 zł za obchód z potrzebnym podlewaniem,
+limit czterech wizyt / 48 zł na dobę. Do dwóch istniejących roślin na godzinę;
+bez gotówki nie pracuje, nie tworzy długu. Nie podnosi tempa, jakości ani
+plonu. Oszczędza czynności gracza i zapobiega zaniedbaniu, zużywając pieniądze.
+Zbiory pozostają ręczne. Rozszerzenie pomocy na laboratorium wymaga osobnego balansu.

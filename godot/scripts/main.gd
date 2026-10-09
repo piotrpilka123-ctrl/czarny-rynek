@@ -1697,6 +1697,8 @@ func _order_target(o: Dictionary) -> Dictionary:
 
 
 func _place_target(id: String) -> Dictionary:
+	if id == "worker_roman":
+		return {"id":id,"label":"Roman — pomoc w uprawie","loc":"out","x":72.0*D.SC,"z":182.0*D.SC,"color":C_PLACE}
 	if id == "gang":
 		return {"id":id,"label":"Black Court — brama gangu","loc":"out","x":-68.0*D.SC,"z":179.0*D.SC,"color":C_PLACE}
 	if id == "lake":
@@ -1761,7 +1763,7 @@ func cur_target() -> Dictionary:
 			if not dt.is_empty():
 				return dt
 			S.track = null
-		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or t == "backyards" or t == "lake" or t == "gang" or String(t).begins_with("dealer_") or String(t).begins_with("prop:"):
+		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or t == "backyards" or t == "lake" or t == "gang" or t == "worker_roman" or String(t).begins_with("dealer_") or String(t).begins_with("prop:"):
 			var pt := _place_target(t)
 			if not pt.is_empty():
 				return pt
@@ -1800,6 +1802,7 @@ func nav_targets() -> Array:
 	out.append({"id": "shop", "label": "Sklep u Stasia"})
 	out.append({"id": "ciuchy", "label": "Tania Odzież (ubrania)"})
 	out.append({"id": "backyards", "label": "Backyards (za garażami)"})
+	out.append({"id":"worker_roman","label":"Roman (pomocnik uprawy)"})
 	out.append({"id":"gang","label":"Black Court (teren gangu)"})
 	out.append({"id": "lake", "label": "Old Reservoir (jezioro)"})
 	out.append({"id": "pawn", "label": "Lombard (skup, wagi)" + hours_note(D.PAWN_OPEN)})
@@ -3118,6 +3121,11 @@ func _test_ui(what: String) -> void:
 				ui._input(key)
 			G.test_mode = was_test
 			print("CHEAT_INPUT cash_delta=", G.S.cash - before_cash, " mode_preserved=", ui.mode == before_mode)
+		"pomocnicy":
+			if args.has("crewpreview"):
+				G.S.workers.roman = {"paused":false,"next":G.S.t+60.0,"day":G.day(),"paid":24.0,"visits":2,"watered":4,"status":"Podlano 2 rośliny • 14:00"}
+				G.S.reputation.garaze = {"score":24,"day":G.day(),"earned":4,"buyers":{}}
+			ui.open_phone("pomocnicy")
 		"dealerzy":
 			if args.has("crewpreview"):
 				G.S.dealers["mati"] = {"stock": G.new_store(), "cash": 325.0, "sold": 10, "paused": false, "next": G.S.t + 60.0, "empty_notified": false}
@@ -3857,3 +3865,17 @@ func talk_gang() -> void:
 				G.notify("Masz dostęp do Black Court. Brama otwarta.","good")
 				talk_gang()})
 	ui.dialog({"name":"Borys","lines":["To nasze osiedle. Nowych tu nie chcemy. Wiktor musi za ciebie ręczyć.",reason if not reason.is_empty() else "Znam twoje nazwisko. Wiktor mówił, że można cię wpuścić."],"choices":choices})
+
+
+func talk_worker() -> void:
+	if not G.Workers.near(): return
+	var choices: Array = [{"label":"Do później."}]
+	if not G.S.workers.has("roman"):
+		var reason: String = G.Workers.requirement()
+		if reason.is_empty(): choices.push_front({"label":"Zatrudnij: 450 zł","act":func():
+			if G.Workers.hire(): talk_worker()})
+		ui.dialog({"name":"Roman","lines":["Doglądam uprawy w twoim garażu. Podleję do dwóch roślin na godzinę, 8–20. Wizyta kosztuje 12 zł, maksymalnie cztery na dobę. Nie biorę pieniędzy, gdy nie ma pracy. Zbiory robisz sam.",reason if reason!="" else "Możemy zaczynać."],"choices":choices})
+	else:
+		var state: Dictionary = G.S.workers.roman
+		choices.push_front({"label":"Wznów pracę" if state.paused else "Wstrzymaj pracę","act":func(): state.paused=not state.paused; talk_worker()})
+		ui.dialog({"name":"Roman","lines":["%s. Wizyty: %d, podlane rośliny: %d. Dziś zapłacono %s/48 zł."%[state.status,state.visits,state.watered,G.money(state.paid)]],"choices":choices})

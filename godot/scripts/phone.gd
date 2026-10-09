@@ -8,6 +8,7 @@ const OrderUI = preload("res://scripts/order_ui.gd")
 const APPS := [
 	["sms", "Wiadomości", "message_circle", Color(0.2, 0.72, 0.38)],
 	["kontakty", "Kontakty", "users", Color(0.25, 0.5, 0.9)],
+	["pomocnicy", "Pomocnicy", "users", Color(0.46,0.58,0.29)],
 	["dealerzy", "Dealerzy", "users", Color(0.4, 0.55, 0.35)],
 	["dostawy", "Dostawy", "list_checks", Color(0.65, 0.43, 0.2)],
 	["mapa", "Mapa", "map", Color(0.15, 0.6, 0.62)],
@@ -358,6 +359,7 @@ func render() -> void:
 				_contact()
 			else:
 				_contacts()
+		"pomocnicy": _workers()
 		"dealerzy": _dealers()
 		"dostawy": _deliveries()
 		"mapa": _map()
@@ -1221,3 +1223,23 @@ func _dealers() -> void:
 			G.S.nav_on = true
 			G.nav_dirty.emit()
 			ui.close_all()))
+
+
+func _workers() -> void:
+	_header("Pomocnicy","Płatne doglądanie uprawy")
+	var card := K.card(body)
+	card.add_child(K.head("Roman • garaż",17))
+	card.add_child(K.wrap("8–20 • do 2 roślin na godzinę. 12 zł za potrzebną wizytę, maks. 48 zł/dobę. Podlewa rośliny pod lampą. Zbiory, sadzenie i reszta produkcji należą do Ciebie.",12,K.C_DIM))
+	if G.S.workers.has("roman"):
+		var state: Dictionary = G.S.workers.roman
+		card.add_child(K.wrap("%s • wizyty %d • podlane %d"%[state.status,state.visits,state.watered],13,K.C_TXT))
+		card.add_child(K.wrap("Dziś: %s / 48 zł"%G.money(state.paid),12,K.C_DIM))
+		card.add_child(K.btn("Wznów" if state.paused else "Wstrzymaj",func(): state.paused=not state.paused; render()))
+	else:
+		card.add_child(K.wrap(G.Workers.requirement() if G.Workers.requirement()!="" else "Podejdź do Romana. Rekrutacja: 450 zł.",12,K.C_DIM))
+	card.add_child(K.btn("Prowadź do Romana",func(): G.S.track="worker_roman"; G.S.nav_on=true; G.nav_dirty.emit(); ui.close_all()))
+	body.add_child(K.head("Reputacja dzielnic",15))
+	body.add_child(K.wrap("Poziom 8, własny garaż, lampa i 20 reputacji w Garage Row otwierają współpracę.",12,K.C_DIM))
+	for zone in D.ZONES:
+		if G.Reputation.score(zone.id)<=0 and zone.id!="garaze": continue
+		body.add_child(K.wrap("%s: %d/100 • %s"%[zone.name,G.Reputation.score(zone.id),G.Reputation.title(zone.id)],12,K.C_TXT))

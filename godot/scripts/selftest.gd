@@ -1136,6 +1136,7 @@ func run() -> void:
 	await load("res://scripts/market_test.gd").run(self)
 	load("res://scripts/dealers_test.gd").run(self)
 	load("res://scripts/reputation_test.gd").run(self)
+	load("res://scripts/workers_test.gd").run(self)
 	load("res://scripts/lab_care_test.gd").run(self)
 	load("res://scripts/extension_test.gd").run(self)
 

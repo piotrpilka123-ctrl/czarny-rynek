@@ -1,6 +1,7 @@
 extends Node
 
 const Prod = preload("res://scripts/production.gd")
+const Workers = preload("res://scripts/workers.gd")
 const Reputation = preload("res://scripts/reputation.gd")
 const Dealers = preload("res://scripts/dealers.gd")
 const Market = preload("res://scripts/market.gd")
@@ -118,7 +119,7 @@ func new_state() -> Dictionary:
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
 		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "reputation": {}, "weather": null,
-		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "dealers": {}, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
+		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "dealers": {}, "workers": {}, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0, "hospital": 0, "box_paid": 0.0},
 		"pos": null, "mom_day": 0, "scale": 0, "owned": {}, "bagsv": 1,
@@ -1879,6 +1880,7 @@ func order_in_talk(o: Dictionary) -> bool:
 ## co 10 minut gry: terminy zamówień i paczki w skrytkach
 func on_tick() -> void:
 	job_check()
+	Workers.tick()
 	Prod.tick(10.0)
 	Prod.raid_tick()
 	Prod.flat_raid_tick()

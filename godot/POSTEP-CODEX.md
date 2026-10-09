@@ -411,3 +411,25 @@ po 120 klatkach: 58 FPS, 104 draw calls; pomiar lokalny, nie całej gry.
 Wygląd pozostaje otwarty na ocenę Piotra; nie deklarować realizmu/perfekcji
 po samym headless. Priorytet naprawy interakcji i cieni wykonany.
 Następny niewykonany blok: pomocnicy produkcji 9b.
+
+
+## Pomocnicy 9b — Roman, płatne podlewanie
+
+Nowy Workers + zapis workers w stanie gry. Roman z zaplecza ma menu współpracy.
+Rekrutacja osobista: poziom 8, własny garaż i lampa, 20 lokalnej reputacji
+Garage Row, 450 zł. Pracuje 8–20, najwyżej 2 rzeczywiste rośliny pod lampą
+na godzinę; tylko potrzebujące wody, żywe i przed zbiorem. 12 zł za wizytę,
+najwyżej 48 zł/dobę. Bez pracy bez opłaty. Bez gotówki nie podlewa, bez długu;
+pościg/śledztwo 65+ i pauza wstrzymują pracę. Nie zmienia wzrostu, jakości,
+plonu, nie sadzi/zbiera i nie tworzy towaru. Działa w kroku czasu przed uprawą,
+bez reentrantnego dodawania minut. Wizyty, stan płac i umowa przechodzą zapis.
+
+Telefon Pomocnicy: koszty/status/wizyty/liczba podlanych, wstrzymanie, trasa do
+Romana i reputacja odwiedzonych dzielnic. NPC pozostaje kontaktem na zapleczu;
+praca odbywa się w symulacji, nie dodano jeszcze animacji jego pracy w garażu.
+13 kontroli zatrudnienia, odległości, faktycznej pielęgnacji i limitu, braku
+emisji towaru, bezczynności, pauzy, pieniędzy, pościgu, płac, zapisu/migracji
+oraz rozpoznania celu telefonu. Pierwszy pełny test przeszedł; końcowy test
+po celu i podglądzie telefonu wymagany przed commitem.
+Panel pomocnik-roman-panel.png obejrzany. Punkt 9 nadal otwarty: pomoc przy
+innych rodzajach produkcji i prezentacja pracy w świecie; nie odhaczać całości.
