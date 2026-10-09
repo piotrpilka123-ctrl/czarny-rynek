@@ -21,6 +21,10 @@ const MAP_W := 840
 const MAP_H := 840
 const SOUTH_LIMIT := 247.2
 const BACKYARD_AT := Vector2(70.0, 183.0)
+const LAKE_CENTER := Vector2(90.0, 217.0)
+const LAKE_RADII := Vector2(31.0, 19.0)
+const LAKE_LEVEL := -0.15
+var lake_surface: MeshInstance3D
 ## Skala planu miasta: wszystko jest o 38% bliżej siebie niż w projekcie.
 const SC := 0.56
 const INV := 1.0 / 0.56
@@ -232,6 +236,9 @@ func _ha(x: float, z: float) -> float:
 	var cw := 1.0 - _ss(0.8, 4.0, maxf(cdx, cdz))
 	if cw > 0.0:
 		out = lerpf(out, COURT_H, cw)
+	var lake_distance := Vector2((x - LAKE_CENTER.x) / LAKE_RADII.x, (z - LAKE_CENTER.y) / LAKE_RADII.y).length()
+	if lake_distance < 1.12:
+		out = lerpf(out, -1.6, 1.0 - _ss(0.3, 1.12, lake_distance))
 	return out
 
 
@@ -430,6 +437,7 @@ func _paint() -> void:
 	_pr(1, 78.0, 174.0, 86.0, 191.0)
 	_pr(3, 45.0, 183.0, 70.0, 199.0)
 	_pr(2, 43.0, 168.0, 63.0, 189.0)
+	_paint_lake()
 	# --- oznakowanie
 	var x := -204.0
 	while x < 204.0:
@@ -546,6 +554,8 @@ func _map_texture() -> void:
 			elif a.b > 0.5: c = Color(0.25, 0.25, 0.26)
 			elif a.a > 0.5: c = Color(0.19, 0.16, 0.11)
 			elif b.r > 0.5: c = Color(0.24, 0.21, 0.19)
+			var point := Vector2(X0 + px, Z0 + pz) * SC
+			if water_depth(point.x, point.y) > 0.05: c = Color(0.08, 0.23, 0.25)
 			m.set_pixel(px, pz, c)
 	for b2 in blds:
 		var r := Rect2i(int((b2.x0 - X0)), int((b2.z0 - Z0)), max(1, int(b2.x1 - b2.x0)), max(1, int(b2.z1 - b2.z0)))
@@ -1066,9 +1076,11 @@ func build(loader = null) -> void:
 	_border_gates()
 	_bus_loop()
 	_backyard_extension()
+	_lake()
 	_curb_lines()
 	_hide_spots()
 	_build_grid()
+	_reserve_lake_grid()
 	_backyard_graph()
 	if loader != null:
 		await loader.step(66.0, "Furnishing the hideouts")
@@ -6308,7 +6320,103 @@ func _backyard_graph() -> void:
 		var route := grid_path(start, goal)
 		for point in route:
 			if Vector2(float(wp[previous].x), float(wp[previous].z)).distance_to(point) < 0.2: continue
-			var index := wp.size()
-			wp.append({"x": point.x, "z": point.y, "links": [], "i": index, "quiet": true, "extension": true})
+			var index := _extension_point(point)
 			_wp_link(previous, index)
 			previous = index
+
+
+func lake_distance(x: float, z: float) -> float:
+	return Vector2((x / SC - LAKE_CENTER.x) / LAKE_RADII.x, (z / SC - LAKE_CENTER.y) / LAKE_RADII.y).length()
+
+func water_depth(x: float, z: float) -> float:
+	return maxf(0.0, LAKE_LEVEL - height(x, z)) if lake_distance(x, z) < 1.12 else 0.0
+
+func lake_shore(x: float, z: float) -> Vector2:
+	var direction := Vector2((x / SC - LAKE_CENTER.x) / LAKE_RADII.x, (z / SC - LAKE_CENTER.y) / LAKE_RADII.y)
+	if direction.length() < 0.01: direction = Vector2.LEFT
+	return (LAKE_CENTER + direction.normalized() * LAKE_RADII * 1.23) * SC
+
+func _paint_lake() -> void:
+	var bounds := _rc(48.0, 190.0, 133.0, 245.0)
+	for pz in range(bounds.position.y, bounds.end.y):
+		for px in range(bounds.position.x, bounds.end.x):
+			var x := X0 + px * 0.5
+			var z := Z0 + pz * 0.5
+			var distance := Vector2((x - LAKE_CENTER.x) / LAKE_RADII.x, (z - LAKE_CENTER.y) / LAKE_RADII.y).length()
+			if distance < 1.12:
+				img1.set_pixel(px, pz, Color(0, 0, 0, 1))
+				img2.set_pixel(px, pz, Color(0, 0, 0, 1))
+			elif distance < 1.24:
+				img1.set_pixel(px, pz, Color(0, 0, 0, 0))
+				img2.set_pixel(px, pz, Color(1, 0, 0, 1))
+			elif distance < 1.36:
+				img1.set_pixel(px, pz, Color(0, 0, 0, 1))
+				img2.set_pixel(px, pz, Color(0, 0, 0, 1))
+
+func _lake() -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var center := Vector3(LAKE_CENTER.x * SC, LAKE_LEVEL, LAKE_CENTER.y * SC)
+	for segment in range(96):
+		var angle := float(segment) * TAU / 96.0
+		var next := float(segment + 1) * TAU / 96.0
+		for point in [center, center + Vector3(cos(next) * LAKE_RADII.x * SC * 1.1, 0, sin(next) * LAKE_RADII.y * SC * 1.1), center + Vector3(cos(angle) * LAKE_RADII.x * SC * 1.1, 0, sin(angle) * LAKE_RADII.y * SC * 1.1)]:
+			st.set_normal(Vector3.UP)
+			st.set_tangent(Plane(Vector3.RIGHT, 1.0))
+			st.set_uv(Vector2(point.x, point.z))
+			st.add_vertex(point)
+	lake_surface = MeshInstance3D.new()
+	lake_surface.name = "OldReservoir"
+	lake_surface.mesh = st.commit()
+	lake_surface.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var shader := Shader.new()
+	shader.code = """shader_type spatial;
+render_mode blend_mix, depth_prepass_alpha, cull_disabled;
+global uniform float wet;
+varying vec3 position;
+void vertex() { position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; VERTEX.y += sin(position.x*2.1 + TIME*1.2)*cos(position.z*1.9-TIME)*0.008; }
+void fragment() {
+ float wave = sin(position.x*9.0 + TIME*2.0)*cos(position.z*11.0-TIME*1.4);
+ float second = sin(position.x*13.0-position.z*7.0+TIME*1.8);
+ ALBEDO = mix(vec3(0.08,0.19,0.17),vec3(0.12,0.25,0.24), wave*0.18+0.5);
+ NORMAL_MAP = normalize(vec3(wave*0.035,second*0.035,1.0))*0.5+0.5;
+ NORMAL_MAP_DEPTH = 0.5;
+ ROUGHNESS = 0.16 + wet*0.12;
+ SPECULAR = 0.75;
+ ALPHA = 0.87;
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	lake_surface.material_override = material
+	add_child(lake_surface)
+	_bench(54.0, 216.0, PI / 2.0)
+	_bin(53.0, 211.0, 0.4)
+	for point in [Vector2(57,207), Vector2(120,208), Vector2(101,240)]:
+		_prop("old_tyre", point.x, point.y, 0.4, 0.14, 0.0, false)
+
+func _reserve_lake_grid() -> void:
+	var region := grid.region
+	for z in range(region.size.y):
+		for x in range(region.size.x):
+			var point := grid.get_point_position(Vector2i(x, z))
+			if water_depth(point.x, point.y) > 0.4: grid.set_point_solid(Vector2i(x, z), true)
+	# sucha pętla od furtki: NPC i trasa telefonu prowadzą brzegiem.
+	var previous := _wp_add(near_free(83.0 * SC,193.0 * SC))
+	for angle in [-2.3, -3.0, -3.8, -4.6, -5.4, -6.2, -7.0, -7.7, -8.6]:
+		var point: Vector2 = (LAKE_CENTER + Vector2(cos(angle), sin(angle)) * LAKE_RADII * 1.31) * SC
+		var start := Vector2(wp[previous].x, wp[previous].z)
+		for step in grid_path(start, near_free(point.x, point.y)):
+			if Vector2(wp[previous].x, wp[previous].z).distance_to(step) < 0.2: continue
+			var index := _extension_point(step)
+			_wp_link(previous, index)
+			previous = index
+
+
+func _extension_point(point: Vector2) -> int:
+	for node in wp:
+		if Vector2(node.x, node.z).distance_to(point) < 0.12:
+			return int(node.i)
+	var index := wp.size()
+	wp.append({"x": point.x, "z": point.y, "links": [], "i": index, "quiet": true, "extension": true})
+	return index

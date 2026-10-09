@@ -1671,6 +1671,8 @@ func _order_target(o: Dictionary) -> Dictionary:
 
 
 func _place_target(id: String) -> Dictionary:
+	if id == "lake":
+		return {"id": id, "label": "Old Reservoir — jezioro", "loc": "out", "x": 54.0 * D.SC, "z": 216.0 * D.SC, "color": C_PLACE}
 	if id == "backyards":
 		return {"id": id, "label": "Backyards — za garażami", "loc": "out", "x": G.world.BACKYARD_AT.x * D.SC, "z": G.world.BACKYARD_AT.y * D.SC, "color": C_PLACE}
 	if id.begins_with("dealer_"):
@@ -1731,7 +1733,7 @@ func cur_target() -> Dictionary:
 			if not dt.is_empty():
 				return dt
 			S.track = null
-		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or t == "backyards" or String(t).begins_with("dealer_") or String(t).begins_with("prop:"):
+		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or t == "backyards" or t == "lake" or String(t).begins_with("dealer_") or String(t).begins_with("prop:"):
 			var pt := _place_target(t)
 			if not pt.is_empty():
 				return pt
@@ -1770,6 +1772,7 @@ func nav_targets() -> Array:
 	out.append({"id": "shop", "label": "Sklep u Stasia"})
 	out.append({"id": "ciuchy", "label": "Tania Odzież (ubrania)"})
 	out.append({"id": "backyards", "label": "Backyards (za garażami)"})
+	out.append({"id": "lake", "label": "Old Reservoir (jezioro)"})
 	out.append({"id": "pawn", "label": "Lombard (skup, wagi)" + hours_note(D.PAWN_OPEN)})
 	out.append({"id": "supply", "label": "Hurtownia budowlana" + hours_note(D.SUPPLY_OPEN)})
 	for p in D.PROPERTIES:

@@ -228,6 +228,9 @@ func _physics_process(dt: float) -> void:
 	sp *= G.outfit_stat("speed", 1.0)
 	var gp := global_position
 	var outside := loc == "out" and G.world != null
+	if outside and G.world.water_depth(gp.x, gp.z) > 0.12:
+		sp *= 0.45
+		sprinting = false
 	# pod górę wolniej
 	if outside and moving:
 		var h0: float = G.world.height(gp.x, gp.z)
@@ -241,12 +244,23 @@ func _physics_process(dt: float) -> void:
 	# ciężki plecak męczy szybciej podczas biegu
 	if sprinting:
 		stamina = maxf(0.0, stamina - dt * 0.3 * clampf(G.carry_total() / maxf(1.0, float(G.capacity())), 0.0, 1.0))
+	var previous_position := global_position
 	move_and_slide()
 	G.S.stats["dist"] = float(G.S.stats.get("dist", 0.0)) + Vector2(global_position.x - gp.x, global_position.z - gp.z).length()
 	gp = global_position
 	if outside:
 		gp.x = clampf(gp.x, -208.4 * D.SC, 208.4 * D.SC)
 		gp.z = clampf(gp.z, -168.8 * D.SC, (G.world.SOUTH_LIMIT - 0.4) * D.SC)
+		if G.world.water_depth(gp.x, gp.z) > 0.55:
+			if G.world.water_depth(previous_position.x, previous_position.z) > 0.55:
+				var shore: Vector2 = G.world.lake_shore(gp.x, gp.z)
+				gp.x = shore.x
+				gp.z = shore.y
+			else:
+				gp.x = previous_position.x
+				gp.z = previous_position.z
+			velocity = Vector3.ZERO
+			G.tip("jezioro", "Brzeg jeziora", "Przy brzegu możesz brodzić. Dalej jest za głęboko — wróć na ścieżkę.")
 		gp.y = G.world.height(gp.x, gp.z)
 	else:
 		gp.y = 0.0

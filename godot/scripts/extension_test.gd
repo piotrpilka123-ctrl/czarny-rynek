@@ -39,3 +39,20 @@ static func run(T) -> void:
 	T.ok(M.cur_target().id == "dealer_mati", "wybrana trasa dealera prowadzi do niego zamiast do celu fabularnego")
 	G.S.track = saved_track
 	T.ok(String(G.zone_at(goal.x, goal.y).get("id", "")) == "zaplecze", "nowy teren ma własną strefę lokalnej uwagi policji")
+
+	var center: Vector2 = W.LAKE_CENTER * D.SC
+	T.ok(W.lake_surface != null and W.water_depth(center.x, center.y) > 1.0, "jezioro ma powierzchnię wody i zagłębione dno")
+	var gate := Vector2(83,193) * D.SC
+	T.ok(W.water_depth(gate.x, gate.y) == 0.0 and not W.grid.is_point_solid(W._cell(gate.x, gate.y)), "jezioro nie zalewa ani nie blokuje furtki zaplecza")
+	T.ok(W.grid.is_point_solid(W._cell(center.x, center.y)), "nawigacja nie prowadzi NPC przez głęboką wodę")
+	G.busy = false
+	P.loc = "out"
+	P.global_position = Vector3(center.x, W.height(center.x, center.y), center.y)
+	P._physics_process(0.016)
+	T.ok(W.water_depth(P.global_position.x, P.global_position.z) < 0.01, "stara pozycja zapisu w miejscu nowego dna jest przenoszona na brzeg")
+	P.global_position = saved_pos
+	P.loc = saved_loc
+	G.busy = saved_busy
+	G.S.track = "lake"
+	T.ok(M.cur_target().id == "lake", "jezioro można wybrać jako cel trasy w telefonie")
+	G.S.track = saved_track
