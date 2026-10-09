@@ -289,3 +289,12 @@ siatki przed commitem. Prolog nadal przechodzi pełną dotychczasową weryfikacj
 Podglądy plot-osiedle.png, plot-furtki.png, plot-garaze.png, plot-wyrwa-siatka.png
 obejrzane w /Users/macbook/codex-podglad. Punkt 7 zamknięty; następny 8:
 modele śmietników/krat i widok, wejście, wyjście oraz celowanie w kryjówkach.
+
+
+5822ab5: 701 testów OK, 0 błędów po naprawie płotów/tras i modelu odgiętej
+siatki. Dodatkowy podgląd pokazał krzak na dojściu do parkowej wyrwy. Poszerzono
+czyszczenie zieleni o korytarze podejścia do istniejących przejść (z usunięciem
+kolizji i kryjówek roślin jak przy budynkach). Drzewa poza korytarzem zachowane.
+plot-wyrwa-dojscie.png obejrzany: ścieżka wolna, siatka ma rzeczywiste oczka.
+Pełny ponowny test po korekcie zieleni zakończony pomyślnie; brak nowych błędów.
+Następny blok 8 nadal aktualny.

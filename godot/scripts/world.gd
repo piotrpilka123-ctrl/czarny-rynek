@@ -4057,6 +4057,14 @@ func _evict_greens() -> void:
 				if g.x > float(tf[0]) and g.x < float(tf[2]) and g.y > float(tf[1]) and g.y < float(tf[3]):
 					hit = true
 					break
+		# Furtka potrzebuje wolnego dojścia, nie tylko dziury w samym ogrodzeniu.
+		for passage in passages:
+			var delta := (g-Vector2(passage[0],passage[1]))*SC
+			var along := absf(delta.x) if passage[2] else absf(delta.y)
+			var across := absf(delta.y) if passage[2] else absf(delta.x)
+			if along < 1.15 and across < 2.3:
+				hit = true
+				break
 		for b in blds:
 			if g.x > float(b.x0) - 0.7 and g.x < float(b.x1) + 0.7 and g.y > float(b.z0) - 0.7 and g.y < float(b.z1) + 0.7:
 				hit = true
