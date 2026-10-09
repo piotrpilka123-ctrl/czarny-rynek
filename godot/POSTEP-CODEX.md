@@ -433,3 +433,7 @@ oraz rozpoznania celu telefonu. Pierwszy pełny test przeszedł; końcowy test
 po celu i podglądzie telefonu wymagany przed commitem.
 Panel pomocnik-roman-panel.png obejrzany. Punkt 9 nadal otwarty: pomoc przy
 innych rodzajach produkcji i prezentacja pracy w świecie; nie odhaczać całości.
+
+7f2da87: końcowy pełny test 734 OK, 0 błędów. Audyt Pomocnicy: 0 uwag
+(73 kontrolki). Panel zatrudnionego Romana obejrzany w rendererze.
+Następny blok 9c: wsparcie pozostałej produkcji i widoczna praca pomocników.
