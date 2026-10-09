@@ -227,3 +227,8 @@ Wczesny przebieg wykrył typ numerów budynków, lampę nad trawą oraz lampę w
 wjazdu; poprawione. Grafika wymaga dalszego szlifu w punktach 6 i 10.
 Nie dodano darmowego dochodu ani kary pieniężnej za wejście. Kolejny punkt 6:
 rozpoznawalna zabudowa całej mapy, potem płoty/przejścia i śmietniki.
+
+65abb0e: pełny test 698 OK, 0 błędów. Osobna próba w rendererze potwierdza
+wyłączenie rzeczywistej kolizji po przyznaniu przepustki. Naprawiono również
+referencję bramy: czyszczenie kolizji zieleni zmienia indeksy blocks, dlatego
+brama zachowuje własny słownik zamiast zapamiętanego indeksu.
