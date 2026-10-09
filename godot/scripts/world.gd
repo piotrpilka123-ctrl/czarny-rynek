@@ -1170,6 +1170,16 @@ func _base(x0: float, z0: float, x1: float, z1: float) -> float:
 	return minf(minf(hd(x0, z0), hd(x1, z1)), minf(hd(x0, z1), hd(x1, z0)))
 
 
+## Kolizja płotu kończy się przy widocznej górnej krawędzi, bez zapasu z brył terenu.
+func _last_col_top(top: float) -> void:
+	var collider := body.get_child(body.get_child_count()-1) as CollisionShape3D
+	if collider == null or not (collider.shape is BoxShape3D): return
+	var box := collider.shape as BoxShape3D
+	var bottom := collider.position.y-box.size.y*0.5
+	box.size.y=maxf(0.05,top-bottom)
+	collider.position.y=bottom+box.size.y*0.5
+
+
 ## Siatka okien na ścianie długości `ln` metrów: [margines, liczba pól]. Gdy podano `anchor`
 ## (metry od początku ściany), siatka przesuwa się tak, żeby środek jednego pola wypadł dokładnie tam.
 static func grid_for(ln: float, cs: float, anchor := -1.0) -> Array:
@@ -2574,14 +2584,17 @@ func _garage_door(x: float, y: float, z: float, ry: float, paint: Color) -> bool
 
 
 func _stairs(sx: float) -> void:
-	var m := Props.pbr("concrete_wall_008", 0.45, Color(0.8, 0.8, 0.78))
+	var m := Props.pbr("concrete_floor_worn_001",0.65,Color(0.73,0.72,0.67))
+	var wall_m := Props.pbr("concrete_wall_008",0.45,Color(0.76,0.76,0.73))
+	var nosing := Models.mat("676a61",0.97)
 	var n := 30
 	for k in range(n):
 		var z := -18.0 - (k + 0.5) * 12.0 / n
 		var y := PLATEAU * (k + 1.0) / n
 		Models.box(city, Vector3(3.3, 0.4, 12.0 / n + 0.02), Vector3(sx, y - 0.2 + hd(sx, -17.0), z), m, Vector3.ZERO, k % 3 == 0)
+		Models.box(city,Vector3(3.22,0.012,0.08),Vector3(sx,y+hd(sx,-17.0)+0.006,z+0.16),nosing,Vector3.ZERO,false)
 	for side in [-1.0, 1.0]:
-		Models.box(city, Vector3(0.3, 1.0, 12.9), Vector3(sx + side * 1.8, PLATEAU * 0.5 + 0.2 + hd(sx, -17.0), -24.0), m, Vector3(atan2(PLATEAU, 12.0), 0, 0))
+		Models.box(city, Vector3(0.3, 1.0, 12.9), Vector3(sx + side * 1.8, PLATEAU * 0.5 + 0.2 + hd(sx, -17.0), -24.0), wall_m, Vector3(atan2(PLATEAU, 12.0), 0, 0))
 		var rail := Models.mat("3a4a42", 0.5, 0.6)
 		Models.cyl(city, 0.03, 0.03, 13.0, Vector3(sx + side * 1.8, PLATEAU * 0.5 + 1.25 + hd(sx, -17.0), -24.0), rail, Vector3(PI / 2.0 + atan2(PLATEAU, 12.0), 0, 0), 6)
 		for k in range(5):
@@ -2802,7 +2815,8 @@ func _estate() -> void:
 		_bush(e[0], e[1], rng.randf_range(0.8, 1.4))
 	# ogrodzenie działek na zachodzie
 	for k in range(6):
-		_place(Props.fence(20.0, 1.5, "mesh"), -150.0, -160.0 + k * 20.0 + 10.0, PI / 2.0)
+		_place(Props.fence(20.0, 1.5, "mesh"), -150.0, -160.0 + k * 20.0 + 10.0, PI / 2.0,0.08,10.0,1.5)
+		_last_col_top(hd(-150,-160.0+k*20.0+10.0)+1.5)
 
 
 ## Podwórko: wysokie drzewa przed blokami, ogródki pod oknami parteru, „spocik” ze starą kanapą, grill sąsiada.
@@ -2891,10 +2905,12 @@ func _yard() -> void:
 			Interior._tint(f, g[2])
 			Props.set_range(f, 70.0)
 		for sx in [x0, x1]:
-			var f2 := _place(Stations.model("pod_plotek"), sx, -73.7 - seg * 0.5, PI / 2.0)
+			var f2 := _place(Stations.model("pod_plotek"), sx, -73.7 - seg * 0.5, PI / 2.0,0.08,1.0,0.9)
+			_last_col_top(hd(sx,-73.7-seg*0.5)+0.9)
 			Interior._tint(f2, g[2])
 			Props.set_range(f2, 70.0)
 		add_col(x0, x1, -73.85, -73.55, 0.9)
+		_last_col_top(hd((x0+x1)*0.5,-73.7)+0.9)
 		rects.pop_back()
 	for e in [["pod_grzadka", 17.6, -75.9, 0.0], ["pod_kwiaty", 22.8, -76.6, 0.1], ["pod_krasnal", 21.0, -74.7, 0.4], ["pod_suszarka", 24.0, -75.4, 0.6],
 			["pod_kwiaty", 36.0, -76.7, -0.1], ["pod_grzadka", 36.6, -74.9, PI / 2.0], ["pod_grill", 31.0, -75.4, 0.5], ["pod_krasnal", 29.2, -76.6, -0.6],
@@ -3060,7 +3076,8 @@ func _park() -> void:
 		Models.cyl(city, 0.05, 0.05, 4.0, Vector3(gx, gy + 2.0, 128.0), gm, Vector3(PI / 2.0, 0, 0), 6)
 	_place(Props.fence(32.0, 3.0, "mesh"), -70.0, 139.0, 0.0, 16.0, 0.1, 3.0)
 	rects.pop_back()
-	_place(Props.fence(10.0, 3.0, "mesh"), -86.8, 133.0, PI / 2.0)
+	_place(Props.fence(10.0, 3.0, "mesh"), -86.8, 133.0, PI / 2.0,0.1,5.0,3.0)
+	_last_col_top(hd(-86.8,133.0)+3.0)
 
 
 # ---------------------------------------------------------------- nasyp i tunel

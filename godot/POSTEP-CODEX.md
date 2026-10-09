@@ -512,3 +512,19 @@ Najnowsze polecenia Piotra dopisane do pilnej kolejki: kolizje, schody, imprezow
 muzyka i cichszy/muflowany klub, dealerzy proponowani przez dużych klientów
 zamiast początkowych postaci na ulicy, złomowisko, różne miejsca spotkań.
 Motyw Codexa: narzędzie CUA odmawia dostępu do com.openai.codex; nie zmieniono.
+
+
+## Najnowsza kolejka: płotki / doniczki i schody
+
+Uzupełniono brakujące kolizje sześciu paneli działek na zachodzie, bocznego płotu
+boiska w parku oraz boków ogródków pod blokiem. Niskie płotki kończą kolizję
+przy swojej widocznej górze, zamiast niewidzialnej ściany 2 m ponad nią.
+Doniczki miały już kolizję; nowy test realnej fizyki potwierdza, że blokują
+wejście w podstawę i pozostawiają wolne miejsce obok. Nie usuwano furtek/przełazów.
+Schody: zużyty beton podłogowy zamiast faktury ściany, osobny materiał murków
+oraz cienkie krawędzie antypoślizgowe poprawiające czytelność stopni.
+
+Pełny test 748 OK, 0 błędów, 3 nowe kontrole kolizji (promienie i kapsuła).
+Renderer schody-nawierzchnia.png i schody-z-gory.png obejrzany. Następne:
+imprezowa muzyka z budynków oraz cichszy/stłumiony klub; potem klient proponuje
+bycie dealerem, złomowisko i więcej różnych miejsc spotkań.
