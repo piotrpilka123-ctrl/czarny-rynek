@@ -4461,7 +4461,7 @@ func save_game(manual := true) -> void:
 	if test_mode:
 		return
 	if player != null:
-		S.pos = {"loc": player.loc, "x": player.global_position.x, "z": player.global_position.z, "yaw": player.yaw}
+		S.pos = {"loc": player.loc, "x": player.global_position.x, "y": player.global_position.y, "z": player.global_position.z, "yaw": player.yaw}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f == null:
 		if manual:

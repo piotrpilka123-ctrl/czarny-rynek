@@ -13,6 +13,7 @@ const EYE := 1.66
 const EYE_LOW := 0.92
 const BODY_H := 1.75
 const BODY_LOW := 1.0
+const BALCONY = preload("res://scripts/club_balcony.gd")
 
 ## 0..1: osuwanie się na ziemię (cios, postrzał) — przechyla i opuszcza kamerę
 var fall := 0.0
@@ -169,7 +170,7 @@ func toggle_crouch() -> void:
 
 
 func place(pos: Vector3, new_yaw: float) -> void:
-	global_position = pos
+	global_position = BALCONY.restore(pos) if loc=="club" else pos
 	yaw = new_yaw
 	pitch = 0.0
 	velocity = Vector3.ZERO
@@ -184,6 +185,18 @@ func place(pos: Vector3, new_yaw: float) -> void:
 	if G.world != null and loc == "out":
 		global_position.y = G.world.height(pos.x, pos.z)
 
+
+## Niski stopień podnosimy przed ruchem, schodząc opuszczamy ciało dopiero po ruchu.
+## Kolizje stopni i balustrad nadal wyznaczają rzeczywiście dostępne przejście.
+func walk_slide() -> void:
+	if loc=="club":
+		var next:=global_position+velocity*get_physics_process_delta_time()
+		var h:float=BALCONY.floor_height(next)
+		if h>global_position.y and h-global_position.y<=0.22:
+			global_position.y=h
+	move_and_slide()
+	if loc=="club":
+		global_position.y=BALCONY.floor_height(global_position)
 
 func _physics_process(dt: float) -> void:
 	if not G.running or G.busy:
@@ -245,7 +258,7 @@ func _physics_process(dt: float) -> void:
 	if sprinting:
 		stamina = maxf(0.0, stamina - dt * 0.3 * clampf(G.carry_total() / maxf(1.0, float(G.capacity())), 0.0, 1.0))
 	var previous_position := global_position
-	move_and_slide()
+	walk_slide()
 	G.S.stats["dist"] = float(G.S.stats.get("dist", 0.0)) + Vector2(global_position.x - gp.x, global_position.z - gp.z).length()
 	gp = global_position
 	if outside:
@@ -262,7 +275,7 @@ func _physics_process(dt: float) -> void:
 			velocity = Vector3.ZERO
 			G.tip("jezioro", "Brzeg jeziora", "Przy brzegu możesz brodzić. Dalej jest za głęboko — wróć na ścieżkę.")
 		gp.y = G.world.height(gp.x, gp.z)
-	else:
+	elif loc != "club":
 		gp.y = 0.0
 	global_position = gp
 	if moving:

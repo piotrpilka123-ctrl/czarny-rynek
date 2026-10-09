@@ -458,7 +458,7 @@ func start_game(from_save: bool) -> void:
 	world.refresh_starter()
 	var R: Dictionary = D.ROOMS.safe
 	if loaded and G.S.pos != null:
-		teleport(String(G.S.pos.loc), Vector3(float(G.S.pos.x), 0.0, float(G.S.pos.z)), float(G.S.pos.yaw))
+		teleport(String(G.S.pos.loc), Vector3(float(G.S.pos.x), float(G.S.pos.get("y",0.0)), float(G.S.pos.z)), float(G.S.pos.yaw))
 	else:
 		teleport("safe", Vector3(float(R.cx) - 0.6, 0.0, 1.2), 0.0)
 		if not args.has("autostart") or args.has("intro"):
@@ -1372,7 +1372,8 @@ func _aim_scan() -> Array:
 	for n in npcs.all:
 		if n.has("interact") and n.loc == player.loc and n.node != null and n.node.visible:
 			var ni: Dictionary = n.interact
-			cands.append({"x": n.x, "z": n.z, "y0": 0.0, "y1": 1.85, "r": 0.5, "reach": minf(float(ni.get("range", 2.9)), 3.0), "label": ni.label, "act": ni.act, "id": "npc"})
+			var ny:float=n.node.global_position.y-(world.height(n.x,n.z) if outside else 0.0)
+			cands.append({"x": n.x, "z": n.z, "y0": ny, "y1": ny+1.85, "r": 0.5, "reach": minf(float(ni.get("range", 2.9)), 3.0), "label": ni.label, "act": ni.act, "id": "npc"})
 	for it in cands:
 		var ax: float = it.get("ax", it.x)
 		var az: float = it.get("az", it.z)
@@ -2547,6 +2548,7 @@ func _apply_test_args() -> void:
 			pos = Vector3(float(D.DOORS.safe.x), 0.0, float(D.DOORS.safe.z) + 2.0)
 		else:
 			pos = Vector3(float(D.ROOMS[loc].cx), 0.0, float(D.ROOMS[loc].d) * 0.5 - 1.5)
+		pos.y=float(args.get("height","0"))
 		teleport(loc, pos, deg_to_rad(float(args.get("yaw", "0"))))
 		# zrzuty: --pitch=stopnie (ujemne = w dół), --waga=0…3 (klasa wagi na stołach)
 		if args.has("pitch"):

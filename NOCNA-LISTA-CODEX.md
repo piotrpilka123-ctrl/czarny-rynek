@@ -13,7 +13,7 @@ Najnowsze polecenia — przed dalszym ogólnym audytem:
 - [x] Sprawdzić brakujące kolizje płotków/doniczek wskazanych jako „potki”.
 - [x] Poprawić tekstury schodów.
 - [x] Bardziej imprezowa muzyka w budynkach; klub słyszany przez ściany ma być stłumiony i trochę cichszy.
-- [ ] Rozbudować klub: neonowy korytarz i dostępne osobne łazienki wykonane; nadal górne balkony/loże VIP z działającymi schodami. Domyślna muzyka klubowa gotowa.
+- [x] Rozbudować klub: neonowy korytarz, osobne łazienki, górny balkon i trzy loże z działającymi schodami oraz balustradami. Domyślna muzyka klubowa gotowa. 769 testów i natywne podglądy; dalsze strojenie po graniu pozostaje w audycie.
 - [ ] Rozbudować lokale do kupienia o więcej pomieszczeń; zachować wyposażenie i zapis gracza.
 - [ ] Dealerami stają się duzi klienci, którzy sami proponują współpracę; początkowo nie ma dealerów na ulicy. Zachować istniejące kontrakty/zapas/pieniądze.
 - [ ] Dodać złomowisko na mapie (interpretacja „do mamy” z kontekstu mapy).

@@ -5760,7 +5760,7 @@ func _club_entrance(g: Node3D, cx: float) -> void:
 	# Wejście otwiera się na parkiet; przejście szerokie na 2,7 m.
 	for side in [-1.0, 1.0]:
 		_club_partition(foyer, Vector3(0.16, 3.2, 4.2), Vector3(cx+side*1.45, 1.6, 6.9), dark)
-	Models.box(foyer, Vector3(3.0, 0.12, 4.2), Vector3(cx, 3.26, 6.9), dark)
+	Models.box(foyer, Vector3(3.0, 0.12, 4.2), Vector3(cx, 3.06, 6.9), dark)
 	for i in range(6):
 		var z := 5.0+i*0.65
 		var color := Color(1.0, 0.12, 0.62) if i%2==0 else Color(0.14, 0.8, 1.0)
@@ -5774,11 +5774,11 @@ func _club_entrance(g: Node3D, cx: float) -> void:
 	# Dwie łazienki od zachodniej strony foyer, każda z własnym wejściem.
 	for x in [-4.65, -1.85]:
 		_club_partition(foyer, Vector3(0.14, 2.85, 4.0), Vector3(cx+x, 1.425, 7.0), wall)
-	for bounds in [[-7.45,-6.65],[-5.45,-4.65],[-4.65,-4.0],[-2.8,-1.85]]:
+	for bounds in [[-7.45,-6.0],[-4.8,-4.65],[-4.65,-4.0],[-2.8,-1.85]]:
 		var x0: float=bounds[0]
 		var x1: float=bounds[1]
 		_club_partition(foyer, Vector3(x1-x0, 2.85, 0.14), Vector3(cx+(x0+x1)*0.5, 1.425, 5.0), wall)
-	for door_x in [-6.05,-3.4]:
+	for door_x in [-5.4,-3.4]:
 		_club_partition(foyer, Vector3(1.2, 0.5, 0.14), Vector3(cx+door_x, 2.6, 5.0), wall)
 		var sign := Signs.text("WC", "bebas", 70, Color(0.3, 0.95, 1.0), 0.006, 6, Color(0,0,0,0.6))
 		sign.position=Vector3(cx+door_x,2.45,4.9)
@@ -5805,6 +5805,7 @@ func _club_room() -> void:
 	_club_walls(g, cx, w, d, h)
 	_club_extras(g, cx, w, d, h)
 	_club_entrance(g, cx)
+	load("res://scripts/club_balcony.gd").build(self,g,cx)
 	# bramka z wykrywaczem tuż za drzwiami
 	_lm(g, "klub_bramka", cx, d * 0.5 - 2.4, 0.0)
 	for sx in [-1.0, 1.0]:
@@ -5870,9 +5871,9 @@ func _club_room() -> void:
 		"label": func(): return "Bar — zamów coś", "act": func(): G.main.club_bar()})
 	# loże pod zachodnią ścianą i wysokie stoliki
 	var xw := cx - w * 0.5
-	for lz in [-0.6, 2.0]:
-		_lm(g, "klub_kanapa", xw + 0.42, lz, PI / 2.0, 0.0, Vector2(0.4, 1.02))
-		_lm(g, "klub_stolik", xw + 1.5, lz, lz, 0.0, Vector2(0.24, 0.24))
+	# Dawne zachodnie kanapy ustępują miejsca schodom; dolna loża obok baru.
+	_lm(g, "klub_kanapa", bxr-0.42, 3.5, -PI/2.0, 0.0, Vector2(0.4,1.02))
+	_lm(g, "klub_stolik", bxr-1.5, 3.5, 0.0, 0.0, Vector2(0.24,0.24))
 	# loża VIP na podeście w rogu (za liną): rozmawia się z gośćmi zza barierki
 	_lm(g, "klub_vip", xw + 1.45, -d * 0.5 + 1.7, 0.0, 0.0, Vector2(1.5, 1.72))
 	var vl := _room_light(g, xw + 1.6, -d * 0.5 + 1.6, 2.2, 1.2, Color(1.0, 0.78, 0.4), 5.0)

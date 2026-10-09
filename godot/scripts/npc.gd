@@ -428,6 +428,10 @@ func _build_club() -> void:
 			"lines": ["Co?! Nie słyszę!", "Najlepsza impreza w mieście, mówię ci.", "Stary, widziałeś, kto siedzi w loży? Sama śmietanka.", "Postaw kolejkę, to pogadamy."]})
 		s2["anim_speed"] = rg.randf_range(0.85, 1.1)
 	# loża VIP: szychy na kanapach, ochroniarz przy linie
+	for e in [[-3.3,"Nadia","fb2","talk"],[5.1,"Bartek","mb7","phone"]]:
+		_static({"loc":"club","x":cx+float(e[0]),"z":6.6,"y":3.2,"rot":0.0,"pose":String(e[3]),"name":String(e[1]),
+			"look":{"model":String(e[2]),"female":String(e[1])=="Nadia","seed":724+int(float(e[0])*10)},
+			"lines":["Z góry najlepiej widać parkiet. W końcu można chwilę odetchnąć.","Nasza ekipa zajęła lożę. Później schodzimy na dół do DJ-a."]})
 	var xw := cx - float(R.w) * 0.5
 	var vx := xw + 1.45
 	var vz := -float(R.d) * 0.5 + 1.7

@@ -585,3 +585,27 @@ obejrzane, podobnie klub-toaleta-poprawka.png i garaz-narzedzia-poprawka.png.
 Podglądy bez dźwięku, po wolne.sh. Kontrola dotyczy pokoju początkowego;
 pełny przegląd wszystkich obiektów na mapie pozostaje na liście.
 Końcowe chk.sh i pełny runtest.sh: 759 testów OK, 0 błędów. Piętro VIP nadal otwarte.
+
+## 2026-10-09 — górne loże klubu i działające schody
+
+Klub podniesiony do 6,1 m; balkon 3,2 m nad parterem, trzy osobne loże, kanapy,
+stoliki, ciepłe światła, dwaj rozmówcy, balustrada i 21 podświetlonych stopni.
+club_balcony.gd współdzieli wymiary kolizji i powierzchni chodzenia. Kapsuła
+wchodzi na stopień przed kontaktem z podstopnicą i opuszcza się po zejściu;
+parter pod balkonem nie przenosi na górę. Dolne kanapy przesunięto obok baru,
+wejście zachodniej łazienki obok schodów zachowuje 1,2 m szerokości. Sufit
+korytarza mieści się pod płytą balkonu. Kolizje stolików i kanap dotyczą piętra.
+
+Celowanie w NPC uwzględnia rzeczywistą wysokość postaci (wcześniej każdy miał
+pole celowania na parterze). Zapis zachowuje y; stary zapis bez y zostaje na dole,
+nieprawidłowa pozycja w nowych schodach wraca do foyer. Gra nadal zapisuje się
+przy laptopach; nie dodawano automatycznego zapisu.
+
+Sprawdzone wejście i zejście rzeczywistą kapsułą, balustrada także przy kucaniu
+i próbie sprintu, wolny parter, kolizje mebli na piętrze, odtwarzanie wysokości
+i celowanie w Nadię bez celu na parterze. Narzędzie celowej kontroli:
+tools/club_walk_check.gd. chk.sh czysty; pełny runtest.sh: 769 OK, 0 błędów.
+Natywne podglądy klub-schody.png, klub-balkon.png, klub-loze.png obejrzane;
+bez dźwięku, po wolne.sh. Nie deklaruje to perfekcji całej gry ani końca audytu.
+Następny pilny blok: wielopokojowe lokale do kupienia. Graphify nadal wskazuje
+starszy JS; nie powtarzano nieprzydatnego zapytania do tego samego indeksu.
