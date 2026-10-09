@@ -30,7 +30,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 5. [x] Osiedle gangu: odrębne budynki, kontrolowane wejście, ostrzeżenie i ryzyko
        na początku; późniejszy dostęp zależny od postępu/kontaktów.
 6. [x] Budynki: różnice brył, parterów, dachów, wejść i detali, spójna skala tekstur.
-7. [ ] Płoty/przejścia: przegląd całej mapy, usunąć nadmiarowe i bezsensowne otwory;
+7. [x] Płoty/przejścia: przegląd całej mapy, usunąć nadmiarowe i bezsensowne otwory;
        sensowne furtki i przełazy, bez psucia prologu i tras NPC.
 8. [ ] Śmietniki i kraty: własne spójne modele, wejście, widok ze środka, bezpieczne
        wychodzenie i czytelne celowanie. Kontrola chowania przy obserwującym patrolu.
@@ -109,3 +109,10 @@ zróżnicowane nadbudówki bloków i sylwetki klubu/komisariatu. Skala podział�
 w metrach świata, ulica Hutnicza i klub obejrzane w rendererze. 699 testów OK.
 Blok 6 zamknięty w zakresie pierwszego przeglądu; dalsza kontrola każdego miejsca,
 nocy/deszczu i przenikania pozostaje w punkcie 10. Następny punkt 7: płoty/przejścia.
+
+Punkt 7: siedem zbędnych wyrw zamkniętych (pod wiaduktem, przy klubie,
+nasypie i garażach). Pozostają 22 przejścia z 29; furtki i przełazy prologu
+zachowane. Odgięta siatka ma oczka zamiast prostokąta przypominającego folię.
+Nawigacja telefonu sprawdza gotową trasę i omija kolizje przez siatkę AStar.
+Nowe testy zamknięć, dojść przez furtki i tras telefonu; pełny test przed commitem.
+Następny punkt 8: śmietniki, kraty i chowanie.

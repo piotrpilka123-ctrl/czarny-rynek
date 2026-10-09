@@ -3365,21 +3365,12 @@ func _fence_hole(x: float, z: float, ew: bool, kind: String, h: float, gap: floa
 		for sd in [-1.0, 1.0]:
 			var pp2 = Vector2(x, z) + along * sd * gap
 			Models.cyl(city, 0.03, 0.03, h, Vector3(pp2.x, by + h * 0.5, pp2.y), steel, Vector3(0, 0, 0.06 * sd), 5)
-		var flap_mat: Material
-		if kind == "siatka":
-			var fm := StandardMaterial3D.new()
-			fm.albedo_color = Color(0.45, 0.48, 0.45, 0.42)
-			fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			fm.cull_mode = BaseMaterial3D.CULL_DISABLED
-			fm.roughness = 0.6
-			fm.metallic = 0.4
-			flap_mat = fm
-		else:
-			flap_mat = Props.pbr("rusty_corrugated_iron", 0.5)
-		var fp := Vector2(x, z) + along * (gap - 0.1) + across * 0.55
-		var flap := Models.box(city, Vector3(1.6, h * 0.8, 0.02), Vector3(fp.x, by + h * 0.42, fp.y), flap_mat,
-			Vector3(0.18, (0.0 if ew else PI / 2.0) + 1.05, 0.0), false)
-		flap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# Odgięta siatka zachowuje oczka; dawny przezroczysty prostokąt wyglądał jak folia.
+		var fp := Vector2(x,z)+along*(gap-0.1)+across*0.55
+		var flap := Props.fence_panel(1.6,h*0.8,"mesh" if kind == "siatka" else "sheet")
+		flap.position = Vector3(fp.x,by+h*0.02,fp.y)
+		flap.rotation = Vector3(0.18,(0.0 if ew else PI/2.0)+1.05,0.0)
+		city.add_child(flap)
 	# wydeptana ścieżka przez dziurę
 	var a := Vector2(x, z) - across * 4.5
 	var b := Vector2(x, z) + across * 4.5
@@ -3496,28 +3487,29 @@ func _dense() -> void:
 		add_col(x - 2.4, x + 2.4, z - 1.9, z + 1.9, 2.4)
 		rects.pop_back()
 	# --- mury i płoty: ciasne podwórka, mniej otwartej przestrzeni
-	# Płoty mają dziury: GPS prowadzi oficjalnymi przejściami (schody, tunel, bramy),
-	# ale kto zna teren, przejdzie na skróty przez wyrwę w siatce.
-	_fence_run(-98.0, -31.6, -34.0, -31.6, "siatka", 1.8, [-66.0], [], [-86.0, -45.0])
+	# Dojścia przez furtki; wyrwy pozostają tylko tam, gdzie dają osobną drogę.
+	# Usunięto siedem powtórnych dziur tuż obok istniejących furtek.
+	# Przełaz prologu przy (128.6,-90) oraz pozostałe przełazy zachowane.
+	_fence_run(-98.0, -31.6, -34.0, -31.6, "siatka", 1.8, [], [], [-86.0, -45.0])
 	_fence_run(-20.0, -31.6, 9.0, -31.6, "siatka", 1.8, [], [-6.0])
-	_fence_run(15.0, -31.6, 54.0, -31.6, "siatka", 1.8, [37.0], [], [23.0, 48.0])
-	_fence_run(66.0, -31.6, 104.0, -31.6, "siatka", 1.8, [88.0], [], [74.0])
+	_fence_run(15.0, -31.6, 54.0, -31.6, "siatka", 1.8, [], [], [23.0, 48.0])
+	_fence_run(66.0, -31.6, 104.0, -31.6, "siatka", 1.8, [], [], [74.0])
 	_fence_run(-90.0, 57.6, -50.0, 57.6, "mur", 2.2, [], [-70.0], [-56.0])
 	_barrier(-44.0, 57.6, -9.0, 57.6, "mur", 2.2)
 	_fence_run(8.0, 57.6, 40.0, 57.6, "mur", 2.2, [], [37.0])    # (przełaz był na wysokości ściany kamienicy — prowadził w mur)
 	_barrier(46.0, 52.0, 68.0, 52.0, "blacha", 2.0)
 	_barrier(-48.5, 60.0, -48.5, 96.0, "siatka", 1.8)
-	_fence_run(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8, [123.0], [], [146.0])
+	_fence_run(-48.5, 104.0, -48.5, 160.0, "siatka", 1.8, [], [], [146.0])
 	_barrier(-92.0, -17.6, -62.0, -17.6, "mur", 2.0)
 	_fence_run(-54.0, -17.6, -31.0, -17.6, "mur", 2.0, [], [-42.0])
 	_barrier(-23.0, -17.6, 8.0, -17.6, "mur", 2.0)
 	_fence_run(16.0, -17.6, 46.0, -17.6, "mur", 2.0, [31.0])
 	_barrier(40.0, 100.0, 40.0, 130.0, "blacha", 2.0)
-	_fence_run(128.6, 32.0, 128.6, 120.0, "siatka", 1.8, [78.0], [], [50.0, 104.0])
+	_fence_run(128.6, 32.0, 128.6, 120.0, "siatka", 1.8, [], [], [50.0, 104.0])
 	_fence_run(128.6, -160.0, 128.6, -72.0, "siatka", 1.8, [], [-90.0], [-112.0, -140.0])
-	_fence_run(128.6, -60.0, 128.6, -20.0, "siatka", 1.8, [-40.0], [], [-52.0])   # furtka na płaskim, nie w połowie skarpy
+	_fence_run(128.6, -60.0, 128.6, -20.0, "siatka", 1.8, [], [], [-52.0])   # furtka na płaskim, nie w połowie skarpy
 	# nowe ogrodzenia w miejscach, gdzie dało się biegać na przełaj
-	_fence_run(44.0, 127.0, 104.0, 127.0, "blacha", 2.0, [71.0], [], [92.0, 52.0])  # garaże / wysypisko
+	_fence_run(44.0, 127.0, 104.0, 127.0, "blacha", 2.0, [], [], [92.0, 52.0])  # garaże / wysypisko
 	_fence_run(-146.0, 57.6, -113.0, 57.6, "siatka", 1.8, [-130.0])       # tyły kamienicy od strony parku
 	_fence_run(104.0, -60.0, 104.0, -34.0, "siatka", 1.8, [])             # skarpa przy nasypie
 	ctl1_tex.update(img1)

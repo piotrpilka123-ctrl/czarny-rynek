@@ -108,3 +108,33 @@ static func run(T) -> void:
 	P.global_position = saved_pos
 	P.loc = saved_loc
 	W.gang_sync(true)
+
+
+	# Naprawiony odcinek musi mieć kolizję, a istniejąca furtka zapewniać obejście.
+	var closed_holes := [[Vector2(-66,-31.6),Vector2(-86,-31.6),true],[Vector2(37,-31.6),Vector2(23,-31.6),true],[Vector2(88,-31.6),Vector2(74,-31.6),true],[Vector2(-48.5,123),Vector2(-48.5,146),false],[Vector2(128.6,78),Vector2(128.6,104),false],[Vector2(128.6,-40),Vector2(128.6,-52),false],[Vector2(71,127),Vector2(92,127),true]]
+	var repaired := true
+	var detours := true
+	var map_detours := true
+	for entry_def in closed_holes:
+		var middle: Vector2 = entry_def[0]*D.SC
+		var across := Vector2.DOWN if entry_def[2] else Vector2.RIGHT
+		repaired = repaired and W.grid.is_point_solid(W._cell(middle.x,middle.y))
+		var gate_center: Vector2 = entry_def[1]*D.SC
+		detours = detours and W.grid_clear(gate_center-across*1.5,gate_center+across*1.5)
+		var from: Vector2 = W.near_free(middle.x-across.x*1.8,middle.y-across.y*1.8)
+		var to: Vector2 = W.near_free(middle.x+across.x*1.8,middle.y+across.y*1.8)
+		var around: PackedVector2Array = W.grid_path(from,to)
+		var prev := from
+		if around.is_empty(): detours = false
+		for step in around:
+			detours = detours and W.grid_clear(prev,step)
+			prev = step
+		detours = detours and prev.distance_to(to)<0.8
+		var plotted: Array = M.nav.find(from.x,from.y,to.x,to.y)
+		map_detours = map_detours and plotted.size()>1
+		for i in range(plotted.size()-1):
+			map_detours = map_detours and W.grid_clear(plotted[i],plotted[i+1])
+	T.ok(repaired,"siedem nadmiarowych wyrw w płotach ma ponownie zamkniętą kolizję")
+	T.ok(detours,"po zamknięciu wyrw nadal można przejść przez istniejące furtki i obejść płoty")
+
+	T.ok(map_detours,"trasy telefonu omijają zamknięte wyrwy zamiast prowadzić przez naprawiony płot")

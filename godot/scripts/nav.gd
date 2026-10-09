@@ -184,6 +184,13 @@ func find(ax: float, az: float, bx: float, bz: float) -> Array:
 			out.remove_at(i2)
 		else:
 			i2 += 1
+	# Stary graf chodników może przecinać nowy płot lub zamkniętą bramę.
+	# Nie rysuj takiego odcinka: siatka kolizji wyznacza faktyczne obejście.
+	for edge in range(out.size()-1):
+		if not W.grid_clear(out[edge],out[edge+1]):
+			var detour: Array = [A]
+			detour.append_array(Array(W.grid_path(A,B)))
+			return detour
 	return out
 
 

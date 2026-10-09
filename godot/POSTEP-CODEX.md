@@ -268,3 +268,24 @@ Pełny test: 699 OK, 0 błędów (liczba zależy od warunkowej ścieżki dotychc
 Punkt 6 zamknięty jako pierwszy przegląd budynków łącznie z 6a; nie oznacza perfekcji
 każdego modelu. Kompletny przegląd nocy, deszczu, detali i wydajności pozostaje
 w punktach 10/12. Następny konkretny blok: 7 — audyt płotów, otworów i przejść.
+
+
+## Płoty i przejścia — punkt 7
+
+Audyt wszystkich wywołań _fence_run: usunięto dodatkowe wyrwy obok istniejących
+furtek w (-66,-31.6), (37,-31.6), (88,-31.6), (-48.5,123), (128.6,78),
+(128.6,-40), (71,127). Pozostają 22 przejścia z 29. Zostawiono furtki,
+przełazy i konieczny przełaz prologu (128.6,-90), samodzielną wyrwę od parku
+oraz pojedynczą wyrwę w murze. Kolizje i geometria powstają z tych samych odcinków.
+Odgięty płat siatki ma teraz rzeczywiste oczka jak płot, zamiast przezroczystej folii.
+
+Nowe kontrole: zamknięte komórki siedmiu wyrw, dostępne furtki i pełne obejścia,
+trasy telefonu. Pierwszy rozszerzony test ujawnił, że stary graf chodników potrafi
+rysować odcinek przez ogrodzenie. Nav.find sprawdza teraz gotowe odcinki względem
+siatki kolizji; w razie przeszkody wyznacza rzeczywiste obejście AStar.
+Celowany test FENCE CHECK OK. Pełny test wymagany po ostatniej zmianie płata
+siatki przed commitem. Prolog nadal przechodzi pełną dotychczasową weryfikację.
+
+Podglądy plot-osiedle.png, plot-furtki.png, plot-garaze.png, plot-wyrwa-siatka.png
+obejrzane w /Users/macbook/codex-podglad. Punkt 7 zamknięty; następny 8:
+modele śmietników/krat i widok, wejście, wyjście oraz celowanie w kryjówkach.
