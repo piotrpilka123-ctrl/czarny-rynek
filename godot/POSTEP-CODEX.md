@@ -507,3 +507,8 @@ nowej animacji pracy Igora, Roman już ma prezentację (9c). Punkt 9 zamknięty
 jako pierwsza wersja reputacji/kontaktów/płatnej delegacji; kolejne usprawnienia
 w ramach punktów 10–12. Następny 10: pełny przegląd grafiki, ze szczególnym
 uwzględnieniem uwag Piotra o roślinach, świetle oraz kontroli celowania.
+
+Najnowsze polecenia Piotra dopisane do pilnej kolejki: kolizje, schody, imprezowa
+muzyka i cichszy/muflowany klub, dealerzy proponowani przez dużych klientów
+zamiast początkowych postaci na ulicy, złomowisko, różne miejsca spotkań.
+Motyw Codexa: narzędzie CUA odmawia dostępu do com.openai.codex; nie zmieniono.

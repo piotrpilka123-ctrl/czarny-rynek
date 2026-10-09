@@ -6,6 +6,15 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 
 ## Pilne poprawki zgłoszone przez Piotra
 
+Najnowsze polecenia — przed dalszym ogólnym audytem:
+- [ ] Sprawdzić brakujące kolizje płotków/doniczek wskazanych jako „potki”.
+- [ ] Poprawić tekstury schodów.
+- [ ] Bardziej imprezowa muzyka w budynkach; klub słyszany przez ściany ma być stłumiony i trochę cichszy.
+- [ ] Dealerami stają się duzi klienci, którzy sami proponują współpracę; początkowo nie ma dealerów na ulicy. Zachować istniejące kontrakty/zapas/pieniądze.
+- [ ] Dodać złomowisko na mapie (interpretacja „do mamy” z kontekstu mapy).
+- [ ] Rozszerzyć miejsca spotkań klientów, aby nie wracali stale w te same punkty.
+
+
 - [x] Naprawić rzeczywiste celowanie w laptop i pozostałe przedmioty; zapis z celownika.
 - [x] Rośliny: ponowna poprawa, gęstsze liście i realistyczniejsza sylwetka — dotychczasowy wygląd nie został zaakceptowany.
 
