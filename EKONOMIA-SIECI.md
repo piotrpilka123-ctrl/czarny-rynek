@@ -46,8 +46,39 @@ dostawy, limit 12/dobę i raz na klienta, bez punktów za ponowne przekładanie
 zapasu dealerów. Nie jest to nowa emisja pieniędzy, tylko mniejsza prowizja.
 
 
-Roman (9b): 450 zł rekrutacji, 12 zł za obchód z potrzebnym podlewaniem,
-limit czterech wizyt / 48 zł na dobę. Do dwóch istniejących roślin na godzinę;
+Roman (9b), po symulacji: 450 zł rekrutacji, 60 zł za obchód z potrzebnym podlewaniem,
+limit czterech wizyt / 240 zł na dobę. Do dwóch istniejących roślin na godzinę;
 bez gotówki nie pracuje, nie tworzy długu. Nie podnosi tempa, jakości ani
 plonu. Oszczędza czynności gracza i zapobiega zaniedbaniu, zużywając pieniądze.
 Zbiory pozostają ręczne. Rozszerzenie pomocy na laboratorium wymaga osobnego balansu.
+
+
+## Symulacja wynagrodzenia Romana — 7 dób, 18 wariantów
+
+Narzędzie godot/tools/worker_balance.gd używa rzeczywistego wzrostu, wody,
+zdrowia, prognozy plonu/czystości i sprzedaży Matiego. 2/6/10 doniczek,
+tryby lamp 18/6 i 24/0, pielęgnacja ręczna lub pracownik przy 12/60 zł za wizytę.
+Sprzedaż przez Matiego: prowizja 35%, zapas 40 g, tempo 4 g/h w godzinach 8–23.
+Suszenie 8 h, pojedyncza suszarka do 90 g, paczki po 5 g. Koszty nasion,
+woreczków, energii i płac; cena marihuany 50 zł/g przy popycie 1.
+
+| Doniczki, 18/6 | Płace 12 zł / tydzień | Płace 60 zł / tydzień | Wynik przy 12 zł | Wynik przy 60 zł |
+|---|---:|---:|---:|---:|
+| 2 | 96 zł | 480 zł | 2722,60 zł | 2338,60 zł |
+| 6 | 252 zł | 1260 zł | 7426,40 zł | 6418,40 zł |
+| 10 | 324 zł | 1620 zł | 7018,00 zł | 5722,00 zł |
+
+Wynik to zrealizowany przepływ pieniędzy po kosztach operacyjnych. Nie wycenia
+niesprzedanego zapasu, plonów w suszeniu ani roślin w trakcie wzrostu. Nie obejmuje
+zakupu garażu/sprzętu, rekrutacji (dodatkowo 450 zł za Romana i 250 zł za Matiego),
+podróży, nalotów ani zmiennego popytu. Zakłada regularny ręczny zbiór/sadzenie,
+suszenie/pakowanie i dowóz do dealera. To kontrolowany test, nie gwarancja zysku.
+
+Wniosek: 12 zł daje marginalny koszt delegowania. 60 zł zabiera ok. 17–22%
+wyniku pracownika przed płacami w tych scenariuszach, pozostawiając dodatnią marżę.
+Wdrażamy 60 zł za potrzebną wizytę, maks. 4 / 240 zł dziennie. Brak pracy = brak
+opłaty. Migracja starych umów zachowuje wykorzystane wizyty i nie nalicza dopłat
+wstecz. Większa uprawa wymaga dodatkowego doglądania: przy 10 roślinach w 18/6
+przy pielęgnacji samym pomocnikiem uzyskano 424 g zamiast 600 g przy pełnej pielęgnacji,
+a dealer sprzedał tylko 268 g — nie traktować całego plonu jako gotówki.
+Pełne wyniki: SYMULACJA-PRACOWNIKA.csv.

@@ -437,3 +437,22 @@ innych rodzajach produkcji i prezentacja pracy w świecie; nie odhaczać całoś
 7f2da87: końcowy pełny test 734 OK, 0 błędów. Audyt Pomocnicy: 0 uwag
 (73 kontrolki). Panel zatrudnionego Romana obejrzany w rendererze.
 Następny blok 9c: wsparcie pozostałej produkcji i widoczna praca pomocników.
+
+
+## Płace pomocnika — uwaga Piotra i symulacja
+
+18 wariantów po 7 dób: 2/6/10 doniczek, dwa tryby lamp, ręcznie / 12 zł / 60 zł.
+Rzeczywista uprawa/zdrowie/plon, suszenie z limitem 90 g, paczki 5 g, silnik
+Matiego z prowizją i przepustowością, nasiona/prąd/woreczki/płace. Bez nalotów,
+zmiany popytu, zakupu wyposażenia i podróży; regularne ręczne zbiory/dowóz.
+Przy 6 roślinach 18/6 stare płace 252 zł/tydzień i wynik 7426,40 zł; nowe
+1260 zł/tydzień i wynik 6418,40 zł. Przy 2/10 roślinach nowy wynik 2338,60/5722 zł.
+CSV w SYMULACJA-PRACOWNIKA.csv, szczegóły i ograniczenia w EKONOMIA-SIECI.md.
+
+Roman teraz 60 zł za potrzebną wizytę, limit 240 zł/dobę i 4 wizyty, bez zmiany
+rekrutacji 450 zł. Aktualizacja panelu, dialogu i SMS-a. Dzienny licznik wizyt
+chroni stare umowy: wykorzystane wizyty rozpoznawane po starej stawce, bez dopłaty
+za przeszłość, od nowej doby normalny limit. Testy płac dostosowane; nowy test
+migracji mieszanej doby. Symulacja ujawniła ograniczenie wydajności przy większej
+farmie: helper nie zastępuje całej obsługi, a niesprzedany plon nie jest gotówką.
+Pełny test przed commitem; audyt panelu. Następne nadal 9c / pełny balans 12.

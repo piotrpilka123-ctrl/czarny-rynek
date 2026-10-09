@@ -1229,11 +1229,11 @@ func _workers() -> void:
 	_header("Pomocnicy","Płatne doglądanie uprawy")
 	var card := K.card(body)
 	card.add_child(K.head("Roman • garaż",17))
-	card.add_child(K.wrap("8–20 • do 2 roślin na godzinę. 12 zł za potrzebną wizytę, maks. 48 zł/dobę. Podlewa rośliny pod lampą. Zbiory, sadzenie i reszta produkcji należą do Ciebie.",12,K.C_DIM))
+	card.add_child(K.wrap("8–20 • do 2 roślin na godzinę. 60 zł za potrzebną wizytę, maks. 240 zł/dobę. Podlewa rośliny pod lampą. Zbiory, sadzenie i reszta produkcji należą do Ciebie.",12,K.C_DIM))
 	if G.S.workers.has("roman"):
 		var state: Dictionary = G.S.workers.roman
 		card.add_child(K.wrap("%s • wizyty %d • podlane %d"%[state.status,state.visits,state.watered],13,K.C_TXT))
-		card.add_child(K.wrap("Dziś: %s / 48 zł"%G.money(state.paid),12,K.C_DIM))
+		card.add_child(K.wrap("Dziś: %s / 240 zł"%G.money(state.paid),12,K.C_DIM))
 		card.add_child(K.btn("Wznów" if state.paused else "Wstrzymaj",func(): state.paused=not state.paused; render()))
 	else:
 		card.add_child(K.wrap(G.Workers.requirement() if G.Workers.requirement()!="" else "Podejdź do Romana. Rekrutacja: 450 zł.",12,K.C_DIM))

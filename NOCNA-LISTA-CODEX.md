@@ -143,7 +143,11 @@ Po nowych uwagach użytkownika wrócić do tych modeli. Następne: pomocnicy 9b.
 
 Podpunkt 9b [x]: Roman — pierwszy płatny pomocnik uprawy w garażu. Rekrutacja
 osobiście przy zapleczu: poziom 8, własny garaż, lampa, reputacja Garage Row 20,
-450 zł. Podlewa do 2 potrzebujących roślin/godz., 8–20; 12 zł za wizytę,
-limit 48 zł/dobę. Brak pracy = brak opłaty; bez gotówki/pościg/wstrzymanie
+450 zł. Podlewa do 2 potrzebujących roślin/godz., 8–20; 60 zł za wizytę,
+limit 240 zł/dobę. Brak pracy = brak opłaty; bez gotówki/pościg/wstrzymanie
 nie pracuje. Telefon Pomocnicy: stan, koszty, pauza, trasa, reputacja innych dzielnic.
 Punkt 9 nadal otwarty: pomoc przy pozostałej produkcji i prezentacja pracy w świecie.
+
+Uwagi Piotra do płac: przeprowadzono 18 wariantów / 7 dób na silniku gry;
+stawka Romana 12→60 zł, limit 48→240 zł/dobę, nadal maks. 4 wizyty.
+CSV i metodologia w EKONOMIA-SIECI.md; ochrona starych umów przed dopłatą wstecz.

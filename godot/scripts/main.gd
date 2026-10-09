@@ -3123,7 +3123,7 @@ func _test_ui(what: String) -> void:
 			print("CHEAT_INPUT cash_delta=", G.S.cash - before_cash, " mode_preserved=", ui.mode == before_mode)
 		"pomocnicy":
 			if args.has("crewpreview"):
-				G.S.workers.roman = {"paused":false,"next":G.S.t+60.0,"day":G.day(),"paid":24.0,"visits":2,"watered":4,"status":"Podlano 2 rośliny • 14:00"}
+				G.S.workers.roman = {"paused":false,"next":G.S.t+60.0,"day":G.day(),"paid":120.0,"day_visits":2,"visits":2,"watered":4,"status":"Podlano 2 rośliny • 14:00"}
 				G.S.reputation.garaze = {"score":24,"day":G.day(),"earned":4,"buyers":{}}
 			ui.open_phone("pomocnicy")
 		"dealerzy":
@@ -3874,8 +3874,8 @@ func talk_worker() -> void:
 		var reason: String = G.Workers.requirement()
 		if reason.is_empty(): choices.push_front({"label":"Zatrudnij: 450 zł","act":func():
 			if G.Workers.hire(): talk_worker()})
-		ui.dialog({"name":"Roman","lines":["Doglądam uprawy w twoim garażu. Podleję do dwóch roślin na godzinę, 8–20. Wizyta kosztuje 12 zł, maksymalnie cztery na dobę. Nie biorę pieniędzy, gdy nie ma pracy. Zbiory robisz sam.",reason if reason!="" else "Możemy zaczynać."],"choices":choices})
+		ui.dialog({"name":"Roman","lines":["Doglądam uprawy w twoim garażu. Podleję do dwóch roślin na godzinę, 8–20. Wizyta kosztuje 60 zł, maksymalnie cztery na dobę. Nie biorę pieniędzy, gdy nie ma pracy. Zbiory robisz sam.",reason if reason!="" else "Możemy zaczynać."],"choices":choices})
 	else:
 		var state: Dictionary = G.S.workers.roman
 		choices.push_front({"label":"Wznów pracę" if state.paused else "Wstrzymaj pracę","act":func(): state.paused=not state.paused; talk_worker()})
-		ui.dialog({"name":"Roman","lines":["%s. Wizyty: %d, podlane rośliny: %d. Dziś zapłacono %s/48 zł."%[state.status,state.visits,state.watered,G.money(state.paid)]],"choices":choices})
+		ui.dialog({"name":"Roman","lines":["%s. Wizyty: %d, podlane rośliny: %d. Dziś zapłacono %s/240 zł."%[state.status,state.visits,state.watered,G.money(state.paid)]],"choices":choices})

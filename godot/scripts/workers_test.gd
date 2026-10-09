@@ -25,17 +25,17 @@ static func run(T) -> void:
 	G.Workers.tick()
 	var state: Dictionary = G.S.workers.roman
 	var pots: Array = G.Prod.pots("garage")
-	T.ok(G.S.cash==538.0 and pots[0].pl.water==100.0 and pots[1].pl.water==100.0 and pots[2].pl.water==20.0,"płatna wizyta podlewa najwyżej dwie istniejące rośliny")
+	T.ok(G.S.cash==490.0 and pots[0].pl.water==100.0 and pots[1].pl.water==100.0 and pots[2].pl.water==20.0,"płatna wizyta podlewa najwyżej dwie istniejące rośliny")
 	T.ok(pots[0].pl.prog==0.3 and pots[0].pl.health==100.0 and G.goods_total(G.S.inv)==0,"pomocnik nie przyspiesza wzrostu ani nie tworzy towaru")
 	pots[2].pl.water=100.0
 	G.S.t+=60.0
 	G.Workers.tick()
-	T.ok(G.S.cash==538.0 and state.visits==1,"brak potrzebnej pracy oznacza brak opłaty")
+	T.ok(G.S.cash==490.0 and state.visits==1,"brak potrzebnej pracy oznacza brak opłaty")
 	state.paused=true
 	pots[0].pl.water=20.0
 	G.S.t+=60.0
 	G.Workers.tick()
-	T.ok(pots[0].pl.water==20.0 and G.S.cash==538.0,"wstrzymany pomocnik nie pobiera pieniędzy ani nie pracuje")
+	T.ok(pots[0].pl.water==20.0 and G.S.cash==490.0,"wstrzymany pomocnik nie pobiera pieniędzy ani nie pracuje")
 	state.paused=false
 	G.S.cash=5.0
 	G.S.t+=60.0
@@ -51,10 +51,19 @@ static func run(T) -> void:
 		pots[0].pl.water=20.0
 		G.S.t+=60.0
 		G.Workers.tick()
-	T.ok(float(state.paid)==48.0 and G.S.cash==464.0,"dzienny limit zatrzymuje opłaty po czterech wizytach")
+	T.ok(float(state.paid)==240.0 and G.S.cash==320.0,"dzienny limit zatrzymuje opłaty po czterech wizytach")
 	var copy: Dictionary = G.new_state()
 	G._merge(copy,JSON.parse_string(JSON.stringify(G.S)))
-	T.ok(copy.workers.roman.paid==48.0 and copy.workers.roman.visits==4,"zapis zachowuje umowę, wykonane wizyty i limit płac")
+	T.ok(copy.workers.roman.paid==240.0 and copy.workers.roman.visits==4,"zapis zachowuje umowę, wykonane wizyty i limit płac")
+	# Stara stawka nie daje po aktualizacji dodatkowych wizyt ani dopłaty za przeszłość.
+	state.erase("day_visits")
+	state.paid=48.0
+	state.day=G.day()
+	state.next=G.S.t
+	var old_cash: float = G.S.cash
+	pots[0].pl.water=20.0
+	G.Workers.tick()
+	T.ok(state.day_visits==4 and G.S.cash==old_cash,"stara umowa zachowuje cztery wykorzystane wizyty bez dopłaty wstecz")
 	G.S=G.new_state()
 	G._merge(G.S,{"lvl":8})
 	T.ok(G.S.workers.is_empty(),"starszy zapis nie zatrudnia pomocnika automatycznie")
