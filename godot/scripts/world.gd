@@ -4988,7 +4988,10 @@ func _interiors() -> void:
 		Models.box(g, Vector3(float(e[0]) + (0.012 if float(e[0]) < 1.0 else 0.0), 0.05, float(e[1]) + (0.012 if float(e[1]) < 1.0 else 0.0)), Vector3(e[2], 1.0, e[3]), rail, Vector3.ZERO, false)
 	Interior.baseboards(g, cx, w, d, "cfc8b6")
 	Interior.ceiling_lamp(g, Vector3(cx, h, 0.2), "shade")
-	_room_light(g, cx, 0.2, h - 0.1, 1.35, Color(1.0, 0.82, 0.58), 8.0)
+	var safe_light := _room_light(g, cx, 0.2, h - 0.1, 1.35, Color(1.0, 0.82, 0.58), 8.0)
+	safe_light.name="SafeCeilingLight"
+	safe_light.shadow_bias=0.02
+	safe_light.shadow_normal_bias=0.12
 	Interior.rug(g, Vector3(cx - 1.7, 0, 0.75), Vector2(2.4, 1.6), 0.04)
 	# łóżko pod zachodnią ścianą
 	var safe_bed := _rp(g, "old_bed_frame", cx - w * 0.5 + 0.62, -d * 0.5 + 1.1, 0.0, 1.0, 0.0, 0.55, 1.05)
@@ -5026,7 +5029,10 @@ func _interiors() -> void:
 	desk_li.spot_range = 3.2
 	desk_li.spot_angle = 62.0
 	desk_li.spot_angle_attenuation = 0.7
-	desk_li.shadow_enabled = false
+	desk_li.name="SafeDeskLight"
+	desk_li.shadow_enabled = true
+	desk_li.shadow_bias=0.02
+	desk_li.shadow_normal_bias=0.12
 	g.add_child(desk_li)
 	var fill_li := OmniLight3D.new()
 	fill_li.position = Vector3(tx - 1.2, 0.95, tz + 1.3)
@@ -5062,7 +5068,8 @@ func _interiors() -> void:
 		"label": func(): return "Laptop — zapisz grę", "act": func(): G.main.save_here()})
 	var dl := _room_light(g, tx + 0.4, tz + 0.1, 1.75, 0.8, Color(1.0, 0.9, 0.7), 2.6)
 	dl.shadow_enabled = false
-	_rp(g, "painted_wooden_chair_01", tx - 0.15, tz + 0.95, PI + 0.35, 1.02)
+	var safe_chair := _rp(g, "painted_wooden_chair_01", tx - 0.15, tz + 0.95, PI + 0.35, 1.02)
+	safe_chair.name="SafeChair"
 	inter.append({"loc": "safe", "x": tx - 0.38, "z": tz, "y0": 0.6, "y1": 1.05, "r": 0.5, "reach": 2.5, "id": "pack_safe",
 		"label": func(): return "Waga — porcjowanie towaru", "act": func(): G.ui.open_pack("safe")})
 	Interior.wall_shelf(g, Vector3(tx + 0.1, 1.72, -d * 0.5 + 0.01), 0.0, 1.0, 7)
@@ -5750,8 +5757,6 @@ func _club_entrance(g: Node3D, cx: float) -> void:
 	g.add_child(foyer)
 	var dark := Models.mat("17131f", 0.75)
 	var wall := Props.pbr("concrete_wall_008", 0.5, Color(0.33, 0.38, 0.4))
-	var ceramic := Models.mat("e0e6df", 0.22)
-	var seat := Models.mat("151820", 0.4)
 	# Wejście otwiera się na parkiet; przejście szerokie na 2,7 m.
 	for side in [-1.0, 1.0]:
 		_club_partition(foyer, Vector3(0.16, 3.2, 4.2), Vector3(cx+side*1.45, 1.6, 6.9), dark)
@@ -5782,13 +5787,9 @@ func _club_entrance(g: Node3D, cx: float) -> void:
 		var bx := cx-6.05+i*2.8
 		Models.box(foyer, Vector3(2.6,0.025,3.9), Vector3(bx,0.014,7.0), Models.mat("556066",0.4))
 		Models.box(foyer, Vector3(2.6,0.1,3.9), Vector3(bx,2.9,7.0), wall)
-		# Ceramika i czarna deska; bryła misy pozostawia miejsce na dojście.
-		Models.cyl(foyer, 0.18, 0.24, 0.3, Vector3(bx,0.15,8.35), ceramic, Vector3.ZERO, 16)
-		Models.sphere(foyer, 0.28, Vector3(bx,0.34,8.35), ceramic, Vector3(1,0.55,1.3))
-		Models.cyl(foyer, 0.22, 0.22, 0.035, Vector3(bx,0.46,8.35), seat, Vector3.ZERO, 20)
-		add_col(bx-0.23,bx+0.23,8.03,8.67,0.48,true,0.0)
+		_lm(foyer,"klub_toaleta",bx,8.35,PI)
+		add_col(bx-0.24,bx+0.24,8.03,8.8,0.94,true,0.0)
 		rects.pop_back()
-		_club_partition(foyer, Vector3(0.48,0.58,0.22), Vector3(bx,0.46,8.7), ceramic)
 		_lm(foyer, "szp_umywalka", bx+1.31, 7.55, -PI/2.0, 0.0, Vector2(0.2,0.35))
 		var light := _room_light(foyer, bx, 6.8, 2.7, 0.65, Color(0.85,0.93,1.0), 3.5)
 		light.shadow_enabled = true

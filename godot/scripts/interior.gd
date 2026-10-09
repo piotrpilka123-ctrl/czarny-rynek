@@ -493,6 +493,8 @@ static func switch_plate(g: Node3D, pos: Vector3, rot_y: float) -> void:
 
 ## tablica z narzędziami na ścianie garażu
 static func pegboard(g: Node3D, pos: Vector3, rot_y: float, w := 1.5, h := 0.9) -> void:
+	if _model(g,"garaz_narzedzia",pos,rot_y,Vector3(w/1.6,h/0.9,1.0)) != null:
+		return
 	var n := Node3D.new()
 	n.position = pos
 	n.rotation.y = rot_y

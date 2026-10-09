@@ -567,3 +567,21 @@ Unikać ponawiania nieprzydatnych zapytań do czasu aktualizacji właściwego in
 
 Końcowy pełny test: 759 OK, 0 błędów, cztery nowe kontrole rzeczywistej kapsuły
 we wejściu/łazienkach i kolizji ścian/wyposażenia. Oba podglądy obejrzane.
+
+## 2026-10-09 — toalety, narzędzia garażu i cień krzesła
+
+Uwagi Piotra wykonane przed dalszą rozbudową piętra VIP. Generator Blendera
+tools/blender/make_wyposazenie_poprawki.py tworzy dwa modele GLB: ceramikę
+z otwartą misą i deską, podniesioną pokrywą oraz zbiornikiem; tablicę z przestrzennymi
+narzędziami, otwartymi szczękami kluczy, oczkami, zębami piły i karbowanymi uchwytami.
+Każdy model łączony w jeden mesh z powierzchniami materiałów. Kolizja toalety
+obejmuje również pokrywę; sprawdzono właściwe ustawienie przodu do wejścia.
+
+Lampka biurkowa miała wyłączone cienie — włączono je. Skorygowano bias głównej
+lampy i lampki, aby cienie nie odrywały się od drobnych elementów mebli.
+tools/safe_shadow_check.gd porównuje podłogę z cieniami krzesła ON/OFF w natywnym
+rendererze, jakość med: 9309 zmienionych próbek powyżej progu 0,035. Oba obrazy
+obejrzane, podobnie klub-toaleta-poprawka.png i garaz-narzedzia-poprawka.png.
+Podglądy bez dźwięku, po wolne.sh. Kontrola dotyczy pokoju początkowego;
+pełny przegląd wszystkich obiektów na mapie pozostaje na liście.
+Końcowe chk.sh i pełny runtest.sh: 759 testów OK, 0 błędów. Piętro VIP nadal otwarte.

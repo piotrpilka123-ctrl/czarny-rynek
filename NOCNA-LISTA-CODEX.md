@@ -7,6 +7,9 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 ## Pilne poprawki zgłoszone przez Piotra
 
 Najnowsze polecenia — przed dalszym ogólnym audytem:
+- [x] Poprawić toalety: model ceramiczny z wnętrzem misy, deską, pokrywą i zbiornikiem; obejrzany w Godocie.
+- [x] Poprawić wiszące narzędzia garażu: przestrzenne klucze, piła, młotek, śrubokręty i kombinerki z Blendera.
+- [x] Cienie w pokoju początkowym, w tym krzesła: lampka rzuca cienie, skorygowana odległość cienia od powierzchni; porównanie renderów ON/OFF.
 - [x] Sprawdzić brakujące kolizje płotków/doniczek wskazanych jako „potki”.
 - [x] Poprawić tekstury schodów.
 - [x] Bardziej imprezowa muzyka w budynkach; klub słyszany przez ściany ma być stłumiony i trochę cichszy.
