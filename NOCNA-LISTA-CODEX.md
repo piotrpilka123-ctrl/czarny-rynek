@@ -27,7 +27,7 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
        procesowe, bez rzeczywistych instrukcji chemicznych. Symulacja marży i tempa.
 3. [x] Rozszerzyć teren za garażami z sensownym dojściem i funkcją w rozgrywce.
 4. [x] Jezioro/brzeg, otoczenie, ścieżki; granice terenu i nawigacja muszą pasować.
-5. [ ] Osiedle gangu: odrębne budynki, kontrolowane wejście, ostrzeżenie i ryzyko
+5. [x] Osiedle gangu: odrębne budynki, kontrolowane wejście, ostrzeżenie i ryzyko
        na początku; późniejszy dostęp zależny od postępu/kontaktów.
 6. [ ] Budynki: różnice brył, parterów, dachów, wejść i detali, spójna skala tekstur.
 7. [ ] Płoty/przejścia: przegląd całej mapy, usunąć nadmiarowe i bezsensowne otwory;
@@ -91,3 +91,9 @@ Punkt 4: 4fb65d5, 4deb777, 3682ef4 — jezioro, brzeg, ścieżki, cel telefonu,
 Józek, brodzenie i ochrona starej pozycji zapisu. Nawigacja omija głęboką wodę.
 689 testów OK, ostateczny podgląd jezioro-odbicia.png obejrzany w rendererze.
 Naturalność otoczenia można dalej szlifować w punkcie 10. Następny punkt 5: osiedle gangu.
+
+Punkt 5: Black Court na południowym zapleczu; dwie odrębne kamienice/bloki,
+zabudowanie gospodarcze, mur z jedną bramą, Borys i strażnik. Dostęp: poziom 7
+i ranga Dealer u Wiktora; podczas pościgu odmowa. Fizyczna brama, kolizja,
+LOS i nawigacja synchronizowane z zapisywaną przepustką. Podglądy bramy
+i dziedzińca obejrzane. Następny punkt 6: odrębność zabudowy całej mapy.

@@ -46,6 +46,10 @@ func build() -> void:
 		"look": {"model": "m09", "seed": 94}, "lines": ["Tu kiedyś naprawiali wszystkie auta z osiedla. Dziś zostało tyle, co na paletach.", "W tych kontenerach czasem leży coś do sprzedania. Zenek w lombardzie skupuje części.", "Za furtką jest stary teren rekreacyjny. Jeszcze parę lat temu ludzie tu przychodzili po pracy."]})
 	_static({"x": 52.0, "z": 219.0, "rot": PI / 2.0, "pose": "arms", "name": "Pan Józek", "hours": [6,20],
 		"look": {"model": "m16", "seed": 102}, "lines": ["Kiedyś cały zakład przychodził tu po pracy. Teraz został spokój i te garaże.", "Rano ptaki robią więcej hałasu niż huta. Nie ma co się spieszyć.", "Pokręcisz się tu, czasem znajdziesz coś, czego komuś szkoda było wyrzucić do zwykłego kosza."]})
+	_static({"x": -68.0, "z": 179.0, "rot": 0.0, "pose": "arms", "name": "Borys", "range": 2.4,
+		"look": {"model":"m11","seed":116}, "act":func(): G.main.talk_gang()})
+	_static({"x": -51.0, "z": 188.0, "rot": 0.0, "pose": "arms", "name": "Strażnik Black Court",
+		"look": {"model":"m16","seed":117}, "lines":["Tu pilnujemy swoich. Wiktor za ciebie ręczy, więc możesz zostać. Nie sprowadzaj policji."]})
 	_build_outskirts()
 	_build_edges()
 	_build_car()

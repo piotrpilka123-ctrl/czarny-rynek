@@ -1671,6 +1671,8 @@ func _order_target(o: Dictionary) -> Dictionary:
 
 
 func _place_target(id: String) -> Dictionary:
+	if id == "gang":
+		return {"id":id,"label":"Black Court — brama gangu","loc":"out","x":-68.0*D.SC,"z":179.0*D.SC,"color":C_PLACE}
 	if id == "lake":
 		return {"id": id, "label": "Old Reservoir — jezioro", "loc": "out", "x": 54.0 * D.SC, "z": 216.0 * D.SC, "color": C_PLACE}
 	if id == "backyards":
@@ -1733,7 +1735,7 @@ func cur_target() -> Dictionary:
 			if not dt.is_empty():
 				return dt
 			S.track = null
-		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or t == "backyards" or t == "lake" or String(t).begins_with("dealer_") or String(t).begins_with("prop:"):
+		elif t == "home" or t == "shop" or t == "ciuchy" or t == "box" or t == "pawn" or t == "supply" or t == "backyards" or t == "lake" or t == "gang" or String(t).begins_with("dealer_") or String(t).begins_with("prop:"):
 			var pt := _place_target(t)
 			if not pt.is_empty():
 				return pt
@@ -1772,6 +1774,7 @@ func nav_targets() -> Array:
 	out.append({"id": "shop", "label": "Sklep u Stasia"})
 	out.append({"id": "ciuchy", "label": "Tania Odzież (ubrania)"})
 	out.append({"id": "backyards", "label": "Backyards (za garażami)"})
+	out.append({"id":"gang","label":"Black Court (teren gangu)"})
 	out.append({"id": "lake", "label": "Old Reservoir (jezioro)"})
 	out.append({"id": "pawn", "label": "Lombard (skup, wagi)" + hours_note(D.PAWN_OPEN)})
 	out.append({"id": "supply", "label": "Hurtownia budowlana" + hours_note(D.SUPPLY_OPEN)})
@@ -2328,6 +2331,7 @@ func _slow() -> void:
 	G.story_tick()
 	G.tips_tick()
 	world.update_stations()
+	world.gang_tick()
 	world.club_tick()
 	world.shops_tick()
 	var club_d := pp.distance_to(world.club_door) if player.loc == "out" else 999.0
@@ -3813,3 +3817,17 @@ func lab_menu(room: String, index: int) -> Array:
 		options.append({"id": "continue", "label": G.Prod.stage_name(job) if int(job.hold) >= 0 else "Kontynuuj etap", "icon": "flask_conical", "ok": int(job.hold) >= 0, "note": "" if int(job.hold) >= 0 else "jeszcze pracuje", "why": "Stanowisko jeszcze pracuje — zajrzyj później."})
 	options.append({"id": "inspect", "label": "Sprawdź stanowisko", "icon": "info", "ok": true, "note": "wsad, temperatura, prognoza", "why": ""})
 	return options
+
+
+func talk_gang() -> void:
+	var reason: String = world.gang_requirement()
+	if G.flag("gang_pass"):
+		ui.dialog({"name":"Borys","lines":["Wiktor za ciebie ręczy. Brama zostaje otwarta. Nie sprowadzaj tu policji."]})
+		return
+	var choices: Array = [{"label":"Odchodzę."}]
+	if reason.is_empty():
+		choices.push_front({"label":"Wiktor mnie polecił. Wpuść mnie.","act":func():
+			if world.gang_admit():
+				G.notify("Masz dostęp do Black Court. Brama otwarta.","good")
+				talk_gang()})
+	ui.dialog({"name":"Borys","lines":["To nasze osiedle. Nowych tu nie chcemy. Wiktor musi za ciebie ręczyć.",reason if not reason.is_empty() else "Znam twoje nazwisko. Wiktor mówił, że można cię wpuścić."],"choices":choices})

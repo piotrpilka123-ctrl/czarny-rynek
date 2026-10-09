@@ -24,6 +24,11 @@ const BACKYARD_AT := Vector2(70.0, 183.0)
 const LAKE_CENTER := Vector2(90.0, 217.0)
 const LAKE_RADII := Vector2(31.0, 19.0)
 const LAKE_LEVEL := -0.15
+const GANG_GATE := Vector2(-60.0, 183.0)
+var gang_gate: Node3D
+var gang_collision: CollisionShape3D
+var gang_block: Dictionary = {}
+var gang_open := false
 var lake_surface: MeshInstance3D
 ## Skala planu miasta: wszystko jest o 38% bliżej siebie niż w projekcie.
 const SC := 0.56
@@ -437,6 +442,10 @@ func _paint() -> void:
 	_pr(1, 78.0, 174.0, 86.0, 191.0)
 	_pr(3, 45.0, 183.0, 70.0, 199.0)
 	_pr(2, 43.0, 168.0, 63.0, 189.0)
+	_pr(3, -66.0, 176.0, 22.0, 183.0)
+	_pr(2, -66.0, 179.0, -54.0, 232.0)
+	_pr(4, -100.0, 198.0, -26.0, 227.0)
+	_pr(1, -69.0, 201.0, -53.0, 210.0)
 	_paint_lake()
 	# --- oznakowanie
 	var x := -204.0
@@ -1063,6 +1072,7 @@ func build(loader = null) -> void:
 		await loader.step(52.0, "Spraying graffiti")
 	_dense()
 	_trap_houses()
+	_gang_estate()
 	_evict_greens()
 	Details.entrances(self)
 	Details.wall_art(self)
@@ -1080,6 +1090,7 @@ func build(loader = null) -> void:
 	_curb_lines()
 	_hide_spots()
 	_build_grid()
+	gang_sync(true)
 	_reserve_lake_grid()
 	_backyard_graph()
 	if loader != null:
@@ -6314,7 +6325,7 @@ func _backyard_graph() -> void:
 		var free := near_free(float(wp[previous].x), float(wp[previous].z))
 		wp[previous].x = free.x
 		wp[previous].z = free.y
-	for destination in [Vector2(92,170), BACKYARD_AT, Vector2(83,193), Vector2(70,202), Vector2(37,213), Vector2(20,231)]:
+	for destination in [Vector2(92,170), BACKYARD_AT, Vector2(83,193), Vector2(70,202), Vector2(37,213), Vector2(20,231), Vector2(-60,178)]:
 		var start := Vector2(float(wp[previous].x), float(wp[previous].z))
 		var goal := near_free(destination.x * SC, destination.y * SC)
 		var route := grid_path(start, goal)
@@ -6434,3 +6445,92 @@ func _extension_point(point: Vector2) -> int:
 	var index := wp.size()
 	wp.append({"x": point.x, "z": point.y, "links": [], "i": index, "quiet": true, "extension": true})
 	return index
+
+
+## Osobny dziedziniec, jeden kontrolowany wjazd. Żadnych niewidocznych barier.
+func _gang_estate() -> void:
+	building(-104, 190, -77, 217, 9.4, "plyta2", Color(0.57,0.54,0.49), Color(0.39,0.32,0.3), 0.24, false, {"front":3,"no":"21","pattern":2})
+	building(-45, 193, -23, 224, 12.2, "kamC", Color(0.64,0.59,0.48), Color(0.3,0.38,0.35), 0.18, false, {"front":4,"no":"23","pattern":3})
+	building(-94, 228, -72, 236, 3.4, "cegla2", Color(0.54,0.39,0.3), Color(0.26,0.3,0.28), 0.25, false, {"front":2,"balc":false})
+	_barrier(-110,183,-65,183,"mur",2.3)
+	_barrier(-55,183,-16,183,"mur",2.3)
+	_barrier(-110,183,-110,240,"mur",2.3)
+	_barrier(-16,183,-16,240,"mur",2.3)
+	_barrier(-110,240,-16,240,"mur",2.3)
+	gang_gate = Props.fence(10.0, 2.15, "sheet")
+	gang_gate.name = "GangGate"
+	gang_gate.position = Vector3(-60, hd(-60,183),183)
+	city.add_child(gang_gate)
+	gang_collision = CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(10.0*SC,2.4,0.5)
+	gang_collision.shape = shape
+	gang_collision.position = Vector3(-60*SC, hd(-60,183)+1.2,183*SC)
+	body.add_child(gang_collision)
+	gang_block = {"x0":-65.0*SC,"x1":-55.0*SC,"z0":183.0*SC-0.25,"z1":183.0*SC+0.25,"h":2.4,"op":true}
+	blocks.append(gang_block)
+	_wall(Signs.shop("BLACK COURT / PRIVATE", Color(0.65,0.31,0.19),3.3,false),-70,1.6,182.65,PI)
+	_bench(-72,220,PI/2)
+	_bin(-48,226,0)
+	_lamp(-69,205,PI/2)
+	_prop("pallet",-96,225,0,0.16)
+	_prop("old_tyre",-27,228,0.3,0.16,0,false)
+	for point in [Vector2(-67,228),Vector2(-51,233)]:
+		var tree := Props.tree(118,1.15,0.65)
+		tree.position = Vector3(point.x,hd(point.x,point.y),point.y)
+		tree.scale *= Vector3(INV,1.0,INV)
+		Props.set_range(tree,150.0)
+		city.add_child(tree)
+
+func gang_requirement() -> String:
+	if G.S.wanted: return "Najpierw zgub policję. Nie sprowadzaj jej pod bramę."
+	if int(G.S.lvl) < 7 or G.rank() < 3:
+		return "Wróć na poziomie 7 i z rangą Dealer u Wiktora (wkład 3500 zł)."
+	return ""
+
+func gang_admit() -> bool:
+	if G.player.loc != "out": return false
+	var at := Vector2(-68,179) * SC
+	if Vector2(G.player.global_position.x,G.player.global_position.z).distance_to(at) > 3.0: return false
+	if not gang_requirement().is_empty(): return false
+	G.S.flags["gang_pass"] = true
+	gang_sync()
+	return true
+
+func gang_sync(force := false) -> void:
+	if gang_gate == null or grid == null: return
+	var opened: bool = G.flag("gang_pass")
+	if not force and opened == gang_open: return
+	gang_open = opened
+	# Podnoszona brama zostawia wolny wjazd; kolizja, LOS i siatka zmieniają się razem.
+	gang_gate.position.y = hd(-60,183) + (3.0 if opened else 0.0)
+	gang_collision.set_deferred("disabled", opened)
+	gang_block.h = 0.0 if opened else 2.4
+	gang_block.op = not opened
+	_bk = PackedFloat32Array()
+	var a := _cell(-65.0*SC-0.22,183.0*SC-0.47)
+	var b := _cell(-55.0*SC+0.22,183.0*SC+0.47)
+	grid.fill_solid_region(Rect2i(a,b-a+Vector2i.ONE),not opened)
+	if opened:
+		# Nie wymazuj sąsiednich słupów/muru z komórek dzielonych z bramą.
+		for z in range(a.y,b.y+1):
+			for x in range(a.x,b.x+1):
+				var point := grid.get_point_position(Vector2i(x,z))
+				for obstacle in blocks:
+					if float(obstacle.h) < 0.7: continue
+					if point.x >= float(obstacle.x0)-0.47 and point.x <= float(obstacle.x1)+0.47 and point.y >= float(obstacle.z0)-0.47 and point.y <= float(obstacle.z1)+0.47:
+						grid.set_point_solid(Vector2i(x,z),true)
+						break
+
+func gang_tick() -> void:
+	gang_sync()
+	if G.player.loc != "out" or G.flag("gang_pass"): return
+	var p: Vector3 = G.player.global_position
+	var at := GANG_GATE*SC
+	if Vector2(p.x,p.z).distance_to(at) < 8.0 and not G.flag("gang_warning"):
+		G.S.flags["gang_warning"] = true
+		G.notify("Black Court: teren gangu. Zostań przed bramą i porozmawiaj ze strażnikiem. Bez kontaktów nie wpuszczą Cię.","warn")
+	# Stary zapis lub przeskoczenie muru nie omija kontroli dostępu.
+	if p.x > -109*SC and p.x < -17*SC and p.z > 184*SC and p.z < 239*SC:
+		G.player.global_position = Vector3(at.x,height(at.x,178*SC),178*SC)
+		G.notify("Strażnik wyprowadza Cię za bramę. Najpierw zdobądź zaufanie Wiktora.","warn")

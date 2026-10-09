@@ -67,3 +67,44 @@ static func run(T) -> void:
 			var point: Vector2 = (walking[i] as Vector2).lerp(walking[i+1], float(step)/10.0)
 			dry_route = dry_route and W.water_depth(point.x, point.y) <= 0.4
 	T.ok(dry_route, "trasa minimapy wokół jeziora nie ścina drogi przez głęboką wodę")
+
+	var pass_before: bool = G.flag("gang_pass")
+	var paid_before: float = G.S.paid
+	var lvl_before: int = G.S.lvl
+	var wanted_before: bool = G.S.wanted
+	G.S.flags["gang_pass"] = false
+	G.S.paid = 0.0
+	G.S.lvl = 1
+	G.S.wanted = false
+	W.gang_sync(true)
+	var entry := Vector2(-60,178)*D.SC
+	var courtyard := Vector2(-60,207)*D.SC
+	P.loc = "out"
+	P.global_position = Vector3(-66*D.SC,W.height(-66*D.SC,179*D.SC),179*D.SC)
+	T.ok(not W.gang_admit() and not G.flag("gang_pass"), "początkujący nie dostaje dostępu do osiedla gangu")
+	T.ok(not W.grid_clear(entry,courtyard), "zamknięta brama fizycznie blokuje trasę do dziedzińca")
+	var perimeter := true
+	for point in [Vector2(-90,183),Vector2(-110,210),Vector2(-16,210),Vector2(-60,240)]:
+		perimeter = perimeter and W.grid.is_point_solid(W._cell(point.x*D.SC,point.y*D.SC))
+	T.ok(perimeter, "osiedle ma szczelny obwód z jednym wejściem")
+	G.S.paid = 3500.0
+	G.S.lvl = 7
+	G.S.wanted = true
+	T.ok(not W.gang_admit(), "gang nie wpuszcza gracza podczas pościgu")
+	G.S.wanted = false
+	P.global_position = saved_pos
+	T.ok(not W.gang_admit(), "polecenie Wiktora wymaga osobistej rozmowy przy bramie")
+	P.global_position = Vector3(-66*D.SC,W.height(-66*D.SC,179*D.SC),179*D.SC)
+	T.ok(W.gang_admit() and G.flag("gang_pass"), "polecenie Wiktora i poziom odblokowują dostęp do osiedla")
+	T.ok(W.grid_clear(entry,courtyard) and not W.gang_block.op, "otwarta brama odblokowuje siatkę i linię widzenia")
+	T.ok(String(G.zone_at(courtyard.x,courtyard.y).get("id","")) == "black_court", "gang ma odrębną strefę terytorialną")
+	G.S.track = "gang"
+	T.ok(M.cur_target().id == "gang", "telefon prowadzi do strażnika przy bramie gangu")
+	G.S.track = saved_track
+	G.S.flags["gang_pass"] = pass_before
+	G.S.paid = paid_before
+	G.S.lvl = lvl_before
+	G.S.wanted = wanted_before
+	P.global_position = saved_pos
+	P.loc = saved_loc
+	W.gang_sync(true)

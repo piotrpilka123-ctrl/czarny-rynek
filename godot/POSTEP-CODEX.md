@@ -207,3 +207,23 @@ w /Users/macbook/codex-podglad. Transparentny wariant dawał mleczną obwódkę;
 odcięcia według głębokości i stonowanych odbić. Ostatni shader zapisany w 3682ef4
 po pełnym teście: 689 OK, 0 błędów. Punkt 4 odhaczony; następny 5: osiedle gangu.
 Dalszy szlif naturalności brzegu/otoczenia zostaje częścią pełnego przeglądu grafiki.
+
+
+## Black Court — punkt 5
+
+Zamknięty teren (-110..-16, 183..240) na nowym zapleczu. Trzy bryły o innych
+wysokościach i elewacjach; detale wejść, anteny, balkony, zieleń, ławka, kosz.
+Jeden wjazd, czytelny napis, Borys przy bramie i strażnik na dziedzińcu.
+Pierwsze podejście daje ostrzeżenie. Stary zapis wewnątrz lub przeskoczenie muru
+przenosi początkującego przed bramę. Dostęp wymaga osobistej rozmowy: poziom 7,
+ranga Dealer (wkład 3500 zł), brak pościgu. Przepustka w S.flags; podnoszona
+brama jednocześnie zmienia kolizję, LOS i AStar, zachowując sąsiednie ściany.
+Osobna strefa Black Court i cel telefonu prowadzący do strażnika przed murem.
+
+Weryfikacja: nowe kontrole dostępu, pościgu, osobistej rozmowy, obwodu,
+zamkniętej/otwartej nawigacji, strefy i celu telefonu; pełny test przed commitem.
+Podglądy gang-brama-final.png i gang-dziedziniec-final.png w codex-podglad.
+Wczesny przebieg wykrył typ numerów budynków, lampę nad trawą oraz lampę w osi
+wjazdu; poprawione. Grafika wymaga dalszego szlifu w punktach 6 i 10.
+Nie dodano darmowego dochodu ani kary pieniężnej za wejście. Kolejny punkt 6:
+rozpoznawalna zabudowa całej mapy, potem płoty/przejścia i śmietniki.

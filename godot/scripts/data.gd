@@ -426,6 +426,7 @@ var DROPS := [
 
 ## strefy (nazwy na HUD-zie i lokalna uwaga policji)
 var ZONES := [
+	{"id": "black_court", "name": "Black Court", "x0": -110.0, "x1": -16.0, "z0": 183.0, "z1": 240.0},
 	{"id": "zaplecze", "name": "Backyards", "x0": -210.0, "x1": 210.0, "z0": 170.0, "z1": 249.0},
 	{"id": "huta", "name": "Dead Mill", "x0": 160.0, "x1": 210.0, "z0": -170.0, "z1": 170.0},
 	{"id": "nasyp", "name": "The Tracks", "x0": 128.0, "x1": 160.0, "z0": -170.0, "z1": 170.0},
