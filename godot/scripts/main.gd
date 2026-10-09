@@ -2376,10 +2376,11 @@ func _slow() -> void:
 		if world.club_player.position.distance_to(want) > 0.1:
 			world.club_player.position = want
 			world.club_player.unit_size = 22.0 if in_club else 10.0
+		world.club_player.volume_db = -7.0 if in_club else -11.0
 		if in_club:
 			club_d = 0.0
 			world.club_lights(G.now)
-	Sfx.set_club_open(clampf(1.0 - (club_d - 3.0) / 16.0, 0.0, 1.0))
+	Sfx.set_club_open(clampf(1.0 - (club_d - 3.0) / 16.0, 0.0, 1.0) * (1.0 if player.loc == "club" else 0.45))
 	Sfx.ambient(player.loc == "out", G.night, G.rain)
 	cop_t -= 0.25
 	if cop_t <= 0.0 and G.prologue == null:

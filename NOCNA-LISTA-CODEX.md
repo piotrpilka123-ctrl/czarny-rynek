@@ -9,7 +9,9 @@ listy dopracowywać grę własnymi pomysłami. Nie pushować bez polecenia.
 Najnowsze polecenia — przed dalszym ogólnym audytem:
 - [x] Sprawdzić brakujące kolizje płotków/doniczek wskazanych jako „potki”.
 - [x] Poprawić tekstury schodów.
-- [ ] Bardziej imprezowa muzyka w budynkach; klub słyszany przez ściany ma być stłumiony i trochę cichszy.
+- [x] Bardziej imprezowa muzyka w budynkach; klub słyszany przez ściany ma być stłumiony i trochę cichszy.
+- [ ] Rozbudować klub: neonowy korytarz wejściowy, duża sala, osobne łazienki, górne balkony i loże VIP; domyślna muzyka bardziej klubowa.
+- [ ] Rozbudować lokale do kupienia o więcej pomieszczeń; zachować wyposażenie i zapis gracza.
 - [ ] Dealerami stają się duzi klienci, którzy sami proponują współpracę; początkowo nie ma dealerów na ulicy. Zachować istniejące kontrakty/zapas/pieniądze.
 - [ ] Dodać złomowisko na mapie (interpretacja „do mamy” z kontekstu mapy).
 - [ ] Rozszerzyć miejsca spotkań klientów, aby nie wracali stale w te same punkty.

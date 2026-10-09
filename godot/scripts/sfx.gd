@@ -1291,10 +1291,11 @@ const TRACKS := {
 	"sewer_nightclub": "Sewer Nightclub — section31",
 	"root_of_all_evil": "The Root of All Evil — Cleyton Kauffman",
 	"funky_disco": "Funky Disco Beats — Fupi",
+	"technomania101": "Technomania 101",
 }
-const CLUB_TRACKS := ["night_prowler", "sewer_nightclub"]
+const CLUB_TRACKS := ["technomania101", "sewer_nightclub"]
 const RADIO_TRACKS := ["root_of_all_evil", "funky_disco"]
-const BLOCK_TRACKS := ["root_of_all_evil", "sewer_nightclub", "night_prowler"]
+const BLOCK_TRACKS := ["funky_disco", "technomania101", "sewer_nightclub"]
 var tracks := {}
 var club_i := 0
 

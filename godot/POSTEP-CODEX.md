@@ -528,3 +528,23 @@ Pełny test 748 OK, 0 błędów, 3 nowe kontrole kolizji (promienie i kapsuła).
 Renderer schody-nawierzchnia.png i schody-z-gory.png obejrzany. Następne:
 imprezowa muzyka z budynków oraz cichszy/stłumiony klub; potem klient proponuje
 bycie dealerem, złomowisko i więcej różnych miejsc spotkań.
+
+
+## Muzyka imprezowa i klub słyszany przez ściany
+
+Okna budynków: Funky Disco, Technomania 101 i Sewer Nightclub zamiast
+mrocznego Root of All Evil / Night Prowler. Po nowym poleceniu Piotra także
+klub otrzymał domyślną playlistę Technomania 101 / Sewer Nightclub; pliki muzyki
+użytkownika w katalogu muzyka pozostają obsługiwane. Ścieżka filmowa prologu
+nie była edytowana. Korzystamy z już dostępnych lokalnych nagrań, bez pobierania.
+Na ulicy klub ma -11 dB zamiast -7 dB, filtr dolnoprzepustowy także przy drzwiach
+(max ok. 2,16 kHz); wewnątrz nadal -7 dB / pełne pasmo 9 kHz. Testy bez dźwięku
+sprawdzają rzeczywisty player i bus oraz dostępność plików/wybór playlisty.
+
+Nowe polecenie dopisane do listy: rozbudowane wnętrza lokali do kupienia i klubu
+(korytarz/tunel neonów → duża sala, oddzielne toalety, górne balkony/loże VIP).
+Zachować wyposażenie i zapis. Dalsze oczekujące: dealerzy proponowani przez
+klientów, złomowisko, nowe miejsca spotkań. Pełny test finalnej muzyki przed commitem.
+
+Muzyka: końcowy pełny test 755 OK, 0 błędów. Następny konkretny blok:
+układ klubu i lokali, z kontrolą przejść, schodów i górnego poziomu gracza.
