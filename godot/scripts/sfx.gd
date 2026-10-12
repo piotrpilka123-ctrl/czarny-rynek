@@ -549,8 +549,8 @@ func party_vol(db: float) -> void:
 
 ## pojedynczy odgłos imprezy; `close` = blisko i wyraźnie (poza filtrem), np. wciągnięcie kreski.
 ## `dur` > 0 ucina nagranie po tylu sekundach (nagrania wciągania mają po kilka powtórzeń — gra potrzebuje jednego).
-func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.0, dur := 0.0) -> AudioStreamPlayer:
-	if muted or not party_sounds.has(name):
+func party_sfx(sound_name: String, db := 0.0, pitch := 1.0, close := false, from := 0.0, dur := 0.0) -> AudioStreamPlayer:
+	if muted or not party_sounds.has(sound_name):
 		return null
 	var p: AudioStreamPlayer = _party_voice()
 	var previous_tween: Tween = p.get_meta("cut_tween", null)
@@ -558,7 +558,7 @@ func party_sfx(name: String, db := 0.0, pitch := 1.0, close := false, from := 0.
 		previous_tween.kill()
 	p.set_meta("cut_tween", null)
 	p.bus = "Efekty" if close else "Impreza"
-	p.stream = party_sounds[name]
+	p.stream = party_sounds[sound_name]
 	p.volume_db = db
 	p.set_meta("base", pitch)
 	p.pitch_scale = pitch * (1.0 if close else maxf(0.9, party_low_k))
@@ -629,13 +629,13 @@ func party_line(chop := true) -> float:
 	return at
 
 
-func _party_at(delay: float, name: String, db: float, pitch: float) -> void:
+func _party_at(delay: float, sound_name: String, db: float, pitch: float) -> void:
 	var tw := create_tween()
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tw.tween_interval(maxf(0.01, delay))
 	tw.tween_callback(func():
 		if party_player != null and party_player.playing:
-			party_sfx(name, db, pitch, true))
+			party_sfx(sound_name, db, pitch, true))
 
 
 ## kilka szybkich kroków (ktoś wbiega do łazienki)
@@ -720,8 +720,8 @@ func knock() -> void:
 		for i in range(n):
 			var t := float(i) / RATE
 			var thump := sin(TAU * (70.0 + 90.0 * exp(-t * 40.0)) * t) * exp(-t * 9.0) + rng.randf_range(-1.0, 1.0) * exp(-t * 55.0) * 0.5
-			var ring := sin(TAU * 3150.0 * t) * 0.09 * minf(1.0, t * 3.0) * clampf((2.6 - t) / 1.6, 0.0, 1.0)
-			buf[i] = clampf(thump * 0.95 + ring, -1.0, 1.0)
+			var ring_tone := sin(TAU * 3150.0 * t) * 0.09 * minf(1.0, t * 3.0) * clampf((2.6 - t) / 1.6, 0.0, 1.0)
+			buf[i] = clampf(thump * 0.95 + ring_tone, -1.0, 1.0)
 		_care["knock"] = _wav(buf)
 	var p: AudioStreamPlayer = pool[pool_i]
 	pool_i = (pool_i + 1) % pool.size()
@@ -764,8 +764,8 @@ func voice_for(who: String) -> Array:
 		var last := who.get_slice(" ", who.get_slice_count(" ") - 1).to_lower()
 		var fem: bool = (last.ends_with("a") or first in ["pani", "ola", "baśka", "mama"]) and not last in ["kuba", "numer", "wrona", "siwy"] and first != "pan"
 		var h := absi(who.hash())
-		var pool: Array = ["kobieta", "kobieta_niska"] if fem else ["tenor", "bas", "chrypa", "mlody", "starszy", "nosowy"]
-		out = [pool[h % pool.size()], 0.93 + float((h / 7) % 16) / 100.0]
+		var voice_types: Array = ["kobieta", "kobieta_niska"] if fem else ["tenor", "bas", "chrypa", "mlody", "starszy", "nosowy"]
+		out = [voice_types[h % voice_types.size()], 0.93 + float((h / 7) % 16) / 100.0]
 	_voice_cache[who] = out
 	return out
 

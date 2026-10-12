@@ -88,7 +88,7 @@ func build(_noise_tex: Texture2D) -> void:
 	env.glow_intensity = 0.32
 	env.glow_bloom = 0.05
 	env.glow_hdr_threshold = 1.1
-	env.ssao_enabled = true
+	env.ssao_enabled = RenderingServer.get_current_rendering_method() == "forward_plus"
 	env.ssao_radius = 1.6
 	env.ssao_intensity = 2.2
 	env.ssao_power = 1.6
@@ -96,7 +96,7 @@ func build(_noise_tex: Texture2D) -> void:
 	env.fog_density = 0.0025
 	env.fog_sky_affect = 0.0
 	env.fog_aerial_perspective = 0.7
-	env.volumetric_fog_enabled = true
+	env.volumetric_fog_enabled = RenderingServer.get_current_rendering_method() == "forward_plus"
 	env.volumetric_fog_density = 0.01
 	env.volumetric_fog_albedo = Color(0.86, 0.88, 0.92)
 	env.volumetric_fog_anisotropy = 0.45
@@ -177,7 +177,8 @@ func set_quality(q: String) -> void:
 	var vp := get_viewport()
 	if env == null or vp == null:
 		return
-	var ultra := q == "ultra"
+	var forward := RenderingServer.get_current_rendering_method() == "forward_plus"
+	var ultra := q == "ultra" and forward
 	var high := q == "high" or ultra
 	# „Ultra” — dla mocnych kart graficznych: globalne oświetlenie (SDFGI), odbite światło i odbicia w przestrzeni
 	# ekranu, pełna rozdzielczość, cienie 8K. Na zintegrowanych układach to pokaz slajdów — stąd osobny poziom.
@@ -197,16 +198,16 @@ func set_quality(q: String) -> void:
 	RenderingServer.environment_glow_set_use_bicubic_upscale(high)
 	RenderingServer.environment_set_volumetric_fog_filter_active(true)
 	RenderingServer.environment_set_volumetric_fog_volume_size(160 if ultra else 64, 128 if ultra else 64)
-	env.ssao_enabled = q != "low" and opt_ssao
+	env.ssao_enabled = forward and q != "low" and opt_ssao
 	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_ULTRA if ultra else (RenderingServer.ENV_SSAO_QUALITY_MEDIUM if high else RenderingServer.ENV_SSAO_QUALITY_LOW), true, 0.5, 3, 50.0, 300.0)
 	env.glow_enabled = true
-	fog_on = q != "low" and opt_fog
+	fog_on = forward and q != "low" and opt_fog
 	env.volumetric_fog_enabled = fog_on and not inside
 	env.ssr_enabled = ultra
 	env.ssil_enabled = ultra
 	vp.msaa_3d = Viewport.MSAA_4X if ultra else (Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED)
 	vp.mesh_lod_threshold = 0.5 if ultra else (1.0 if high else (1.5 if q == "med" else 2.5))
-	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if high else Viewport.SCREEN_SPACE_AA_FXAA
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if high or RenderingServer.get_current_rendering_method() == "gl_compatibility" else Viewport.SCREEN_SPACE_AA_FXAA
 	apply_scale()
 	var sq := opt_shadows if opt_shadows != "" else ("high" if ultra else q)
 	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if sq == "high" else (RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM if sq == "med" else RenderingServer.SHADOW_QUALITY_SOFT_LOW))
@@ -250,7 +251,7 @@ func apply_scale() -> void:
 	var h := maxf(1.0, float(vp.size.y))
 	var sc := clampf(float(TARGET_H.get(quality, 940.0)) * dyn * res_mult / h, 0.3, 1.0)
 	vp.scaling_3d_scale = sc
-	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if sc < 0.97 else Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if sc < 0.97 and RenderingServer.get_current_rendering_method() == "forward_plus" else Viewport.SCALING_3D_MODE_BILINEAR
 	# łagodne wyostrzanie i lekko dodatnie przesunięcie mipmap: mniej „piasku” na drobnych teksturach w ruchu
 	vp.fsr_sharpness = 1.2
 	# tekstury mają mipmapy, więc przy skalowaniu w górę wybieramy poziom o ułamek ostrzejszy (jak zaleca FSR)

@@ -1,4 +1,5 @@
 extends RefCounted
+const RenderCompat = preload("res://scripts/render_compat.gd")
 ## Realistyczne materiały PBR (Poly Haven, CC0) i rekwizyty z plików glTF
 ## (Poly Haven oraz Quaternius, CC0) z automatycznym dopasowaniem skali.
 
@@ -349,7 +350,7 @@ static func leaf_material(tex_name: String, crown_y := 4.0) -> ShaderMaterial:
 		return _leaf_mat[key]
 	if _leaf_sh == null:
 		_leaf_sh = Shader.new()
-		_leaf_sh.code = SH_LEAF
+		_leaf_sh.code = RenderCompat.shader_code(SH_LEAF)
 	var m := ShaderMaterial.new()
 	m.shader = _leaf_sh
 	m.set_shader_parameter("tex", tex("res://assets/nature/%s.png" % tex_name))
@@ -370,7 +371,7 @@ static func _tint_leaves(n: Node, tint: Color, leaf_tex := "gen_leaves_autumn") 
 				continue
 			if m is BaseMaterial3D and (String(m.resource_name).contains("Leaves") or String(m.resource_name).contains("Grass")):
 				mi.set_surface_override_material(i, leaf_material(leaf_tex, snappedf(top * 0.66, 0.5)))
-				mi.set_instance_shader_parameter("tint", tint)
+				RenderCompat.set_parameter(mi, "tint", tint)
 	for c in n.get_children():
 		_tint_leaves(c, tint, leaf_tex)
 

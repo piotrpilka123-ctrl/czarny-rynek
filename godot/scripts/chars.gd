@@ -1,4 +1,5 @@
 extends RefCounted
+const RenderCompat = preload("res://scripts/render_compat.gd")
 ## Postacie: realistyczne sylwetki (Quaternius „Universal Base Characters”, CC0)
 ## z ubraniami nakładanymi shaderem i animacjami z „Universal Animation Library” (CC0).
 ## Maska ubrań jest zapisana w kolorach wierzchołków (patrz tools/README).
@@ -423,7 +424,7 @@ static func _body_material(female: bool) -> ShaderMaterial:
 		return _mat[key]
 	if _shader == null:
 		_shader = Shader.new()
-		_shader.code = SH_BODY
+		_shader.code = RenderCompat.shader_code(SH_BODY)
 	if _noise == null:
 		var fn := FastNoiseLite.new()
 		fn.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
@@ -636,11 +637,11 @@ static func make(o: Dictionary = {}) -> Dictionary:
 	var stripes: float = 1.0 if (o.get("stripes", kind == 2 and rng.randf() < 0.8)) else 0.0
 	var shorts: float = 0.0 if o.get("shorts", false) else 1.0
 	var logo: float = 1.0 if o.get("logo", (kind == 0 or kind == 1) and rng.randf() < 0.3) else 0.0
-	body.set_instance_shader_parameter("top_col", Color(top.r, top.g, top.b, kind / 10.0))
-	body.set_instance_shader_parameter("top2_col", Color(top2.r, top2.g, top2.b, stripes))
-	body.set_instance_shader_parameter("bot_col", Color(bottom.r, bottom.g, bottom.b, shorts))
-	body.set_instance_shader_parameter("shoe_col", Color(shoes.r, shoes.g, shoes.b, logo))
-	body.set_instance_shader_parameter("fit", Vector4(sleeve, hem, skin, float(o.get("thick", 1.0))))
+	RenderCompat.set_parameter(body, "top_col", Color(top.r, top.g, top.b, kind / 10.0))
+	RenderCompat.set_parameter(body, "top2_col", Color(top2.r, top2.g, top2.b, stripes))
+	RenderCompat.set_parameter(body, "bot_col", Color(bottom.r, bottom.g, bottom.b, shorts))
+	RenderCompat.set_parameter(body, "shoe_col", Color(shoes.r, shoes.g, shoes.b, logo))
+	RenderCompat.set_parameter(body, "fit", Vector4(sleeve, hem, skin, float(o.get("thick", 1.0))))
 
 	var hair_color: Color = col(o.get("hair_color", HAIR_COLORS[rng.randi_range(0, HAIR_COLORS.size() - 1)]))
 	var hat: String = o.get("hat", "")
@@ -855,7 +856,7 @@ static func _wear_material(src: StandardMaterial3D, mi: MeshInstance3D, skel: Sk
 		return _wear_mats[key]
 	if _wear_shader == null:
 		_wear_shader = Shader.new()
-		_wear_shader.code = SH_WEAR
+		_wear_shader.code = RenderCompat.shader_code(SH_WEAR)
 	var m := ShaderMaterial.new()
 	m.shader = _wear_shader
 	m.set_shader_parameter("tex_albedo", src.albedo_texture)
@@ -1122,7 +1123,7 @@ static func mannequin(gear: Dictionary, pose := "", plastic := Color(0.80, 0.78,
 				continue
 			if not (cur is ShaderMaterial):
 				mi.set_surface_override_material(sf, pm)
-		mi.set_instance_shader_parameter("w_plastic", Color(plastic.r, plastic.g, plastic.b, 1.0))
+		RenderCompat.set_parameter(mi, "w_plastic", Color(plastic.r, plastic.g, plastic.b, 1.0))
 	# zastygła poza: bez mrugania, oddechu i gadania
 	var fc = rig.get("face")
 	if fc != null and is_instance_valid(fc):
@@ -1189,13 +1190,13 @@ static func dress(rig: Dictionary, gear: Dictionary, tints := {}) -> void:
 			var nm := (src.resource_name if src != null else "").to_lower()
 			if cur is StandardMaterial3D and nm.ends_with("body"):
 				mi.set_surface_override_material(s, _wear_material(cur, mi, skel))
-		mi.set_instance_shader_parameter("w_top", tint.call("gora"))
-		mi.set_instance_shader_parameter("w_pants", tint.call("spodnie"))
-		mi.set_instance_shader_parameter("w_shoes", tint.call("buty"))
-		mi.set_instance_shader_parameter("w_gloves", tint.call("dlonie"))
-		mi.set_instance_shader_parameter("w_plaid", 1.0 if look.get("gora", {}).get("plaid", false) else 0.0)
-		mi.set_instance_shader_parameter("w_hide", hide)
-		mi.set_instance_shader_parameter("w_skin",Color(0.82,0.73,0.66,1.0) if rig.get("player",false) else Color(0,0,0,0))
+		RenderCompat.set_parameter(mi, "w_top", tint.call("gora"))
+		RenderCompat.set_parameter(mi, "w_pants", tint.call("spodnie"))
+		RenderCompat.set_parameter(mi, "w_shoes", tint.call("buty"))
+		RenderCompat.set_parameter(mi, "w_gloves", tint.call("dlonie"))
+		RenderCompat.set_parameter(mi, "w_plaid", 1.0 if look.get("gora", {}).get("plaid", false) else 0.0)
+		RenderCompat.set_parameter(mi, "w_hide", hide)
+		RenderCompat.set_parameter(mi, "w_skin",Color(0.82,0.73,0.66,1.0) if rig.get("player",false) else Color(0,0,0,0))
 	# --- głowa: czapka z daszkiem albo zimowa
 	var head: Dictionary = look.get("glowa", {})
 	if head.has("hat"):

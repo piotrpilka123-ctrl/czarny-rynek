@@ -1,4 +1,5 @@
 extends Node3D
+const RenderCompat = preload("res://scripts/render_compat.gd")
 ## Świat: Osiedle Hutnik i okolice. Teren ze skarpą, schodami, górką i nasypem,
 ## budynki, rekwizyty, graf ścieżek, wnętrza, kolizje i punkty interakcji.
 
@@ -1113,7 +1114,7 @@ func build(loader = null) -> void:
 
 func _facade_mats() -> void:
 	var sh := Shader.new()
-	sh.code = Facade.SH
+	sh.code = RenderCompat.shader_code(Facade.SH)
 	# [tekstura, skala, styl, pole okna (m), tekstura pod tynkiem, ile tynku odpadło]
 	var defs := {
 		"plyta": ["concrete_wall_008", 0.2, 0, Vector2(3.6, 3.0), "", 0.0],
@@ -1225,14 +1226,14 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 		var a := ax if front <= 2 else az
 		st_off = posmod(int(floor((a - float(g[0])) / cs.x)), stair)
 	var mi := Models.box(city, Vector3(w, h + 0.6, d), Vector3((x0 + x1) * 0.5, by + (h + 0.6) * 0.5, (z0 + z1) * 0.5), fac[key])
-	mi.set_instance_shader_parameter("b_origin", Vector3(x0 * SC, by + 0.6, z0 * SC))
-	mi.set_instance_shader_parameter("b_size", Vector3(w * SC, h, d * SC))
-	mi.set_instance_shader_parameter("b_wall", wall)
-	mi.set_instance_shader_parameter("b_accent", accent)
-	mi.set_instance_shader_parameter("b_seed", rng.randf() * 10.0)
-	mi.set_instance_shader_parameter("b_dead", dead)
-	mi.set_instance_shader_parameter("b_opts", Vector4(float(blind), float(pattern), float(stair) + float(st_off) / 16.0, 0.0))
-	mi.set_instance_shader_parameter("b_grid", Vector4(gx[0], gx[1], gz[0], gz[1]))
+	RenderCompat.set_parameter(mi, "b_origin", Vector3(x0 * SC, by + 0.6, z0 * SC))
+	RenderCompat.set_parameter(mi, "b_size", Vector3(w * SC, h, d * SC))
+	RenderCompat.set_parameter(mi, "b_wall", wall)
+	RenderCompat.set_parameter(mi, "b_accent", accent)
+	RenderCompat.set_parameter(mi, "b_seed", rng.randf() * 10.0)
+	RenderCompat.set_parameter(mi, "b_dead", dead)
+	RenderCompat.set_parameter(mi, "b_opts", Vector4(float(blind), float(pattern), float(stair) + float(st_off) / 16.0, 0.0))
+	RenderCompat.set_parameter(mi, "b_grid", Vector4(gx[0], gx[1], gz[0], gz[1]))
 	add_col(x0, x1, z0, z1, h)
 	blds.append({"x0": x0, "x1": x1, "z0": z0, "z1": z1, "h": h, "by": by + 0.6, "key": key, "blind": blind, "stair": stair, "st_off": st_off, "front": front,
 		"gx": gx, "gz": gz, "accent": accent, "wall": wall, "node": mi, "no": String(opt.get("no", "")), "plyta": plyta, "old": old, "dead": dead})
@@ -3753,11 +3754,11 @@ func _viaduct() -> void:
 		Models.box(city, Vector3(1.2, 0.8, 10.4), Vector3(231.5 * sx, top + 6.8, zc), cm, Vector3.ZERO, false)
 		# hala, w którą wjeżdża kolejka: na wschodzie wyższa część huty, na zachodzie zajezdnia
 		var tw := Models.box(city, Vector3(40.2, 24.0, 40.0), Vector3(252.0 * sx, 11.5, zc), fac["cegla"], Vector3.ZERO, false)
-		tw.set_instance_shader_parameter("b_origin", Vector3((252.0 * sx - 20.1) * SC, -0.5, (zc - 20.0) * SC))
-		tw.set_instance_shader_parameter("b_wall", Color(0.5, 0.44, 0.4))
-		tw.set_instance_shader_parameter("b_accent", Color(0.4, 0.4, 0.4))
-		tw.set_instance_shader_parameter("b_seed", 5.1 + sx)
-		tw.set_instance_shader_parameter("b_dead", 0.8)
+		RenderCompat.set_parameter(tw, "b_origin", Vector3((252.0 * sx - 20.1) * SC, -0.5, (zc - 20.0) * SC))
+		RenderCompat.set_parameter(tw, "b_wall", Color(0.5, 0.44, 0.4))
+		RenderCompat.set_parameter(tw, "b_accent", Color(0.4, 0.4, 0.4))
+		RenderCompat.set_parameter(tw, "b_seed", 5.1 + sx)
+		RenderCompat.set_parameter(tw, "b_dead", 0.8)
 		Models.box(city, Vector3(28.0, 5.0, 28.0), Vector3(254.0 * sx, 25.5, zc), hall, Vector3.ZERO, false)
 	var tags := ["DBS", "SKERO", "STAL", "HWK", "86", "ELO", "KSH", "OLD TOWN", "BLOKI"]
 	var x := -204.0
@@ -3911,11 +3912,11 @@ func _backdrop() -> void:
 		_chimney_smoke(Vector3(e[0] * SC, e[3] + 0.5, e[1] * SC), 1.6 + float(e[2]) * 0.3, 0.5)
 	# hala huty za wschodnim murem: ceglana, z wybitymi oknami i pilastym dachem (zamiast gładkiego, ciemnego klocka)
 	var hall_mi := Models.box(city, Vector3(60.0, 18.0, 120.0), Vector3(262.0, 9.0, 10.0), fac["cegla"], Vector3.ZERO, false)
-	hall_mi.set_instance_shader_parameter("b_origin", Vector3(232.0 * SC, 0.0, -50.0 * SC))
-	hall_mi.set_instance_shader_parameter("b_wall", Color(0.52, 0.45, 0.41))
-	hall_mi.set_instance_shader_parameter("b_accent", Color(0.4, 0.4, 0.4))
-	hall_mi.set_instance_shader_parameter("b_seed", 3.3)
-	hall_mi.set_instance_shader_parameter("b_dead", 0.85)
+	RenderCompat.set_parameter(hall_mi, "b_origin", Vector3(232.0 * SC, 0.0, -50.0 * SC))
+	RenderCompat.set_parameter(hall_mi, "b_wall", Color(0.52, 0.45, 0.41))
+	RenderCompat.set_parameter(hall_mi, "b_accent", Color(0.4, 0.4, 0.4))
+	RenderCompat.set_parameter(hall_mi, "b_seed", 3.3)
+	RenderCompat.set_parameter(hall_mi, "b_dead", 0.85)
 	var shed_m := Models.mat("2e2f33", 0.8, 0.3)
 	for k in range(8):
 		var pm := PrismMesh.new()
@@ -4006,11 +4007,11 @@ func _backdrop() -> void:
 			var kk: String = keys[rng.randi_range(0, keys.size() - 1)]
 			var bz = zz2 + rng.randf_range(-6.0, 6.0)
 			var mi2 := Models.box(city, Vector3(w, hh, 16.0), Vector3(px + w * 0.5, hd(px, zz2 * 0.88) + hh * 0.5 - 0.5, bz), fac[kk])
-			mi2.set_instance_shader_parameter("b_origin", Vector3(px * SC, hd(px, zz2 * 0.88), (bz - 8.0) * SC))
-			mi2.set_instance_shader_parameter("b_wall", Color(0.74, 0.72, 0.68) * rng.randf_range(0.85, 1.1))
-			mi2.set_instance_shader_parameter("b_accent", Color(0.65, 0.58, 0.48))
-			mi2.set_instance_shader_parameter("b_seed", rng.randf() * 10.0)
-			mi2.set_instance_shader_parameter("b_dead", rng.randf_range(0.0, 0.4))
+			RenderCompat.set_parameter(mi2, "b_origin", Vector3(px * SC, hd(px, zz2 * 0.88), (bz - 8.0) * SC))
+			RenderCompat.set_parameter(mi2, "b_wall", Color(0.74, 0.72, 0.68) * rng.randf_range(0.85, 1.1))
+			RenderCompat.set_parameter(mi2, "b_accent", Color(0.65, 0.58, 0.48))
+			RenderCompat.set_parameter(mi2, "b_seed", rng.randf() * 10.0)
+			RenderCompat.set_parameter(mi2, "b_dead", rng.randf_range(0.0, 0.4))
 			# za portalem kolejowym ciągnie się przepust — blok nie może w niego wchodzić
 			if px < 156.0 and px + w > 134.0:
 				mi2.visible = false
@@ -4031,11 +4032,11 @@ func _backdrop() -> void:
 			# przed halą huty nie stoją bloki mieszkalne — za bramą ma być widać zakład
 			if xx2 > 0.0 and pz < 72.0 and pz + d2 > -52.0:
 				mi3.visible = false
-			mi3.set_instance_shader_parameter("b_origin", Vector3((bx3 - 8.0) * SC, hd(xx2 * 0.9, pz), pz * SC))
-			mi3.set_instance_shader_parameter("b_wall", Color(0.74, 0.72, 0.68) * rng.randf_range(0.85, 1.1))
-			mi3.set_instance_shader_parameter("b_accent", Color(0.65, 0.58, 0.48))
-			mi3.set_instance_shader_parameter("b_seed", rng.randf() * 10.0)
-			mi3.set_instance_shader_parameter("b_dead", rng.randf_range(0.0, 0.4))
+			RenderCompat.set_parameter(mi3, "b_origin", Vector3((bx3 - 8.0) * SC, hd(xx2 * 0.9, pz), pz * SC))
+			RenderCompat.set_parameter(mi3, "b_wall", Color(0.74, 0.72, 0.68) * rng.randf_range(0.85, 1.1))
+			RenderCompat.set_parameter(mi3, "b_accent", Color(0.65, 0.58, 0.48))
+			RenderCompat.set_parameter(mi3, "b_seed", rng.randf() * 10.0)
+			RenderCompat.set_parameter(mi3, "b_dead", rng.randf_range(0.0, 0.4))
 		pz += rng.randf_range(34.0, 46.0)
 	# drugi, wyższy rząd bloków dalej za murem: zasłania przerwy w pierwszym, żeby nigdzie nie było widać pustki po horyzont
 	var r2 := RandomNumberGenerator.new()
@@ -4700,7 +4701,7 @@ func _trap_houses() -> void:
 			if cx < 0:
 				continue
 			var fl := mini(int(wdef[3]), int(floor((float(b.h) + 0.3) / cs.y)) - 1)
-			(b.node as MeshInstance3D).set_instance_shader_parameter("b_trap", Vector3(cx, fl, code))
+			RenderCompat.set_parameter((b.node as MeshInstance3D), "b_trap", Vector3(cx, fl, code))
 			var pl := AudioStreamPlayer3D.new()
 			pl.position = Details.face_pos(b, code, float(g[0]) + (cx + 0.5) * cs.x, fl * cs.y + 1.6, 0.4)
 			pl.bus = "Blok"

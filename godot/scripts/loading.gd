@@ -270,6 +270,7 @@ func _process(dt: float) -> void:
 
 ## kolejny etap: ustawia opis i postęp, po czym oddaje jedną klatkę, żeby ekran się odświeżył
 func step(pct: float, label: String) -> void:
+	print("LOADING ", pct, "% ", label)
 	target = pct
 	shown = maxf(shown, pct - 6.0)
 	bar.value = shown
@@ -285,6 +286,7 @@ func step(pct: float, label: String) -> void:
 
 ## dopełnia pasek, trzyma planszę co najmniej chwilę i płynnie ją wygasza
 func finish() -> void:
+	print("LOADING finish begin")
 	target = 100.0
 	l_status.text = "READY"
 	while shown < 99.5 or Time.get_ticks_msec() - t0_ms < 1600:
@@ -293,4 +295,5 @@ func finish() -> void:
 	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tw.tween_property(root, "modulate:a", 0.0, 0.55)
 	await tw.finished
+	print("LOADING finish complete")
 	queue_free()
