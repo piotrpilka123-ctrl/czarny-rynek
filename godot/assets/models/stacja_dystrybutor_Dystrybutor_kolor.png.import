@@ -1,0 +1,44 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://drb4kuwy73jlq"
+path.bptc="res://.godot/imported/stacja_dystrybutor_Dystrybutor_kolor.png-1dcaf8245d1e9a72c75e5a655ff3a8db.bptc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
+generator_parameters={
+"md5": "f1465aea527a02b323b00a992f49cf4b"
+}
+
+[deps]
+
+source_file="res://assets/models/stacja_dystrybutor_Dystrybutor_kolor.png"
+dest_files=["res://.godot/imported/stacja_dystrybutor_Dystrybutor_kolor.png-1dcaf8245d1e9a72c75e5a655ff3a8db.bptc.ctex"]
+
+[params]
+
+compress/mode=2
+compress/high_quality=true
+compress/lossy_quality=0.7
+compress/uastc_level=0
+compress/rdo_quality_loss=0.0
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/channel_remap/red=0
+process/channel_remap/green=1
+process/channel_remap/blue=2
+process/channel_remap/alpha=3
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1

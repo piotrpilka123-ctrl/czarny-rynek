@@ -348,36 +348,32 @@ static func _station(W) -> void:
 	var conc: Material = Props.pbr("concrete_wall_008", 0.35, Color(0.7, 0.7, 0.68))
 	var red: Material = Models.mat("8a2a24", 0.7, 0.3)
 	var white: Material = Models.mat("c9c9c4", 0.7, 0.1)
-	# wiata: cztery słupy i dach z blachy, jedna krawędź obsunięta
+	# modele z Blendera (make_stacja.py): wiata, dystrybutory, kiosk, słup z cennikiem
 	var wc := _p(c, 0.0, 2.0)
-	for sx in [-5.5, 5.5]:
-		for sz in [-3.2, 3.2]:
-			_box(W, wc.x + sx * INV, wc.y + sz * INV, Vector3(0.4, 4.6, 0.4), conc, 0.0, 0.0, 0.0)
-	_box(W, wc.x, wc.y, Vector3(13.6, 0.35, 8.4), white, 4.6, 0.0)
-	_box(W, wc.x, wc.y - 4.0 * INV, Vector3(13.6, 0.7, 0.2), red, 4.45, 0.0, -1.0, false)
-	_box(W, wc.x, wc.y + 4.0 * INV, Vector3(13.6, 0.7, 0.2), red, 4.45, 0.0, -1.0, false)
-	_box(W, wc.x + 6.2 * INV, wc.y, Vector3(2.2, 0.2, 8.0), white, 4.0, 0.0, -1.0, true, Vector3(0.0, 0.0, -0.5))
-	# dystrybutory: dwa kloce z wybitą szybką i zerwanym wężem
+	var wm: Node3D = Stations.model("stacja_wiata")
+	if wm != null:
+		W._place(wm, wc.x, wc.y, 0.0)
+		Props.set_range(wm, 150.0)
+		var lens := Stations._find(wm, "Swiatlo") as MeshInstance3D
+		if lens != null:
+			lens.material_override = W.lamp_mat
+			lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for sx in [-5.4, 5.4]:
+		for sz in [-2.6, 2.6]:
+			W.add_col(wc.x + (sx - 0.3) * INV, wc.x + (sx + 0.3) * INV, wc.y + (sz - 0.3) * INV, wc.y + (sz + 0.3) * INV, 4.6)
+			W.rects.pop_back()
 	for sx in [-2.8, 2.8]:
-		var px: float = wc.x + sx * INV
-		_box(W, px, wc.y, Vector3(0.7, 1.55, 0.5), red, 0.15, 0.0, 0.0)
-		_box(W, px, wc.y, Vector3(0.74, 0.35, 0.54), Models.mat("1c1f22", 0.3, 0.2), 1.0, 0.0, -1.0, false)
-		_box(W, px, wc.y, Vector3(1.4, 0.15, 1.3), conc, 0.0, 0.0, -1.0, false)
-	_box(W, wc.x - 2.8 * INV + 0.5 * INV, wc.y + 0.5 * INV, Vector3(0.05, 0.05, 1.2), Models.mat("1c1c1c", 0.8), 0.15, 0.3, -1.0, false)
-	# kiosk: budynek z zabitymi oknami, drzwi z kłódką
+		var dm: Node3D = Stations.model("stacja_dystrybutor")
+		if dm != null:
+			Props.set_range(W._place(dm, wc.x + sx * INV, wc.y, 0.0, 0.5, 0.35, 2.0), 110.0)
 	var kc := _p(c, 0.0, -14.0)
-	_box(W, kc.x, kc.y, Vector3(8.0, 3.1, 5.0), Props.pbr("plaster_brick_01", 0.3, Color(0.8, 0.72, 0.6)), 0.0, 0.0, 3.1)
-	_box(W, kc.x, kc.y, Vector3(8.6, 0.25, 5.6), Props.pbr("asbestos_sheet", 0.4, Color(0.55, 0.52, 0.5)), 3.1, 0.0, -1.0)
-	_box(W, kc.x - 2.0 * INV, kc.y + 2.54 * INV, Vector3(2.4, 1.3, 0.06), Models.mat("5a4a38", 0.9), 1.2, 0.0, -1.0, false)
-	_box(W, kc.x + 2.4 * INV, kc.y + 2.54 * INV, Vector3(1.0, 2.0, 0.06), Models.mat("3a4a54", 0.7, 0.3), 0.0, 0.0, -1.0, false)
-	_box(W, kc.x + 0.6 * INV, kc.y + 2.54 * INV, Vector3(0.9, 0.6, 0.06), Models.mat("1c1f22", 0.2, 0.3), 1.6, 0.0, -1.0, false)
-	W._sign("STACJA PALIW", Vector3(kc.x, W.hd(kc.x, kc.y) + 3.55, kc.y + 2.65 * INV), Color(0.95, 0.35, 0.3), 54, 0.0, 0.006, 10)
-	# słup z cennikiem: litery dawno przepalone, jedna wciąż się tli
+	var km: Node3D = Stations.model("stacja_kiosk")
+	if km != null:
+		Props.set_range(W._place(km, kc.x, kc.y, 0.0, 4.1, 2.6, 2.9), 150.0)
 	var pyl := _p(c, 10.0, 2.0)
-	_box(W, pyl.x, pyl.y, Vector3(0.35, 7.5, 0.35), conc, 0.0, 0.0, 0.0)
-	_box(W, pyl.x, pyl.y, Vector3(2.2, 1.9, 0.25), red, 5.4, 0.0)
-	W._sign("ON", Vector3(pyl.x, W.hd(pyl.x, pyl.y) + 6.3, pyl.y + 0.2 * INV), Color(0.95, 0.9, 0.8), 70, 0.0, 0.006, 8)
-	W._sign("95   98   ON", Vector3(pyl.x, W.hd(pyl.x, pyl.y) + 5.55, pyl.y + 0.2 * INV), Color(0.95, 0.9, 0.8), 38, 0.0, 0.006, 6)
+	var pm: Node3D = Stations.model("stacja_slup")
+	if pm != null:
+		Props.set_range(W._place(pm, pyl.x, pyl.y, 0.0, 0.3, 0.3, 2.9), 160.0)
 	# spalony samochód, opony, bariery, plama po paliwie na betonie
 	_wreck(W, c.x - 7.0 * INV, c.y + 11.0 * INV, 2.6, "sedan", "1e1c1a")
 	_scatter(W, c, [["old_tyre", -9.5, 8.0, 0.0, 0.16], ["old_tyre", -9.0, 8.8, 0.0, 0.16, 0.16], ["trafficbarrier_1", 6.0, 13.0, 0.4, 0.9], ["trafficcone_1", -2.0, 12.0, 0.0, 0.6],
