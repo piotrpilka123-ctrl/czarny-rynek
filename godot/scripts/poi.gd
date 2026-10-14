@@ -220,33 +220,39 @@ static func _yard(W) -> void:
 	W._fence_run(x0, z1, x1, z1, "sheet", 2.4, [c.x + 16.0], [], [])
 	W._fence_run(x0, z0, x0, z1, "sheet", 2.4, [], [], [])
 	W._fence_run(x1, z0, x1, z1, "sheet", 2.4, [], [c.y - 4.0], [])
-	# brama: dwa słupy, belka i szyld
-	for sx in [-1.7, 1.7]:
-		_box(W, c.x + 4.0 + sx * INV, z0, Vector3(0.3, 3.4, 0.3), rust, 0.0, 0.0, 0.0)
-	_box(W, c.x + 4.0, z0, Vector3(3.9, 0.35, 0.3), rust, 3.2)
-	W._sign("ZŁOMOWISKO HEŃKA", Vector3(c.x + 4.0, W.hd(c.x + 4.0, z0) + 3.9, z0 - 0.9), Color(0.95, 0.75, 0.3), 56, PI, 0.006, 10)
-	W._sign("SKUP ZŁOMU · METALE · AKUMULATORY", Vector3(c.x + 4.0, W.hd(c.x + 4.0, z0) + 3.55, z0 - 0.9), Color(0.85, 0.85, 0.8), 26, PI, 0.005, 8)
-	# biuro z dwóch kontenerów + wiata, waga przy bramie
+	# brama z szyldem (model z Blendera, make_zlom.py), patrzy na zewnątrz (na północ)
+	var gm: Node3D = Stations.model("zlom_brama")
+	if gm != null:
+		Props.set_range(W._place(gm, c.x + 4.0, z0, PI), 150.0)
+		for sx in [-2.1, 2.1]:
+			W.add_col(c.x + 4.0 + (sx - 0.2) * INV, c.x + 4.0 + (sx + 0.2) * INV, z0 - 0.2 * INV, z0 + 0.2 * INV, 3.6)
+			W.rects.pop_back()
+	# biuro z dwóch kontenerów (model), drzwi na plac
 	var o := _p(c, -9.0, -6.0)
-	W._prop("container_green", o.x, o.y, 0.08, 2.6, 0.0)
-	var o2 := _p(c, -9.0, -2.0)
-	W._prop("container_red", o2.x, o2.y, -0.05, 2.6, 0.0)
-	W._prop("container_red", o2.x, o2.y, 0.1, 2.6, 0.0, true, 2.6)
-	_box(W, o.x + 3.4, o.y + 1.0, Vector3(2.6, 0.12, 3.6), corr, 2.35, 0.0, -1.0)
+	var bm: Node3D = Stations.model("zlom_biuro")
+	if bm != null:
+		Props.set_range(W._place(bm, o.x, o.y, PI, 1.4, 3.1, 2.9), 150.0)
 	W._prop("metal_office_desk", o.x + 6.0, o.y, 0.0, 0.9, 0.0, false)
 	W._prop("plastic_monobloc_chair_01", o.x + 8.6, o.y + 1.2, 2.4, 0.86, 0.0, false)
 	W._prop("hand_truck", o.x + 7.5, o.y - 3.0, 0.7, 1.3, 0.0, false)
-	# sprasowane kostki złomu: stosy 2 + 1
-	for e in [[-2.0, -9.0, 0.12], [-0.6, -9.2, -0.05], [-1.4, -9.1, 0.3]]:
-		var p := _p(c, float(e[0]) + 14.0, float(e[1]))
-		var up: bool = float(e[2]) > 0.2
-		_box(W, p.x, p.y, Vector3(1.3, 1.1, 1.0), rust, 1.1 if up else 0.0, float(e[2]), 0.0 if not up else -1.0)
+	# sprasowane kostki złomu (model)
+	for e in [[12.0, -9.0, 0.12, 0.0], [13.5, -9.4, -0.3, 0.0], [12.8, -9.2, 0.5, 1.1]]:
+		var kp := _p(c, float(e[0]), float(e[1]))
+		var kmd: Node3D = Stations.model("zlom_kostka")
+		if kmd != null:
+			var kn: Node3D = W._place(kmd, kp.x, kp.y, float(e[2]), 0.62, 0.52, 1.2) if float(e[3]) == 0.0 else W._place(kmd, kp.x, kp.y, float(e[2]))
+			kn.position.y += float(e[3])
+			Props.set_range(kn, 110.0)
 	# wraki: jeden na drugim, jeden przechylony na oponach, jeden bez kół w rogu
 	_wreck(W, c.x + 2.0 * INV, c.y + 2.0 * INV, 0.35, "sedan", "6b3a2a")
 	_wreck(W, c.x + 2.2 * INV, c.y + 2.0 * INV, 0.3, "hatch", "4a4f55", 1.15, Vector3(0.0, 0.0, 0.08))
 	_wreck(W, c.x + 12.0 * INV, c.y + 5.0 * INV, -0.7, "kombi", "5a5a40", 0.0, Vector3(0.05, 0.0, -0.07))
 	_wreck(W, c.x - 3.0 * INV, c.y + 9.0 * INV, 1.9, "maluch", "7a6a3a")
 	_wreck(W, c.x + 15.0 * INV, c.y - 7.0 * INV, 0.1, "van", "4d5a64")
+	_wreck(W, c.x - 6.0 * INV, c.y - 2.0 * INV, 2.0, "hatch", "5a4a3a", 0.0, Vector3(0.0, 0.0, 0.05))
+	_wreck(W, c.x + 20.0 * INV, c.y + 3.0 * INV, 1.4, "sedan", "3f4a3a")
+	_wreck(W, c.x + 20.5 * INV, c.y + 3.2 * INV, 1.5, "maluch", "7a3a2a", 1.15, Vector3(0.0, 0.0, -0.06))
+	_wreck(W, c.x - 18.0 * INV, c.y - 8.0 * INV, 0.2, "kombi", "6a6a60", 0.0, Vector3(0.04, 0.0, 0.0))
 	W._prop("covered_car", c.x - 12.0 * INV, c.y + 9.0 * INV, 0.5, 0.0, 0.0)
 	# hałdy opon i obręczy
 	var tp := _p(c, 9.0, 11.0)
@@ -262,13 +268,11 @@ static func _yard(W) -> void:
 		["pipes", -13.4, 8.0, -0.2, 0.8], ["pallet", -4.0, -9.0, 0.5, 0.16], ["pallet_broken", -6.0, 8.0, 1.0, 0.2], ["electric_stove", 4.0, 8.0, 0.6, 0.9],
 		["couch", 6.0, 6.0, 2.2, 0.85], ["old_bed_frame", -7.0, 4.0, 0.3, 0.9], ["television_01", 6.4, 6.3, 0.2, 0.5, 0.45], ["propane_tank", 13.0, 2.0, 0.0, 0.7],
 		["cinderblock", 13.8, 3.2, 0.5, 0.2], ["trashbag", 0.0, -3.0, 0.7, 0.5], ["can_rusted", 5.0, -5.0, 0.2, 0.13], ["drawer_cabinet", -2.0, 4.5, 0.4, 0.9]])
-	# żuraw z magnesem: słup, wysięgnik, łańcuch — widoczny z daleka
+	# żuraw z magnesem (model) — widoczny z daleka
 	var cr := _p(c, 6.0, -3.0)
-	var steel: Material = Props.pbr("rusty_painted_metal", 0.4, Color(0.95, 0.75, 0.3))
-	_box(W, cr.x, cr.y, Vector3(0.7, 7.5, 0.7), steel, 0.0, 0.0, 0.0)
-	_box(W, cr.x + 3.4 * INV, cr.y, Vector3(8.0, 0.5, 0.5), steel, 7.0, 0.0)
-	_cyl(W, cr.x + 6.8 * INV, cr.y, 0.04, 3.4, Models.mat("2a2c30", 0.6, 0.6), 3.7)
-	_cyl(W, cr.x + 6.8 * INV, cr.y, 0.55, 0.35, Models.mat("3a3d42", 0.5, 0.7), 3.4)
+	var zm: Node3D = Stations.model("zlom_zuraw")
+	if zm != null:
+		Props.set_range(W._place(zm, cr.x, cr.y, 0.0, 0.5, 0.5, 2.9), 200.0)
 	# ognisko w beczce i reflektor nad biurem: łuna po zmroku
 	var fb := _p(c, 8.5, -6.0)
 	_cyl(W, fb.x, fb.y, 0.32, 0.8, Props.pbr("rusty_painted_metal", 0.3, Color(0.7, 0.55, 0.45)), 0.0, true)
