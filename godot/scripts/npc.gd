@@ -1288,7 +1288,27 @@ func update(dt: float) -> void:
 			Chars.set_active(n.rig, false)
 			continue
 		var dp3 := Vector2(pp.x - n.x, pp.z - n.z).length()
-		if n.track and dp3 < 10.0:
+		var walking := false
+		if n.has("goto"):
+			# postać statyczna idzie punkt po punkcie (np. Siwy w czasie nalotu): chód, obrót w stronę ruchu, na końcu przyjmuje pozę
+			var gt: Array = n.goto
+			var tp: Vector2 = gt[0]
+			var dv := tp - Vector2(n.x, n.z)
+			if dv.length() < 0.12:
+				gt.pop_front()
+				if gt.is_empty():
+					n.erase("goto")
+					n.pose = String(n.get("pose_end", n.pose))
+					n.node.rotation.y = float(n.get("rot_end", n.node.rotation.y))
+			else:
+				var stp := minf(dv.length(), float(n.get("goto_speed", 2.6)) * dt)
+				n.x += dv.normalized().x * stp
+				n.z += dv.normalized().y * stp
+				n.node.position.x = n.x
+				n.node.position.z = n.z
+				n.node.rotation.y += _ang_diff(atan2(dv.x, dv.y), n.node.rotation.y) * minf(1.0, dt * 8.0)
+				walking = true
+		elif n.track and dp3 < 10.0:
 			n.node.rotation.y += _ang_diff(atan2(pp.x - n.x, pp.z - n.z), n.node.rotation.y) * minf(1.0, dt * 3.0)
 		Chars.set_active(n.rig, dp3 < 60.0)
 		if dp3 < 60.0:
@@ -1319,7 +1339,7 @@ func update(dt: float) -> void:
 						n.sip_t = randf_range(6.0, 13.0)
 						# po łyku zadowolona mina
 						Chars.emote(n.rig, "usmiech", 0.8, 3.5)
-			Chars.animate(n.rig, dt, 0.0, pose_now)
+			Chars.animate(n.rig, dt, float(n.get("goto_speed", 2.6)) if walking else 0.0, pose_now)
 			if n.has("anim_speed"):
 				n.rig.anim.speed_scale = float(n.anim_speed)
 

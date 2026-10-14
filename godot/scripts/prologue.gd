@@ -400,6 +400,15 @@ func _setup_world() -> void:
 			siwy = st
 	if siwy != null:
 		siwy.lines = ["Pakuj torbę i spadamy. Wiktor czeka do szóstej.", "Nie lubię tej huty po nocy. Za cicho."]
+		# powrót na miejsce przy powtórnym uruchomieniu prologu
+		var lr: Dictionary = D.ROOMS.lab
+		siwy.erase("goto")
+		siwy.x = float(lr.cx) + 4.6
+		siwy.z = -3.1
+		siwy.pose = "arms"
+		siwy.track = true
+		siwy.node.position = Vector3(siwy.x, 0.0, siwy.z)
+		siwy.node.rotation.y = PI * 0.9
 	if W.door_tape != null:
 		W.door_tape.visible = false
 	W.set_mill_burnt(false)
@@ -503,6 +512,15 @@ func _begin_raid() -> void:
 	M.player.shake = 0.7
 	if siwy != null:
 		siwy.lines = ["Leć, do cholery! Ja to odpalam!"]
+		# Siwy odskakuje od bramy (w którą walą), biegnie do ładunku przy wschodniej ścianie i klęka przy zapalniku
+		var lr: Dictionary = D.ROOMS.lab
+		siwy.track = false
+		siwy.pose = "crouch"
+		siwy.goto_speed = 3.2
+		siwy.goto = [Vector2(float(lr.cx) + 4.6, 1.9), Vector2(float(lr.cx) + 6.15, 2.4)]
+		siwy.pose_end = "kneel"
+		siwy.rot_end = PI / 2.0
+		Chars.emote(siwy.rig, "zdziwienie", 1.0, 4.0)
 	M.ui.dialog({"name": "Siwy", "lines": [
 		"Psy?! Skąd oni… Trzy lata nikt o nas nie wiedział. Ktoś sypnął, Kuba. Ktoś z twoich.",
 		{"n": "Ty", "t": "Siwy, chodź ze mną. Tyłem, przez tory."},
