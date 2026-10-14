@@ -56,7 +56,7 @@ static func _slab(W: Node3D, g: Node3D, cx: float, along_z: bool, fixed: float, 
 
 
 static func _baseboard(g: Node3D, cx: float, along_z: bool, fixed: float, s0: float, s1: float, thick: float, color: String) -> void:
-	var m := Models.mat(color, 0.7)
+	var m := Props.pbr("old_wood_floor", 1.6, Color(1.45, 1.38, 1.25))
 	var l := s1 - s0
 	var mid := (s0 + s1) * 0.5
 	for side in [-1.0, 1.0]:
@@ -69,7 +69,7 @@ static func _baseboard(g: Node3D, cx: float, along_z: bool, fixed: float, s0: fl
 
 ## futryna: dwa ościeża i nadproże z listew, wystające z obu stron ściany
 static func _frame(g: Node3D, cx: float, along_z: bool, fixed: float, g0: float, g1: float, thick: float) -> void:
-	var m := Models.mat("e9e5da", 0.55)
+	var m := Props.pbr("old_wood_floor", 1.6, Color(1.5, 1.4, 1.25))
 	var dep := thick + 0.04
 	for e in [g0 + TRIM * 0.5, g1 - TRIM * 0.5]:
 		if along_z:
@@ -86,7 +86,7 @@ static func _frame(g: Node3D, cx: float, along_z: bool, fixed: float, g0: float,
 
 ## próg: niska listwa w poprzek otworu — tylko wizualna, bez kolizji (gracz przechodzi bez podskoku)
 static func _threshold(g: Node3D, cx: float, along_z: bool, fixed: float, g0: float, g1: float, thick: float) -> void:
-	var m := Models.mat("8a7a62", 0.45, 0.35)
+	var m := Props.pbr("old_wood_floor", 1.5, Color(0.85, 0.75, 0.65))
 	var l := g1 - g0 - TRIM * 2.0
 	var mid := (g0 + g1) * 0.5
 	if along_z:
