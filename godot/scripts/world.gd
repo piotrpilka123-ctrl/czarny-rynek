@@ -12,6 +12,7 @@ const Signs = preload("res://scripts/signs.gd")
 const Facade = preload("res://scripts/facade.gd")
 const Details = preload("res://scripts/details.gd")
 const Chars = preload("res://scripts/chars.gd")
+const RoomParts = preload("res://scripts/room_parts.gd")
 
 const X0 := -210.0
 const Z0 := -171.0
@@ -4990,12 +4991,13 @@ func _interiors() -> void:
 		Models.box(g, Vector3(e[0], 0.92, e[1]), Vector3(e[2], 0.52, e[3]), dado, Vector3.ZERO, false)
 		Models.box(g, Vector3(float(e[0]) + (0.012 if float(e[0]) < 1.0 else 0.0), 0.05, float(e[1]) + (0.012 if float(e[1]) < 1.0 else 0.0)), Vector3(e[2], 1.0, e[3]), rail, Vector3.ZERO, false)
 	Interior.baseboards(g, cx, w, d, "cfc8b6")
+	RoomParts.safe_flat(self, g, cx, w, d, h)   # przedpokój, kuchnia, łazienka, salon: ściany działowe, progi, podłogi, światła
 	Interior.ceiling_lamp(g, Vector3(cx, h, 0.2), "shade")
 	var safe_light := _room_light(g, cx, 0.2, h - 0.1, 1.35, Color(1.0, 0.82, 0.58), 8.0)
 	safe_light.name="SafeCeilingLight"
 	safe_light.shadow_bias=0.02
 	safe_light.shadow_normal_bias=0.12
-	Interior.rug(g, Vector3(cx - 1.7, 0, 0.75), Vector2(2.4, 1.6), 0.04)
+	Interior.rug(g, Vector3(cx - 2.5, 0, 0.8), Vector2(2.0, 1.5), 0.04)
 	# łóżko pod zachodnią ścianą
 	var safe_bed := _rp(g, "old_bed_frame", cx - w * 0.5 + 0.62, -d * 0.5 + 1.1, 0.0, 1.0, 0.0, 0.55, 1.05)
 	var bedding: Node3D = Stations.model("dom_posciel")
@@ -5078,18 +5080,18 @@ func _interiors() -> void:
 	Interior.wall_shelf(g, Vector3(tx + 0.1, 1.72, -d * 0.5 + 0.01), 0.0, 1.0, 7)
 	_rp(g, "wall_clock", cx + 2.35, -d * 0.5 + 0.04, 0.0, 0.3, 1.82)
 	# skrytka: szafa
-	var safe_cabinet := _rp(g, "painted_wooden_cabinet", cx + w * 0.5 - 0.32, 0.6, -PI / 2.0, 1.9, 0.0, 0.32, 0.66)
-	inter.append({"loc": "safe", "x": cx + w * 0.5 - 0.42, "z": 0.6, "y0": 0.1, "y1": 1.7, "r": 0.62, "reach": 2.5, "id": "stash_safe", "collision":safe_cabinet.get_meta("interaction_collision",null),
+	var safe_cabinet := _rp(g, "painted_wooden_cabinet", cx - w * 0.5 + 0.32, 0.05, PI / 2.0, 1.9, 0.0, 0.32, 0.66)
+	inter.append({"loc": "safe", "x": cx - w * 0.5 + 0.42, "z": 0.05, "y0": 0.1, "y1": 1.7, "r": 0.62, "reach": 2.5, "id": "stash_safe", "collision":safe_cabinet.get_meta("interaction_collision",null),
 		"label": func(): return "Skrytka w szafie", "act": func(): G.ui.open_stash("safe")})
-	Interior.note(g, Vector3(cx + w * 0.5 - 0.01, 1.62, 1.75), -PI / 2.0, "BLAST AT THE OLD STEELWORKS\nPolice seek witnesses. One man detained.", 0.46, 0.3)
-	Interior.picture(g, Vector3(cx + w * 0.5 - 0.01, 1.55, 2.35), -PI / 2.0, 0.46, "pic_kalendarz")
+	Interior.note(g, Vector3(cx - w * 0.5 + 0.01, 1.62, 1.45), PI / 2.0, "BLAST AT THE OLD STEELWORKS\nPolice seek witnesses. One man detained.", 0.46, 0.3)
+	Interior.picture(g, Vector3(cx - w * 0.5 + 0.01, 1.55, 2.0), PI / 2.0, 0.46, "pic_kalendarz")
 	# kanapa, ława, telewizor
-	_rp(g, "sofa_02", cx - 2.05, d * 0.5 - 0.55, PI, 0.88, 0.0, 0.95, 0.45)
-	_rp(g, "coffeetable_01", cx - 2.05, d * 0.5 - 1.5, 0.0, 0.4, 0.0, 0.5, 0.3)
-	Interior.pizza_box(g, Vector3(cx - 2.25, 0.4, d * 0.5 - 1.5), 0.3, 2)
-	Interior.can(g, Vector3(cx - 1.82, 0.4, d * 0.5 - 1.42), "b0382c")
-	Interior.can(g, Vector3(cx - 1.72, 0.4, d * 0.5 - 1.6), "2a6ac8", true)
-	Interior.can(g, Vector3(cx - 1.3, 0.0, d * 0.5 - 1.1), "b0382c", true)
+	_rp(g, "sofa_02", cx - 2.5, d * 0.5 - 0.55, PI, 0.88, 0.0, 0.95, 0.45)
+	_rp(g, "coffeetable_01", cx - 2.85, d * 0.5 - 1.5, 0.0, 0.4, 0.0, 0.5, 0.3)
+	Interior.pizza_box(g, Vector3(cx - 3.05, 0.4, d * 0.5 - 1.5), 0.3, 2)
+	Interior.can(g, Vector3(cx - 2.62, 0.4, d * 0.5 - 1.42), "b0382c")
+	Interior.can(g, Vector3(cx - 2.52, 0.4, d * 0.5 - 1.6), "2a6ac8", true)
+	Interior.can(g, Vector3(cx - 1.75, 0.0, d * 0.5 - 1.1), "b0382c", true)
 	_lm(g, "dom_szafka_tv", cx - 1.55, -d * 0.5 + 0.26, 0.0, 0.0, Vector2(0.6, 0.22))
 	_rp(g, "television_02", cx - 1.55, -d * 0.5 + 0.28, 0.0, 0.6, 0.5)
 	# poświata telewizora wychodzi z ekranu w głąb pokoju (nie świeci na ścianę za nim) i rzuca cienie mebli
@@ -5128,10 +5130,10 @@ func _interiors() -> void:
 	Models.box(g, Vector3(0.86, 0.016, 0.46), Vector3(cx, 0.009, mat_z), Models.mat("a8895c", 1.0), Vector3.ZERO, false)
 	for k in range(7):
 		Models.box(g, Vector3(0.8, 0.004, 0.018), Vector3(cx, 0.019, mat_z - 0.18 + k * 0.06), Models.mat("96784e", 1.0), Vector3.ZERO, false)
-	_rp(g, "cardboard_box_01", cx + 2.6, d * 0.5 - 0.5, 0.4, 0.34)
-	_rp(g, "cardboard_box_01", cx + 2.2, d * 0.5 - 0.42, 1.2, 0.3)
-	Interior.moving_boxes(g, Vector3(cx + 2.75, 0, d * 0.5 - 1.25), 3)
-	_rp(g, "vintage_suitcase", cx + 3.25, d * 0.5 - 0.35, 0.2, 0.5)
+	_rp(g, "cardboard_box_01", cx + 1.7, 0.45, 0.4, 0.34)
+	_rp(g, "cardboard_box_01", cx + 1.25, 0.46, 1.2, 0.3)
+	Interior.moving_boxes(g, Vector3(cx + 0.95, 0, 0.42), 3)
+	_rp(g, "vintage_suitcase", cx + 1.95, 2.45, 0.2, 0.5)
 	# okno z firanką: w dzień rzuca plamę światła na podłogę
 	windows.append(Interior.window(g, Vector3(cx - 1.4, 1.55, -d * 0.5), 1.5, 1.2, "n", "sheer", false))
 	Interior.picture(g, Vector3(cx - 2.75, 1.6, -d * 0.5 + 0.01), 0.0, 0.52, "pic_jelen", "5a4326")

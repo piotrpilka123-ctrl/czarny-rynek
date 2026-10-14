@@ -94,7 +94,7 @@ func run() -> void:
 		M.interact()
 	G.story_tick()
 	ok(G.flag("tut_save") and G.cur_step().id == "room_stash", "zapis przy laptopie zalicza pierwszy krok")
-	for case in [["radio",Vector2(0,1.4),0.95],["pack_safe",Vector2(0,1.4),0.88],["stash_safe",Vector2(-1.3,0),1.0],["bed",Vector2(1.3,0),0.6]]:
+	for case in [["radio",Vector2(0,1.4),0.95],["pack_safe",Vector2(0,1.4),0.88],["stash_safe",Vector2(1.3,0),1.0],["bed",Vector2(1.3,0),0.6]]:
 		for item in G.world.inter:
 			if item.get("id","")!=case[0]: continue
 			M.teleport("safe",Vector3(float(item.x)+case[1].x,0,float(item.z)+case[1].y),0)
@@ -1189,6 +1189,7 @@ func run() -> void:
 	await load("res://scripts/collision_test.gd").run(self)
 	load("res://scripts/music_test.gd").run(self)
 	await load("res://scripts/club_layout_test.gd").run(self)
+	await load("res://scripts/room_layout_test.gd").run(self)
 	await load("res://scripts/player_equipment_test.gd").run(self)
 
 	# --- prolog: nalot na laboratorium, ucieczka, eksplozje
