@@ -5324,6 +5324,13 @@ func _interiors() -> void:
 	Interior.stain(g4, Vector3(c4 - R4.w * 0.5 + 0.012, 0.7, -1.0), Vector3(0, PI / 2.0, 0), Vector2(2.2, 1.4), Color(0.05, 0.07, 0.05, 0.4))
 	Interior.stain(g4, Vector3(c4, 0.9, R4.d * 0.5 - 0.012), Vector3(0, PI, 0), Vector2(2.6, 1.6), Color(0.05, 0.07, 0.05, 0.35))
 	Interior.note(g4, Vector3(c4 + R4.w * 0.5 - 0.01, 1.4, 1.2), -PI / 2.0, "CELLAR No. 4\nKEEP THE VALVE CLEAR", 0.36, 0.22)
+	RoomParts.build(self, g3, c3, "garage", R3.h, Props.pbr("concrete_wall_008", 0.5, Color(0.95, 0.95, 0.92)))
+	RoomParts.build(self, g4, c4, "basement", R4.h, Props.pbr("brick_wall_10", 0.5, Color(0.95, 0.9, 0.86)))
+	var gl: OmniLight3D = _room_light(g3, c3, -3.5, R3.h, 1.2, Color(1.0, 0.88, 0.66), 3.6)
+	gl.shadow_enabled = false
+	var bl4: OmniLight3D = _room_light(g4, c4 - 2.4, -3.6, R4.h, 0.9, Color(1.0, 0.8, 0.55), 4.0)
+	bl4.shadow_enabled = false
+	Interior.ceiling_lamp(g4, Vector3(c4 - 2.4, R4.h, -3.6), "bulb")
 	_lab_room()
 	_hospital_room()
 	_station_room()
@@ -6265,9 +6272,26 @@ func furn_model(fid: String) -> Node3D:
 
 
 ## odbudowuje meble kryjówki na podstawie zapisu gry
+var _migrating := false
+
+
 func refresh_furniture(room: String) -> void:
 	if not furn.has(room):
 		return
+	# po dobudowaniu ścian działowych rzeczy ze starych zapisów, które w nie wchodzą, wracają na stan (nie giną)
+	if not _migrating and G.S.hide.has(room):
+		_migrating = true
+		var its: Array = G.S.hide[room].get("items", [])
+		for i in range(its.size() - 1, -1, -1):
+			var fd := furn_def(its[i].f)
+			if fd.is_empty():
+				continue
+			var fr := furn_rect(its[i])
+			for blk in RoomParts.blocks(room):
+				if fr.grow(-0.01).intersects(blk):
+					G.furn_remove(room, i)
+					break
+		_migrating = false
 	var g: Node3D = furn[room]
 	for c in g.get_children():
 		g.remove_child(c)

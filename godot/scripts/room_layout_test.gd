@@ -75,6 +75,14 @@ static func run(T) -> void:
 	await blocked(T, r, "sklep: ściana zaplecza od sali", [3.0, 0.5], [3.0, -0.3], "z", -0.55, false)
 	await blocked(T, r, "sklep: regał w sali", [-1.6, 1.5], [-1.6, 0.0], "z", 1.1, false)
 	await blocked(T, r, "sklep: lada", [0.0, 0.2], [0.0, -2.3], "z", -0.5, false)
+	# garaż i piwnica: tylne pomieszczenia
+	r = "garage"
+	await reach(T, r, "garaż: brama → hala → tylne pomieszczenie", [[0.0, 3.0], [0.0, 0.0], [1.95, -1.4], [1.95, -3.4], [0.8, -3.4]])
+	await blocked(T, r, "garaż: ściana tylnego pomieszczenia", [-1.5, -1.0], [-1.5, -3.0], "z", -2.0, false)
+	r = "basement"
+	await reach(T, r, "piwnica: wejście → komórka → przejście na drugą stronę", [[0.0, 4.0], [-2.7, 0.5], [-2.7, -1.0], [-2.7, -3.4], [1.8, -3.4], [1.8, -1.0]])
+	await blocked(T, r, "piwnica: ściana komórki od środka", [-1.0, -1.0], [-1.0, -3.0], "z", -1.6, false)
+	await blocked(T, r, "piwnica: ściana boczna komórki", [-1.0, -4.4], [1.5, -4.4], "x", 0.2, true)
 	player.place(saved_pos, saved_yaw)
 	player.loc = saved_loc
 	player.set_physics_process(was_physics)

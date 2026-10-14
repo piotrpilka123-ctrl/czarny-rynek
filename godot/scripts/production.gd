@@ -312,6 +312,9 @@ static func pot_valid(room: String, x: float, z: float, ignore := -1) -> bool:
 		return false
 	if Rect2(-1.0, float(R.d) * 0.5 - 1.5, 2.0, 1.5).grow(POT_R).has_point(Vector2(x, z)):
 		return false
+	for blk in G.RoomParts.blocks(room):
+		if blk.grow(POT_R).has_point(Vector2(x, z)):
+			return false
 	for it in G.S.hide[room].items:
 		var f: Dictionary = G.furn_def(String(it.f))
 		if f.is_empty() or f.get("hang", false):

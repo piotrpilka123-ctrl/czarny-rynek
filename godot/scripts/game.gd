@@ -6,6 +6,7 @@ const Workers = preload("res://scripts/workers.gd")
 const Reputation = preload("res://scripts/reputation.gd")
 const Dealers = preload("res://scripts/dealers.gd")
 const Market = preload("res://scripts/market.gd")
+const RoomParts = preload("res://scripts/room_parts.gd")
 ## Rdzeń rozgrywki: stan, czas, towar (hurt → skrytka → porcjowanie → sprzedaż),
 ## klienci i negocjacje, policja, dług, rozwój postaci, kryjówki, fabuła, zapis.
 
@@ -4012,6 +4013,9 @@ func furn_valid(room: String, fid: String, x: float, z: float, r: int, ignore :=
 		return false
 	if not hang and rc.intersects(Rect2(-1.0, float(R.d) * 0.5 - 1.5, 2.0, 1.5)):
 		return false
+	for blk in RoomParts.blocks(room):
+		if rc.grow(-0.01).intersects(blk):
+			return false
 	var items: Array = S.hide[room].items
 	for i in range(items.size()):
 		if i == ignore:

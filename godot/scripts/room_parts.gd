@@ -246,3 +246,48 @@ static func gondola(W: Node3D, g: Node3D, cx: float, x: float, z: float) -> void
 			if tm != null:
 				tm.position = Vector3(cx + x + (cell - 1) * 0.438, 0.03 + row * 0.633, z)
 				g.add_child(tm)
+
+
+## ŚCIANY DZIAŁOWE LOKALI DO KUPIENIA (współrzędne środkowe jak w meblach: x względem cx, z od środka pokoju)
+## {"a": początek, "b": koniec, "gaps": [[od, do]…] w metrach wzdłuż ściany}. Ta sama lista rysuje ściany i zamyka miejsce meblom.
+const PARTS := {
+	"garage": [
+		{"a": Vector2(-3.0, -2.3), "b": Vector2(3.0, -2.3), "gaps": [[1.3, 2.4]]},
+	],
+	"basement": [
+		{"a": Vector2(-4.5, -1.9), "b": Vector2(0.5, -1.9), "gaps": [[-3.2, -2.2]]},
+		{"a": Vector2(0.5, -5.0), "b": Vector2(0.5, -1.9), "gaps": [[-3.9, -2.9]]},
+	],
+}
+
+
+## prostokąty, na których nie wolno stawiać mebli i doniczek: litera ścian działowych oraz wolna strefa przy otworach drzwiowych
+static func blocks(room: String) -> Array:
+	var out: Array = []
+	for p in PARTS.get(room, []):
+		var a: Vector2 = p.a
+		var b: Vector2 = p.b
+		var along_z: bool = absf(a.x - b.x) < 0.001
+		var lo: float = minf(a.y, b.y) if along_z else minf(a.x, b.x)
+		var hi: float = maxf(a.y, b.y) if along_z else maxf(a.x, b.x)
+		var fixed: float = a.x if along_z else a.y
+		var cuts: Array = [[lo, lo]]
+		for gp in p.gaps:
+			cuts.append(gp)
+		cuts.append([hi, hi])
+		cuts.sort_custom(func(m, n): return float(m[0]) < float(n[0]))
+		for i in range(cuts.size() - 1):
+			var s0: float = float(cuts[i][1])
+			var s1: float = float(cuts[i + 1][0])
+			if s1 - s0 > 0.001:
+				out.append(Rect2(fixed - 0.06, s0, 0.12, s1 - s0) if along_z else Rect2(s0, fixed - 0.06, s1 - s0, 0.12))
+		for gp in p.gaps:
+			var g0: float = float(gp[0])
+			var g1: float = float(gp[1])
+			out.append(Rect2(fixed - 0.6, g0, 1.2, g1 - g0) if along_z else Rect2(g0, fixed - 0.6, g1 - g0, 1.2))
+	return out
+
+
+static func build(W: Node3D, g: Node3D, cx: float, room: String, h: float, mat: Material) -> void:
+	for p in PARTS.get(room, []):
+		wall(W, g, cx, p.a, p.b, h, mat, p.gaps, THICK, "9a968c")
