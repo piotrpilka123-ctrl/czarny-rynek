@@ -3196,6 +3196,24 @@ func sale_streak_hit(full: bool) -> int:
 	return n
 
 
+## podsumowanie od ostatniego snu: zarobek, transakcje, gramy, rekordy; po odczycie znacznik przesuwa się na „teraz”
+func day_report() -> Dictionary:
+	var m: Dictionary = S.get("day_mark", {})
+	var earned := float(S.stats.earned) - float(m.get("earned", 0.0))
+	var deals := int(S.stats.deals) - int(m.get("deals", 0))
+	var sold := int(S.stats.sold) - int(m.get("sold", 0))
+	var spent := float(S.stats.spent) - float(m.get("spent", 0.0))
+	var recs: Array = []
+	if deals > 0 and earned > float(S.stats.get("best_day", 0.0)):
+		if float(S.stats.get("best_day", 0.0)) > 0.0:
+			recs.append("rekord zarobku")
+		S.stats["best_day"] = earned
+	if int(S.stats.get("streak_best", 0)) > int(m.get("streak_best", 0)) and int(S.stats.streak_best) >= 3:
+		recs.append("rekordowa seria ×%d" % int(S.stats.streak_best))
+	S["day_mark"] = {"earned": float(S.stats.earned), "deals": int(S.stats.deals), "sold": int(S.stats.sold), "spent": float(S.stats.spent), "streak_best": int(S.stats.get("streak_best", 0))}
+	return {"earned": earned, "deals": deals, "sold": sold, "spent": spent, "records": recs}
+
+
 func streak_xp_mult() -> float:
 	return 1.0 + 0.05 * float(mini(8, maxi(0, int(S.get("streak", 0)) - 1)))
 

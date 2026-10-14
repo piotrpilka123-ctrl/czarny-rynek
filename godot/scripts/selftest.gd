@@ -850,6 +850,17 @@ func run() -> void:
 	S["streak"] = 20
 	ok(G.streak_xp_mult() <= 1.4001, "bonus XP z serii ma sufit +40%")
 	S["streak"] = 0
+	# podsumowanie dnia: różnica od znacznika, rekord tylko po pierwszym wzorcu
+	G.day_report()
+	S.stats.earned = float(S.stats.earned) + 300.0
+	S.stats.deals = int(S.stats.deals) + 2
+	S.stats.sold = int(S.stats.sold) + 5
+	var r1: Dictionary = G.day_report()
+	ok(absf(float(r1.earned) - 300.0) < 0.01 and int(r1.deals) == 2 and int(r1.sold) == 5, "podsumowanie dnia liczy różnicę od ostatniego snu")
+	S.stats.earned = float(S.stats.earned) + 500.0
+	S.stats.deals = int(S.stats.deals) + 1
+	var r2: Dictionary = G.day_report()
+	ok(r2.records.has("rekord zarobku") and int(G.day_report().deals) == 0, "podsumowanie dnia: rekord zarobku, znacznik przesuwa się")
 	# lekko rozrobiony towar: klient bierze, ale bywa niezadowolony
 	var meh := 0
 	var sat_sum := 0.0

@@ -1248,6 +1248,14 @@ func _do_sleep(minutes: float) -> void:
 	await get_tree().create_timer(0.5).timeout
 	await ui.fade(false)
 	G.busy = false
+	var rep: Dictionary = G.day_report()
+	if int(rep.deals) > 0:
+		var txt := "Od ostatniego snu: [b]+%s[/b] z %d transakcji (%d g)." % [G.money(rep.earned), int(rep.deals), int(rep.sold)]
+		if not rep.records.is_empty():
+			txt += " Nowe: " + ", ".join(rep.records) + "."
+		G.notify(txt.replace("[b]", "").replace("[/b]", ""), "level" if not rep.records.is_empty() else "good")
+		if not rep.records.is_empty():
+			Sfx.play("level")
 
 
 func talk_stasiu() -> void:
