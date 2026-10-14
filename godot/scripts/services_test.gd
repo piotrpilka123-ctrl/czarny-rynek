@@ -214,6 +214,33 @@ static func run(T) -> void:
 				lamp_bad.append("%d,%d (świeci w trawnik)" % [int(l0.x), int(l0.z)])
 	T.ok(W0.lamp_list.size() >= 28 and lamp_bad.is_empty() and over_road >= 18, "latarnie: %d sztuk, %d z oprawą nad jezdnią, żadna w ścianie ani tyłem do drogi %s" % [W0.lamp_list.size(), over_road, str(lamp_bad)])
 
+	# --- zaparkowane auta: nie na osi jezdni, nie na przejściach, pas ruchu zostaje przejezdny
+	var park_bad := []
+	var crossings := [[-98.0, 16.0, 24.0], [-11.0, 16.0, 24.0], [9.0, 16.0, 24.0], [64.0, 16.0, 24.0], [124.0, 16.0, 24.0]]
+	for pc in W0.parked:
+		var cx0 := float(pc.x0)
+		var cx1 := float(pc.x1)
+		var cz0 := float(pc.z0)
+		var cz1 := float(pc.z1)
+		var tag := "%d,%d" % [int((cx0 + cx1) * 0.5), int((cz0 + cz1) * 0.5)]
+		# Hutnicza (jezdnia z 15,4 do 24,6, oś 20): auto nie przekracza osi, zostaje >= 5 j. wolnego pasa
+		if cz1 > 15.4 and cz0 < 24.6 and cx0 > -195.0 and cx1 < 208.0 and absf((cz0 + cz1) * 0.5 - 20.0) < 8.0:
+			if cz0 < 21.5 and cz1 > 18.5:
+				park_bad.append(tag + " (na osi Hutniczej)")
+			var free_gap := minf(cz0, 24.6) - 15.4 if cz0 > 20.0 else 24.6 - maxf(cz1, 15.4)
+			if free_gap < 5.0:
+				park_bad.append(tag + " (wąski przejazd)")
+			for cr in crossings:
+				if cx1 > float(cr[0]) - 0.5 and cx0 < float(cr[0]) + 3.5:
+					park_bad.append(tag + " (na przejściu)")
+		# Robotnicza (jezdnia x od -3,6 do 3,6)
+		elif cz0 > 26.0 and cx1 > -3.7 and cx0 < 3.7:
+			if cx0 < 1.0 and cx1 > -1.0:
+				park_bad.append(tag + " (na osi Robotniczej)")
+			if cz1 > 110.0 and cz0 < 117.0:
+				park_bad.append(tag + " (na przejściu)")
+	T.ok(W0.parked.size() >= 8 and park_bad.is_empty(), "zaparkowane auta (%d): pas ruchu przejezdny, żadne na osi ani przejściu %s" % [W0.parked.size(), str(park_bad)])
+
 	# --- tarcza zegara do umawiania godziny: kliknięty punkt → pora, tylko w dozwolonym łuku (dziś, od teraz)
 	var dial = load("res://scripts/clock_dial.gd").new()
 	G.ui.add_child(dial)

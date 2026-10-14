@@ -40,6 +40,7 @@ const PLATEAU := 5.0
 const STAIRS := [-27.0, 60.0]
 const RAMPS := [[-106.0, -12.0, -52.0], [166.0, -10.0, -48.0]]
 
+var parked: Array = []         # zaparkowane auta: {x0,x1,z0,z1} w planie — pilnuje ich test przejezdności
 var rects: Array = []          # wysokie przeszkody 2D (budynki): {x0,x1,z0,z1,h}
 var blocks: Array = []         # wszystko, co ma kolizję: {x0,x1,z0,z1,h,op} — op: zasłania widok
 var _bk := PackedFloat32Array()   # to samo spakowane do szybkiego sprawdzania linii wzroku
@@ -1697,15 +1698,15 @@ func _parked_cars() -> void:
 	# Hutnicza: po polsku, dwoma kołami na chodniku — środek jezdni zostaje wolny dla radiowozu
 	for x in [-124.0, -70.0, 22.0, 98.0]:
 		if rng.randf() < 0.8:
-			spots.append([x, 15.7, PI / 2.0])
-	for x in [-80.0, -14.0, 90.0]:
+			spots.append([x, 15.0, PI / 2.0])
+	for x in [-80.0, -30.0, 90.0]:
 		if rng.randf() < 0.8:
-			spots.append([x, 24.3, -PI / 2.0])
+			spots.append([x, 25.0, -PI / 2.0])
 	# Robotnicza: raz z jednej, raz z drugiej strony
 	for z in [44.0, 104.0]:
-		spots.append([2.6, z, 0.0])
+		spots.append([3.0, z, 0.0])
 	for z in [92.0]:
-		spots.append([-2.6, z, PI])
+		spots.append([-3.0, z, PI])
 	for sp in spots:
 		var x: float = sp[0] + rng.randf_range(-0.3, 0.3)
 		var z: float = sp[1] + rng.randf_range(-0.1, 0.1)
@@ -1713,7 +1714,7 @@ func _parked_cars() -> void:
 		k += 1
 	# wrak na cegłach pod garażami i dostawczak pod bramą huty
 	_car(74.0, 88.5, 1.2, "maluch", "7a6a3a")
-	_car(181.0, 22.6, -PI / 2.0 + 0.1, "van", "5a6068")
+	_car(181.0, 25.0, -PI / 2.0 + 0.05, "van", "5a6068")
 
 
 ## ławka osiedlowa (betonowe nogi, drewniane szczeble)
@@ -2001,6 +2002,7 @@ func _car(x: float, z: float, ry: float, type := "", color = null, police := fal
 	var ez := absf(cos(ry)) * L + absf(sin(ry)) * W
 	add_col(x - ex, x + ex, z - ez, z + ez, 1.5)
 	rects.pop_back()
+	parked.append({"x0": x - ex, "x1": x + ex, "z0": z - ez, "z1": z + ez})
 	if car.has_meta("siren"):
 		sirens.append(car.get_meta("siren"))
 
@@ -2965,11 +2967,11 @@ func _lower_town() -> void:
 	_bin(71.8, 10.2, 0.0)       # (stał w środku wiaty, przed ławką)
 	_bench(56.0, -13.0, 0.0)
 	# auta: prawie brak ruchu
-	_car(-40.0, 17.2, PI / 2.0, "sedan", "28424f")
-	_car(22.0, 22.8, -PI / 2.0, "hatch", "8a1c1c")
+	_car(-40.0, 15.0, PI / 2.0, "sedan", "28424f")
+	_car(22.0, 25.0, -PI / 2.0, "hatch", "8a1c1c")
 	_car(-156.0, 2.0, 0.0, "sedan", "ffffff", true)
 	_car(-160.5, 2.5, 0.0, "suv", "ffffff", true)
-	_car(-1.6, 96.0, 0.0, "sedan", "42464e")
+	_car(3.0, 70.0, 0.0, "sedan", "42464e")
 	# wrak na cegłach przy garażach
 	var wr: Node3D = Models.car("hatch", "5a6068")
 	wr.position = Vector3(98.0, hd(98.0, 88.0) + 0.12, 88.0)
