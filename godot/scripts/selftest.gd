@@ -839,6 +839,9 @@ func run() -> void:
 		G.take_pack(S.inv, "dym", 40, 99)
 	ok(rejected >= 30, "mocno rozrobionego towaru doświadczony klient nie bierze (%d/40 prób)" % rejected)
 	# seria transakcji: rośnie, gaśnie po przerwie i po odrzuceniu, daje do +40% XP
+	var hc := {"sting": false}
+	S.stats.deals = maxi(int(S.stats.deals), 5)
+	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")
 	S["streak"] = 0
 	for i in range(3):
 		G.sale_streak_hit(true)

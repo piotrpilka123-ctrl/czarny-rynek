@@ -2506,6 +2506,12 @@ func deal_start(ctx: Dictionary) -> Dictionary:
 		tol += 4.0
 	tol += (outfit_stat("charm", 1.0) - 1.0) * 40.0
 	d.tol = clampf(tol, -12.0, 18.0) if not ctx.get("sting", false) else 99.0
+	# rzadka „dobra okazja”: klient jest w nastroju i przełknie wyższą cenę
+	if deal_hot_roll(ctx, randf()):
+		d.tol = clampf(float(d.tol) + HOT_BONUS, -12.0, 18.0 + HOT_BONUS)
+		d["hot"] = true
+		d.notes.append("Dobra okazja — klient dziś płaci ponad stawkę.")
+		Sfx.play("good")
 	if ctx.get("sting", false):
 		d.speech = "„Dawaj, co masz. Biorę wszystko!”"
 	else:
@@ -3178,6 +3184,12 @@ func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, m
 		after_deal_risk(ctx, g)
 	check_unlocks()
 	return {"sold": g, "revenue": total, "paid": paid, "owed": owed}
+
+
+const HOT_CHANCE := 0.07
+const HOT_BONUS := 10.0
+func deal_hot_roll(ctx: Dictionary, r: float) -> bool:
+	return r < HOT_CHANCE and not ctx.get("sting", false) and int(S.stats.deals) >= 3
 
 
 ## seria udanych transakcji: wygasa po 6 h gry bez sprzedaży albo po odrzuconym towarze; daje do +40% XP
