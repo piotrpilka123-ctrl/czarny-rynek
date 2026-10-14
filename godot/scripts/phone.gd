@@ -283,7 +283,7 @@ func shop_send() -> void:
 func open(a := "") -> void:
 	var was := visible
 	visible = true
-	if a != "sklep":
+	if a != "sklep" and a != "mapa":
 		_orient(false, false)
 	if not was:
 		_anim_open()
@@ -315,6 +315,8 @@ func back() -> void:
 		render()
 	elif app == "sklep":
 		shop_close()
+	elif app == "mapa":
+		go("")
 	elif app != "":
 		go("")
 	else:
@@ -340,6 +342,10 @@ func render() -> void:
 	if app == "sklep":
 		_orient(true)
 		OrderUI.render(self)
+		return
+	if app == "mapa":
+		_orient(true)
+		_map_land()
 		return
 	_orient(false)
 	K.clear(body)
@@ -915,6 +921,71 @@ func _map() -> void:
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		body.add_child(b)
 	body.add_child(K.btn("Trasa na mapie: " + ("włączona" if G.S.nav_on else "wyłączona"), func(): G.main.toggle_nav(); render(), "", true))
+
+
+## Mapa na położonym telefonie: cały teren w kwadracie po lewej, cele i trasa po prawej
+func land_back() -> void:
+	if app == "mapa":
+		go("")
+	else:
+		shop_close()
+
+
+func _map_land() -> void:
+	var root: VBoxContainer = shop_root
+	K.clear(root)
+	var hd := K.hbox(8)
+	root.add_child(hd)
+	var bb := K.btn("", func(): go(""), "flat", true)
+	bb.icon = K.tex("chevron_left")
+	bb.expand_icon = true
+	bb.custom_minimum_size = Vector2(30, 30)
+	bb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hd.add_child(bb)
+	var tv := K.vbox(-2)
+	tv.add_child(K.lbl("Mapa", 15))
+	tv.add_child(K.lbl("Steel Blocks i okolice  •  " + G.clock(), 10, K.C_DIM))
+	hd.add_child(tv)
+	var row := K.hbox(12)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(row)
+	var side := 316.0
+	var frame := K.panel(K.sb(Color(0.02, 0.025, 0.035), 10, Color(0.3, 0.34, 0.42), 2, 3))
+	frame.custom_minimum_size = Vector2(side + 6.0, side + 6.0)
+	row.add_child(frame)
+	var cv := Control.new()
+	cv.custom_minimum_size = Vector2(side, side)
+	cv.clip_contents = true
+	cv.draw.connect(func():
+		ui.draw_map(cv, Vector2(0.0, 21.8), 240.0, true)
+		# siatka co 50 jednostek planu, ramka i oznaczenie północy
+		var k: float = cv.size.x / 240.0
+		for i in range(-4, 5):
+			var gx: float = cv.size.x * 0.5 + float(i) * 50.0 * D.SC * k
+			cv.draw_line(Vector2(gx, 0), Vector2(gx, cv.size.y), Color(1, 1, 1, 0.05), 1.0)
+			var gy: float = cv.size.y * 0.5 + float(i) * 50.0 * D.SC * k
+			cv.draw_line(Vector2(0, gy), Vector2(cv.size.x, gy), Color(1, 1, 1, 0.05), 1.0)
+		cv.draw_rect(Rect2(Vector2.ZERO, cv.size), Color(0, 0, 0, 0.0), false, 1.0)
+		cv.draw_string(ThemeDB.fallback_font, Vector2(cv.size.x - 20.0, 16.0), "N ↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.85, 0.95, 0.8)))
+	frame.add_child(cv)
+	var side_col := K.vbox(6)
+	side_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(side_col)
+	side_col.add_child(K.lbl("PROWADŹ DO", 10, K.C_DIM))
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	side_col.add_child(sc)
+	var lst := K.vbox(5)
+	lst.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(lst)
+	for t in G.main.nav_targets():
+		var tid = t.id
+		var b := K.btn(t.label, func(): G.main.set_track(tid); render(), "go" if G.main.track_key() == str(tid) else "", true)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		lst.add_child(b)
+	side_col.add_child(K.btn("Trasa na mapie: " + ("włączona" if G.S.nav_on else "wyłączona"), func(): G.main.toggle_nav(); render(), "", true))
+	side_col.add_child(K.lbl("●gracz  ◆cel  ■drzwi  ●policja", 10, K.C_DIM))
 
 
 # ---------------------------------------------------------------- Wiktor: zamówienie i skrzynka

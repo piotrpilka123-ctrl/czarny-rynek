@@ -12,6 +12,7 @@ const Signs = preload("res://scripts/signs.gd")
 const Facade = preload("res://scripts/facade.gd")
 const Details = preload("res://scripts/details.gd")
 const Chars = preload("res://scripts/chars.gd")
+const Poi = preload("res://scripts/poi.gd")
 const RoomParts = preload("res://scripts/room_parts.gd")
 
 const X0 := -210.0
@@ -461,6 +462,7 @@ func _paint() -> void:
 		_mark(-3.0 + k * 1.3, 112.0, -2.3 + k * 1.3, 115.0)
 	for k in range(9):
 		_mark(22.0 + k * 5.6, -125.5, 22.2 + k * 5.6, -116.0)
+	Poi.paint(self)
 
 
 func _terrain_mesh() -> void:
@@ -1088,6 +1090,7 @@ func build(loader = null) -> void:
 	_border_gates()
 	_bus_loop()
 	_backyard_extension()
+	Poi.build(self)
 	_lake()
 	_curb_lines()
 	_hide_spots()
@@ -5153,6 +5156,10 @@ func _interiors() -> void:
 	Interior.baseboards(g2, sx2, w2, d2, "8a8272", 0.12)
 	_room_light(g2, sx2 - 2.0, 0.0, h2, 1.5, Color(0.9, 0.95, 1.0), 9.0)
 	_room_light(g2, sx2 + 2.0, 0.0, h2, 1.3, Color(0.9, 0.95, 1.0), 9.0).shadow_enabled = false
+	# ciepłe doświetlenie półek za ladą: bez niego tylna ściana i podłoga przy ladzie były płaską, ciemną plamą (bez cieni, tanio)
+	for sxl in [-2.4, 2.4]:
+		var shl := _room_light(g2, sx2 + sxl, -d2 * 0.5 + 1.3, h2 - 0.6, 0.8, Color(1.0, 0.86, 0.62), 4.5)
+		shl.shadow_enabled = false
 	for lx in [-2.0, 2.0]:
 		Props._no_shadow(_rp(g2, "mounted_fluorescent_lights", sx2 + lx, 0.0, PI / 2.0, 0.0, h2 - 0.08))
 	# lada z gablotą, kasą i wagą

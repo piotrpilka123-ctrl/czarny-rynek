@@ -36,7 +36,7 @@ static func build(PH) -> Control:
 	hb.add_theme_stylebox_override("normal", K.sb(Color(0.05, 0.05, 0.06), 17, Color(0.3, 0.31, 0.35), 2, 0))
 	hb.add_theme_stylebox_override("hover", K.sb(Color(0.1, 0.1, 0.12), 17, Color(0.5, 0.52, 0.58), 2, 0))
 	hb.add_theme_stylebox_override("pressed", K.sb(Color(0.14, 0.14, 0.17), 17, Color(0.6, 0.62, 0.7), 2, 0))
-	hb.pressed.connect(func(): PH.shop_close())
+	hb.pressed.connect(func(): PH.land_back())
 	h.add_child(hb)
 	return bezel
 
