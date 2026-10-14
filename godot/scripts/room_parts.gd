@@ -106,6 +106,15 @@ static func solid(W: Node3D, cx: float, x0: float, x1: float, z0: float, z1: flo
 	W.rects.pop_back()
 
 
+static func _fixture(g: Node3D, name: String, at: Vector3, ry: float) -> void:
+	var n: Node3D = Stations.model(name)
+	if n == null:
+		return
+	n.position = at
+	n.rotation.y = ry
+	g.add_child(n)
+
+
 static var _tile_cache := {}
 
 
@@ -154,15 +163,15 @@ const BATH := [2.05, 0.2, 3.6, 2.8]
 
 static func safe_flat(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: float) -> void:
 	var plaster := Props.pbr("beige_wall_001", 0.45, Color(1.3, 1.28, 1.2))
-	var tile_f := tile_mat(Color(0.86, 0.9, 0.92), 0.25)
+	var tile_f := Props.pbr("plytki_biale", 1.0)
 	# ściany działowe
 	wall(W, g, cx, Vector2(2.05, -2.8), Vector2(2.05, 2.8), h, plaster, [[-1.95, -0.95], [1.4, 2.4]])    # kuchnia | łazienka od reszty
 	wall(W, g, cx, Vector2(2.05, 0.2), Vector2(3.6, 0.2), h, plaster)                    # kuchnia | łazienka
 	wall(W, g, cx, Vector2(-1.3, 0.7), Vector2(2.05, 0.7), h, plaster, [[-0.5, 0.5]])                      # przedpokój od pokoju
 	wall(W, g, cx, Vector2(-1.3, 0.7), Vector2(-1.3, 2.8), h, plaster, [[1.0, 2.0]])                       # przedpokój od salonu
 	# podłogi pomieszczeń
-	floor_patch(g, cx, HALL[0], HALL[1], HALL[2], HALL[3], tile_mat(Color(0.66, 0.4, 0.3), 0.3, Color(0.4, 0.3, 0.26)))
-	floor_patch(g, cx, KITCHEN[0], KITCHEN[1], KITCHEN[2], KITCHEN[3], tile_mat(Color(0.84, 0.8, 0.68), 0.3, Color(0.55, 0.52, 0.45)))
+	floor_patch(g, cx, HALL[0], HALL[1], HALL[2], HALL[3], Props.pbr("plytki_terakota", 0.85))
+	floor_patch(g, cx, KITCHEN[0], KITCHEN[1], KITCHEN[2], KITCHEN[3], Props.pbr("plytki_kremowe", 0.85))
 	floor_patch(g, cx, BATH[0], BATH[1], BATH[2], BATH[3], tile_f, 0.001)
 	# kafle w łazience (od wewnątrz) i nad blatem kuchni
 	tiles(g, cx, Vector2(2.1, 0.25), Vector2(3.6, 0.25), Vector2(0, 1), tile_f)
@@ -171,31 +180,15 @@ static func safe_flat(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 	tiles(g, cx, Vector2(2.1, 0.25), Vector2(2.1, 1.4), Vector2(1, 0), tile_f)
 	tiles(g, cx, Vector2(2.05, 2.8), Vector2(3.6, 2.8), Vector2(0, -1), tile_f)
 	# listwy przypodłogowe wzdłuż zewnętrznych ścian pomieszczeń (kuchnia, łazienka)
-	# łazienka: sprzęty
-	var cer := Models.mat("e9ece8", 0.18, 0.0)
-	var chrome := Models.mat("b8bcc0", 0.2, 0.9)
-	# prysznic w północnym rogu: brodzik, kabina z zasłonką, słuchawka
-	Models.box(g, Vector3(1.4, 0.07, 0.8), Vector3(cx + 2.9, 0.035, 0.66), cer)
-	Models.box(g, Vector3(0.7, 0.012, 0.7), Vector3(cx + 3.1, 0.074, 0.66), Models.mat("c9ced0", 0.3, 0.2), Vector3.ZERO, false)
-	Models.cyl(g, 0.012, 0.012, 1.25, Vector3(cx + 3.45, 1.35, 0.3), chrome, Vector3.ZERO, 6)
-	Models.cyl(g, 0.07, 0.07, 0.015, Vector3(cx + 3.38, 1.98, 0.32), chrome, Vector3(0.4, 0, 0), 10)
-	Models.box(g, Vector3(0.012, 1.9, 0.8), Vector3(cx + 2.18, 1.0, 0.66), Models.mat("9ab8c8", 0.4, 0.0, 0.0, 0.35), Vector3.ZERO, false)
-	Models.box(g, Vector3(0.7, 1.85, 0.02), Vector3(cx + 2.62, 1.0, 1.06), Models.mat("a9c6d4", 0.7, 0.0, 0.0, 0.55), Vector3(0, 0.08, 0), false)
-	Models.cyl(g, 0.012, 0.012, 1.4, Vector3(cx + 2.9, 1.95, 1.06), chrome, Vector3(0, 0, PI / 2.0), 6)
-	# sedes: zbiornik przy wschodniej ścianie, miska, deska
-	Models.box(g, Vector3(0.2, 0.4, 0.38), Vector3(cx + 3.48, 0.68, 1.3), cer)
-	Models.box(g, Vector3(0.46, 0.4, 0.36), Vector3(cx + 3.2, 0.2, 1.3), cer)
-	Models.box(g, Vector3(0.42, 0.03, 0.36), Vector3(cx + 3.2, 0.42, 1.3), Models.mat("f1f2ee", 0.25), Vector3.ZERO, false)
-	Models.cyl(g, 0.02, 0.02, 0.02, Vector3(cx + 3.48, 0.89, 1.3), chrome, Vector3.ZERO, 8)
+	# łazienka: modele z Blendera (brodzik z zasłoną, sedes, umywalka na kolumnie, szafka z lustrem)
+	_fixture(g, "lazienka_prysznic", Vector3(cx + 2.83, 0.0, 0.65), 0.0)
+	_fixture(g, "lazienka_sedes", Vector3(cx + 3.25, 0.0, 1.3), -PI / 2.0)
+	_fixture(g, "lazienka_umywalka", Vector3(cx + 3.33, 0.0, 2.35), -PI / 2.0)
+	_fixture(g, "lazienka_lustro", Vector3(cx + 3.456, 1.15, 2.35), -PI / 2.0)
 	solid(W, cx, 2.97, 3.58, 1.1, 1.5, 0.85)
-	# umywalka na wschodniej ścianie, szafka i lustro
-	Models.box(g, Vector3(0.4, 0.14, 0.5), Vector3(cx + 3.38, 0.82, 2.35), cer)
-	Models.box(g, Vector3(0.36, 0.66, 0.4), Vector3(cx + 3.4, 0.4, 2.35), Models.mat("d8d4c8", 0.6), Vector3.ZERO, false)
-	Models.cyl(g, 0.012, 0.012, 0.12, Vector3(cx + 3.52, 0.95, 2.35), chrome, Vector3.ZERO, 6)
-	Models.box(g, Vector3(0.02, 0.62, 0.5), Vector3(cx + 3.59, 1.5, 2.35), Models.mat("b4c6ce", 0.1, 0.1), Vector3.ZERO, false)
 	solid(W, cx, 3.18, 3.58, 2.08, 2.62, 0.95)
 	# światła pomieszczeń
-	var hl: OmniLight3D = W._room_light(g, cx + 0.45, 1.75, h, 0.9, Color(1.0, 0.85, 0.62), 4.2)
+	var hl: OmniLight3D = W._room_light(g, cx + 0.45, 1.75, h, 0.9, Color(1.0, 0.92, 0.8), 4.2)
 	hl.shadow_enabled = false
 	hl.name = "HallLight"
 	Interior.ceiling_lamp(g, Vector3(cx + 0.45, h, 1.75), "bulb")
@@ -242,10 +235,12 @@ static func gondola(W: Node3D, g: Node3D, cx: float, x: float, z: float) -> void
 	W._rp(g, "wooden_display_shelves_01", cx + x, z, PI / 2.0, 1.9, 0.0, 0.66, 0.25)
 	for row in range(1, 3):
 		for cell in range(3):
-			var tm: Node3D = Stations.model(["sklep_polka_pudelka", "sklep_polka_puszki", "sklep_polka_sloiki", "sklep_polka_chemia"][(int(x * 3.0) + row * 2 + cell) & 3])
-			if tm != null:
-				tm.position = Vector3(cx + x + (cell - 1) * 0.438, 0.03 + row * 0.633, z)
-				g.add_child(tm)
+			for side in [-1.0, 1.0]:
+				var tm: Node3D = Stations.model(["sklep_polka_pudelka", "sklep_polka_puszki", "sklep_polka_sloiki", "sklep_polka_chemia"][(int(x * 3.0) + row * 2 + cell + (0 if side < 0.0 else 1)) & 3])
+				if tm != null:
+					tm.position = Vector3(cx + x + (cell - 1) * 0.438, 0.03 + row * 0.633, z + side * 0.09)
+					tm.rotation.y = 0.0 if side < 0.0 else PI
+					g.add_child(tm)
 
 
 ## ŚCIANY DZIAŁOWE LOKALI DO KUPIENIA (współrzędne środkowe jak w meblach: x względem cx, z od środka pokoju)
