@@ -12,6 +12,13 @@ Pracujesz nad wyglądem gry „Czarny Rynek” (Godot 4.7.2, `/Users/macbook/cza
 - Zrzut z gry: `G=/Applications/Godot.app/Contents/MacOS/Godot; ./tools/wolne.sh && $G --path . --audio-driver Dummy --resolution 1280x720 -- --autostart --loc=out --pos=x,z --yaw=Y --pitch=P --hour=H --frames=20 --shot=$TMPDIR/czarny-rynek/nazwa.png`. Gotowe ujęcia: `--ui=<preset>` (tour, kryjowka, labui, ciuchy, lozko…), `./tools/tour.sh`.
 - Obejrzyj PNG narzędziem Read. Zrzuty tylko w `$TMPDIR`, nigdy obok projektu.
 
+## Jakość — Piotr odrzuca „pudełka w jednym kolorze”
+- NIGDY nie buduj widocznych obiektów z prymitywów Godota (BoxMesh/CylinderMesh) z płaskim kolorem StandardMaterial3D. To wygląda tanio i odstaje od miasta.
+- Każdy nowy obiekt: model z Blendera przez `lib.py` (bevel na krawędziach, `weather()` = wypalony brud/zużycie/AO), albo istniejące modele z `assets/models`/`assets/props`.
+- Tekstury: używaj gotowych PBR z `assets/tex/` (`*_diff/_nor/_rough.jpg`: asfalt, beton, cegła, blacha, tynk, drewno…) — tak samo jak sąsiednie budynki. Najpierw sprawdź, jak robi to otoczenie (`grep -n "_facade_mats\|assets/tex" scripts/world.gd`) i dopasuj skalę tekstury, paletę, stopień zabrudzenia.
+- Wzoruj się na najlepszych istniejących modelach: `make_lombard.py`, `make_monopolowy.py`, `make_witryny2.py`, `make_kryjowka.py`, `make_hurtownia.py`.
+- Test „czy pasuje”: zrzut, na którym nowy obiekt stoi w jednym kadrze z istniejącymi budynkami, w dzień i w nocy. Jeśli jest czystszy, gładszy, bardziej nasycony albo bardziej „plastikowy” niż otoczenie — nie jest gotowy.
+
 ## Blender
 - `/Applications/Blender.app/Contents/MacOS/Blender -b --python tools/blender/make_X.py -- nazwa…`; podgląd `tools/blender/podglad.py -- out.png model --az= --el= --zoom=`.
 - Potem: `$G --headless --import`, `python3 tools/kompresja_modeli.py`, import jeszcze raz.
