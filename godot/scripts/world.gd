@@ -5206,6 +5206,7 @@ func _interiors() -> void:
 					else:
 						Models.box(g2, Vector3(0.17, 0.12, 0.2), Vector3(px, y0 + 0.06, -d2 * 0.5 + 0.32), Models.mat(col, 0.85), Vector3(0, 0.1 * i, 0), false)
 						Models.box(g2, Vector3(0.17, 0.12, 0.2), Vector3(px, y0 + 0.182, -d2 * 0.5 + 0.32), Models.mat(cols[(k + cell + i + 3) % cols.size()], 0.85), Vector3(0, -0.08 * i, 0), false)
+	RoomParts.shop_layout(self, g2, sx2, w2, d2, h2)   # zaplecze za ladą i regały w sali
 	add_col(sx2 - 4.4, sx2 + 4.4, -d2 * 0.5, -d2 * 0.5 + 0.6, 2.0, true, -1.0)
 	rects.pop_back()
 	# stojak z papierosami i tablica z cenami nad ladą
@@ -5243,7 +5244,7 @@ func _interiors() -> void:
 	_rp(g2, "plastic_crate_01", sx2 - 2.95, 2.75, 1.1, 0.28)
 	_rp(g2, "cardboard_box_01", sx2 + 3.6, 2.2, 0.2, 0.4, 0.0, 0.3, 0.3)
 	_rp(g2, "cardboard_box_01", sx2 + 3.5, 1.5, 1.4, 0.34)
-	_rp(g2, "plastic_container", sx2 + 3.7, -0.4, PI / 2.0, 0.42, 0.0, 0.35, 0.5)
+	_rp(g2, "plastic_container", sx2 + 3.7, 0.3, PI / 2.0, 0.42, 0.0, 0.35, 0.5)
 	Models.box(g2, Vector3(1.3, 0.014, 0.7), Vector3(sx2, 0.008, d2 * 0.5 - 0.55), Models.mat("2f3a2f", 0.95), Vector3.ZERO, false)
 	if has_shop:
 		var nst := Stations.model("sklep_stojak_gazety")

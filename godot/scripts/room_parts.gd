@@ -2,6 +2,7 @@ extends RefCounted
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
 const Interior = preload("res://scripts/interior.gd")
+const Stations = preload("res://scripts/stations.gd")
 ## Ściany działowe, futryny, progi, listwy i podłogi pomieszczeń WEWNĄTRZ jednego wnętrza (mieszkanie, lokale).
 ## Współrzędne lokalne: x względem środka wnętrza (cx), z jak w pokoju. W — świat (world.gd): kolizje przez W.add_col.
 
@@ -210,3 +211,38 @@ static func safe_flat(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 	var kw: Dictionary = Interior.window(g, Vector3(cx + 2.95, 1.5, -d * 0.5), 0.9, 1.0, "n", "sheer", false)
 	kw.light.shadow_enabled = false
 	W.windows.append(kw)
+
+
+## SKLEP U STASIA: zaplecze za ladą (wschodni narożnik, drzwi od strony kasy) i dwa wolnostojące regały w sali sprzedaży
+static func shop_layout(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: float) -> void:
+	var plaster := Props.pbr("beige_wall_001", 0.45, Color(1.2, 1.18, 1.1))
+	# zaplecze: x ∈ [2.7, 4.5], z ∈ [-3.5, -0.9]; wejście z zaplecza-za-ladą przez otwór w ścianie x = 2.7
+	wall(W, g, cx, Vector2(2.7, -3.5), Vector2(2.7, -0.9), h, plaster, [[-3.05, -2.05]])
+	wall(W, g, cx, Vector2(2.7, -0.9), Vector2(4.5, -0.9), h, plaster)
+	floor_patch(g, cx, 2.7, -3.5, 4.5, -0.9, Props.pbr("concrete_floor_worn_001", 0.5, Color(0.85, 0.85, 0.82)))
+	var bl: OmniLight3D = W._room_light(g, cx + 3.6, -2.2, h, 0.9, Color(1.0, 0.9, 0.7), 3.4)
+	bl.shadow_enabled = false
+	bl.name = "BackroomLight"
+	Interior.ceiling_lamp(g, Vector3(cx + 3.6, h, -2.2), "bulb")
+	# wyposażenie zaplecza: regał stalowy, skrzynki, kartony, wiadro z mopem, tabliczka na drzwiach
+	W._rp(g, "steel_frame_shelves_01", cx + 4.2, -2.1, -PI / 2.0, 1.9, 0.0, 0.3, 0.8)
+	W._rp(g, "plastic_crate_01", cx + 3.2, -1.3, 0.2, 0.28, 0.0, 0.3, 0.3)
+	W._rp(g, "plastic_crate_01", cx + 3.2, -1.3, 0.9, 0.28, 0.28)
+	W._rp(g, "cardboard_box_01", cx + 3.9, -1.3, 0.5, 0.4, 0.0, 0.3, 0.3)
+	W._rp(g, "cardboard_box_01", cx + 4.2, -1.2, 1.2, 0.34, 0.0, 0.3, 0.3)
+	Models.cyl(g, 0.15, 0.12, 0.28, Vector3(cx + 3.15, 0.14, -3.2), Models.mat("3a6ea5", 0.5), Vector3.ZERO, 10)
+	Models.cyl(g, 0.012, 0.012, 1.3, Vector3(cx + 3.15, 0.8, -3.2), Models.mat("8a6a3a", 0.8), Vector3(0.12, 0, 0.05), 5)
+	Interior.note(g, Vector3(cx + 2.64, 1.55, -2.55), -PI / 2.0, "ZAPLECZE\nTylko dla personelu", 0.3, 0.2)
+	# dwa wolnostojące regały w sali: alejka przy drzwiach zostaje wolna
+	for gx in [-1.6, 1.3]:
+		gondola(W, g, cx, gx, 0.6)
+
+
+static func gondola(W: Node3D, g: Node3D, cx: float, x: float, z: float) -> void:
+	W._rp(g, "wooden_display_shelves_01", cx + x, z, PI / 2.0, 1.9, 0.0, 0.66, 0.25)
+	for row in range(1, 3):
+		for cell in range(3):
+			var tm: Node3D = Stations.model(["sklep_polka_pudelka", "sklep_polka_puszki", "sklep_polka_sloiki", "sklep_polka_chemia"][(int(x * 3.0) + row * 2 + cell) & 3])
+			if tm != null:
+				tm.position = Vector3(cx + x + (cell - 1) * 0.438, 0.03 + row * 0.633, z)
+				g.add_child(tm)

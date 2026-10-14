@@ -68,6 +68,13 @@ static func run(T) -> void:
 	await blocked(T, r, "kawalerka: ściana kuchni od pokoju", [1.5, -0.6], [3.0, -0.6], "x", 2.1, true)
 	await blocked(T, r, "kawalerka: ściana łazienki od kuchni", [2.5, -0.7], [2.5, 0.6], "z", -0.1, true)
 	await blocked(T, r, "kawalerka: ściana łazienki od przedpokoju", [1.5, 1.2], [3.0, 1.2], "x", 2.2, true)
+	# sklep u Stasia: sala → alejka → za ladą → zaplecze
+	r = "shop"
+	await reach(T, r, "sklep: drzwi → alejka → za ladą → zaplecze", [[0.0, 2.0], [0.3, 1.5], [-2.79, 1.5], [-2.79, 0.6], [-3.4, 0.0], [-3.4, -2.3], [2.2, -2.3], [3.3, -2.55]])
+	await reach(T, r, "sklep: zaplecze → za ladą → sala", [[3.3, -2.55], [2.2, -2.3], [-3.4, -2.3], [-3.4, 0.0], [-2.79, 0.6], [0.3, 1.5], [0.0, 2.0]])
+	await blocked(T, r, "sklep: ściana zaplecza od sali", [3.0, 0.5], [3.0, -0.3], "z", -0.55, false)
+	await blocked(T, r, "sklep: regał w sali", [-1.6, 1.5], [-1.6, 0.0], "z", 1.1, false)
+	await blocked(T, r, "sklep: lada", [0.0, 0.2], [0.0, -2.3], "z", -0.5, false)
 	player.place(saved_pos, saved_yaw)
 	player.loc = saved_loc
 	player.set_physics_process(was_physics)
