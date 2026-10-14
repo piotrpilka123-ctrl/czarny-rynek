@@ -146,62 +146,30 @@ static func _scatter(W, c: Vector2, items: Array) -> void:
 
 
 ## ćwierćrura: łuk od podłogi (x = 0) do pionowej ścianki (x = r), szerokość w, wzdłuż osi z; kolizja schodkami
-static func _quarter(W, x: float, z: float, ry: float, w: float, r: float, mat: Material) -> void:
-	var n := 8
-	var prof: Array = []
-	for i in range(n + 1):
-		var a := float(i) / float(n) * PI * 0.5
-		prof.append(Vector2(r * sin(a), r - r * cos(a)))
-	var stt := SurfaceTool.new()
-	stt.begin(Mesh.PRIMITIVE_TRIANGLES)
+static func _quarter(W, x: float, z: float, ry: float, w: float, r: float) -> void:
+	var qm: Node3D = Stations.model("skate_cwiartka")
+	if qm != null:
+		qm.position = Vector3(x, W.hd(x, z), z)
+		qm.rotation.y = ry
+		qm.scale = Vector3(INV * w / 4.4, r / 1.3, INV * r / 1.3)
+		W.city.add_child(qm)
+		Props.set_range(qm, 110.0)
+	# kolizja: 4 schodki po łuku (wysokość z początku odcinka — nie ma niewidzialnej ściany nad pochyłością); rampa wznosi się w kierunku −z modelu
+	var d := Vector2(-sin(ry), -cos(ry))
 	var hw := w * 0.5
-	for i in range(n):
-		var a0: Vector2 = prof[i]
-		var a1: Vector2 = prof[i + 1]
-		var n0 := Vector3(-a0.x / r + 0.0, 1.0 - a0.y / r, 0.0).normalized() if i > 0 else Vector3(0, 1, 0)
-		var m0 := float(i) / float(n) * PI * 0.5
-		var m1 := float(i + 1) / float(n) * PI * 0.5
-		n0 = Vector3(-sin(m0), cos(m0), 0.0)
-		var n1 := Vector3(-sin(m1), cos(m1), 0.0)
-		for q in [[a0, -hw, n0], [a1, -hw, n1], [a1, hw, n1], [a0, -hw, n0], [a1, hw, n1], [a0, hw, n0]]:
-			stt.set_normal(q[2])
-			stt.add_vertex(Vector3(q[0].x, q[0].y, q[1]))
-	# ścianka tylna i boki
-	for q in [[Vector3(r, 0, -hw), Vector3(r, r, -hw), Vector3(r, r, hw)], [Vector3(r, 0, -hw), Vector3(r, r, hw), Vector3(r, 0, hw)]]:
-		for v in q:
-			stt.set_normal(Vector3(1, 0, 0))
-			stt.add_vertex(v)
-	for side in [-1.0, 1.0]:
-		for i in range(n):
-			var b0: Vector2 = prof[i]
-			var b1: Vector2 = prof[i + 1]
-			for v in [Vector3(r, 0, side * hw), Vector3(b0.x, b0.y, side * hw), Vector3(b1.x, b1.y, side * hw)]:
-				stt.set_normal(Vector3(0, 0, side))
-				stt.add_vertex(v)
-	var mesh := stt.commit()
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	var m2: Material = mat.duplicate()
-	(m2 as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
-	mi.material_override = m2
-	mi.position = Vector3(x, W.hd(x, z), z)
-	mi.rotation.y = ry
-	mi.scale = Vector3(INV, 1.0, INV)
-	W.city.add_child(mi)
-	Props.set_range(mi, 110.0)
-	# kolizja: 4 schodki po łuku (wysokość z początku odcinka — nie ma niewidzialnej ściany nad pochyłością)
 	var steps := 4
 	for i in range(steps):
 		var x0 := r * float(i) / float(steps)
 		var x1 := r * float(i + 1) / float(steps)
-		var ang := asin(clampf(x0 / r, 0.0, 1.0))
-		var hh := r - r * cos(ang)
+		var hh := r - r * cos(asin(clampf(x0 / r, 0.0, 1.0)))
 		if hh < 0.25:
 			continue
-		var cx := x + (cos(ry) * ((x0 + x1) * 0.5)) * INV
-		var cz := z - (sin(ry) * ((x0 + x1) * 0.5)) * INV
-		var ex := (absf(cos(ry)) * (x1 - x0) * 0.5 + absf(sin(ry)) * hw) * INV
-		var ez := (absf(sin(ry)) * (x1 - x0) * 0.5 + absf(cos(ry)) * hw) * INV
+		var mid := (x0 + x1) * 0.5
+		var cx := x + d.x * mid * INV
+		var cz := z + d.y * mid * INV
+		var al := (x1 - x0) * 0.5
+		var ex := (absf(d.x) * al + absf(d.y) * hw) * INV
+		var ez := (absf(d.y) * al + absf(d.x) * hw) * INV
 		W.add_col(cx - ex, cx + ex, cz - ez, cz + ez, hh)
 		W.rects.pop_back()
 
@@ -300,45 +268,37 @@ static func _yard(W) -> void:
 # ---------------------------------------------------------------- skatepark
 static func _skate(W) -> void:
 	var c := SKATE
-	var conc: Material = Props.pbr("concrete_floor_worn_001", 0.4, Color(0.78, 0.78, 0.76))
-	var dark: Material = Models.mat("3a3d42", 0.5, 0.7)
-	var wood: Material = Models.mat("8a6a3a", 0.8)
-	# mur z graffiti: długi, betonowy, od północy — za nim ćwierćrury
+	# mur z graffiti (model), trzy segmenty; za nim ćwierćrury
 	var wz := c.y - 13.0
-	for i in range(5):
-		var wx := c.x - 11.0 + float(i) * 5.6
-		_box(W, wx, wz, Vector3(5.6, 2.6, 0.3), conc, 0.0, 0.0, 0.0)
-		var d = Details.decal(W, Details.pick("piece") if i % 2 == 0 else Details.pick("slogan"), Vector3(wx * SC, W.hd(wx, wz) + 1.3, (wz + 0.2 * INV) * SC), 0.0, 3.4, 1.0, 60.0)
-		if i == 2:
-			Details.decal(W, Details.pick("tag"), Vector3(wx * SC + 1.2, W.hd(wx, wz) + 0.7, (wz + 0.2 * INV) * SC), 0.0, 1.4, 1.0, 40.0)
-	_quarter(W, c.x - 7.0, wz + 2.0 * INV, 0.0, 4.8, 1.5, conc)
-	_quarter(W, c.x + 2.0, wz + 2.0 * INV, 0.0, 4.8, 1.5, conc)
-	# prawy bok: dwie ćwierćrury twarzą do siebie, między nimi „bank”
-	_quarter(W, c.x + 12.0, c.y - 4.0, PI, 4.4, 1.2, conc)
-	_quarter(W, c.x + 12.0, c.y + 3.0, PI, 4.4, 1.2, conc)
-	# funbox: ławka z krawędziami i rail przy schodkach, rampka pod rail
-	_box(W, c.x - 3.0, c.y + 2.0, Vector3(3.6, 0.5, 1.6), conc, 0.0, 0.0, 0.0)
-	_box(W, c.x - 3.0, c.y + 2.0, Vector3(3.8, 0.06, 1.8), Models.mat("c9b8a0", 0.7), 0.5, 0.0, -1.0, false)
-	_box(W, c.x + 4.0, c.y + 4.0, Vector3(2.0, 0.28, 1.4), conc, 0.0, 0.0, 0.0)
-	_box(W, c.x + 4.0 + 1.0 * INV, c.y + 4.0, Vector3(1.0, 0.56, 1.4), conc, 0.0, 0.0, 0.0)
-	_box(W, c.x + 4.0 + 2.0 * INV, c.y + 4.0, Vector3(1.0, 0.84, 1.4), conc, 0.0, 0.0, 0.0)
-	_box(W, c.x + 4.0 + 3.0 * INV, c.y + 4.0, Vector3(1.0, 1.1, 1.4), conc, 0.0, 0.0, 0.0)
-	_box(W, c.x + 1.0, c.y - 3.0, Vector3(5.0, 0.07, 0.07), dark, 0.62)
-	for sx in [-2.3, 2.3]:
-		_box(W, c.x + 1.0 + sx * INV, c.y - 3.0, Vector3(0.07, 0.62, 0.07), dark, 0.0, 0.0, 0.0)
-	_box(W, c.x - 10.0, c.y + 3.0, Vector3(6.0, 0.09, 0.09), dark, 0.9)
-	_box(W, c.x - 12.5, c.y + 3.0, Vector3(0.09, 0.9, 0.09), dark, 0.0, 0.0, 0.0)
-	_box(W, c.x - 7.5, c.y + 3.0, Vector3(0.09, 0.9, 0.09), dark, 0.0, 0.0, 0.0)
+	var mm: Node3D
+	for i in range(3):
+		var wx := c.x - 10.0 + float(i) * 10.0
+		mm = Stations.model("skate_mur")
+		if mm != null:
+			Props.set_range(W._place(mm, wx, wz, 0.0, 2.8, 0.25, 2.7), 130.0)
+		for dx in [-1.4, 1.4]:
+			Details.decal(W, Details.pick("piece") if (i + int(dx)) % 2 == 0 else Details.pick("slogan"), Vector3(wx * SC + dx, W.hd(wx, wz) + 1.3, wz * SC + 0.17), 0.0, 2.2, 1.0, 60.0)
+		if i == 1:
+			Details.decal(W, Details.pick("tag"), Vector3(wx * SC + 0.1, W.hd(wx, wz) + 0.6, wz * SC + 0.17), 0.0, 1.2, 1.0, 40.0)
+	_quarter(W, c.x - 7.0, wz + 2.0 * INV, 0.0, 4.4, 1.3)
+	_quarter(W, c.x + 2.0, wz + 2.0 * INV, 0.0, 4.4, 1.3)
+	_quarter(W, c.x + 15.0 - 1.3 * INV, c.y - 4.0, -PI / 2.0, 4.4, 1.3)
+	_quarter(W, c.x + 15.0 - 1.3 * INV, c.y + 3.0, -PI / 2.0, 4.4, 1.3)
+	var fb: Node3D = Stations.model("skate_funbox")
+	if fb != null:
+		Props.set_range(W._place(fb, c.x - 3.0, c.y + 2.0, 0.0, 1.8, 0.95, 0.55), 110.0)
+	var rl: Node3D = Stations.model("skate_rail")
+	if rl != null:
+		Props.set_range(W._place(rl, c.x + 4.0, c.y - 3.0, 0.0, 2.5, 0.1, 0.65), 110.0)
+	var rl2: Node3D = Stations.model("skate_rail")
+	if rl2 != null:
+		Props.set_range(W._place(rl2, c.x - 10.0, c.y + 3.0, 0.0, 2.5, 0.1, 0.65), 110.0)
 	# wokół: ławki, kosz, kolorowe pachołki, deskorolka, puszki po farbie, boombox na murku
 	W._bench(c.x - 1.0, c.y + 11.0, PI)
 	W._bench(c.x + 8.0, c.y + 11.0, PI)
 	W._bin(c.x + 14.0, c.y + 10.0, 0.0)
-	_scatter(W, c, [["pacholek", -6.0, 0.0, 0.0, 0.5], ["pacholek", -5.0, 0.8, 0.5, 0.5], ["spray_paint_bottles", 3.0, -7.4, 0.4, 0.22], ["can_rusted", 9.0, 5.0, 0.3, 0.13],
+	_scatter(W, c, [["trafficcone_1", -6.0, 0.0, 0.0, 0.6], ["trafficcone_2", -5.0, 0.8, 0.5, 0.6], ["spray_paint_bottles", 3.0, -7.4, 0.4, 0.22], ["can_rusted", 9.0, 5.0, 0.3, 0.13],
 		["boombox", -3.0, 2.0, 0.6, 0.3, 0.5], ["dirty_football", 6.0, 8.5, 0.0, 0.22], ["trashbag", 15.0, 4.0, 0.9, 0.5], ["plastic_bottle_gallon", 11.0, 8.0, 0.0, 0.3]])
-	var deck := _p(c, -1.5, 6.0)
-	_box(W, deck.x, deck.y, Vector3(0.8, 0.03, 0.2), wood, 0.1, 0.5, -1.0, false)
-	for wx2 in [-0.28, 0.28]:
-		_box(W, deck.x + wx2 * INV, deck.y, Vector3(0.1, 0.06, 0.1), Models.mat("d9d9d9", 0.5), 0.03, 0.5, -1.0, false)
 	_pole(W, c.x - 14.0, c.y + 12.0)
 	_pole(W, c.x + 15.0, c.y - 8.0)
 	_stash(W, "skate_tablica", c.x - 12.0, wz + 2.5 * INV, "Odsuń luźną płytę pod murem", 55, "Skaterzy chowali za płytą zrzutkę na nową deskę", 0.3)
@@ -400,45 +360,16 @@ static func _station(W) -> void:
 static func _bazaar(W) -> void:
 	var c := BAZAAR
 	var pole: Material = Models.mat("7a6a50", 0.8)
-	var table: Material = Models.mat("6b5a42", 0.9)
-	var tarps := ["b8442c", "2c6ab8", "3a8a4a", "c9a02c", "8a3a8a", "d9d4c4", "b86a2c", "2c8a8a"]
-	# dwa rzędy stoisk po cztery, szeroka alejka w środku
+	# dwa rzędy stoisk po cztery (modele, cztery warianty towaru), szeroka alejka w środku
 	var k := 0
 	for row in [-1, 1]:
 		for i in range(4):
 			var sx: float = c.x - 13.5 + float(i) * 8.6 + (W.rng.randf() - 0.5) * 0.8
-			var sz := c.y + float(row) * 8.0
-			var ry := 0.0 if row < 0 else PI
-			var tarp: Material = Models.mat(tarps[k % tarps.size()], 0.95)
-			# słupki, daszek z plandeki (lekko pochylony), lada z towarem
-			for dx in [-1.8, 1.8]:
-				_box(W, sx + dx * INV, sz - float(row) * 1.0 * INV, Vector3(0.08, 2.5, 0.08), pole, 0.0, 0.0, 0.0)
-				_box(W, sx + dx * INV, sz + float(row) * 1.0 * INV, Vector3(0.08, 2.1, 0.08), pole, 0.0, 0.0, 0.0)
-			_box(W, sx, sz, Vector3(4.2, 0.06, 2.6), tarp, 2.2, 0.0, -1.0, true, Vector3(0.07 * float(row), 0.0, 0.0))
-			_box(W, sx, sz - float(row) * 0.2 * INV, Vector3(3.4, 0.85, 0.9), table, 0.0, ry, 0.0)
-			_box(W, sx, sz - float(row) * 0.2 * INV, Vector3(3.5, 0.05, 1.0), Models.mat(tarps[(k + 3) % tarps.size()], 0.95), 0.85, ry, -1.0, false)
-			# towar: stos ciuchów, skrzynki, sprzęt
-			match k % 4:
-				0:
-					for j in range(4):
-						var cl: Node3D = Stations.model("ciuch_zlozony")
-						if cl != null:
-							cl.position = Vector3(sx + (float(j) - 1.5) * 0.7 * INV, W.hd(sx, sz) + 0.9, sz - float(row) * 0.2 * INV)
-							cl.scale = Vector3(INV, 1.0, INV)
-							W.city.add_child(cl)
-							Props.set_range(cl, 50.0)
-				1:
-					W._prop("television_02", sx - 1.0 * INV, sz, 0.1, 0.4, 0.0, false, 0.9)
-					W._prop("boombox", sx + 0.4 * INV, sz, 0.3, 0.28, 0.0, false, 0.9)
-					W._prop("classic_laptop", sx + 1.3 * INV, sz, 0.0, 0.05, 0.0, false, 0.9)
-				2:
-					W._prop("plastic_crate_01", sx - 1.0 * INV, sz, 0.2, 0.3, 0.0, false, 0.9)
-					W._prop("plastic_crate_01", sx + 0.6 * INV, sz, -0.2, 0.3, 0.0, false, 0.9)
-					W._prop("vintage_suitcase", sx + 1.3 * INV, sz, 0.4, 0.28, 0.0, false, 0.9)
-				3:
-					W._prop("radio", sx - 0.8 * INV, sz, 0.1, 0.3, 0.0, false, 0.9)
-					W._prop("cigarette_pack", sx + 0.5 * INV, sz, 0.1, 0.05, 0.0, false, 0.9)
-					W._prop("dom_butelka", sx + 1.2 * INV, sz, 0.0, 0.3, 0.0, false, 0.9)
+			var sz: float = c.y + float(row) * 8.0
+			var sm: Node3D = Stations.model("bazar_stoisko_%d" % ((k + (3 if row > 0 else 0)) % 4))
+			if sm != null:
+				var ry := 0.0 if row < 0 else PI
+				Props.set_range(W._place(sm, sx, sz, ry, 1.8, 0.7, 0.9), 130.0)
 			k += 1
 	# girlanda żarówek nad alejką: trzy sznury na słupach, żarówki świecą wspólnym materiałem latarni
 	for gz in [-3.0, 3.0]:
@@ -454,10 +385,12 @@ static func _bazaar(W) -> void:
 			Models.sphere(W.city, 0.09 * INV, Vector3(bx, W.hd(bx, c.y + gz * INV) + 3.3 - sag, c.y + gz * INV), W.lamp_mat, Vector3(1, 1, 1), false, 6)
 	_light(W, c.x - 8.0, c.y, 3.1, Color(1.0, 0.78, 0.5), 0.55, 13.0)
 	_light(W, c.x + 8.0, c.y, 3.1, Color(1.0, 0.78, 0.5), 0.55, 13.0)
-	W._sign("NOCNY BAZAR", Vector3(c.x, W.hd(c.x, c.y - 16.0) + 4.0, c.y - 16.7), Color(1.0, 0.82, 0.4), 64, PI, 0.007, 12)
-	_box(W, c.x - 3.2 * INV, c.y - 16.0, Vector3(0.18, 4.2, 0.18), pole, 0.0, 0.0, 0.0)
-	_box(W, c.x + 3.2 * INV, c.y - 16.0, Vector3(0.18, 4.2, 0.18), pole, 0.0, 0.0, 0.0)
-	_box(W, c.x, c.y - 16.0, Vector3(7.0, 1.0, 0.1), Models.mat("1c1c1e", 0.9), 3.55, 0.0, -1.0, false)
+	var bg: Node3D = Stations.model("bazar_brama")
+	if bg != null:
+		Props.set_range(W._place(bg, c.x, c.y - 16.0, PI), 150.0)
+		for sx in [-3.4, 3.4]:
+			W.add_col(c.x + (sx - 0.15) * INV, c.x + (sx + 0.15) * INV, c.y - 16.0 - 0.15 * INV, c.y - 16.0 + 0.15 * INV, 3.0)
+			W.rects.pop_back()
 	# na tyłach: beczka-ognisko, skrzynki do siedzenia, stos kartonów
 	_scatter(W, c, [["wooden_crate_02", -17.0, 13.5, 0.3, 0.42], ["wooden_crate_02", -16.0, 14.4, 1.2, 0.42], ["cardboard_box_01", -14.5, 14.0, 0.5, 0.34], ["cardboard_box_01", -14.2, 14.8, 1.5, 0.34],
 		["plastic_monobloc_chair_01", 15.0, 13.0, 2.4, 0.86], ["plastic_monobloc_chair_01", 16.4, 13.5, 3.9, 0.86], ["trashbag", 17.0, -13.0, 0.5, 0.5], ["pallet", 14.0, -14.0, 0.3, 0.16]])
@@ -475,29 +408,18 @@ static func _bazaar(W) -> void:
 # ---------------------------------------------------------------- szklarnie pod folią
 static func _greenhouses(W) -> void:
 	var c := GREEN
-	var foil := StandardMaterial3D.new()
-	foil.albedo_color = Color(0.8, 0.88, 0.8, 0.28)
-	foil.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	foil.roughness = 0.2
-	foil.cull_mode = BaseMaterial3D.CULL_DISABLED
-	foil.emission_enabled = true
-	foil.emission = Color(0.6, 0.2, 0.8)
-	foil.emission_energy_multiplier = 0.0
-	var rib: Material = Models.mat("b8b8b0", 0.5, 0.6)
 	var soil: Material = Models.mat("3a2a1e", 1.0)
 	# trzy tunele foliowe równolegle do osi z; środkiem przebiega ścieżka od bramki
 	var i := 0
 	for tx in [-8.0, 0.0, 8.0]:
 		var p := _p(c, tx, 0.0)
 		var ln := 11.0
-		var arc := _half_tunnel(1.55 * INV, 2.0, ln * INV, foil)
-		arc.position = Vector3(p.x, W.hd(p.x, p.y), p.y)
-		W.city.add_child(arc)
-		Props.set_range(arc, 130.0)
-		for rz in range(-5, 6):
-			var rp := Vector2(p.x, p.y + float(rz) * INV)
-			_box(W, rp.x - 1.45 * INV, rp.y, Vector3(0.06, 1.2, 0.06), rib, 0.0, 0.0, -1.0, false)
-			_box(W, rp.x + 1.45 * INV, rp.y, Vector3(0.06, 1.2, 0.06), rib, 0.0, 0.0, -1.0, false)
+		var tm: Node3D = Stations.model("szkl_tunel")
+		if tm != null:
+			tm.position = Vector3(p.x, W.hd(p.x, p.y), p.y)
+			tm.scale = Vector3(INV, 1.0, INV)
+			W.city.add_child(tm)
+			Props.set_range(tm, 130.0)
 		# kolizja: ściana tunelu z przejściem na wprost ścieżki
 		W.add_col(p.x - 1.7 * INV, p.x + 1.7 * INV, p.y - ln * 0.5 * INV, p.y - 1.2 * INV, 1.8)
 		W.rects.pop_back()
@@ -527,31 +449,9 @@ static func _greenhouses(W) -> void:
 		var hp := _p(c, 11.0, -13.0)
 		W._place(hut, hp.x, hp.y, PI * 0.5, 2.4, 1.9, 2.4)
 		Props.set_range(hut, 120.0)
-	_scatter(W, c, [["barrel_01", -13.0, -15.0, 0.0, 0.9], ["barrel_01", -12.0, -15.2, 0.6, 0.9], ["wooden_crate_02", -3.0, -14.0, 0.4, 0.42], ["konewka", -4.4, -13.0, 0.6, 0.3],
-		["nawoz", 5.0, -14.5, 0.3, 0.6], ["nawoz", 6.0, -14.0, 1.0, 0.6], ["hand_truck", 9.0, -9.0, 2.2, 1.3], ["plastic_crate_01", 13.0, 12.0, 0.4, 0.3], ["plastic_crate_01", 13.6, 12.6, 1.1, 0.3]])
+	_scatter(W, c, [["barrel_01", -13.0, -15.0, 0.0, 0.9], ["barrel_01", -12.0, -15.2, 0.6, 0.9], ["wooden_crate_02", -3.0, -14.0, 0.4, 0.42], ["plastic_bottle_gallon", -4.4, -13.0, 0.6, 0.3],
+		["cement_bag", 5.0, -14.5, 0.3, 0.2], ["cement_bag", 6.0, -14.0, 1.0, 0.2], ["hand_truck", 9.0, -9.0, 2.2, 1.3], ["plastic_crate_01", 13.0, 12.0, 0.4, 0.3], ["plastic_crate_01", 13.6, 12.6, 1.1, 0.3]])
 	_light(W, c.x + 11.0 * INV, c.y - 11.0 * INV, 2.6, Color(0.95, 0.9, 0.6), 0.4, 8.0, true)
 	_stash(W, "szklarnie_termos", c.x + 4.0 * INV, c.y - 14.0 * INV, "Zajrzyj do termosu za workami", 95, "W termosie, zamiast herbaty, zwitek banknotów od odbiorców Mietka", 0.3)
 	_dump(W, "poi_szklarnie_kompost", c.x - 9.0 * INV, c.y + 14.0 * INV, "Przekop kompost", "bin")
 	_box(W, c.x - 9.0 * INV, c.y + 14.0 * INV, Vector3(2.0, 0.8, 1.4), soil, 0.0, 0.2, 0.0)
-
-
-## półłukowy tunel: łuk o promieniu r (plan), długości l (plan) wzdłuż osi z; zwraca MeshInstance3D
-static func _half_tunnel(r: float, h: float, l: float, mat: Material) -> MeshInstance3D:
-	var stt := SurfaceTool.new()
-	stt.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var n := 10
-	var hl := l * 0.5
-	for i in range(n):
-		var a0 := PI * float(i) / float(n)
-		var a1 := PI * float(i + 1) / float(n)
-		var p0 := Vector2(cos(a0), sin(a0))
-		var p1 := Vector2(cos(a1), sin(a1))
-		for q in [[p0, -hl], [p1, -hl], [p1, hl], [p0, -hl], [p1, hl], [p0, hl]]:
-			var pp: Vector2 = q[0]
-			stt.set_normal(Vector3(pp.x, pp.y, 0.0))
-			stt.add_vertex(Vector3(pp.x * r, pp.y * h, float(q[1])))
-	var mi := MeshInstance3D.new()
-	mi.mesh = stt.commit()
-	mi.material_override = mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	return mi
