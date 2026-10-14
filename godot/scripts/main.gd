@@ -1162,7 +1162,7 @@ func zdzichu_talk() -> void:
 		return
 	var choices := []
 	if G.beer_ready():
-		choices.append({"label": "Postaw piwo — %s" % G.money(G.BEER_PRICE), "kind": "go", "act": func():
+		choices.append({"label": "Daj puszkę piwa" if G.item("piwo") > 0 else "Postaw piwo — %s" % G.money(G.BEER_PRICE), "kind": "go", "act": func():
 			if G.beer_give():
 				G.notify("Zdzichu: „Ja? Ja tu nikogo nie widziałem, panie władzo.” Śledztwo trochę stygnie.", "good")
 			else:
@@ -1170,6 +1170,12 @@ func zdzichu_talk() -> void:
 	choices.append({"label": "Trzymaj się, Zdzichu."})
 	var lines: Array = ["Kierowniku… postaw piwko. Ja tu wszystko widzę. Wszyściutko. Ale za piwko — nic nie mówię.", "Wczoraj pytali o takiego jednego w dresie. Nic nie powiedziałem. Jeszcze.", "Zimno dziś, co? Piwko by rozgrzało."] if G.beer_ready() else ["Dzięki, kierowniku. Dziś jestem ślepy i głuchy.", "Jutro też będzie dzień. I też będzie się chciało pić."]
 	ui.dialog({"name": "Zdzichu", "lines": [lines[G.day() % lines.size()]], "choices": choices})
+
+
+func liquor_talk() -> void:
+	if G.busy or ui.mode != "":
+		return
+	ui.open_liquor()
 
 
 func pawn_talk() -> void:

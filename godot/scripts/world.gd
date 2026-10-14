@@ -2391,6 +2391,8 @@ func _buildings() -> void:
 	_shopfront(31.0, 10.0, "LIQUOR 24H", Color(0.4, 0.9, 0.5), "rusted_shutter", false)
 	# witryna monopolowego z modelu: półki z butelkami, skrzynki, nocne okienko (wcześniej czarny prostokąt); czynny całą dobę
 	_front_model("monopolowy_witryna", 31.0, 10.0, 1.0, [], Color.WHITE, null)
+	inter.append({"loc": "out", "x": float(D.SNACKS.paluszki.x) * SC, "z": float(D.SNACKS.paluszki.z) * SC, "y0": 0.0, "y1": 2.4, "r": 1.6, "reach": 3.0, "id": "monopolowy",
+		"label": func(): return "Monopolowy — piwo, paluszki (całą dobę)", "act": func(): G.main.liquor_talk()})
 	_shopfront(-70.0, 30.0, "SCRAP YARD", Color(0.8, 0.8, 0.8), "rusted_shutter", true, -1.0)
 	# salon fryzjerski (9–17) i zakład pogrzebowy (8–16): witryny z modeli, po godzinach roleta
 	for e in [["fryzjer_witryna", -26.0, "ELA'S HAIR SALON", Color(0.9, 0.5, 0.7), "painted_metal_shutter", [9.0, 17.0], Color(0.72, 0.62, 0.78)],

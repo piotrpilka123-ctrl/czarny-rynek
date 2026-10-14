@@ -1488,6 +1488,20 @@ func open_shop() -> void:
 	Shop.foot(self, "Najedź na pozycję, żeby zobaczyć, do czego służy.")
 
 
+## monopolowy (czynny całą dobę): puszka piwa do plecaka i paluszki na kondycję
+func open_liquor() -> void:
+	Shop.begin(self, "Monopolowy", "„Całą dobę. Dowodu nie pytam.”", "w plecaku: piwo %d" % G.item("piwo"))
+	var box := Shop.section(self, "TOWARY")
+	var cash: float = G.S.cash
+	Shop.row(self, box, {"name": String(D.ITEMS.piwo.name), "sub": "masz %d" % G.item("piwo"), "desc": String(D.ITEMS.piwo.desc), "icon": "piwo",
+		"price": G.money(G.BEER_PRICE), "block": "-" if cash < float(G.BEER_PRICE) else "", "cb": func(): G.liquor_beer_buy(); open_liquor()})
+	var sn: Dictionary = D.SNACKS.paluszki
+	var fed_note := "kondycja +20%% na %s godz." % str(sn.hours).trim_suffix(".0").replace(".", ",")
+	Shop.row(self, box, {"name": String(sn.name), "sub": fed_note, "desc": "Chrupią głośno, ale trzymają na nogach.", "icon": "shopping_cart",
+		"price": G.money(sn.price), "block": "-" if cash < float(sn.price) else "", "cb": func(): G.snack_buy("paluszki"); open_liquor()})
+	Shop.foot(self, "Piwo możesz dać Zdzichowi zamiast gotówki.")
+
+
 ## lombard: wagi. Każda następna jest szybsza i gubi mniej towaru; stara idzie w rozliczeniu, więc płacisz tylko raz.
 func open_scales() -> void:
 	Shop.begin(self, "Lombard — wagi", "„Dokładna waga to uczciwy interes. Dla obu stron.”")

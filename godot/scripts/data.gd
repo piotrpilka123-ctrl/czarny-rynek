@@ -87,7 +87,7 @@ const SCALES := [
 const UPGRADES := [
 	{"id": "plecak1", "name": "Plecak szkolny (60 miejsc)", "price": 380, "lvl": 2, "cap": 60, "desc": "Zamiast upychać towar po kieszeniach."},
 	{"id": "plecak2", "name": "Plecak turystyczny (120 miejsc)", "price": 1500, "lvl": 5, "cap": 120, "req": "plecak1", "desc": "Na poważniejsze kursy."},
-	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści 400 miejsc zamiast 200."},
+	{"id": "szafka", "name": "Skrytka w podłodze", "price": 900, "lvl": 3, "desc": "Skrytka w mieszkaniu mieści %d miejsc zamiast %d." % [SAFE_UPGRADE_CAP, STASH_BASE]},
 ]
 ## Dostawca jest jeden: Wiktor. Czysty towar, zamówienie SMS-em, paczka w skrytce oznaczonej sprejem, zapłata „na zeszyt”
 ## (gotówkę wrzuca się do jego skrzynki). eta = minuty do dostawy.
@@ -178,6 +178,7 @@ const ITEMS := {
 	"chemia": {"name": "Zestaw chemikaliów", "icon": "chemia", "size": 4.0, "w": 1800.0, "unit": "szt.", "illegal": true, "desc": "Prekursory i rozpuszczalniki na jedną syntezę przy stole laboratoryjnym."},
 	"pakiet_procesowy": {"name": "Pakiet procesowy", "icon": "chemia", "size": 3.0, "w": 1400.0, "unit": "szt.", "illegal": true, "desc": "Fikcyjny moduł wsadu do produkcji w grze."},
 	"pakiet_finalny": {"name": "Pakiet wykończeniowy", "icon": "chemia", "size": 2.0, "w": 900.0, "unit": "szt.", "illegal": true, "desc": "Fikcyjny moduł wykończenia partii w grze."},
+	"piwo": {"name": "Piwo w puszce", "icon": "piwo", "size": 0.5, "w": 520.0, "unit": "szt.", "desc": "Z monopolowego. Zdzichu weźmie je zamiast gotówki."},
 	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
 	# --- ZNALEZISKA: rzeczy z ziemi i ze śmietników. Do niczego nie służą — lombard przy Hutniczej płaci za nie gotówką (pawn = cena skupu).
 	"butelki": {"name": "Butelki zwrotne", "icon": "beer", "size": 0.5, "w": 350.0, "unit": "szt.", "junk": true, "pawn": 3, "desc": "Kaucja to kaucja. Lombard bierze je hurtem."},
@@ -317,6 +318,8 @@ const SIWY_LOOK := {"model": "m18", "kind": "hoodie", "seed": 51, "tall": 1.02, 
 const PLAYER_LOOK := {"model": "m10", "face":"m01", "player":true, "kind": "dres", "top": "14161a", "top2": "e8e6e0", "bottom": "14161a", "stripes": true, "shoes": "e4e4e0", "hair": "hair_buzzed", "seed": 77, "skin": 0.85}
 const CAP_BASE := 30
 const STASH_BASE := 200
+## pojemność skrytki w mieszkaniu po ulepszeniu „szafka” (skrytka w podłodze)
+const SAFE_UPGRADE_CAP := 400
 
 # ---------------------------------------------------------------- klienci
 ## type: charakter (wpływa na taktyki), like/hate: styl powitania
@@ -485,11 +488,13 @@ const BIN_ROLLS := {"bin": 1, "dumpster": 3}
 const LOOT_DAILY := [5, 8]
 ## lombard: godziny otwarcia i dzienne wahanie cen skupu
 const PAWN_OPEN := [9.0, 19.0]
-## Jedzenie na mieście: po kebabie albo drożdżówce biega się dłużej (kondycja +20%) przez kilka godzin gry.
+## Jedzenie na mieście: po kebabie, drożdżówce albo paluszkach z monopolowego biega się dłużej (kondycja +20%) przez kilka godzin gry.
 const SNACKS := {
 	"kebab": {"name": "Kebab na ostrym", "shop": "Kebab", "price": 14, "hours": 4.0, "open": [11.0, 23.0], "x": -43.0, "z": 10.6},
 	"bulka": {"name": "Drożdżówka", "shop": "Piekarnia", "price": 4, "hours": 1.5, "open": [6.0, 15.0], "x": 104.0, "z": 10.6},
+	"paluszki": {"name": "Paluszki", "shop": "Monopolowy", "price": 3, "hours": 1.0, "open": [0.0, 24.0], "x": 30.0, "z": 10.6},
 }
+## monopolowy: piwo w puszce (cena jak u Zdzicha: G.BEER_PRICE) i paluszki z D.SNACKS; czynny całą dobę
 const SNACK_STAMINA := 1.2
 ## hurtownia budowlana przy Hutniczej: sprzęt do produkcji i meble do kryjówek
 const SUPPLY_OPEN := [7.0, 18.0]
@@ -723,6 +728,7 @@ const HINTS := [
 	"Dosyp klientowi gram ponad zamówienie, a zapamięta to na długo. Zadowolony klient zamawia więcej i mniej się targuje.",
 	"Przed dłuższym kursem zjedz kebab przy Hutniczej albo drożdżówkę z piekarni: przez kilka godzin masz o jedną piątą więcej kondycji.",
 	"Zdzichu spod monopolowego widzi wszystko, co dzieje się na ulicy. Postaw mu piwo, a śledztwo trochę ostygnie — raz na dzień.",
+	"Puszkę piwa kupisz w monopolowym obok Zdzicha, choćby w środku nocy. Masz ją w plecaku — nie musisz mu dawać gotówki.",
 	"Dobrane ubrania tworzą komplety: garnitur myli patrole, dres pomaga w biegu, czarne ciuchy chowają nocą. Szafa podpowie, czego brakuje.",
 	"Sklepy mają swoje godziny. Lombard zamyka się o 19:00, hurtownia o 18:00 — mapa w telefonie pokazuje, do której czynne.",
 	"W „Taniej Odzieży” najedź kursorem na rzecz z wieszaka: postać obok od razu ją przymierzy, zanim zapłacisz.",

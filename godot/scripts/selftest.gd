@@ -657,6 +657,17 @@ func run() -> void:
 		if e.kind == "item" and e.id == "majeranek":
 			G.move_entry("safe", e, true, 1e9)
 	ok(G.item("majeranek") == 0 and int(G.store_items(S.stash.safe).get("majeranek", 0)) == 16, "majeranek przeniesiony do skrytki (w plecaku %d, w skrytce %d, skrytka %s / %d)" % [G.item("majeranek"), int(G.store_items(S.stash.safe).get("majeranek", 0)), G.units(G.store_total(S.stash.safe)), int(G.stash_cap("safe"))])
+	# pojemność skrytki w mieszkaniu: bazowa bez ulepszenia, większa po skrytce w podłodze; potem stan wraca jak był
+	var had_szafka: bool = S.upg.has("szafka")
+	var old_szafka = S.upg.get("szafka")
+	S.upg.erase("szafka")
+	ok(G.stash_cap("safe") == D.STASH_BASE, "skrytka bez ulepszenia ma %d miejsc (jest %d)" % [D.STASH_BASE, G.stash_cap("safe")])
+	S.upg["szafka"] = true
+	ok(G.stash_cap("safe") == D.SAFE_UPGRADE_CAP, "skrytka w podłodze daje %d miejsc (jest %d)" % [D.SAFE_UPGRADE_CAP, G.stash_cap("safe")])
+	if had_szafka:
+		S.upg["szafka"] = old_szafka
+	else:
+		S.upg.erase("szafka")
 	ok(G.carry_total() < tot0, "w plecaku zwolniło się miejsce")
 	for t in ["char", "org", "inv"]:
 		U.inv.tab = t
@@ -1023,6 +1034,29 @@ func run() -> void:
 	S.t += 1440.0
 	ok(G.beer_ready(), "następnego dnia Zdzichu znów ma pragnienie")
 	S.t -= 1440.0
+	S.erase("beer_day")
+	# monopolowy: puszka do plecaka za BEER_PRICE (też w nocy), Zdzichu bierze ją zamiast gotówki, paluszki dają kondycję
+	var liq_i = null
+	for it_l in G.world.inter:
+		if String(it_l.get("id", "")) == "monopolowy":
+			liq_i = it_l
+	var items_b: Dictionary = S.items.duplicate()
+	S.items["piwo"] = 0
+	S.cash = 50.0
+	S.t = floorf(S.t / 1440.0) * 1440.0 + 2.0 * 60.0
+	var liq1: bool = G.liquor_beer_buy() and G.item("piwo") == 1 and S.cash == 50.0 - float(G.BEER_PRICE)
+	var inv_l: float = S.invest
+	S.invest = 30.0
+	var liq2: bool = G.beer_give() and G.item("piwo") == 0 and S.cash == 50.0 - float(G.BEER_PRICE) and absf(S.invest - (30.0 - G.BEER_INVEST)) < 0.01 and not G.beer_ready()
+	S.cash = 1.0
+	var liq3: bool = not G.liquor_beer_buy() and G.item("piwo") == 0 and S.cash == 1.0
+	S.cash = 20.0
+	S.erase("fed_until")
+	var liq4: bool = G.snack_buy("paluszki") and G.fed() and S.cash == 20.0 - float(D.SNACKS.paluszki.price)
+	ok(liq_i != null and liq1 and liq2 and liq3 and liq4 and D.ITEMS.has("piwo"), "monopolowy: piwo w puszce za %d zł do plecaka (całą dobę), Zdzichu bierze je zamiast gotówki, paluszki dają kondycję" % G.BEER_PRICE)
+	S.items = items_b
+	S.invest = inv_l
+	S.erase("fed_until")
 	S.erase("beer_day")
 	S.invest = inv_b
 	S.cash = cash_sn

@@ -1077,13 +1077,34 @@ func beer_ready() -> bool:
 	return int(S.get("beer_day", 0)) != day()
 
 
+## puszka z plecaka (kupiona w monopolowym) idzie zamiast gotówki; bez niej Kuba stawia piwo za BEER_PRICE
 func beer_give() -> bool:
-	if not beer_ready() or float(S.cash) < float(BEER_PRICE):
+	if not beer_ready():
+		return false
+	if item("piwo") > 0:
+		S.items["piwo"] = item("piwo") - 1
+	elif float(S.cash) >= float(BEER_PRICE):
+		S.cash = float(S.cash) - float(BEER_PRICE)
+		S.stats.spent = float(S.stats.get("spent", 0.0)) + float(BEER_PRICE)
+	else:
+		return false
+	S["beer_day"] = day()
+	add_invest(-BEER_INVEST)
+	Sfx.play("cash")
+	return true
+
+
+## monopolowy: puszka piwa do plecaka (cena jak u Zdzicha); czynny całą dobę
+func liquor_beer_buy() -> bool:
+	if float(S.cash) < float(BEER_PRICE):
+		notify("Piwo kosztuje %s — brakuje Ci gotówki." % money(BEER_PRICE), "warn")
+		return false
+	if carry_total() + float(D.ITEMS.piwo.size) > float(capacity()) + 0.01:
+		notify("Nie zmieścisz puszki — %s pełne." % ("kieszenie" if bag_name() == "Kieszenie" else "plecak"), "warn")
 		return false
 	S.cash = float(S.cash) - float(BEER_PRICE)
 	S.stats.spent = float(S.stats.get("spent", 0.0)) + float(BEER_PRICE)
-	S["beer_day"] = day()
-	add_invest(-BEER_INVEST)
+	S.items["piwo"] = item("piwo") + 1
 	Sfx.play("cash")
 	return true
 
@@ -1305,7 +1326,7 @@ func stash_cap(room: String) -> int:
 	if room == "loot":
 		return 0 if loot.is_empty() else 100000
 	if room == "safe":
-		return 400 if upg("szafka") else D.STASH_BASE
+		return D.SAFE_UPGRADE_CAP if upg("szafka") else D.STASH_BASE
 	var cap := 0
 	for it in S.hide.get(room, {}).get("items", []):
 		for f in D.FURNITURE:
