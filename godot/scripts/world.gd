@@ -6334,6 +6334,7 @@ func refresh_furniture(room: String) -> void:
 					"act": func(): G.main.lamp_toggle(room, idx)})
 				inter_dyn[room].append(aim)
 				lamp_nodes[room][idx] = n
+	_skrytka_lab(room, g, fb, items, cx)
 	# doniczki: każda to osobny cel z własnym menu czynności
 	var pots: Array = G.Prod.pots(room)
 	for i in range(pots.size()):
@@ -6355,6 +6356,182 @@ func refresh_furniture(room: String) -> void:
 			"menu": func(): return G.main.pot_menu(room, pi),
 			"act": func(): pass})
 	update_stations()
+
+
+## Wystrój skrytki, w której stoi stół laboratoryjny: folia na ścianach i posadzce, beczki i kanistry, suszarnia z lampami,
+## wyciąg, maski, kable pod sufitem i zimne światło nad stołem. Elementy podłogowe stają tylko tam, gdzie nie ma mebli gracza
+## (sprawdzane przy każdym przestawieniu), więc nie blokują ustawiania ani dojścia do stanowisk.
+func _skrytka_lab(room: String, g: Node3D, fb: StaticBody3D, items: Array, cx: float) -> void:
+	var labs: Array = []
+	var taken: Array = []
+	for it in items:
+		var f := furn_def(String(it.f))
+		if f.is_empty():
+			continue
+		taken.append(G.furn_rect(f, float(it.x), float(it.z), int(it.r)).grow(0.15))
+		if String(f.get("func", "")) == "lab":
+			labs.append(it)
+	if labs.is_empty():
+		return
+	var R: Dictionary = D.ROOMS[room]
+	var w: float = R.w
+	var d: float = R.d
+	var h: float = R.h
+	var deco := Node3D.new()
+	deco.name = "SkrytkaLab"
+	g.add_child(deco)
+	var free := func(rc: Rect2) -> bool:
+		for t in taken:
+			if (t as Rect2).intersects(rc):
+				return false
+		return true
+	# folia na podłodze (pod meblami) i na trzech ścianach; południowa to wejście
+	var fp := Stations.model("skr_folia_podloga")
+	if fp != null:
+		fp.position = Vector3(cx, 0.0, -0.2)
+		fp.scale = Vector3(minf(1.0, (w - 0.5) / 3.5) if w < 4.0 else 1.0, 1.0, 1.0)
+		deco.add_child(fp)
+	var wall_runs := [
+		[Vector3(cx - w * 0.5, 0.0, 0.0), PI / 2.0, d - 1.2, Vector3(0, 0, 1)],
+		[Vector3(cx + w * 0.5, 0.0, 0.0), -PI / 2.0, d - 1.2, Vector3(0, 0, 1)],
+		[Vector3(cx, 0.0, -d * 0.5), 0.0, w - 0.4, Vector3(1, 0, 0)]]
+	var fi := 0
+	for run in wall_runs:
+		var n_f := int(ceil(float(run[2]) / 2.0))
+		for k in range(n_f):
+			var sh := Stations.model("skr_folia_sciana")
+			if sh == null:
+				break
+			var t: float = (float(k) + 0.5) / float(n_f) - 0.5
+			var depth: float = 0.025 * float(fi % 2) + 0.02
+			sh.position = (run[0] as Vector3) + (run[3] as Vector3) * float(run[2]) * t
+			sh.rotation.y = float(run[1])
+			sh.position += Vector3(sin(float(run[1])), 0.0, cos(float(run[1]))) * depth
+			sh.scale = Vector3(float(run[2]) / float(n_f) / 2.2 * 1.04, (h - 0.12) / 2.55, 1.0)
+			deco.add_child(sh)
+			fi += 1
+	# kable pod sufitem wzdłuż pokoju
+	var kb := Stations.model("skr_kable")
+	if kb != null:
+		kb.position = Vector3(cx + w * 0.2, h - 0.31, 0.0)
+		kb.scale = Vector3(1.0, 1.0, minf(1.0, (d - 0.6) / 7.0))
+		deco.add_child(kb)
+	# narożniki z chemią: najwyżej dwa, w pierwszych wolnych miejscach (x, z, obrót, rozmiar prostokąta wzdłuż x i z)
+	var ex := w * 0.5
+	var ez := d * 0.5
+	var corner_spots := [[ex - 0.85, ez - 0.95, -PI / 2.0, 1.4, 1.8], [-ex + 0.85, ez - 0.95, PI / 2.0, 1.4, 1.8],
+		[ex - 0.85, -ez + 0.95, -PI / 2.0, 1.4, 1.8], [-ex + 0.85, -ez + 0.95, PI / 2.0, 1.4, 1.8],
+		[ex - 0.85, -ez + 2.9, -PI / 2.0, 1.4, 1.8], [-ex + 0.85, -ez + 2.9, PI / 2.0, 1.4, 1.8]]
+	var placed := 0
+	for sp in corner_spots:
+		if placed >= 2:
+			break
+		var rc := Rect2(float(sp[0]) - float(sp[3]) * 0.5, float(sp[1]) - float(sp[4]) * 0.5, float(sp[3]), float(sp[4]))
+		if not free.call(rc):
+			continue
+		var ch := Stations.model("skr_chemia")
+		if ch == null:
+			break
+		ch.position = Vector3(cx + float(sp[0]), 0.0, float(sp[1]))
+		ch.rotation.y = float(sp[2])
+		ch.scale = Vector3.ONE * 0.9
+		deco.add_child(ch)
+		var cs := CollisionShape3D.new()
+		var bs := BoxShape3D.new()
+		bs.size = Vector3(0.9, 0.9, 1.4)
+		cs.shape = bs
+		cs.position = Vector3(cx + float(sp[0]), 0.45, float(sp[1]))
+		fb.add_child(cs)
+		taken.append(rc.grow(0.1))
+		placed += 1
+	# suszarnia z lampami grzewczymi przy ścianie
+	for sp in [[0.0, -ez + 0.5, 0.0, 1.3, 0.8], [-ex + 0.5, -2.2, PI / 2.0, 0.8, 1.3], [ex - 0.5, -2.2, -PI / 2.0, 0.8, 1.3],
+			[-ex + 0.5, ez - 2.4, PI / 2.0, 0.8, 1.3], [ex - 0.5, ez - 2.4, -PI / 2.0, 0.8, 1.3], [-ex + 0.5, 0.2, PI / 2.0, 0.8, 1.3]]:
+		var rc2 := Rect2(float(sp[0]) - float(sp[3]) * 0.5, float(sp[1]) - float(sp[4]) * 0.5, float(sp[3]), float(sp[4]))
+		if not free.call(rc2):
+			continue
+		var sz := Stations.model("skr_susz")
+		if sz == null:
+			break
+		sz.position = Vector3(cx + float(sp[0]), 0.0, float(sp[1]))
+		sz.rotation.y = float(sp[2])
+		deco.add_child(sz)
+		var hl := OmniLight3D.new()
+		hl.position = Vector3(0.0, 1.2, 0.1)
+		hl.light_color = Color(1.0, 0.38, 0.16)
+		hl.light_energy = 1.4
+		hl.omni_range = 2.4
+		hl.shadow_enabled = false
+		sz.add_child(hl)
+		var cs2 := CollisionShape3D.new()
+		var bs2 := BoxShape3D.new()
+		bs2.size = Vector3(1.15, 0.85, 0.62)
+		cs2.shape = bs2
+		cs2.position = Vector3(cx + float(sp[0]), 0.43, float(sp[1]))
+		cs2.rotation.y = float(sp[2])
+		fb.add_child(cs2)
+		taken.append(rc2.grow(0.1))
+		break
+	# tablica z maską, goglami i rękawicami (wisi na wysokości 0,55–1,6 m)
+	for sp in [[ex, 0.2, -PI / 2.0], [-ex, 3.0, PI / 2.0], [1.2, -ez, 0.0], [-1.2, -ez, 0.0], [ex, -2.4, -PI / 2.0], [-ex, -2.4, PI / 2.0]]:
+		var al := absf(sin(float(sp[2]))) > 0.5
+		var rc3 := Rect2(float(sp[0]) - (0.3 if al else 0.5), float(sp[1]) - (0.5 if al else 0.3), 0.6 if al else 1.0, 1.0 if al else 0.6)
+		if not free.call(rc3):
+			continue
+		var mk := Stations.model("skr_maski")
+		if mk != null:
+			mk.position = Vector3(cx + float(sp[0]), 0.55, float(sp[1])) + Vector3(sin(float(sp[2])), 0.0, cos(float(sp[2]))) * 0.04
+			mk.rotation.y = float(sp[2])
+			deco.add_child(mk)
+		taken.append(rc3)
+		break
+	# wyciąg ścienny z rurą do sufitu
+	for sp in [[ex, -2.4, -PI / 2.0], [-ex, -2.4, PI / 2.0], [ex, 2.4, -PI / 2.0], [-ex, 2.4, PI / 2.0]]:
+		var al2 := absf(sin(float(sp[2]))) > 0.5
+		var rc4 := Rect2(float(sp[0]) - (0.3 if al2 else 0.4), float(sp[1]) - (0.4 if al2 else 0.3), 0.6 if al2 else 0.8, 0.8 if al2 else 0.6)
+		if not free.call(rc4):
+			continue
+		var wy := Stations.model("skr_wyciag")
+		if wy != null:
+			wy.position = Vector3(cx + float(sp[0]), h - 1.78, float(sp[1])) + Vector3(sin(float(sp[2])), 0.0, cos(float(sp[2]))) * 0.03
+			wy.rotation.y = float(sp[2])
+			deco.add_child(wy)
+		taken.append(rc4)
+		break
+	# zimne, mocne światło nad każdym stołem laboratoryjnym (reszta pokoju zostaje w półmroku)
+	for it in labs:
+		var lx: float = cx + float(it.x)
+		var lz: float = float(it.z)
+		var lamp := Stations.model("huta_lampa")
+		if lamp != null:
+			lamp.position = Vector3(lx, h - 0.02, lz)
+			Props._no_shadow(lamp)
+			deco.add_child(lamp)
+		var sl := SpotLight3D.new()
+		sl.position = Vector3(lx, h - 0.4, lz)
+		sl.rotation.x = -PI / 2.0
+		sl.light_color = Color(0.8, 0.9, 1.0)
+		sl.light_energy = 6.0
+		sl.spot_range = h + 0.5
+		sl.spot_angle = 52.0
+		sl.spot_angle_attenuation = 0.8
+		sl.shadow_enabled = true
+		deco.add_child(sl)
+	# rozlana chemia na podłodze
+	for it in labs:
+		Interior.stain(deco, Vector3(cx + float(it.x) + 0.5, 0.03, float(it.z) + 0.6), Vector3(-PI / 2.0, 0, 0), Vector2(0.9, 0.6), Color(0.55, 0.62, 0.6, 0.4))
+	_skr_shadows(deco)
+
+
+func _skr_shadows(n: Node) -> void:
+	# folia jest półprzezroczysta, a rzucałaby pełny cień
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		for si in range((n as MeshInstance3D).mesh.get_surface_count()):
+			var m: Material = (n as MeshInstance3D).mesh.surface_get_material(si)
+			if m is BaseMaterial3D and (m as BaseMaterial3D).transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+				(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for c in n.get_children():
+		_skr_shadows(c)
 
 
 ## stanowiska produkcyjne pokazują swój stan: rośliny rosną, lampy świecą, w kolbach bulgocze

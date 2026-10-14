@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://5w6baufwo3wg"
-path="res://.godot/imported/gracz_plecak_Gorna_kieszen_kolor.png-8d65d223e39f182ac7699799ce873bdb.ctex"
+path.bptc="res://.godot/imported/gracz_plecak_Gorna_kieszen_kolor.png-8d65d223e39f182ac7699799ce873bdb.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c73801dd21c52942b99ab772d7d2e6e7"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/gracz_plecak_Gorna_kieszen_kolor.png"
-dest_files=["res://.godot/imported/gracz_plecak_Gorna_kieszen_kolor.png-8d65d223e39f182ac7699799ce873bdb.ctex"]
+dest_files=["res://.godot/imported/gracz_plecak_Gorna_kieszen_kolor.png-8d65d223e39f182ac7699799ce873bdb.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

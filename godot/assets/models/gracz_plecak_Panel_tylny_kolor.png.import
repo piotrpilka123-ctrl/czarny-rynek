@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b0badvvb2dagl"
-path="res://.godot/imported/gracz_plecak_Panel_tylny_kolor.png-dbf3b0264642506fe2d2884754bb8387.ctex"
+path.bptc="res://.godot/imported/gracz_plecak_Panel_tylny_kolor.png-dbf3b0264642506fe2d2884754bb8387.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "cac8049fa03a886400f0207b976bac81"
@@ -14,12 +15,12 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/gracz_plecak_Panel_tylny_kolor.png"
-dest_files=["res://.godot/imported/gracz_plecak_Panel_tylny_kolor.png-dbf3b0264642506fe2d2884754bb8387.ctex"]
+dest_files=["res://.godot/imported/gracz_plecak_Panel_tylny_kolor.png-dbf3b0264642506fe2d2884754bb8387.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

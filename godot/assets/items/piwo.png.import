@@ -2,6 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://b7o2gd4ax0x4s"
+path="res://.godot/imported/piwo.png-e9e50a68910db1df7bd6d318735ec5b8.ctex"
+metadata={
+"vram_texture": false
+}
+
+[deps]
+
+source_file="res://assets/items/piwo.png"
+dest_files=["res://.godot/imported/piwo.png-e9e50a68910db1df7bd6d318735ec5b8.ctex"]
 
 [params]
 
