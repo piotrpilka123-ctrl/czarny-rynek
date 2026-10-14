@@ -181,7 +181,37 @@ func build() -> void:
 	root.add_child(fade_rect)
 	_build_cut()
 	G.toast.connect(toast_add)
+	G.sale_made.connect(_sale_pop)
 	G.sms.connect(_on_sms)
+
+
+## wylatująca kwota po sprzedaży: unosi się i gaśnie; seria pod spodem rośnie od 2
+func _sale_pop(paid: float, streak: int) -> void:
+	if hud == null or not hud.visible or paid <= 0.0:
+		return
+	var box := K.vbox(0)
+	var vp := hud.get_viewport_rect().size
+	box.custom_minimum_size = Vector2(300, 0)
+	box.position = Vector2(vp.x * 0.5 - 150.0, vp.y * 0.5 + 70.0)
+	box.pivot_offset = Vector2(150, 20)
+	box.scale = Vector2(0.6, 0.6)
+	_ign(box)
+	var l := K.head("+%s" % G.money(paid), 34, K.C_TXT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_shadow(l, 6)
+	box.add_child(l)
+	if streak >= 2:
+		var s := K.head("seria ×%d" % streak, 15, K.C_GOLD)
+		s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_shadow(s)
+		box.add_child(s)
+	hud.add_child(box)
+	var tw := box.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(box, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(box, "position:y", box.position.y - 50.0, 1.6).set_ease(Tween.EASE_OUT)
+	tw.tween_property(box, "modulate:a", 0.0, 0.5).set_delay(1.1)
+	tw.chain().tween_callback(box.queue_free)
 
 
 func _ign(c: Control) -> Control:

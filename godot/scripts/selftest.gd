@@ -827,6 +827,18 @@ func run() -> void:
 			rejected += 1
 		G.take_pack(S.inv, "dym", 40, 99)
 	ok(rejected >= 30, "mocno rozrobionego towaru doświadczony klient nie bierze (%d/40 prób)" % rejected)
+	# seria transakcji: rośnie, gaśnie po przerwie i po odrzuceniu, daje do +40% XP
+	S["streak"] = 0
+	for i in range(3):
+		G.sale_streak_hit(true)
+	ok(int(S.streak) == 3 and absf(G.streak_xp_mult() - 1.1) < 0.001, "seria: trzy udane transakcje to ×3 i +10% XP")
+	S.t += G.STREAK_GAP + 5.0
+	ok(G.sale_streak_hit(true) == 1, "seria gaśnie po 6 h bez sprzedaży")
+	G.streak_break()
+	ok(int(S.streak) == 0 and G.streak_xp_mult() == 1.0, "odrzucony towar zeruje serię")
+	S["streak"] = 20
+	ok(G.streak_xp_mult() <= 1.4001, "bonus XP z serii ma sufit +40%")
+	S["streak"] = 0
 	# lekko rozrobiony towar: klient bierze, ale bywa niezadowolony
 	var meh := 0
 	var sat_sum := 0.0

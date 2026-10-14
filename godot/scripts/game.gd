@@ -13,6 +13,7 @@ signal toast(text, kind)
 signal nav_dirty
 signal sms(contact, text)
 signal level_up(lvl)
+signal sale_made(paid, streak)
 
 const SAVE_PATH := "user://zapis_v3.json"
 
@@ -2955,6 +2956,7 @@ func deal_hand(d: Dictionary) -> void:
 			if d.st.has("known"):
 				d.st.known["minpur"] = true
 		S.stats.walked = int(S.stats.walked) + 1
+		streak_break()
 		if d.ctx.get("order") != null:
 			drop_order(d.ctx.order)
 		deal_finish(d, {"sold": 0, "rejected": true})
@@ -3117,6 +3119,8 @@ func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, m
 	S.stats.deals = int(S.stats.deals) + 1
 	S.stats.best = maxf(float(S.stats.best), total)
 	Sfx.play("cash")
+	var streak_n := sale_streak_hit(delivered == g and g > 0)
+	sale_made.emit(paid, streak_n)
 	# przy wymianie twarzą w twarz kwotę pokazuje samo okno — osobne powiadomienie tylko poza nim
 	if ui == null or ui.deal.is_empty():
 		notify("+%s  (%d g %s)" % [money(paid), g, D.PRODUCT_GEN[p]], "good")
@@ -3146,12 +3150,36 @@ func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, m
 	if ctx.get("npc") != null and ctx.npc.kind == "citizen":
 		ctx.npc.loyalty += 1
 		ctx.npc.last_deal = S.t
-	add_xp(xp)
+	add_xp(xp * streak_xp_mult())
 	add_minutes(4.0)
 	if ctx.get("street", false) and player != null and player.loc == "out":
 		after_deal_risk(ctx, g)
 	check_unlocks()
 	return {"sold": g, "revenue": total, "paid": paid, "owed": owed}
+
+
+## seria udanych transakcji: wygasa po 6 h gry bez sprzedaży albo po odrzuconym towarze; daje do +40% XP
+const STREAK_GAP := 360.0
+func sale_streak_hit(full: bool) -> int:
+	var n := int(S.get("streak", 0))
+	if n > 0 and S.t - float(S.get("streak_t", 0.0)) > STREAK_GAP:
+		n = 0
+	n = n + 1 if full else 0
+	S["streak"] = n
+	S["streak_t"] = S.t
+	S.stats["streak_best"] = maxi(int(S.stats.get("streak_best", 0)), n)
+	if n in [3, 5, 8, 12]:
+		Sfx.play("level")
+		notify("Seria %d udanych transakcji — więcej doświadczenia." % n, "good")
+	return n
+
+
+func streak_xp_mult() -> float:
+	return 1.0 + 0.05 * float(mini(8, maxi(0, int(S.get("streak", 0)) - 1)))
+
+
+func streak_break() -> void:
+	S["streak"] = 0
 
 
 func after_deal_risk(ctx: Dictionary, g: int) -> void:

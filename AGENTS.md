@@ -12,6 +12,7 @@ Nad grą pracują na zmianę Codex i Claude. Obaj czytają ten plik (Codex: AGEN
 ## Kto teraz pracuje
 
 - Przed pierwszą edycją: `./tools/zajmij.sh "Codex: krótko co robię"` (albo „Claude: …”), z katalogu `godot/`. Jeśli skrypt odmawia, bo drugi agent ma zajęte — nie edytuj plików, poczekaj albo zajmij się czymś tylko do odczytu.
+- Gdy zajęte: uruchom w tle `./tools/czekaj.sh "Claude-xyz: co robię"` (Claude: Bash z run_in_background) i zakończ turę bez pytania Piotra — skrypt sam zajmie blokadę, gdy się zwolni, i wybudzi czat. Czekanie nie zużywa tokenów; nie odpytuj blokady ręcznie w kółko.
 - Po commicie i zakończeniu bloku pracy: `./tools/zwolnij.sh`. Blokada starsza niż 2 godziny jest uznawana za porzuconą.
 - `tools/commit.sh` robi `git add -A` — dlatego dwa agenty nie mogą edytować jednocześnie.
 
