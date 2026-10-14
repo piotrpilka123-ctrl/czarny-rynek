@@ -5,7 +5,8 @@ Aktualna wersja gry Piotra Piłki w Godocie 4: symulator z widokiem pierwszoosob
 ## Uruchomienie
 
 - **macOS:** zainstaluj Godot 4.7 i otwórz `Uruchom Czarny Rynek.command`. Skrypt oczekuje Godota w `/Applications/Godot.app`.
-- **Windows / Linux:** zaimportuj `godot/project.godot` w Godocie 4.7 i naciśnij **F5**.
+- **Windows:** rozpakuj całe archiwum gry. Zainstaluj lub rozpakuj Godot 4.7.2 do folderu `Godot` obok projektu (paczka Windows zawiera go już w tym folderze). Kliknij `Uruchom Czarny Rynek.bat`. Domyślnie używa trybu zgodności OpenGL, sprawdzonego na Intel Iris Xe. Skrypt wyszukuje tez Godota w Pobranych i w PATH. Ten sam tryb uruchamia `Uruchom zgodnosc Windows.bat`. Logi: `import-windows.log` i `gra-windows.log`. Mozesz tez zaimportowac `godot/project.godot` w edytorze Godot 4.7 i nacisnac **F5**.
+- **Linux:** zaimportuj `godot/project.godot` w Godocie 4.7 i nacisnij **F5**.
 
 Pierwsze uruchomienie wymaga importu modeli i tekstur, dlatego trwa dłużej. To projekt gry; Godot jest potrzebny do jego uruchomienia.
 

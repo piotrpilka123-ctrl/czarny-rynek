@@ -29,3 +29,8 @@ godot/tools/tex_orig/
 /godot/chk.sh
 /godot/shot.sh
 /godot/tools/
+
+# lokalny silnik i logi uruchamiania Windows
+/Godot/
+/import-windows.log
+/gra-windows.log

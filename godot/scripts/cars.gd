@@ -1,4 +1,5 @@
 extends RefCounted
+const RenderCompat = preload("res://scripts/render_compat.gd")
 ## Samochody: nadwozia rozpinane na przekrojach (maska, szyba, dach, bagażnik zwężają się jak w prawdziwym aucie),
 ## koła z kołpakami, zderzaki, lampy, lusterka, szczeliny drzwi. Całe auto to JEDNA siatka i jedno wywołanie
 ## rysowania — rodzaj powierzchni (lakier, szkło, guma, chrom, lampa) siedzi w drugim kanale UV.
@@ -264,7 +265,7 @@ static func mesh(type: String) -> ArrayMesh:
 static func material() -> ShaderMaterial:
 	if _mat == null:
 		var sh := Shader.new()
-		sh.code = SH
+		sh.code = RenderCompat.shader_code(SH)
 		_mat = ShaderMaterial.new()
 		_mat.shader = sh
 	return _mat
@@ -432,8 +433,8 @@ static func _car_old(type := "", color = null, police := false) -> Node3D:
 	mi.material_override = material()
 	mi.rotation.y = -PI / 2.0                 # kształt ma przód w +X
 	var c: Color = color if color is Color else Color.html("#" + String(color if color != null else "8a8f96"))
-	mi.set_instance_shader_parameter("paint", c)
-	mi.set_instance_shader_parameter("dirt", 0.12 if police else randf_range(0.2, 0.75))
+	RenderCompat.set_parameter(mi, "paint", c)
+	RenderCompat.set_parameter(mi, "dirt", 0.12 if police else randf_range(0.2, 0.75))
 	mi.visibility_range_end = 150.0
 	root.add_child(mi)
 	root.set_meta("body", mi)
