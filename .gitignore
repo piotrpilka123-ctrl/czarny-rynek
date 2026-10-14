@@ -34,3 +34,7 @@ godot/tools/tex_orig/
 /Godot/
 /import-windows.log
 /gra-windows.log
+
+# wspólna praca Codex/Claude: blokada edycji i tymczasowe worktree
+godot/.zajete
+.claude/worktrees/
