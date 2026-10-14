@@ -1168,7 +1168,7 @@ func zdzichu_talk() -> void:
 			else:
 				G.notify("Nie masz nawet na piwo.", "warn")})
 	choices.append({"label": "Trzymaj się, Zdzichu."})
-	var lines: Array = ["Kierowniku… poratuj złotówką na piwko. Ja tu wszystko widzę. Wszyściutko. Ale za piwko — nic nie mówię.", "Wczoraj pytali o takiego jednego w dresie. Nic nie powiedziałem. Jeszcze.", "Zimno dziś, co? Piwko by rozgrzało."] if G.beer_ready() else ["Dzięki, kierowniku. Dziś jestem ślepy i głuchy.", "Jutro też będzie dzień. I też będzie się chciało pić."]
+	var lines: Array = ["Kierowniku… postaw piwko. Ja tu wszystko widzę. Wszyściutko. Ale za piwko — nic nie mówię.", "Wczoraj pytali o takiego jednego w dresie. Nic nie powiedziałem. Jeszcze.", "Zimno dziś, co? Piwko by rozgrzało."] if G.beer_ready() else ["Dzięki, kierowniku. Dziś jestem ślepy i głuchy.", "Jutro też będzie dzień. I też będzie się chciało pić."]
 	ui.dialog({"name": "Zdzichu", "lines": [lines[G.day() % lines.size()]], "choices": choices})
 
 
