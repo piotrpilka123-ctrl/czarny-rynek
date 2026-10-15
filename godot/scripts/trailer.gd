@@ -389,7 +389,7 @@ func run() -> void:
 	var shots := [
 		{"name": "swit", "bars": 4, "fade_in": 26, "sub": "ZAGŁĘBIE  •  6:40", "big": "BRAT ZNIKNĄŁ.", "t0": 0.38, "setup": s1_setup, "ready": s1_ready, "tick": s1_tick},
 		{"name": "blokowisko", "bars": 2, "big": "ZOSTAWIŁ CI KLUCZE DO KAWALERKI", "setup": s2_setup, "ready": s2_ready, "tick": s2_tick},
-		{"name": "klatka", "bars": 2, "big": "I 25 000 ZŁ DŁUGU.", "setup": s3_setup, "tick": s3_tick},
+		{"name": "klatka", "bars": 2, "big": "I 30 000 ZŁ DŁUGU.", "setup": s3_setup, "tick": s3_tick},
 		{"name": "telefon", "bars": 3, "box": false, "h": 9.4, "day": 1, "setup": s4_setup, "tick": s4_tick, "end": ui_end},
 		{"name": "skrytka", "bars": 1, "big": "TOWAR CZEKA W SKRYTCE.", "t0": 0.05, "setup": s5_setup, "tick": s5_tick},
 		{"name": "waga", "bars": 2, "box": false, "h": 10.6, "day": 1, "setup": s6_setup, "tick": s6_tick, "end": s6_end},

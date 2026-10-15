@@ -596,16 +596,16 @@ const CALLS := [
 		"I mam coś dla ciebie. Ktoś na Robotniczej sprzedaje śnieg po działce. Dobry, czysty, w twoim cięciu.",
 		{"n": "Ty", "t": "Mój."},
 		"Twój. Jeszcze nie wiem, czyje ręce go podają, ale już wiem, że to nikt z ulicy. Za dobrze się chowa."]},
-	{"id": "awans4", "who": "Wiktor", "paid": 8000.0, "hour": [8.0, 23.0], "lines": [
+	{"id": "awans4", "who": "Wiktor", "paid": 9600.0, "hour": [8.0, 23.0], "lines": [
 		"Zaufany. Garaż czternaście — pogadałem z właścicielem, bierzesz go za pół ceny. Czas, żebyś znowu sam robił towar.",
 		"Teraz słuchaj uważnie. O tym, którędy wyjdziesz z huty, wiedziały trzy osoby. Ty. Siwy. I ten, kto wam tę trasę pokazał.",
 		{"n": "Ty", "t": "Trasę przez siatkę i garaże znał każdy, kto u nas pracował."},
 		"Nie każdy wiedział, że tej nocy będziesz szedł nią sam, z torbą. Pomyśl, komu to powiedziałeś."]},
-	{"id": "polowa", "who": "Wiktor", "paid": 12500.0, "hour": [9.0, 22.0], "lines": [
+	{"id": "polowa", "who": "Wiktor", "paid": 15000.0, "hour": [9.0, 22.0], "lines": [
 		"Połowa wkładu. Przyznam, że stawiałem, że znikniesz po pierwszym tygodniu — przegrałem flaszkę.",
 		"Teraz będzie trudniej, bo zaczynają cię znać. Policja, konkurencja, ci, którzy pamiętają, kim byłeś przed wybuchem.",
 		"Rób swoje i nie wychylaj się bardziej, niż musisz. Jak dobijesz do końca, pogadamy o tym, kto ci tę hutę podpalił. Bo ja już chyba wiem."]},
-	{"id": "awans5", "who": "Wiktor", "paid": 15000.0, "hour": [8.0, 23.0], "lines": [
+	{"id": "awans5", "who": "Wiktor", "paid": 18000.0, "hour": [8.0, 23.0], "lines": [
 		"Prawa ręka. Mówię to drugi raz w życiu, a pierwszy leży na Powązkach.",
 		"Mam nazwisko, Kuba. Sprawdzone z dwóch stron.",
 		{"n": "Ty", "t": "Mów."},
@@ -741,15 +741,15 @@ const START_CASH := 200
 ## To, co odnosisz do skrzynki ponad zeszyt za towar, jest Twoim WKŁADEM do interesu; kolejne progi wkładu („at”)
 ## to awanse z konkretną nagrodą („perk”). „day” to tempo, na które liczy Wiktor: kto zdąży, dostaje premię
 ## („bonus”) — kto nie zdąży, niczego nie traci. Nie ma odsetek, kar ani końca gry za spóźnienie.
-const START_DEBT := 25000     # pełny wkład: po nim jesteś wspólnikiem (w zapisie zostaje pod dawną nazwą „debt”)
+const START_DEBT := 30000     # pełny wkład: po nim jesteś wspólnikiem (w zapisie zostaje pod dawną nazwą „debt”)
 const RANKS := [
 	{"at": 0, "name": "Przydupas", "perk": "", "day": 0, "bonus": 0, "desc": "Chłopak od wszystkiego. Towar dostajesz na zeszyt."},
 	{"at": 300, "name": "Goniec", "perk": "plecak", "day": 6, "bonus": 60, "desc": "Wiktor daje Ci plecak szkolny i puszcza o Tobie słowo: odezwie się więcej klientów."},
 	{"at": 1200, "name": "Detalista", "perk": "limit", "day": 14, "bonus": 150, "desc": "Zeszyt większy o połowę: bierzesz naraz więcej towaru."},
 	{"at": 3500, "name": "Dealer", "perk": "rabat1", "day": 22, "bonus": 350, "desc": "Hurt tańszy o 5%."},
-	{"at": 8000, "name": "Zaufany", "perk": "garaz", "day": 30, "bonus": 700, "desc": "Garaż 14 za pół ceny — Wiktor dogadał się z właścicielem."},
-	{"at": 15000, "name": "Prawa ręka", "perk": "rabat2", "day": 38, "bonus": 1200, "desc": "Hurt tańszy o kolejne 5% i dwa dni dłużej na spłatę zeszytu."},
-	{"at": 25000, "name": "Wspólnik", "perk": "wolny", "day": 46, "bonus": 0, "desc": "Dzielnica jest Twoja. Wiktor bierze już tylko za towar."},
+	{"at": 9600, "name": "Zaufany", "perk": "garaz", "day": 30, "bonus": 700, "desc": "Garaż 14 za pół ceny — Wiktor dogadał się z właścicielem."},
+	{"at": 18000, "name": "Prawa ręka", "perk": "rabat2", "day": 38, "bonus": 1200, "desc": "Hurt tańszy o kolejne 5% i dwa dni dłużej na spłatę zeszytu."},
+	{"at": 30000, "name": "Wspólnik", "perk": "wolny", "day": 46, "bonus": 0, "desc": "Dzielnica jest Twoja. Wiktor bierze już tylko za towar."},
 ]
 ## Zlecenie dnia od Wiktora: jeden mały cel na dobę z premią dopisywaną do wkładu. Za niewykonanie nie ma kary —
 ## rano przychodzi następne. Trzy wykonane z rzędu podwajają premię. need = base + per · (poziom − 1).

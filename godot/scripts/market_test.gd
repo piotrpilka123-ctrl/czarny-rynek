@@ -92,10 +92,10 @@ static func run(T) -> void:
 	var rank_keep: int = S.rank
 	var cash_keep2: float = S.cash
 	S.cash = 30000.0
-	G.pay_debt(8000.0 - S.paid)
+	G.pay_debt(float(D.RANKS[4].at) - S.paid)
 	T.ok(int(S.rank) == 4 and G.has_perk("limit") and G.credit_limit() > lim_r * 1.3 and absf(G.wholesale_unit("dym") - unit_r * 0.95) < 0.001 and absf(float(G.prop_def("garaz").price) - gar_r * 0.5) < 0.01,
 		"Zaufany: zeszyt większy o połowę, hurt −5%%, garaż za pół ceny (%d zł)" % int(G.prop_def("garaz").price))
-	T.ok(G.next_installment().due == 15000.0 and String(G.rank_next().name) == "Prawa ręka", "następny szczebel: Prawa ręka przy 15 000 zł")
+	T.ok(G.next_installment().due == float(D.RANKS[5].at) and String(G.rank_next().name) == "Prawa ręka", "następny szczebel: Prawa ręka przy %d zł" % int(D.RANKS[5].at))
 	S.paid = paid_keep
 	S.debt = debt_keep
 	S["rank"] = rank_keep
