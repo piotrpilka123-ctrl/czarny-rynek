@@ -184,8 +184,8 @@ void fragment() {
 	if (grass > 0.003) {
 		vec3 g1 = texture(a_grass, uv * 0.31, lodb).rgb;
 		vec3 g2 = texture(a_grass2, uv * 0.27, lodb).rgb;
-		vec3 a = mix(g1, g2, smoothstep(0.42, 0.62, big));
-		a = mix(vec3(dot(a, vec3(0.3, 0.5, 0.2))), a, 0.62) * vec3(0.82, 0.95, 0.68) * (0.68 + mid * 0.4);
+		vec3 a = mix(g1, g2, smoothstep(0.25, 0.8, big * 0.6 + mid * 0.4));
+		a = mix(vec3(dot(a, vec3(0.3, 0.5, 0.2))), a, 0.62) * vec3(0.82, 0.95, 0.68) * (0.8 + mid * 0.2) * (0.94 + big * 0.12);
 		float litter = smoothstep(0.25, 0.6, c2.b + (nz - 0.5) * 0.5 + (mid - 0.5) * 0.3);
 		vec3 lf = texture(a_leaf, uv * 0.36, lodb).rgb;
 		lf = mix(vec3(dot(lf, vec3(0.33))), lf, 0.6) * 0.72;
@@ -1245,7 +1245,8 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 		"gx": gx, "gz": gz, "accent": accent, "wall": wall, "node": mi, "no": String(opt.get("no", "")), "plyta": plyta, "old": old, "dead": dead})
 	var top := by + 0.6 + h
 	# attyka i nadbudówki
-	var rm := Models.mat("1a1a1c", 0.95)
+	# papa na płaskim dachu: szara, z teksturą i normalmapą (czarne pudełko odstawało od elewacji)
+	var rm := Props.pbr("concrete_wall_008", 0.35, Color(0.44, 0.45, 0.45))
 	Models.box(city, Vector3(w + 0.3, 0.35, d + 0.3), Vector3((x0 + x1) * 0.5, top + 0.1, (z0 + z1) * 0.5), rm)
 	if key.begins_with("kam") or key == "cegla2":
 		var roof_style := posmod(int(x0*7.0+z0*11.0),3)
@@ -6885,7 +6886,7 @@ func gang_tick() -> void:
 func _tenement_roof(w: float,d: float,rise: float,style: int) -> Node3D:
 	var group := Node3D.new()
 	group.name = "TenementRoof"
-	var tint: Color = [Color(0.95,0.9,0.84),Color(1.2,1.1,1.0),Color(0.8,0.9,0.92)][style]
+	var tint: Color = [Color(0.9,0.88,0.84),Color(0.98,1.2,1.34),Color(0.8,0.9,0.92)][style]
 	# każdy dach inny: cztery odcienie wypłowienia/rdzy (z wymiarów), zamiast jednego ciemnego koloru dla całego miasta
 	tint = tint * [0.86, 1.0, 1.14, 1.28][posmod(int(w * 13.0 + d * 7.0), 4)]
 	var material := Props.pbr("rusty_corrugated_iron" if style == 1 else "asbestos_sheet",0.42,tint)
@@ -6898,6 +6899,15 @@ func _tenement_roof(w: float,d: float,rise: float,style: int) -> Node3D:
 		roof.position.y = rise*0.5
 		roof.rotation.y = PI/2.0 if w >= d else 0.0
 		group.add_child(roof)
+		# kalenica i rynny jako geometria: dach przestaje być gładką bryłą
+		var zinc := Props.pbr("rusty_painted_metal", 0.5, Color(0.55, 0.55, 0.52))
+		var long_x := w >= d
+		Models.box(group, Vector3(w if long_x else 0.3, 0.16, 0.3 if long_x else d), Vector3(0, rise + 0.02, 0), zinc)
+		for sg in [-1.0, 1.0]:
+			if long_x:
+				Models.box(group, Vector3(w + 0.1, 0.2, 0.24), Vector3(0, 0.02, sg * d * 0.5), zinc)
+			else:
+				Models.box(group, Vector3(0.24, 0.2, d + 0.1), Vector3(sg * w * 0.5, 0.02, 0), zinc)
 	else:
 		# Cztery połacie; krótsza kalenica zostawia trójkątne końce.
 		var a := Vector3(-w*0.5,0,-d*0.5)
