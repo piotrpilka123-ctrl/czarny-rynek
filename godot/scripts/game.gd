@@ -15,6 +15,7 @@ signal nav_dirty
 signal sms(contact, text)
 signal level_up(lvl)
 signal sale_made(paid, streak)
+signal batch_done(text, sub)
 
 const SAVE_PATH := "user://zapis_v3.json"
 

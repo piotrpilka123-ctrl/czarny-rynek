@@ -244,6 +244,7 @@ static func tick(minutes: float) -> void:
 				if randf() < float(md.get("burn", 0.0)):
 					j.burnt = true
 				G.notify("%s (%s): gotowe do zebrania." % [String(r.name), String(D.ROOMS[room].name)], "good")
+				Sfx.play("level" if not j.get("burnt", false) else "bad")
 			j.prog = after
 
 
@@ -647,6 +648,8 @@ static func collect(room: String, idx: int) -> Dictionary:
 		G.add_bulk(G.S.stash[room], String(j.p), int(j.pur), float(j.g))
 		G.S.stats.grown = int(G.S.stats.grown) + int(j.g)
 		G.add_xp(float(j.g) * 0.5)
+		G.batch_done.emit("+%s" % G.grams(j.g), "wysuszone • %d%%" % int(j.pur))
+		Sfx.play("pickup")
 		G.notify("Wysuszone: %s %s (%d%%) — w skrytce kryjówki." % [G.grams(j.g), String(D.PRODUCT_GEN[j.p]), int(j.pur)], "good")
 		h.jobs.erase(str(idx))
 		return {"g": float(j.g), "pur": int(j.pur), "p": String(j.p)}
@@ -662,6 +665,8 @@ static func collect(room: String, idx: int) -> Dictionary:
 		G.add_bulk(G.S.stash[room], p, int(f.pur), float(f.g))
 		G.S.stats["cooked"] = int(G.S.stats.get("cooked", 0)) + int(f.g)
 		G.add_xp(float(f.g) * 0.9)
+		G.batch_done.emit("+%s" % G.grams(f.g), "%s • %d%%%s" % [String(r.name), int(f.pur), " • przypalona" if j.burnt else ""])
+		Sfx.play("pickup")
 		G.notify("%s: %s (%d%%)%s — w skrytce kryjówki." % [String(r.name), G.grams(f.g), int(f.pur), " • partia przypalona" if j.burnt else ""], "warn" if j.burnt else "good")
 	return {"g": float(f.g), "pur": int(f.pur), "p": p, "wet": r.get("wet", false)}
 

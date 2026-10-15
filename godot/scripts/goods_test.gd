@@ -53,7 +53,10 @@ static func run(T) -> void:
 	T.ok(float(j.prog) >= 1.0, "partia grzybków gotowa")
 	var fc: Dictionary = P.forecast(j)
 	var before: float = G.goods_total(G.S.stash.garage)
+	var popped: Array = []
+	G.batch_done.connect(func(t, sub): popped.append(String(t)))
 	var res: Dictionary = P.collect("garage", 0)
+	T.ok(popped.size() == 1 and String(popped[0]).begins_with("+"), "odbiór partii wysyła sygnał do wyskakującej liczby")
 	T.ok(String(res.p) == "grzyb" and absf(G.goods_total(G.S.stash.garage) - before - float(fc.g)) < 0.6 and float(fc.g) > 10.0, "grzybki trafiają do skrytki (%d g, %d%%)" % [int(fc.g), int(fc.pur)])
 	T.ok(G.flag("had_grzyb"), "po pierwszej partii klienci zamawiają grzybki")
 	G.S.items["grzybnia"] = 1

@@ -182,12 +182,19 @@ func build() -> void:
 	_build_cut()
 	G.toast.connect(toast_add)
 	G.sale_made.connect(_sale_pop)
+	G.batch_done.connect(func(t, sub): _pop(String(t), String(sub), K.C_TXT))
 	G.sms.connect(_on_sms)
 
 
 ## wylatująca kwota po sprzedaży: unosi się i gaśnie; seria pod spodem rośnie od 2
 func _sale_pop(paid: float, streak: int) -> void:
-	if hud == null or not hud.visible or paid <= 0.0:
+	if paid > 0.0:
+		_pop("+%s" % G.money(paid), ("seria ×%d" % streak) if streak >= 2 else "", K.C_TXT)
+
+
+## duża liczba z drobnym podpisem: sprężyście wchodzi, unosi się i gaśnie
+func _pop(text: String, sub: String, col: Color) -> void:
+	if hud == null or not hud.visible:
 		return
 	var box := K.vbox(0)
 	var vp := hud.get_viewport_rect().size
@@ -196,12 +203,12 @@ func _sale_pop(paid: float, streak: int) -> void:
 	box.pivot_offset = Vector2(150, 20)
 	box.scale = Vector2(0.6, 0.6)
 	_ign(box)
-	var l := K.head("+%s" % G.money(paid), 34, K.C_TXT)
+	var l := K.head(text, 34, col)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_shadow(l, 6)
 	box.add_child(l)
-	if streak >= 2:
-		var s := K.head("seria ×%d" % streak, 15, K.C_GOLD)
+	if sub != "":
+		var s := K.head(sub, 15, K.C_GOLD)
 		s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_shadow(s)
 		box.add_child(s)
