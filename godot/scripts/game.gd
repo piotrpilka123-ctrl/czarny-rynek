@@ -3180,6 +3180,7 @@ func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, m
 		ctx.npc.last_deal = S.t
 	add_xp(xp * streak_xp_mult())
 	add_minutes(4.0)
+	goals_check()
 	if ctx.get("street", false) and player != null and player.loc == "out":
 		after_deal_risk(ctx, g)
 	check_unlocks()
@@ -3205,6 +3206,57 @@ func sale_streak_hit(full: bool) -> int:
 	if n in [3, 5, 8, 12]:
 		Sfx.play("level")
 		notify("Seria %d udanych transakcji — więcej doświadczenia." % n, "good")
+	return n
+
+
+## dzienne mini-cele: dwa małe cele na dzień (liczone od pierwszego sprawdzenia w danym dniu), nagroda to XP i drobna gotówka
+const GOAL_KINDS := ["sprzedaj", "transakcje", "utarg"]
+func goals_active() -> bool:
+	return prologue == null and int(S.stats.deals) >= 3
+
+
+func goals_ensure() -> Array:
+	var gs: Dictionary = S.get("goals", {})
+	if int(gs.get("day", -1)) != day():
+		var kinds := GOAL_KINDS.duplicate()
+		kinds.shuffle()
+		var lv := float(int(S.lvl))
+		var list: Array = []
+		for k in kinds.slice(0, 2):
+			var need := 0.0
+			match String(k):
+				"sprzedaj": need = round(4.0 + lv * 1.5)
+				"transakcje": need = 2.0 + floorf(lv / 4.0)
+				"utarg": need = round((120.0 + lv * 45.0) / 10.0) * 10.0
+			list.append({"kind": String(k), "need": need, "base": _job_counter(String(k)), "done": false})
+		gs = {"day": day(), "list": list}
+		S["goals"] = gs
+	return gs.list
+
+
+func goal_progress(g: Dictionary) -> float:
+	return clampf(_job_counter(String(g.kind)) - float(g.base), 0.0, float(g.need))
+
+
+func goal_text(g: Dictionary) -> String:
+	var unit := {"sprzedaj": "g", "transakcje": "transakcje", "utarg": "zł"}
+	var nm := {"sprzedaj": "sprzedaj", "transakcje": "zrób", "utarg": "zarób"}
+	return "%s %d/%d %s" % [nm[g.kind], int(goal_progress(g)), int(g.need), unit[g.kind]]
+
+
+func goals_check() -> int:
+	if not goals_active():
+		return 0
+	var n := 0
+	for g in goals_ensure():
+		if g.done or goal_progress(g) < float(g.need) - 0.001:
+			continue
+		g.done = true
+		n += 1
+		S.cash += 25.0
+		add_xp(6.0)
+		Sfx.play("good")
+		notify("CEL DNIA: %s ✓  +%s" % [goal_text(g), money(25.0)], "good")
 	return n
 
 

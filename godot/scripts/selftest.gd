@@ -864,6 +864,15 @@ func run() -> void:
 	S.stats.deals = int(S.stats.deals) + 1
 	var r2: Dictionary = G.day_report()
 	ok(r2.records.has("rekord zarobku") and int(G.day_report().deals) == 0, "podsumowanie dnia: rekord zarobku, znacznik przesuwa się")
+	S.stats.deals = maxi(int(S.stats.deals), 5)
+	S.erase("goals")
+	var gl: Array = G.goals_ensure()
+	ok(gl.size() == 2 and gl[0].kind != gl[1].kind and G.goals_check() == 0, "mini-cele dnia: dwa różne, na starcie niezrobione")
+	var cash_goals: float = S.cash
+	S.stats.sold = int(S.stats.sold) + 200
+	S.stats.deals = int(S.stats.deals) + 20
+	S.stats.earned = float(S.stats.earned) + 20000.0
+	ok(G.goals_check() == 2 and S.cash >= cash_goals + 50.0 and G.goals_check() == 0, "mini-cele dnia: nagroda raz za każdy cel")
 	# lekko rozrobiony towar: klient bierze, ale bywa niezadowolony
 	var meh := 0
 	var sat_sum := 0.0

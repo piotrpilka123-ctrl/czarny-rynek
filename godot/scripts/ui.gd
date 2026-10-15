@@ -2283,6 +2283,11 @@ func update_hud() -> void:
 		if sig != last_job:
 			last_job = sig
 			obj_t = maxf(obj_t, 6.0)
+	if G.goals_active() and not staged:
+		var gt: Array = []
+		for g in G.goals_ensure():
+			gt.append("✓ " + String(g.kind) if g.done else G.goal_text(g))
+		lines += ("\n" if lines != "" else "") + K.col("Cele dnia: " + "  •  ".join(gt), K.C_DIM)
 	l_nav.text = lines
 	obj_t = maxf(0.0, obj_t - 0.1)
 	# cel zostaje na ekranie, dopóki gracz go nie wykona (tak samo niewykonane zlecenie dnia);

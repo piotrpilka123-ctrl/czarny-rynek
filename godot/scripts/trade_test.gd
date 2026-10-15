@@ -52,6 +52,7 @@ static func run(T) -> void:
 	# --- rzut: w wielu próbach udaje się mniej więcej trzy razy na cztery
 	var won := 0
 	var caught := 0
+	S["goals"] = {"day": G.day(), "list": []}   # cele dnia nie dopisują gotówki do rachunku
 	var cash0 := float(S.cash)
 	for i in range(300):
 		G.add_pack(S.inv, "dym", 100, 3)
