@@ -851,6 +851,15 @@ func run() -> void:
 	var lv0: int = int(S.lvl)
 	G.add_xp(float(D.XP_LEVELS[lv0]) - float(S.xp) + 1.0)
 	ok(lv_seen == [lv0 + 1], "awans na poziom wysyła sygnał do wyskakującego napisu")
+	if G.player != null:
+		var wanted_keep: bool = S.wanted
+		S.wanted = false
+		G.player.shake = 0.0
+		G.on_chase_start()
+		ok(G.player.shake >= 0.9, "początek pościgu wstrząsa kamerą")
+		G.player.shake = 0.0
+		S.wanted = wanted_keep
+		Sfx.siren(false)
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

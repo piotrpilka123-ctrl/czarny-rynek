@@ -1566,6 +1566,9 @@ func on_chase_start() -> void:
 		notify("Policja Cię ściga! Uciekaj albo schowaj się w budynku!", "bad")
 		Sfx.play("alert")
 		Sfx.siren(true)
+		# wstrząs przy wykryciu: krótki, kamera drży i uspokaja się w ułamku sekundy
+		if player != null:
+			player.shake = maxf(player.shake, 0.9)
 	add_heat(12.0)
 	if S.heat < 45.0:
 		S.heat = 45.0
