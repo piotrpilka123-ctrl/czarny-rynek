@@ -6024,7 +6024,7 @@ func _lab_room() -> void:
 	# --- magazyn chemii w północno-zachodnim rogu
 	_lm(g, "lab_ibc", cx - 6.1, -4.5, 0.0, 0.0, Vector2(0.55, 0.65))
 	_lm(g, "lab_ibc", cx - 4.9, -4.55, 0.06, 0.0, Vector2(0.55, 0.65))
-	for e in [[-3.5, -4.9, 0.3], [-2.9, -4.75, 1.4], [-3.2, -4.2, 2.2], [-6.4, -3.3, 0.9], [-5.8, -3.25, 2.9]]:
+	for e in [[-3.5, -4.9, 0.3], [-2.9, -4.95, 1.4], [-3.0, -3.0, 2.2], [-6.6, -3.1, 0.9], [-6.6, -2.9, 2.9]]:
 		_lm(g, "lab_beczka", cx + e[0], e[1], e[2], 0.0, Vector2(0.3, 0.3))
 	_lm(g, "lab_kanistry", cx - 4.5, -3.5, 0.8)
 	_lm(g, "lab_butle", cx - w * 0.5 + 0.22, -1.6, PI / 2.0, 0.0, Vector2(0.2, 0.35))
@@ -6162,6 +6162,7 @@ func _lab_room() -> void:
 		cl.shadow_enabled = false
 		g.add_child(cl)
 		cops.append(cl)
+	RoomParts.lab_decor(self, g, cx, w, d, h)   # magazyn za ścianą z folią, suszarnia, wyciąg, maski, kable
 	lab_fx = {"flash": cops, "panes": panes, "bag": bag, "bricks": [st1, st2]}
 
 

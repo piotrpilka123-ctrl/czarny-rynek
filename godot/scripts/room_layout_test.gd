@@ -83,6 +83,11 @@ static func run(T) -> void:
 	await reach(T, r, "piwnica: wejście → komórka → przejście na drugą stronę", [[0.0, 4.0], [-2.7, 0.5], [-2.7, -1.0], [-2.7, -3.4], [1.8, -3.4], [1.8, -1.0]])
 	await blocked(T, r, "piwnica: ściana komórki od środka", [-1.0, -1.0], [-1.0, -3.0], "z", -1.6, false)
 	await blocked(T, r, "piwnica: ściana boczna komórki", [-1.0, -4.4], [1.5, -4.4], "x", 0.2, true)
+	# laboratorium w hucie: magazyn chemii za ścianą z dwoma otworami
+	r = "lab"
+	await reach(T, r, "lab: hala → magazyn (otwór wschodni)", [[-1.5, -1.5], [-1.5, -4.0], [-3.6, -4.0]])
+	await reach(T, r, "lab: hala → magazyn (otwór południowy)", [[-5.5, -1.5], [-5.5, -3.2]])
+	await blocked(T, r, "lab: ściana magazynu", [-1.5, -3.0], [-4.0, -3.0], "x", -2.2, false)
 	player.place(saved_pos, saved_yaw)
 	player.loc = saved_loc
 	player.set_physics_process(was_physics)

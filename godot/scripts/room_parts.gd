@@ -291,3 +291,84 @@ static func build(W: Node3D, g: Node3D, cx: float, room: String, h: float, mat: 
 	if fl.has(room):
 		var f: Array = fl[room]
 		floor_patch(g, cx, f[0], f[1], f[2], f[3], Props.pbr(f[4], 0.5, f[5]))
+
+
+## LABORATORIUM W HUCIE: ściana działowa magazynu chemii z folią, folia na wschodniej ścianie i podłodze linii syntezy,
+## suszarnia z lampami, wyciąg, maski, kable i narożnik z chemią (modele skr_* z make_skrytka.py)
+static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: float) -> void:
+	var brick := Props.pbr("factory_brick", 0.5, Color(0.8, 0.76, 0.72))
+	# magazyn chemii w NW rogu: dwie ściany z otworami 1,2 m
+	wall(W, g, cx, Vector2(-2.5, -d * 0.5), Vector2(-2.5, -2.6), h, brick, [[-4.6, -3.4]], THICK + 0.08, "5a544e")
+	wall(W, g, cx, Vector2(-w * 0.5, -2.6), Vector2(-2.5, -2.6), h, brick, [[-6.1, -4.9]], THICK + 0.08, "5a544e")
+	floor_patch(g, cx, -w * 0.5, -d * 0.5, -2.5, -2.6, Props.pbr("dirty_concrete", 0.5, Color(0.7, 0.68, 0.64)))
+	var dec := Node3D.new()
+	dec.name = "LabDecor"
+	g.add_child(dec)
+	# folia na wschodniej ścianie za stołami i na podłodze linii syntezy
+	for k in range(3):
+		var sh: Node3D = Stations.model("skr_folia_sciana")
+		if sh != null:
+			sh.position = Vector3(cx + w * 0.5 - 0.03, 0.0, -3.9 + k * 2.3)
+			sh.rotation.y = -PI / 2.0
+			sh.scale = Vector3(1.04, (h - 0.15) / 2.55, 1.0)
+			dec.add_child(sh)
+	var fp: Node3D = Stations.model("skr_folia_podloga")
+	if fp != null:
+		fp.position = Vector3(cx + 4.3, 0.005, -1.0)
+		fp.rotation.y = PI / 2.0
+		dec.add_child(fp)
+	# kotara z folii na południowej stronie przegrody magazynu (widać ją z hali)
+	for k in range(2):
+		var sh2: Node3D = Stations.model("skr_folia_sciana")
+		if sh2 != null:
+			sh2.position = Vector3(cx - 6.0 + k * 2.2, 0.0, -2.52)
+			sh2.scale = Vector3(1.0, (h - 0.15) / 2.55, 1.0)
+			sh2.rotation.y = 0.0
+			dec.add_child(sh2)
+	# suszarnia z lampami grzewczymi pod północną ścianą
+	for sx in [-1.2, 0.05]:
+		var sz: Node3D = Stations.model("skr_susz")
+		if sz != null:
+			sz.position = Vector3(cx + sx, 0.0, -d * 0.5 + 0.5)
+			dec.add_child(sz)
+	W.add_col(cx - 1.85, cx + 0.7, -d * 0.5, -d * 0.5 + 0.9, 1.0, true, -1.0)
+	W.rects.pop_back()
+	var hl := OmniLight3D.new()
+	hl.position = Vector3(cx - 0.55, 1.3, -d * 0.5 + 0.9)
+	hl.light_color = Color(1.0, 0.38, 0.16)
+	hl.light_energy = 1.2
+	hl.omni_range = 2.8
+	hl.shadow_enabled = false
+	dec.add_child(hl)
+	# wyciąg nad magazynem, maski przy tylnych drzwiach, kable nad linią syntezy, narożnik z chemią w SW
+	var wy: Node3D = Stations.model("skr_wyciag")
+	if wy != null:
+		wy.position = Vector3(cx - w * 0.5 + 0.03, h - 1.78, -3.0)
+		wy.rotation.y = PI / 2.0
+		dec.add_child(wy)
+	var mk: Node3D = Stations.model("skr_maski")
+	if mk != null:
+		mk.position = Vector3(cx - w * 0.5 + 0.04, 0.55, 1.8)
+		mk.rotation.y = PI / 2.0
+		dec.add_child(mk)
+	var kb: Node3D = Stations.model("skr_kable")
+	if kb != null:
+		kb.position = Vector3(cx + 5.2, h - 0.31, -0.8)
+		dec.add_child(kb)
+	var ch: Node3D = Stations.model("skr_chemia")
+	if ch != null:
+		ch.position = Vector3(cx - 6.1, 0.0, 4.55)
+		ch.rotation.y = PI / 2.0
+		ch.scale = Vector3.ONE * 0.9
+		dec.add_child(ch)
+		W.add_col(cx - 6.9, cx - 5.3, 3.8, 5.3, 1.0, true, -1.0)
+		W.rects.pop_back()
+	# zimne światło nad linią syntezy (kontrast z ciepłymi halogenami magazynu)
+	var cold := OmniLight3D.new()
+	cold.position = Vector3(cx + 5.0, h - 0.7, -1.3)
+	cold.light_color = Color(0.82, 0.92, 1.0)
+	cold.light_energy = 0.9
+	cold.omni_range = 4.5
+	cold.shadow_enabled = false
+	dec.add_child(cold)
+	W._skr_shadows(dec)
