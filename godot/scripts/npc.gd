@@ -41,7 +41,7 @@ func build() -> void:
 		var at: Vector2 = G.Dealers.position(id)
 		_static({"x": at.x / D.SC, "z": at.y / D.SC, "rot": PI, "pose": "phone", "name": dealer.name,
 			"hours": [8.0, 23.0], "look": {"model": "m11" if id == "mati" else "m16", "seed": 81 if id == "mati" else 82},
-			"act": func(): G.main.talk_dealer(id)})
+			"dealer_id": id, "act": func(): G.main.talk_dealer(id)})
 	_static({"x": 72.0, "z": 182.0, "rot": 0.3, "pose": "arms", "name": "Roman", "worker_id":"roman", "hours": [6, 19],
 		"act":func(): G.main.talk_worker(), "look": {"model": "m09", "seed": 94}, "lines": ["Tu kiedyś naprawiali wszystkie auta z osiedla. Dziś zostało tyle, co na paletach.", "W tych kontenerach czasem leży coś do sprzedania. Zenek w lombardzie skupuje części.", "Za furtką jest stary teren rekreacyjny. Jeszcze parę lat temu ludzie tu przychodzili po pracy."]})
 	_static({"x": 52.0, "z": 219.0, "rot": PI / 2.0, "pose": "arms", "name": "Pan Józek", "hours": [6,20],
@@ -286,7 +286,7 @@ func _static(o: Dictionary) -> Dictionary:
 	var z: float = float(o.z) * (D.SC if loc == "out" else 1.0)
 	rig.root.position = Vector3(x, (0.0 if loc != "out" else _h(x, z)) + float(o.get("y", 0.0)), z)
 	rig.root.rotation.y = o.get("rot", 0.0)
-	var n := {"kind": "static", "loc": loc, "rig": rig, "node": rig.root, "x": x, "z": z, "name": o.get("name", ""), "worker_id":o.get("worker_id",""), "pose": o.get("pose", ""), "track": o.get("track", false),
+	var n := {"kind": "static", "loc": loc, "rig": rig, "node": rig.root, "x": x, "z": z, "name": o.get("name", ""), "worker_id":o.get("worker_id",""), "dealer_id": o.get("dealer_id", ""), "pose": o.get("pose", ""), "track": o.get("track", false),
 		"hours": o.get("hours", []), "rot0": float(o.get("rot", 0.0)), "lines": o.get("lines", [])}
 	if o.has("label"):
 		var lb: Label3D = Models.label(o.label, Color(1, 0.9, 0.55), 36)
@@ -1282,6 +1282,7 @@ func update(dt: float) -> void:
 	for n in statics:
 		var vis: bool = n.loc == P.loc and _hours_ok(n.hours, h)
 		if n.get("worker_id","")=="roman" and G.S.t<float(G.S.workers.get("roman",{}).get("visual_until",0.0)): vis=false
+		if vis and n.get("dealer_id", "") != "" and not G.Dealers.offered(String(n.dealer_id)): vis = false
 		n.node.visible = vis
 		if not vis:
 			# postać w innym miejscu (klub, szpital, komenda…) nie może mielić animacji, gdy nikt jej nie widzi

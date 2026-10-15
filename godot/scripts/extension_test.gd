@@ -35,8 +35,10 @@ static func run(T) -> void:
 	var saved_track = G.S.track
 	G.S.track = "backyards"
 	T.ok(M.cur_target().id == "backyards", "telefon i kompas rozpoznają cel w nowej części mapy")
+	G.S.flags["dealer_offer_mati"] = true
 	G.S.track = "dealer_mati"
 	T.ok(M.cur_target().id == "dealer_mati", "wybrana trasa dealera prowadzi do niego zamiast do celu fabularnego")
+	G.S.flags.erase("dealer_offer_mati")
 	G.S.track = saved_track
 	T.ok(String(G.zone_at(goal.x, goal.y).get("id", "")) == "zaplecze", "nowy teren ma własną strefę lokalnej uwagi policji")
 

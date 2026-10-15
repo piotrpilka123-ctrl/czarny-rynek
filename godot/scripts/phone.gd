@@ -1274,8 +1274,14 @@ func _dealers() -> void:
 	_header("Dealerzy", "Twoja sieć sprzedaży")
 	body.add_child(K.wrap("Udane dostawy w dzielnicy budują reputację: do 12 pkt dziennie, raz na klienta. Progi 20 / 50 / 80 zmniejszają prowizję lokalnej sieci o 1 / 2 / 3 punkty procentowe.",12,K.C_DIM))
 	body.add_child(K.wrap("Spotkaj się osobiście, donieś paczki i odbierz zarobek. Sprzedaż 8–23, po prowizji. Przy śledztwie 65+ wstrzymują pracę.", 12, K.C_DIM))
+	var any_dealer := false
+	for dealer in G.Dealers.DEFS:
+		if G.Dealers.offered(String(dealer.id)): any_dealer = true
+	if not any_dealer:
+		body.add_child(K.wrap("Na razie nikogo. Duzi, stali klienci sami podpowiedzą, kto sprzeda dla Ciebie.", 13, K.C_TXT))
 	for dealer in G.Dealers.DEFS:
 		var id: String = dealer.id
+		if not G.Dealers.offered(id): continue
 		var card := K.card(body)
 		card.add_child(K.head(String(dealer.name), 17))
 		var zone: Dictionary = G.Dealers.zone(id)

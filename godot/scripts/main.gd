@@ -1727,7 +1727,7 @@ func _place_target(id: String) -> Dictionary:
 	if id.begins_with("dealer_"):
 		var dealer_id := id.trim_prefix("dealer_")
 		var dealer: Dictionary = G.Dealers.definition(dealer_id)
-		if dealer.is_empty(): return {}
+		if dealer.is_empty() or not G.Dealers.offered(dealer_id): return {}
 		var at: Vector2 = G.Dealers.position(dealer_id)
 		return {"id": id, "label": "Dealer: " + String(dealer.name), "loc": "out", "x": at.x, "z": at.y, "color": C_PLACE}
 	if id == "box":
@@ -3839,7 +3839,7 @@ func _record() -> void:
 
 func talk_dealer(id: String) -> void:
 	var dealer: Dictionary = G.Dealers.definition(id)
-	if dealer.is_empty() or not G.Dealers.near(id): return
+	if dealer.is_empty() or not G.Dealers.offered(id) or not G.Dealers.near(id): return
 	if G.S.wanted:
 		ui.dialog({"name": dealer.name, "lines": ["Nie teraz. Najpierw zgub policję."]})
 		return

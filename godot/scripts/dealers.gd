@@ -1,8 +1,8 @@
 extends RefCounted
 ## Własna sieć: fizyczny zapas, prowizja, ograniczone tempo i odbiór pieniędzy.
 const DEFS := [
-	{"id": "mati", "name": "Mati", "x": 65.0, "z": 84.0, "lvl": 4, "fee": 250, "commission": 0.35, "cap": 40, "minpur": 55, "products": ["dym", "szron"], "pace": 4},
-	{"id": "darek", "name": "Darek", "x": -75.0, "z": -13.5, "lvl": 8, "fee": 900, "commission": 0.4, "cap": 80, "minpur": 65, "products": ["krysztal", "snieg"], "pace": 1},
+	{"id": "mati", "name": "Mati", "x": 65.0, "z": 84.0, "lvl": 4, "fee": 250, "commission": 0.35, "cap": 40, "minpur": 55, "products": ["dym", "szron"], "pace": 4, "client": "heniek"},
+	{"id": "darek", "name": "Darek", "x": -75.0, "z": -13.5, "lvl": 8, "fee": 900, "commission": 0.4, "cap": 80, "minpur": 65, "products": ["krysztal", "snieg"], "pace": 1, "client": "rysiek"},
 ]
 
 static func definition(id: String) -> Dictionary:
@@ -28,9 +28,28 @@ static func commission(id: String) -> float:
 static func near(id: String) -> bool:
 	return G.player != null and G.player.loc == "out" and Vector2(G.player.global_position.x, G.player.global_position.z).distance_to(position(id)) <= 3.0
 
+## dealer stoi na ulicy dopiero, gdy duży klient go poleci (albo gdy już z nim współpracujesz)
+static func offered(id: String) -> bool:
+	return G.S.dealers.has(id) or bool(G.S.flags.get("dealer_offer_" + id, false))
+
+
+## duży, stały klient (kilka transakcji i trochę wziętego towaru) sam proponuje: „znam kogoś, kto sprzeda to dla ciebie”
+static func check_offers() -> void:
+	for dealer in DEFS:
+		var id := String(dealer.id)
+		if offered(id): continue
+		var cs: Dictionary = G.S.cust.get(String(dealer.client), {})
+		if cs.is_empty() or not bool(cs.get("unlocked", false)): continue
+		if int(cs.get("deals", 0)) < 3 or int(cs.get("grams", 0)) < 30 or int(G.S.lvl) < int(dealer.lvl) - 1: continue
+		G.S.flags["dealer_offer_" + id] = true
+		G.chat(String(dealer.client), "Słuchaj, biorę od ciebie regularnie. Znam %s — sprzedaje swoim, tylko potrzebuje towaru od kogoś pewnego. Pogadaj z nim, stoi na osiedlu." % dealer.name)
+		G.notify("%s poleca Ci dealera: %s. Zaznaczony na mapie." % [String(G.cust_def(String(dealer.client)).name), dealer.name], "good")
+
+
 static func requirement(id: String) -> String:
 	var dealer := definition(id)
 	if dealer.is_empty(): return "Nieznany kontakt."
+	if not offered(id): return "Nikt jeszcze Cię temu człowiekowi nie polecił."
 	if int(G.S.lvl) < int(dealer.lvl): return "Współpraca od poziomu %d." % int(dealer.lvl)
 	if int(G.S.stats.deals) < 6 or int(G.S.stats.sold) < 30: return "Najpierw zrób 6 transakcji i sprzedaj 30 g — pokaż, że umiesz utrzymać zapas."
 	if G.S.cash < float(dealer.fee): return "Potrzebujesz %s na rozpoczęcie współpracy." % G.money(dealer.fee)
@@ -80,6 +99,7 @@ static func collect(id: String) -> float:
 
 static func tick() -> void:
 	if G.prologue != null: return
+	check_offers()
 	for id in G.S.dealers:
 		var dealer := definition(String(id))
 		if dealer.is_empty(): continue

@@ -13,6 +13,14 @@ static func run(T) -> void:
 	G.S.stats.deals = 6
 	G.S.stats.sold = 30
 	G.S.cash = 15000.0
+	T.ok(not G.Dealers.offered("mati") and not G.Dealers.hire("mati"), "bez polecenia dealera nie ma na ulicy ani nie da się go zatrudnić")
+	G.Dealers.check_offers()
+	T.ok(not G.Dealers.offered("mati"), "klient, którego nie znasz, nikogo nie poleca")
+	G.S.cust.heniek.unlocked = true
+	G.S.cust.heniek.deals = 3
+	G.S.cust.heniek.grams = 30
+	G.Dealers.check_offers()
+	T.ok(G.Dealers.offered("mati") and G.S.chats.has("heniek") and not G.Dealers.offered("darek"), "stały, duży klient poleca dealera (tylko swojego)")
 	T.ok(G.Dealers.hire("mati") and G.S.cash == 14750.0 and not G.Dealers.hire("mati"), "rekrutacja kosztuje 250 zł i nie może być wykonana dwa razy")
 	G.add_pack(G.S.inv, "dym", 100, 2, 5)
 	T.ok(G.Dealers.supply("mati", "dym") == 10 and G.packed_total(G.S.inv) == 0 and G.Dealers.stock("mati") == 10, "dealer dostaje faktyczne całe paczki i sam dzieli je na małe sprzedaże")
