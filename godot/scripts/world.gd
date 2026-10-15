@@ -6645,13 +6645,10 @@ func _backyard_extension() -> void:
 
 ## Miejsca spotkań z klientami grzybków i ecstasy: ścieżka na ogródkach działkowych i zaplecze Repair Yard.
 func _goods_locations() -> void:
-	# ROD „Hutnik”: słupek z tablicą przy wejściu na ścieżkę, ławka i kosz przy altankach
-	var post := Node3D.new()
-	Models.box(post, Vector3(0.1, 1.9, 0.1), Vector3(0, 0.95, 0), Models.mat("4a3a2a", 0.9))
-	var plate := Signs.plate("ROD HUTNIK", Color(0.8, 0.86, 0.7), 1.5)
-	plate.position = Vector3(0, 1.75, 0.07)
-	post.add_child(plate)
-	_wall(post, -146.0, 0.0, -104.0, -PI / 2.0)
+	# ROD „Hutnik”: tablica przy wejściu na ścieżkę (model z Blendera), ławka i kosz przy altankach
+	var rod: Node3D = Stations.model("rod_tablica")
+	if rod != null:
+		Props.set_range(_place(rod, -146.0, -104.0, -PI / 2.0, 0.15, 1.0, 2.4), 150.0)
 	_bench(-147.0, -92.0, -PI / 2.0)
 	_bin(-147.0, -98.0, 0.0)
 	# Repair Yard od zaplecza: skrzynki, opony, lampa nad przejściem i szyld afterów
@@ -6659,6 +6656,9 @@ func _goods_locations() -> void:
 	_prop("wooden_crate_02", 76.0, 181.2, 1.2, 0.48, 0.0, false)
 	_prop("old_tyre", 62.0, 185.0, 0.5, 0.16, 0.0, false)
 	_wall(Signs.plate("AFTER 24H", Color(0.95, 0.4, 0.62), 1.4), 61.1, 2.5, 183.5, PI / 2.0)
+	var stol: Node3D = Stations.model("rep_stol")
+	if stol != null:
+		Props.set_range(_place(stol, 69.0, 182.0, PI, 2.0, 0.6, 1.0), 120.0)
 
 
 ## Krawędzie nowej sieci są wyznaczone po zbudowaniu kolizji, a nie na ślepo przez płoty.
