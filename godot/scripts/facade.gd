@@ -368,8 +368,11 @@ void fragment() {
 					rough = 0.55;
 				} else if (dead > 0.5) {
 					// pustostan: dykta albo wybita szyba
-					col = rnd2 > 0.5 ? vec3(0.32, 0.25, 0.17) * (0.7 + nz * 0.5) : vec3(0.012);
-					rough = 0.92;
+					bool boarded = rnd2 > 0.5;
+					// wybita szyba to ciemne, lekko błyszczące szkło z jaśniejszą górą (odbicie nieba), nie dziura w kolorze 0.012
+					col = boarded ? vec3(0.32, 0.25, 0.17) * (0.7 + nz * 0.5) : vec3(0.045, 0.055, 0.065) * (0.6 + 0.8 * q.y) * (0.8 + nz * 0.4);
+					rough = boarded ? 0.92 : 0.2;
+					spec = boarded ? spec : 0.7;
 				} else {
 					// zasłony/firanka 10 cm za szybą
 					vec2 qc = (hp.xy - slope * 0.1 - a) / (b - a);

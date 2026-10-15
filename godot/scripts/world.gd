@@ -166,7 +166,9 @@ void fragment() {
 		alb += a * w.r; nrm += texture(n_asph, uv * 0.3, lodb).rgb * w.r; rgh += 0.86 * w.r;
 	}
 	if (w.g > 0.003) {
-		vec3 a = texture(a_pave, uv * 0.42, lodb).rgb * (0.72 + mid * 0.4);
+		// drugi, rzadki szum rozbija powtarzalność kafla: pojedyncze płyty ciemniejsze/jaśniejsze i plamy wilgoci
+		float tile_v = texture(noise_tex, floor(uv * 0.42 * 2.0) * 0.173 + 0.31).r;
+		vec3 a = texture(a_pave, uv * 0.42, lodb).rgb * (0.68 + mid * 0.3) * (0.86 + tile_v * 0.3) * (0.9 + 0.2 * texture(noise_tex, uv * 0.045 + 3.0).r);
 		alb += a * w.g; nrm += texture(n_pave, uv * 0.42, lodb).rgb * w.g; rgh += 0.9 * w.g;
 	}
 	if (w.b > 0.003) {
