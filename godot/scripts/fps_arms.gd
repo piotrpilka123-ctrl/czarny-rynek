@@ -113,11 +113,18 @@ func _process(dt: float) -> void:
 		rig.anim.speed_scale = -absf(rig.anim.speed_scale)
 
 
+## plecak w rękach tylko wtedy, gdy gracz sam otworzył ekwipunek klawiszem w świecie (nie przy interakcjach: waga, stół, skrytka, szafa)
+func bag_wanted() -> bool:
+	if G.ui == null or G.S == null or not G.S.has("upg") or not G.upg("plecak1") or player.hidden:
+		return OS.get_cmdline_user_args().has("--fpsbag")
+	return G.ui.inv_pre > 0.0 or (G.ui.mode == "inv" and G.ui.inv_held) or OS.get_cmdline_user_args().has("--fpsbag")
+
+
 ## Otwarty ekwipunek: plecak zsuwa się z ramienia do rąk, a suwak i klapa otwierają się przed oczami (bez opóźniania okna).
 func _hold_bag(dt: float) -> void:
 	if OS.get_cmdline_user_args().has("--fpsbag") and G.S != null and G.S.has("upg"):
 		G.S.upg["plecak1"] = true   # tylko do zrzutów
-	var want: bool = ((G.ui != null and (G.ui.mode == "inv" or G.ui.inv_pre > 0.0)) or OS.get_cmdline_user_args().has("--fpsbag")) and G.S.has("upg") and G.upg("plecak1") and not player.hidden
+	var want := bag_wanted()
 	hold = move_toward(hold, 1.0 if want else 0.0, dt * 3.2)
 	if ik != null:
 		ik.hold = hold
@@ -206,5 +213,6 @@ func _hold_give(dt: float) -> void:
 		Props._no_shadow(pack)
 	pack.visible = true
 	var k := smoothstep(0.0, 1.0, give)
-	pack.position = Vector3(0.0, lerpf(-0.5, -0.255, k), lerpf(-0.25, -0.52, k))
-	pack.rotation = Vector3(lerpf(0.0, -0.1, k), 0.35, 0.0)
+	pack.position = Vector3(0.0, -0.255, -0.52)
+	pack.rotation = Vector3(-0.1, 0.35, 0.0)
+	pack.scale = Vector3.ONE * lerpf(0.85, 1.0, k)

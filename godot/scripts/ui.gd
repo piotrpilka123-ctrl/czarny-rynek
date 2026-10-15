@@ -1061,6 +1061,8 @@ func close_all() -> void:
 		menu_root.queue_free()
 		menu_root = null
 	_deal_unstage()
+	inv_held = false
+	inv_pre = 0.0
 	dlg = {}
 	deal = {}
 	sk = {}
@@ -1477,6 +1479,7 @@ func open_stash(room: String) -> void:
 
 
 ## ekwipunek: plecak, postać, organizer; `room` = skrytka otwarta po prawej stronie
+var inv_held := false   # ekwipunek otwarty klawiszem w świecie: plecak zostaje w rękach FPS (nie przy oknach z interakcji i w prologu)
 var inv_pre := 0.0      # >0: plecak jest w rękach (widok FPS), a okno ekwipunku jeszcze się nie otworzyło
 var _inv_token := 0
 
@@ -1486,9 +1489,10 @@ func _inv_from_world() -> void:
 	if inv_pre > 0.0:
 		_inv_token += 1
 		inv_pre = 0.0
+		inv_held = true
 		open_inventory("")
 		return
-	if G.test_mode or not G.upg("plecak1") or G.player == null or G.player.hidden or G.busy:
+	if G.test_mode or G.prologue != null or not G.upg("plecak1") or G.player == null or G.player.hidden or G.busy:
 		open_inventory("")
 		return
 	_inv_token += 1
@@ -1497,6 +1501,7 @@ func _inv_from_world() -> void:
 	get_tree().create_timer(0.35).timeout.connect(func():
 		if _inv_token == tk and inv_pre > 0.0:
 			inv_pre = 0.0
+			inv_held = true
 			open_inventory(""))
 
 

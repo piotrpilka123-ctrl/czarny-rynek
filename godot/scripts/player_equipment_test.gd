@@ -29,6 +29,17 @@ static func run(T) -> void:
 		T.ok(before.distance_to(straps.control_points[0][1])>0.0001,"gracz: szelka podąża za rzeczywistą kością ramienia")
 		sk.set_bone_pose_position(shoulder,saved_pose)
 		straps.update_straps()
+	var fb=G.player.get_node_or_null("FpsBody")
+	if fb!=null:
+		G.ui.inv_held=false
+		G.ui.inv_pre=0.0
+		T.ok(G.ui.mode=="inv" and not fb.bag_wanted(),"FPS: ekwipunek z interakcji (waga/stół/skrytka) nie wyciąga plecaka w dłonie")
+		G.ui.inv_pre=0.3
+		T.ok(fb.bag_wanted(),"FPS: po klawiszu ekwipunku w świecie plecak jest w dłoniach przed oknem")
+		G.ui.inv_pre=0.0
+		G.ui.inv_held=true
+		T.ok(fb.bag_wanted(),"FPS: okno otwarte klawiszem trzyma plecak w dłoniach")
+		G.ui.inv_held=false
 	var store:=JSON.stringify(G.S)
 	inv.inspect_backpack()
 	inv.bag_mesh._process(0.3)
