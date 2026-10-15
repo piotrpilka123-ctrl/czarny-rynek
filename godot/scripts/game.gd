@@ -4438,7 +4438,7 @@ func _laptop_marker() -> Variant:
 
 
 func _stash_marker() -> Variant:
-	return {"loc": "safe", "x": float(D.ROOMS.safe.cx) + float(D.ROOMS.safe.w) * 0.5 - 0.42, "z": 0.6}
+	return {"loc": "safe", "x": float(D.ROOMS.safe.cx) - float(D.ROOMS.safe.w) * 0.5 + 0.42, "z": 0.05}
 
 
 ## po obejrzeniu pokoju odzywa się Wiktor z pierwszą paczką
