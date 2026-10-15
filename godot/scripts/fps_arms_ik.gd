@@ -3,6 +3,16 @@ extends SkeletonModifier3D
 ## wysięg skracany tuż przy ścianie (promień z kamery), głowa zwinięta, żeby nie zasłaniała kadru.
 
 var player
+
+
+## tor prawej dłoni z telefonem w układzie kamery: z postawy luzem do kieszeni na biodrze (k 0→0,4), potem z kieszeni przed oczy
+static func phone_path(k: float) -> Vector3:
+	var rest := Vector3(0.2, -0.24, -0.42)
+	var pocket := Vector3(0.27, -0.72, -0.04)
+	var front := Vector3(0.1, -0.12, -0.33)
+	if k < 0.4:
+		return rest.lerp(pocket, smoothstep(0.0, 1.0, k / 0.4))
+	return pocket.lerp(front, smoothstep(0.0, 1.0, (k - 0.4) / 0.6))
 var arms: Array = []     # [[ramię, przedramię, dłoń, palec], …] prawa i lewa
 var head := -1
 var reach := 0.42
@@ -52,7 +62,7 @@ func _process_modification_with_delta(dt: float) -> void:
 		if give > 0.0:
 			lp = lp.lerp(Vector3(side * 0.12, -0.22, -0.5), smoothstep(0.0, 1.0, give))
 		if phone > 0.0 and s == 0:
-			lp = lp.lerp(Vector3(0.1, -0.12, -0.33), smoothstep(0.0, 1.0, phone))
+			lp = phone_path(phone)
 		var goal := sk.to_local(cam.to_global(lp))
 		var shoulder: Vector3 = sk.get_bone_global_pose(arms[s][0]).origin
 		var pole := sk.to_local(cam.to_global(Vector3(side * 0.55, -0.6, 0.2)))

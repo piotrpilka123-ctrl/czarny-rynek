@@ -7,6 +7,7 @@ const Chars = preload("res://scripts/chars.gd")
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
 const Stations = preload("res://scripts/stations.gd")
+const IK = preload("res://scripts/fps_arms_ik.gd")
 
 var player
 var rig: Dictionary = {}
@@ -176,8 +177,10 @@ func _brighten(n: Node) -> void:
 
 ## Otwarty telefon: prawa dłoń unosi smartfon ekranem do oczu (lewa zostaje luzem).
 func _hold_phone(dt: float) -> void:
-	var want: bool = (G.ui != null and G.ui.mode == "phone") or OS.get_cmdline_user_args().has("--fpsphone")
-	phone_hold = move_toward(phone_hold, 1.0 if (want and not player.hidden and hold < 0.5) else 0.0, dt * 4.0)
+	var ringing: bool = G.ui != null and not G.ui.call.is_empty() and String(G.ui.call.get("state", "")) in ["ring", "talk"]
+	var want: bool = (G.ui != null and G.ui.mode == "phone") or ringing or OS.get_cmdline_user_args().has("--fpsphone")
+	# dzwoniący telefon wyciąga się z kieszeni powoli (ok. 1 s), otwarta aplikacja — szybciej
+	phone_hold = move_toward(phone_hold, 1.0 if (want and not player.hidden and hold < 0.5) else 0.0, dt * (1.1 if ringing else 3.0))
 	if ik != null:
 		ik.phone = phone_hold
 	if phone_hold <= 0.001:
@@ -191,11 +194,10 @@ func _hold_phone(dt: float) -> void:
 		phone = ps.instantiate()
 		player.cam.add_child(phone)
 		Props._no_shadow(phone)
-	phone.visible = true
-	var k := smoothstep(0.0, 1.0, phone_hold)
-	phone.position = Vector3(lerpf(0.2, 0.09, k), lerpf(-0.5, -0.1, k), lerpf(-0.3, -0.33, k))
+	phone.visible = phone_hold > 0.4
+	var k := smoothstep(0.0, 1.0, clampf((phone_hold - 0.4) / 0.6, 0.0, 1.0))
+	phone.position = IK.phone_path(phone_hold) + Vector3(-0.01, 0.02, 0.0)
 	phone.rotation = Vector3(lerpf(0.0, 0.32, k), 0.0, lerpf(0.0, -0.06, k))
-
 
 ## Wymiana z klientem: obie dłonie wysuwają się do przodu z paczką, jak przy podaniu z ręki do ręki.
 func _hold_give(dt: float) -> void:
