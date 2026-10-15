@@ -60,7 +60,7 @@ static func build(U, room: String, idx: int) -> void:
 	if f.is_empty():
 		return
 	var kind := String(f["func"])
-	var sub := {"grow": "Uprawa pod lampami. Pilnuj wody — reszta to Twoje decyzje.", "dry": "Świeży zbiór schnie tu 8 godzin, zanim trafi na wagę.", "lab": "Synteza z zestawu chemikaliów. Niektóre etapy czekają na Ciebie."}
+	var sub := {"grow": "Uprawa pod lampami. Pilnuj wody — reszta to Twoje decyzje.", "dry": "Świeży zbiór schnie tu 8 godzin, zanim trafi na wagę.", "lab": "Synteza z zestawu chemikaliów. Niektóre etapy czekają na Ciebie.", "mush": "Grzybnia w wilgotnej szafie. Owocniki trzeba zebrać na czas."}
 	U._open_modal(String(f.name), String(sub.get(kind, "")), "center", 1000.0)
 	U.station = {"room": room, "idx": idx}
 	var body: VBoxContainer = U.modal_body
@@ -315,13 +315,13 @@ static func build_hideout(U, room: String) -> void:
 	for i in range(items.size()):
 		var f: Dictionary = G.furn_def(String(items[i].f))
 		var fn := String(f.get("func", ""))
-		if not fn in ["grow", "dry", "lab", "tank", "filter"]:
+		if not fn in ["grow", "dry", "lab", "mush", "tank", "filter"]:
 			continue
 		any = true
 		var ii := i
 		var row := K.hbox(10)
 		c2.add_child(row)
-		row.add_child(K.icon({"grow": "sprout", "dry": "wind", "lab": "flask_conical", "tank": "droplets", "filter": "wind"}.get(fn, "box"), 16, K.C_DIM))
+		row.add_child(K.icon({"grow": "sprout", "dry": "wind", "lab": "flask_conical", "mush": "sprout", "tank": "droplets", "filter": "wind"}.get(fn, "box"), 16, K.C_DIM))
 		var lab := K.lbl(G.station_label(room, i), 13, K.C_TXT)
 		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(lab)
@@ -329,7 +329,7 @@ static func build_hideout(U, room: String) -> void:
 		if j != null and String(j.r) != "_dry":
 			var fc: Dictionary = P.forecast(j)
 			row.add_child(K.lbl("ok. %d g • %d%%" % [int(fc.g), int(fc.pur)], 12, K.C_DIM))
-		if fn in ["grow", "dry", "lab"]:
+		if fn in ["grow", "dry", "lab", "mush"]:
 			row.add_child(K.btn("Otwórz", func(): U.open_station(room, ii), "", true))
 	if not any:
 		c2.add_child(K.wrap("Brak stanowisk. W kryjówce naciśnij [%s], żeby postawić doniczki, lampę LED, suszarkę albo stół laboratoryjny." % G.kn("build"), 13, K.C_DIM))

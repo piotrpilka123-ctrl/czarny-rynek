@@ -14,6 +14,15 @@ Pierwsze uruchomienie wymaga importu modeli i tekstur, dlatego trwa dłużej. To
 
 WASD — ruch, mysz — rozglądanie, E — interakcja. Gra pokazuje pozostałe klawisze podczas samouczka. F11 przełącza pełny ekran.
 
+## Towary
+
+Sześć towarów w grze (wszystko fikcyjne): marihuana, amfetamina, metamfetamina, kokaina oraz dwa własnej produkcji.
+
+- **Grzybki** (ok. 110 zł/g, od poziomu 4): szafa grzybowa kupiona w hurtowni i grzybnia ze sklepu Stasia. Kupują artyści z ogródków działkowych „Hutnik” (Tosia, Pan Zdzisław).
+- **Ecstasy** (ok. 140 zł/g, od poziomu 6): stół laboratoryjny i dwa zestawy chemikaliów. Kupują ludzie z Neonu i afterów na zapleczu Repair Yard (Kaja, Bogdan z bramki).
+
+Nowe miejsca spotkań i skrytek: ogródki działkowe oraz zaplecze Repair Yard. Każdy nowy klient ma też swoją rozmowę telefoniczną, która dopisuje kolejny kawałek historii o tym, kto sprzedał ekipę Wiktora.
+
 ## Pliki
 
 `godot/` zawiera kod, scenę, modele, tekstury, animacje, muzykę i dźwięki aktualnej gry. Zapis gry jest przechowywany w danych użytkownika Godota, poza repozytorium.

@@ -1554,7 +1554,7 @@ func open_property(pid: String) -> void:
 	c.add_child(K.wrap("Kryjówkę urządzasz samodzielnie: stół roboczy, regały na towar, łóżko, a z czasem namiot uprawowy.", 12, K.C_DIM))
 
 
-const FURN_KINDS := {"pack": "stanowisko", "stash": "skrytka", "growlight": "światło do uprawy", "dry": "suszenie", "lab": "synteza", "tank": "podlewanie", "filter": "zapach", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
+const FURN_KINDS := {"pack": "stanowisko", "stash": "skrytka", "growlight": "światło do uprawy", "dry": "suszenie", "lab": "synteza", "mush": "grzyby", "tank": "podlewanie", "filter": "zapach", "bed": "sen", "save": "zapis gry", "light": "światło", "decor": "wystrój"}
 
 
 ## Meblowanie [B]: ustawiasz to, co masz „na stanie” — kupione wcześniej w hurtowni budowlanej. Tu nic nie kosztuje.

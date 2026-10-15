@@ -41,13 +41,16 @@ const PRODUCTS := {
 	"szron": {"name": "Amfetamina", "base": 60, "cost": 32, "color": "e8dfb8", "lvl": 1, "form": "proszek", "desc": "Biało-żółty proszek dla tych, co nie śpią. Tani, szybki, schodzi pod blokiem i pod klubem."},
 	"krysztal": {"name": "Metamfetamina", "base": 190, "cost": 105, "color": "9ad0ff", "lvl": 5, "form": "kryształ", "desc": "Niebieskawe kryształki dla nocnej zmiany. Mocny towar, mocne ryzyko."},
 	"snieg": {"name": "Kokaina", "base": 330, "cost": 195, "color": "f3f6fb", "lvl": 8, "form": "proszek", "desc": "Najdroższy towar w mieście. Tylko dla klientów z grubym portfelem."},
+	# grzybki i ecstasy: tylko z własnej produkcji (nie ma ich w hurcie), a ceny wypełniają lukę między amfetaminą a metamfetaminą
+	"grzyb": {"name": "Grzybki", "base": 110, "cost": 58, "color": "b8935f", "lvl": 4, "form": "susz", "desc": "Suszone grzybki z szafy w kryjówce. Biorą je artyści z działek i studenci, którym nie wystarcza zioło."},
+	"tabs": {"name": "Ecstasy", "base": 140, "cost": 80, "color": "e8709f", "lvl": 6, "form": "tabletki", "desc": "Kolorowe tabletki na weekend. Schodzą w Neonie i na imprezach po zamknięciu klubu."},
 }
 ## dopełniacz do zdań typu „5 g marihuany”
 ## U Wiktora kupisz tylko zioło i amfetaminę. Metamfetaminę i kokainę robi się samemu — w laboratorium,
 ## gdy przygotujesz pod nie lokal.
 const WHOLESALE_PRODUCTS := ["dym", "szron"]
-const PRODUCT_GEN := {"dym": "marihuany", "szron": "amfetaminy", "krysztal": "metamfetaminy", "snieg": "kokainy"}
-const PRODUCT_ACC := {"dym": "marihuanę", "szron": "amfetaminę", "krysztal": "metamfetaminę", "snieg": "kokainę"}
+const PRODUCT_GEN := {"dym": "marihuany", "szron": "amfetaminy", "krysztal": "metamfetaminy", "snieg": "kokainy", "grzyb": "grzybków", "tabs": "ecstasy"}
+const PRODUCT_ACC := {"dym": "marihuanę", "szron": "amfetaminę", "krysztal": "metamfetaminę", "snieg": "kokainę", "grzyb": "grzybki", "tabs": "ecstasy"}
 
 ## hurt u Wiktora: ilości i rabaty
 const WHOLESALE_SIZES := [5, 10, 20, 50, 100, 250]
@@ -69,6 +72,7 @@ const SHOP := [
 	{"id": "cukier", "name": "Cukier puder (20 g)", "price": 5, "n": 20, "lvl": 4, "desc": "Do rozrabiania proszków. Więcej gramów, gorszy towar."},
 	{"id": "doniczka", "name": "Doniczka z ziemią", "price": 40, "n": 1, "lvl": 4, "desc": "Stawiasz ją w kryjówce [B] i sadzisz w niej jeden krzak. Każdy krzak doglądasz osobno."},
 	{"id": "nasiona", "name": "Nasiona konopi (3 szt.)", "price": 45, "n": 3, "lvl": 4, "desc": "Jedno nasiono = jeden krzak w doniczce."},
+	{"id": "grzybnia", "name": "Grzybnia na ziarnie", "price": 160, "n": 1, "lvl": 4, "desc": "Staś trzyma ją „dla znajomego z działek”. Wsad na jedną partię grzybków w szafie grzybowej."},
 	{"id": "nawoz", "name": "Nawóz (3 dawki)", "price": 45, "n": 3, "lvl": 4, "desc": "Dawka na krzak: plon większy o 25%, ale roślina pije więcej wody. Tylko dopóki rośnie."},
 	{"id": "chemia", "name": "„Zestaw do udrażniania rur”", "price": 800, "n": 1, "lvl": 5, "desc": "Staś nie pyta, po co Ci tyle chemii. Pakiet wsadu do laboratoryjnej partii; wymagane ilości widać przy stanowisku."},
 	{"id": "pakiet_procesowy", "name": "Pakiet procesowy", "price": 3200, "n": 1, "lvl": 8, "desc": "Fikcyjny moduł wsadu do większych partii laboratoryjnych."},
@@ -134,6 +138,20 @@ const RECIPES := {
 		"modes": [{"name": "Dokładnie", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Dwa razy przez filtr: wolno, ale czysto."},
 			{"name": "Zwyczajnie", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
 			{"name": "Na skróty", "speed": 1.5, "smell": 1.5, "power": 1.3, "pur": -10, "burn": 0.15, "desc": "Szybko, ale towar słabszy i co siódma partia jest do wyrzucenia."}]},
+	# grzybki: szafa grzybowa w kryjówce (poz. 4), wsad to grzybnia ze sklepu Stasia; mały plon, ale 2x droższy gram niż marihuana
+	"grzybki": {"name": "Grzybki", "station": "mush", "product": "grzyb", "lvl": 4, "input": {"grzybnia": 1}, "hours": 20.0, "yield": 22.0, "pur": 70,
+		"smell": 8.0, "power": 3.0,
+		"stages": [{"name": "Inkubacja", "to": 0.4}, {"name": "Owocowanie", "to": 0.8, "hold": "Zbierz owocniki"}, {"name": "Suszenie", "to": 1.0}],
+		"modes": [{"name": "Chłodno i wilgotno", "speed": 0.75, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Wolno i czysto: najlepszy towar, prawie bez zapachu."},
+			{"name": "Zwyczajnie", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
+			{"name": "Ciepło i na skróty", "speed": 1.4, "smell": 1.4, "power": 1.3, "pur": -9, "burn": 0.16, "desc": "Szybciej, ale towar słabszy i co szósta partia pleśnieje."}]},
+	# ecstasy: stół laboratoryjny, ale już od poz. 6 i bez drogich pakietów — tańsze w wejściu niż metamfetamina
+	"ecstasy": {"name": "Ecstasy", "station": "lab", "product": "tabs", "lvl": 6, "input": {"chemia": 2}, "hours": 10.0, "yield": 48.0, "pur": 74,
+		"smell": 28.0, "power": 8.0,
+		"stages": [{"name": "Synteza", "to": 0.45, "hold": "Przelej i schłodź"}, {"name": "Prasowanie", "to": 0.85, "hold": "Wyciśnij tabletki"}, {"name": "Suszenie", "to": 1.0}],
+		"modes": [{"name": "Niska temp.", "speed": 0.7, "smell": 0.7, "power": 1.0, "pur": 8, "desc": "Wolno i czysto."},
+			{"name": "Średnia temp.", "speed": 1.0, "smell": 1.0, "power": 1.0, "pur": 0, "desc": "Podręcznikowo."},
+			{"name": "Wysoka temp.", "speed": 1.5, "smell": 1.6, "power": 1.3, "pur": -10, "burn": 0.18, "desc": "Szybko, śmierdząco i z ryzykiem przypalenia."}]},
 }
 const DRY_HOURS := 8.0
 ## uprawa w doniczkach: ile doniczek mieści kryjówka, tempo bez lampy, kara do jakości za brak światła
@@ -163,7 +181,7 @@ const OUTFITS := {
 		"desc": "Klienci płacą więcej, policja rzadziej zaczepia eleganckiego pana. W lakierkach się nie ucieka."},
 }
 ## czym rozrabia się dany towar
-const FILLER := {"dym": "majeranek", "szron": "cukier", "krysztal": "cukier", "snieg": "cukier"}
+const FILLER := {"dym": "majeranek", "szron": "cukier", "krysztal": "cukier", "snieg": "cukier", "grzyb": "majeranek", "tabs": "cukier"}
 const FILLER_NAMES := {"majeranek": "Majeranek", "cukier": "Cukier puder"}
 ## przedmioty: ile miejsca zajmuje jedna sztuka / gram i ile waży (w gramach)
 const ITEMS := {
@@ -179,6 +197,7 @@ const ITEMS := {
 	"pakiet_procesowy": {"name": "Pakiet procesowy", "icon": "chemia", "size": 3.0, "w": 1400.0, "unit": "szt.", "illegal": true, "desc": "Fikcyjny moduł wsadu do produkcji w grze."},
 	"pakiet_finalny": {"name": "Pakiet wykończeniowy", "icon": "chemia", "size": 2.0, "w": 900.0, "unit": "szt.", "illegal": true, "desc": "Fikcyjny moduł wykończenia partii w grze."},
 	"piwo": {"name": "Piwo w puszce", "icon": "piwo", "size": 0.5, "w": 520.0, "unit": "szt.", "desc": "Z monopolowego. Zdzichu weźmie je zamiast gotówki."},
+	"grzybnia": {"name": "Grzybnia na ziarnie", "icon": "grzybnia", "size": 1.0, "w": 450.0, "unit": "szt.", "illegal": true, "desc": "Worek ziarna obrośniętego białą grzybnią. Wkładasz do szafy grzybowej, a po kilku dniach masz owocniki."},
 	"burner": {"name": "Telefon na kartę", "icon": "burner", "size": 2.0, "w": 120.0, "unit": "szt.", "desc": "Nowy numer zbija śledztwo policji. Użyj z telefonu → Plecak."},
 	# --- ZNALEZISKA: rzeczy z ziemi i ze śmietników. Do niczego nie służą — lombard przy Hutniczej płaci za nie gotówką (pawn = cena skupu).
 	"butelki": {"name": "Butelki zwrotne", "icon": "beer", "size": 0.5, "w": 350.0, "unit": "szt.", "junk": true, "pawn": 3, "desc": "Kaucja to kaucja. Lombard bierze je hurtem."},
@@ -306,7 +325,7 @@ const SIZE_PACK := 1.0
 const SIZE_BULK := 1.0
 const W_PACK := 1.4
 const W_BULK := 1.0
-const PRODUCT_ICONS := {"dym": "pack_dym", "szron": "pack_szron", "krysztal": "pack_krysztal", "snieg": "pack_snieg"}
+const PRODUCT_ICONS := {"dym": "pack_dym", "szron": "pack_szron", "krysztal": "pack_krysztal", "snieg": "pack_snieg", "grzyb": "pack_grzyb", "tabs": "pack_tabs"}
 ## Postacie to gotowe modele ludzi (assets/people, Microsoft Rocketbox, MIT). Klienci i bohaterowie fabuły
 ## mają własne twarze; przechodnie losują z puli, żeby nikt nie chodził po osiedlu „w dwóch egzemplarzach”.
 const PEOPLE_M := ["m01", "m02", "m06", "m07", "m08", "m09", "m11", "m12", "m16", "mc2", "ms4"]
@@ -368,8 +387,24 @@ const CLIENTS := [
 		"wealth": 1.6, "patience": 3, "minpur": 82, "grams": [4, 6], "every": [20.0, 30.0], "home": "kam6", "prod": "snieg", "nerv": 0.5, "honesty": 0.7, "reliable": 1.0,
 		"spots": ["brama", "park"], "bio": "Broni takich jak Ty. Płaci krocie, ale tylko za najczystszy towar.",
 		"look": {"model": "mb4", "kind": "shirt", "top": "d8d8d8", "bottom": "1b1b1e", "shoes": "151517", "hair": "hair_simpleparted", "hair_color": "7a7a7a", "seed": 20, "walk": "Walk_Formal"}},
+	{"id": "tosia", "name": "Tosia", "nick": "Artystka", "lvl": 5, "via": "ref:dominik:3", "type": "gadula", "like": "luz", "hate": "twardo",
+		"wealth": 1.1, "patience": 5, "minpur": 55, "grams": [3, 5], "every": [18.0, 28.0], "home": "dzialki", "prod": "grzyb", "prods": ["grzyb", "dym"], "nerv": 0.1, "honesty": 0.9, "reliable": 0.8,
+		"spots": ["dzialki", "park"], "bio": "Maluje w altance na ogródkach „Hutnik”. Zna Dominika z zaocznych i twierdzi, że bez grzybków nie ma inspiracji. Płaci przeważnie na czas.",
+		"look": {"model": "f12", "female": true, "kind": "hoodie", "top": "6a4a7a", "bottom": "2a2c34", "hair": "hair_buns", "hair_color": "a8552a", "seed": 31, "walk": "Walk_Loose"}},
+	{"id": "zdzislaw", "name": "Pan Zdzisław", "nick": "Chemik z Huty", "lvl": 6, "via": "ref:tosia:3", "type": "konkret", "like": "konkret", "hate": "luz",
+		"wealth": 0.95, "patience": 4, "minpur": 70, "grams": [5, 8], "every": [20.0, 30.0], "home": "dzialki", "prod": "grzyb", "prods": ["grzyb"], "nerv": 0.15, "honesty": 1.0, "reliable": 0.9,
+		"spots": ["dzialki", "huta"], "bio": "Trzydzieści lat laborantem w Starej Hucie, dziś rencista z altanką. Nie bierze byle czego: czuje różnicę po jednym gramie. Pamięta noc wybuchu lepiej, niż mówi.",
+		"look": {"model": "m08", "kind": "jacket", "top": "5a5648", "bottom": "2c2a26", "hat": "cap", "hat_color": "3a4a3a", "beard": true, "seed": 32, "walk": "Walk_Hunched"}},
+	{"id": "kaja", "name": "Kaja", "nick": "Promotorka", "lvl": 7, "via": "ref:ola:4", "type": "cwaniak", "like": "konkret", "hate": "twardo",
+		"wealth": 1.45, "patience": 3, "minpur": 70, "grams": [8, 14], "every": [18.0, 26.0], "home": "klub", "prod": "tabs", "prods": ["tabs", "szron"], "nerv": 0.25, "honesty": 0.75, "reliable": 0.8,
+		"spots": ["klub", "repair"], "bio": "Rozdaje ulotki Neonu i organizuje afterki na zapleczu Repair Yard. Bierze po kilkanaście sztuk „dla ekipy” i zawsze zna cenę lepiej niż Ty.",
+		"look": {"model": "f07", "female": true, "kind": "tank", "top": "d04a8a", "bottom": "15161a", "hair": "hair_long", "hair_color": "1c1c24", "seed": 33, "walk": "Walk_Phone"}},
+	{"id": "bogdan", "name": "Bogdan", "nick": "Bramkarz", "lvl": 8, "via": "ref:kaja:3", "type": "twardziel", "like": "twardo", "hate": "luz",
+		"wealth": 1.3, "patience": 3, "minpur": 74, "grams": [6, 10], "every": [20.0, 30.0], "home": "klub", "prod": "tabs", "prods": ["tabs", "krysztal"], "nerv": 0.5, "honesty": 0.8, "reliable": 0.85,
+		"spots": ["repair", "klub"], "bio": "Ten sam, który maca kieszenie przy wejściu do Neonu. Po godzinach sam potrzebuje towaru, żeby wytrzymać do rana — i dlatego wie, kto wnosi, a kto nie.",
+		"look": {"model": "m16", "kind": "tshirt", "top": "15161a", "bottom": "1b1b1e", "seed": 34, "build": 1.25, "walk": "Walk_Swagger"}},
 ]
-const MAX_CLIENTS := [1, 1, 2, 4, 5, 6, 8, 9, 10, 11, 11, 11, 11, 11, 11, 11]
+const MAX_CLIENTS := [1, 1, 2, 4, 5, 7, 9, 10, 12, 13, 14, 15, 15, 15, 15, 15]
 const TYPE_NAMES := {"luzak": "Luzak", "twardziel": "Twardziel", "gadula": "Gaduła", "konkret": "Konkretny", "cwaniak": "Cwaniak", "impulsywny": "Impulsywny"}
 const STYLE_NAMES := {"luz": "na luzie", "konkret": "konkretnie", "twardo": "twardo"}
 ## szansa powodzenia taktyki „ostatnie sztuki” wg charakteru
@@ -393,12 +428,14 @@ var SPOTS := [
 	{"id": "klub", "name": "Pod klubem Neon", "x": 5.4, "z": 124.0},
 	{"id": "tunel", "name": "Tunel pod nasypem", "x": 126.0, "z": 13.4},
 	{"id": "huta", "name": "Brama Starej Huty", "x": 172.0, "z": 30.0},
+	{"id": "dzialki", "name": "Ogródki działkowe „Hutnik”", "x": -145.0, "z": -96.0},
+	{"id": "repair", "name": "Zaplecze Repair Yard", "x": 71.0, "z": 183.5},
 ]
 ## skąd klienci wychodzą na spotkanie
 var HOMES := {
 	"blok5": {"x": -60.0, "z": -76.4}, "blok7": {"x": 30.0, "z": -76.4}, "blok9": {"x": -50.0, "z": -145.0}, "blok11": {"x": 40.0, "z": -145.0},
 	"kam1": {"x": -58.0, "z": 11.6}, "kam4": {"x": 13.0, "z": 11.6}, "kam6": {"x": -27.0, "z": 28.4}, "garaze": {"x": 66.0, "z": 84.0},
-	"huta": {"x": 172.0, "z": 31.0}, "klub": {"x": -6.0, "z": 126.0},
+	"huta": {"x": 172.0, "z": 31.0}, "klub": {"x": -6.0, "z": 126.0}, "dzialki": {"x": -144.0, "z": -100.0}, "repair": {"x": 66.0, "z": 190.0},
 }
 ## znaki sprejem przy skrytkach (tekstury gen_znak_N.png): mały biały szablon u stóp ściany
 const DROP_MARKS := ["liść", "woreczek", "czaszka", "krzyżyk", "kryształ", "śnieżynka"]
@@ -425,6 +462,8 @@ var DROPS := [
 	{"id": "zbiornik", "name": "Zbiornik w Starej Hucie", "x": 192.0, "z": 58.0, "turf": "huta"},
 	{"id": "portiernia", "name": "Za portiernią huty", "x": 187.0, "z": -18.2, "turf": "huta"},
 	{"id": "kontenery", "name": "Między kontenerami w hucie", "x": 180.6, "z": 65.2, "turf": "huta"},
+	{"id": "kompost", "name": "Kompostownik na działkach", "x": -146.0, "z": -118.0, "turf": "dzialki"},
+	{"id": "palety", "name": "Za paletami przy Repair Yard", "x": 63.0, "z": 181.5, "turf": "repair"},
 ]
 
 ## strefy (nazwy na HUD-zie i lokalna uwaga policji)
@@ -498,7 +537,7 @@ const SNACKS := {
 const SNACK_STAMINA := 1.2
 ## hurtownia budowlana przy Hutniczej: sprzęt do produkcji i meble do kryjówek
 const SUPPLY_OPEN := [7.0, 18.0]
-const SUPPLY_GEAR := ["pack", "growlight", "dry", "tank", "filter", "lab"]
+const SUPPLY_GEAR := ["pack", "growlight", "dry", "tank", "filter", "lab", "mush"]
 ## gdzie stoją oba „specjalne” sklepy (współrzędne świata) — do znaczników na mapie
 const PAWN_AT := {"x": -42.0, "z": 5.94}
 const SUPPLY_AT := {"x": 56.83, "z": 17.19}
@@ -566,6 +605,26 @@ const CALLS := [
 		"Mam nazwisko, Kuba. Sprawdzone z dwóch stron.",
 		{"n": "Ty", "t": "Mów."},
 		"Nie przez telefon i nie teraz. Jak zostaniesz wspólnikiem, dostaniesz je ode mnie w kopercie — i sam zdecydujesz, co z nim zrobić. Do tego czasu nie rób niczego głupiego."]},
+	{"id": "tosia", "who": "Tosia z działek", "lvl": 5, "hour": [14.0, 21.0], "lines": [
+		"Cześć, tu Tosia, malarka z altanki numer siedem na „Hutniku”. Numer dał mi Dominik, nie pytaj za ile.",
+		"Ogródki to najspokojniejsze miejsce w mieście. Starzy podlewają pomidory, a my z sąsiadami siedzimy do świtu i nikt się nie czepia.",
+		{"n": "Ty", "t": "A skąd ten towar, który tam krąży?"},
+		"Z szaf, nie z ulicy. Grzybnię da się kupić u Stasia, wystarczy mieć wilgotne miejsce i cierpliwość. Zrób własne, a ja i sąsiedzi weźmiemy wszystko."]},
+	{"id": "zdzislaw", "who": "Pan Zdzisław", "lvl": 6, "hour": [9.0, 17.0], "lines": [
+		"Młody człowieku, Zdzisław z działek. Tosia mówiła, że zna pan chemię, więc od razu do rzeczy.",
+		"Przez trzydzieści lat pracowałem na hucie, w laboratorium przy bramie. W noc wybuchu miałem wolne. Dzięki temu żyję.",
+		{"n": "Ty", "t": "Co pan widział?"},
+		"Że beczki przyjechały dzień za wcześnie. I że kierowca nie był stąd — miał neonowy brelok z klubu. Nic więcej nie powiem, dopóki nie zobaczę towaru wartego mojego czasu."]},
+	{"id": "kaja", "who": "Kaja z Neonu", "lvl": 7, "hour": [15.0, 22.0], "lines": [
+		"Hej, Kaja, robię ulotki w Neonie, a po zamknięciu afterki na zapleczu Repair Yard. Ola dała mi twój numer.",
+		"Na afterach nikt nie chce proszku, tylko tabletek: kolorowych, równych, z dobrą ceną za sztukę. Ty podobno robisz własne.",
+		{"n": "Ty", "t": "Robię. A skąd ten warsztat?"},
+		"Pod Repair Yard jest podwórko za siatką, mechanik pożycza je za flaszkę. Wpadnij po drugiej, zrobimy przekaz. I przynieś więcej niż myślisz, że potrzebuję."]},
+	{"id": "bogdan", "who": "Bogdan z bramki", "lvl": 8, "hour": [18.0, 23.0], "lines": [
+		"Bogdan. Ten z bramki, nie udawaj, że mnie nie poznajesz.",
+		"Wiem, kto co wnosi do Neonu, bo mam oczy. Ciebie przepuszczam, bo Ola ręczy. Teraz sam chcę coś od ciebie.",
+		{"n": "Ty", "t": "Ty? Przecież sam trzepiesz ludzi."},
+		"Trzepię, bo ktoś musi. Ale dwanaście godzin na nogach to dwanaście godzin. Kaja mówi, że masz porządne tabletki. Na zapleczu, bez gadania, bez świadków."]},
 	{"id": "nieznany", "who": "Nieznany numer", "lvl": 6, "hour": [20.0, 23.0], "lines": [
 		"…",
 		"Dobrze ci idzie, Kuba. Lepiej, niż myślałem, kiedy leżałeś za garażami z twarzą w żwirze.",
@@ -615,6 +674,7 @@ const FURNITURE := [
 	{"id": "suszarka", "name": "Suszarka siatkowa", "price": 260, "model": "", "h": 1.9, "size": [0.9, 0.9], "func": "dry", "cap": 90, "lvl": 4, "desc": "Świeży zbiór trzeba wysuszyć (8 godzin), zanim trafi na wagę. Mieści 90 g."},
 	{"id": "zbiornik", "name": "Zbiornik z pompą", "price": 700, "model": "", "h": 1.15, "size": [0.75, 0.75], "func": "tank", "lvl": 6, "desc": "Sam podlewa wszystkie uprawy w tej kryjówce. Nie musisz pamiętać o wodzie."},
 	{"id": "filtr", "name": "Filtr węglowy", "price": 700, "model": "", "h": 1.7, "size": [0.6, 0.6], "func": "filter", "lvl": 4, "desc": "Zapach z tej kryjówki spada o 60%. Mniej zapachu = mniejsze ryzyko nalotu."},
+	{"id": "grzybnik", "name": "Szafa grzybowa", "price": 1400, "model": "", "h": 1.9, "size": [0.9, 0.7], "func": "mush", "lvl": 4, "desc": "Wilgotna szafa z tacami i zraszaczem. Z worka grzybni wychodzi partia grzybków; pachnie ziemią, nie chemią."},
 	{"id": "lab", "name": "Stół laboratoryjny", "price": 3600, "model": "", "h": 0.92, "size": [2.0, 0.9], "func": "lab", "lvl": 5, "desc": "Synteza z zestawu chemikaliów: amfetamina, później metamfetamina. Śmierdzi i wymaga doglądania."},
 	{"id": "lozko", "name": "Stare łóżko", "price": 260, "model": "old_bed_frame", "h": 1.0, "size": [1.0, 2.05], "func": "bed", "lvl": 1, "desc": "Sen przewija czas i studzi gorąco na mieście."},
 	{"id": "laptop", "name": "Stolik z laptopem", "price": 420, "model": "", "h": 0.8, "size": [0.7, 0.6], "func": "save", "lvl": 1, "desc": "Zapis gry w tej kryjówce — bez wracania do kawalerki."},
@@ -634,9 +694,9 @@ const LEVEL_TITLES := ["Nikt", "Goniec", "Osiedlowy", "Diler", "Kombinator", "Gr
 const LEVEL_UNLOCKS := {
 	2: "Nowi klienci z polecenia, większe zamówienia u Wiktora (10 g), plecak u Stasia.",
 	3: "Zaczepianie przechodniów, do 4 stałych klientów.",
-	4: "Możesz kupić Garaż nr 14 — pierwszą własną kryjówkę.",
-	5: "Doniczki, nasiona i lampy LED — własna marihuana w kryjówce. Stół laboratoryjny: własna amfetamina.",
-	6: "Klienci z klubu Neon. Piwnica w kamienicy na sprzedaż.",
+	4: "Możesz kupić Garaż nr 14 — pierwszą własną kryjówkę. Szafa grzybowa i grzybnia u Stasia: własne grzybki.",
+	5: "Doniczki, nasiona i lampy LED — własna marihuana w kryjówce. Stół laboratoryjny: własna amfetamina. Ogródki działkowe: klienci od grzybków.",
+	6: "Klienci z klubu Neon. Piwnica w kamienicy na sprzedaż. Laboratorium: własne ecstasy.",
 	7: "Zamówienia hurtowe po 100 g.",
 	8: "Laboratorium: metamfetamina własnej roboty. Zamówienia hurtowe po 250 g.",
 	9: "Klienci z najgrubszym portfelem pytają o coś mocniejszego — przygotuj laboratorium.",

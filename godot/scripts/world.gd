@@ -1092,6 +1092,7 @@ func build(loader = null) -> void:
 	_bus_loop()
 	_backyard_extension()
 	Poi.build(self)
+	_goods_locations()
 	_lake()
 	_curb_lines()
 	_hide_spots()
@@ -6258,6 +6259,7 @@ func furn_model(fid: String) -> Node3D:
 			"zbiornik": made = Stations.tank()
 			"filtr": made = Stations.carbon_filter()
 			"lab": made = Stations.lab_table()
+			"grzybnik": made = Stations.mush_cabinet()
 		if made != null:
 			n.free()
 			n = made
@@ -6354,7 +6356,7 @@ func refresh_furniture(room: String) -> void:
 			"save":
 				aim.merge({"label": func(): return "Laptop — zapisz grę", "act": func(): G.main.save_here()})
 				inter_dyn[room].append(aim)
-			"grow", "dry", "lab":
+			"grow", "dry", "lab", "mush":
 				aim.merge({"label": func(): return G.station_label(room, idx), "act": func(): G.ui.open_station(room, idx)})
 				if String(f["func"]) == "lab":
 					aim["station"] = idx
@@ -6584,6 +6586,7 @@ func update_stations() -> void:
 			var job = jobs.get(str(idx))
 			match String(furn_def(String(items[int(idx)].f)).get("func", "")):
 				"lab": Stations.refresh_lab(n, job)
+				"mush": Stations.refresh_mush(n, job)
 				"dry":
 					var ld: Node3D = n.get_node_or_null("Load")
 					if ld != null:
@@ -6638,6 +6641,24 @@ func _backyard_extension() -> void:
 		tree.scale *= Vector3(INV, 1.0, INV)
 		Props.set_range(tree, 150.0)
 		city.add_child(tree)
+
+
+## Miejsca spotkań z klientami grzybków i ecstasy: ścieżka na ogródkach działkowych i zaplecze Repair Yard.
+func _goods_locations() -> void:
+	# ROD „Hutnik”: słupek z tablicą przy wejściu na ścieżkę, ławka i kosz przy altankach
+	var post := Node3D.new()
+	Models.box(post, Vector3(0.1, 1.9, 0.1), Vector3(0, 0.95, 0), Models.mat("4a3a2a", 0.9))
+	var plate := Signs.plate("ROD HUTNIK", Color(0.8, 0.86, 0.7), 1.5)
+	plate.position = Vector3(0, 1.75, 0.07)
+	post.add_child(plate)
+	_wall(post, -146.0, 0.0, -104.0, -PI / 2.0)
+	_bench(-147.0, -92.0, -PI / 2.0)
+	_bin(-147.0, -98.0, 0.0)
+	# Repair Yard od zaplecza: skrzynki, opony, lampa nad przejściem i szyld afterów
+	_prop("wooden_crate_02", 75.0, 180.0, 0.3, 0.48, 0.0, false)
+	_prop("wooden_crate_02", 76.0, 181.2, 1.2, 0.48, 0.0, false)
+	_prop("old_tyre", 62.0, 185.0, 0.5, 0.16, 0.0, false)
+	_wall(Signs.plate("AFTER 24H", Color(0.95, 0.4, 0.62), 1.4), 61.1, 2.5, 183.5, PI / 2.0)
 
 
 ## Krawędzie nowej sieci są wyznaczone po zbudowaniu kolizji, a nie na ślepo przez płoty.

@@ -232,7 +232,8 @@ static func tick(minutes: float) -> void:
 			var after := before + minutes / (float(r.hours) * 60.0) * float(md.speed)
 			for i in range(r.stages.size()):
 				var st: Dictionary = r.stages[i]
-				if st.has("hold") and before < float(st.to) - 0.00001 and after >= float(st.to):
+				# tolerancja ułamka, nie 1e-5: przy sumowaniu 10-minutowych kroków postęp potrafi stanąć tuż pod granicą etapu i przeskoczyć czynność gracza
+				if st.has("hold") and before < float(st.to) - 0.000000001 and after >= float(st.to) - 0.000000001:
 					after = float(st.to)
 					j.hold = i
 					j.hold_t = 0.0

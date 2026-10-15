@@ -532,6 +532,45 @@ static func dryer() -> Node3D:
 	return g
 
 
+## Szafa grzybowa: ciemna obudowa z foliowym frontem, trzy tace z grzybnią i zraszacz. „Load” = owocniki na tacach.
+static func mush_cabinet() -> Node3D:
+	var g := Node3D.new()
+	var body := _m("mush_body", "3a3d36", 0.8, 0.1)
+	var shelf := _m("mush_shelf", "5a4a36", 0.9)
+	var foil := _m("mush_foil", "b8cdd6", 0.15, 0.0, 0.0, 0.28)
+	var soil := _m("mush_soil", "2e2418", 1.0)
+	for sx in [-1.0, 1.0]:
+		Models.box(g, Vector3(0.05, 1.9, 0.7), Vector3(sx * 0.425, 0.95, 0), body)
+	Models.box(g, Vector3(0.9, 0.05, 0.7), Vector3(0, 1.875, 0), body)
+	Models.box(g, Vector3(0.9, 0.05, 0.7), Vector3(0, 0.025, 0), body)
+	Models.box(g, Vector3(0.84, 1.85, 0.03), Vector3(0, 0.95, -0.335), body, Vector3.ZERO, false)
+	Models.box(g, Vector3(0.84, 1.75, 0.01), Vector3(0, 0.95, 0.345), foil, Vector3.ZERO, false)
+	var load := Node3D.new()
+	load.name = "Load"
+	g.add_child(load)
+	for t in range(3):
+		var y := 0.45 + t * 0.5
+		Models.box(g, Vector3(0.8, 0.03, 0.62), Vector3(0, y, 0), shelf)
+		Models.box(g, Vector3(0.7, 0.07, 0.5), Vector3(0, y + 0.05, 0), soil, Vector3.ZERO, false)
+		Models.cyl(g, 0.012, 0.012, 0.18, Vector3(-0.3 + t * 0.3, y + 0.14, -0.28), _m("mush_pipe", "8aa0aa", 0.4, 0.6), Vector3.ZERO, 5)
+		for k in range(8):
+			var a := k * 0.8 + t
+			var px := -0.28 + (k % 4) * 0.19
+			var pz := -0.12 + int(k / 4.0) * 0.24 + sin(a) * 0.04
+			Models.cyl(load, 0.008, 0.008, 0.06, Vector3(px, y + 0.11, pz), _m("mush_stem", "e8dfc8", 0.9), Vector3.ZERO, 5)
+			Models.sphere(load, 0.035, Vector3(px, y + 0.15, pz), _m("mush_cap%d" % (k % 2), "8a5a32" if k % 2 == 0 else "a8794a", 0.85), Vector3(1.2, 0.55, 1.2), false, 7)
+	load.visible = false
+	var glow := OmniLight3D.new()
+	glow.name = "Glow"
+	glow.light_color = Color(0.7, 0.9, 1.0)
+	glow.light_energy = 0.6
+	glow.omni_range = 1.6
+	glow.position = Vector3(0, 1.0, 0.1)
+	glow.visible = false
+	g.add_child(glow)
+	return g
+
+
 ## Zbiornik z pompą: niebieska beczka, pompa i wąż
 static func tank() -> Node3D:
 	var made := model("kryj_zbiornik")
@@ -645,6 +684,15 @@ static func lab_table() -> Node3D:
 		bt.rotation.y = k * 1.1
 		g.add_child(bt)
 	return g
+
+
+static func refresh_mush(n: Node3D, j) -> void:
+	var ld: Node3D = n.get_node_or_null("Load")
+	var gl: Node3D = n.get_node_or_null("Glow")
+	if ld != null:
+		ld.visible = j != null and float(j.prog) >= 0.4
+	if gl != null:
+		gl.visible = j != null and float(j.prog) < 1.0
 
 
 static func refresh_lab(n: Node3D, j) -> void:

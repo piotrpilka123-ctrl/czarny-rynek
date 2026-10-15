@@ -15,7 +15,7 @@ static func run(T) -> void:
 	var target_exists := false
 	for target in G.world.inter_dyn.garage:
 		if target.has("station") and target.has("menu"): target_exists = true
-	T.ok(target_exists and G.main.lab_menu("garage", 0).size() == 4, "laboratorium ma własne menu czynności przy celowniku")
+	T.ok(target_exists and G.main.lab_menu("garage", 0).size() == 1 + G.Prod.recipes_for("garage", 0).size(), "laboratorium ma własne menu czynności przy celowniku")
 	T.ok(not lab.play("load", "garage", 0, "metamfetamina") and G.S.items.chemia == 4, "brak drugiego slotu blokuje wsad bez zabierania pierwszego")
 	G.S.items.pakiet_procesowy = 1
 	T.ok(lab.play("load", "garage", 0, "metamfetamina") and G.S.items.chemia == 2 and G.S.items.pakiet_procesowy == 0, "czynność wsadu zużywa wszystkie wymagane sloty tylko raz")

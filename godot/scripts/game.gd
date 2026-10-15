@@ -118,10 +118,10 @@ func new_state() -> Dictionary:
 		"xp": 0.0, "lvl": 1, "sp": 0, "skills": {},
 		"heat": 0.0, "invest": 0.0, "strikes": 0, "rank": 0, "job": {}, "job_streak": 0, "arrests": 0, "step": 0, "flags": {}, "mlog": {}, "ground": [], "bins": {},
 		"inv": new_store(), "stash": {"safe": new_store(), "garage": new_store(), "basement": new_store(), "wiktor": new_store(), "loot": new_store()},
-		"items": {"notes": 1, "woreczki": D.START_BAGS, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0}, "upg": {}, "pockets": [null, null, null, null],
+		"items": {"notes": 1, "woreczki": D.START_BAGS, "majeranek": 0, "cukier": 0, "nasiona": 0, "burner": 0, "nawoz": 0, "chemia": 0, "doniczka": 0, "kastet": 0, "grzybnia": 0}, "upg": {}, "pockets": [null, null, null, null],
 		"cust": cust, "orders": [], "next_order": 1, "chats": {}, "unread": {},
 		"track": null, "nav_on": true, "wanted": false,
-		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0}, "cost_mult": 1.0, "zheat": {}, "reputation": {}, "weather": null,
+		"demand": {"dym": 1.0, "szron": 1.0, "krysztal": 1.0, "snieg": 1.0, "grzyb": 1.0, "tabs": 1.0}, "cost_mult": 1.0, "zheat": {}, "reputation": {}, "weather": null,
 		"credit": 0.0, "credit_due": 0.0, "drops": [], "next_drop": 1, "vendors": {}, "dealers": {}, "workers": {}, "labstaff": {}, "sold_bulk": {}, "outfit": "dres", "outfits": {}, "gear": {},
 		"props": {}, "hide": {"garage": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}, "basement": {"items": [], "grow": {}, "jobs": {}, "wet": [], "pots": []}},
 		"stats": {"earned": 0.0, "sold": 0, "deals": 0, "walked": 0, "escapes": 0, "packed": 0, "wasted": 0, "pickups": 0, "spent": 0.0, "best": 0.0, "grown": 0, "cooked": 0, "raids": 0, "hospital": 0, "box_paid": 0.0},
@@ -4607,7 +4607,7 @@ func load_game() -> bool:
 func state_from_save(data: Dictionary) -> Dictionary:
 	var base := new_state()
 	_merge(base, data)
-	for k in ["woreczki", "majeranek", "cukier", "nasiona", "burner", "nawoz", "chemia", "doniczka"]:
+	for k in ["woreczki", "majeranek", "cukier", "nasiona", "burner", "nawoz", "chemia", "doniczka", "grzybnia"]:
 		if not base.items.has(k):
 			base.items[k] = 0
 	if not base.flags.has("tut_save") and (int(base.step) > 0 or base.flags.has("read_wiktor")):

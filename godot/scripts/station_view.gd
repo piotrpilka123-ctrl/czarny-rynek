@@ -73,6 +73,7 @@ func _draw() -> void:
 		"grow": _draw_grow(j, w, h)
 		"dry": _draw_dry(j, w, h)
 		"lab": _draw_lab(j, w, h)
+		"mush": _draw_mush(j, w, h)
 	if j != null and String(j.r) != "_dry":
 		_timeline(j, w, h)
 
@@ -267,6 +268,49 @@ func _draw_lab(j, w: float, h: float) -> void:
 		_text(Vector2(w * 0.5, 40), "STÓŁ CZEKA NA WSAD", 18, Color(1, 1, 1, 0.3), 400.0)
 	elif j.burnt and float(j.prog) >= 1.0:
 		_text(Vector2(w * 0.5, 40), "PARTIA PRZYPALONA", 18, K.C_BAD, 400.0)
+
+
+# ---------------------------------------------------------------- szafa grzybowa
+func _draw_mush(j, w: float, h: float) -> void:
+	var floor_y := h - 46.0
+	var x0 := w * 0.5 - 230.0
+	var top := 26.0
+	var steel := Color(0.2, 0.21, 0.24)
+	for sx in [x0, x0 + 453.0]:
+		draw_rect(Rect2(sx, top, 7, floor_y - top), steel)
+	draw_rect(Rect2(x0, top, 460, 7), steel)
+	var on: bool = j != null and float(j.prog) < 1.0
+	var prog: float = float(j.prog) if j != null else 0.0
+	var trays := 3
+	var gap := (floor_y - top - 40.0) / trays
+	for t in range(trays):
+		var y := top + 30.0 + (t + 1) * gap - 14.0
+		draw_rect(Rect2(x0 + 7, y, 446, 7), Color(0.35, 0.28, 0.2))
+		draw_rect(Rect2(x0 + 24, y - 12, 412, 12), Color(0.15, 0.11, 0.08))
+		if j == null:
+			continue
+		# biała grzybnia widoczna od startu, owocniki dopiero od drugiego etapu
+		if prog > 0.05:
+			for k in range(26):
+				K.circle(self, Vector2(x0 + 34.0 + fmod(k * 41.0 + t * 17.0, 392.0), y - 7.0), 4.0 + fmod(k * 3.0, 4.0), Color(0.93, 0.92, 0.85, 0.35 + 0.4 * minf(prog * 2.0, 1.0)))
+		if prog >= 0.4:
+			var grow := clampf((prog - 0.4) / 0.4, 0.0, 1.0)
+			for k in range(9):
+				var mx := x0 + 44.0 + k * 44.0 + fmod(t * 13.0, 11.0)
+				var mh := (10.0 + fmod(k * 7.0 + t * 5.0, 12.0)) * grow
+				draw_rect(Rect2(mx - 2, y - 12 - mh, 4, mh), Color(0.9, 0.86, 0.74))
+				draw_set_transform(Vector2(mx, y - 12 - mh), 0.0, Vector2(1.0, 0.55))
+				K.circle(self, Vector2.ZERO, 8.0 + 4.0 * grow, Color(0.55, 0.36, 0.2) if (k + t) % 2 == 0 else Color(0.66, 0.47, 0.29))
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if on:
+		# zraszacz: mgiełka nad tacami
+		for k in range(10):
+			var q := fmod(_clock * 0.5 + k * 0.1, 1.0)
+			K.circle(self, Vector2(x0 + 40.0 + k * 42.0, top + 20.0 + q * (floor_y - top - 60.0)), 2.0 + q * 3.0, Color(0.7, 0.88, 1.0, 0.22 * (1.0 - q)))
+	if j == null:
+		_text(Vector2(w * 0.5, 16), "SZAFA CZEKA NA GRZYBNIĘ", 16, Color(1, 1, 1, 0.3), 400.0)
+	elif j.burnt and float(j.prog) >= 1.0:
+		_text(Vector2(w * 0.5, 16), "PARTIA ZAPLEŚNIAŁA", 16, K.C_BAD, 400.0)
 
 
 # ---------------------------------------------------------------- oś etapów
