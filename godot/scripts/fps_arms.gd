@@ -22,6 +22,7 @@ var phone: Node3D = null    # telefon w prawej ręce, gdy otwarta jest aplikacja
 var phone_hold := 0.0
 var pack: Node3D = null     # paczka w wyciągniętych dłoniach przy wymianie z klientem
 var give := 0.0
+var _variant := 0
 var _spd := 0.0
 var _ang := 0.0
 
@@ -202,9 +203,26 @@ func _hold_phone(dt: float) -> void:
 ## Wymiana z klientem: obie dłonie wysuwają się do przodu z paczką, jak przy podaniu z ręki do ręki.
 func _hold_give(dt: float) -> void:
 	var want: bool = (G.ui != null and G.ui.deal_npc != null and G.ui.mode == "modal") or OS.get_cmdline_user_args().has("--fpsdeal")
+	if want and give <= 0.001:
+		_variant = randi() % 3        # każda wymiana inaczej: obie ręce, jedna ręka wyżej, podanie nisko „spod stołu”
 	give = move_toward(give, 1.0 if (want and not player.hidden) else 0.0, dt * 3.0)
+	var sold: bool = G.ui != null and not G.ui.deal.is_empty() and bool(G.ui.deal.get("sold", false))
+	var goals := [Vector3(0.12, -0.22, -0.5), Vector3(-0.12, -0.22, -0.5)]
+	var pack_at := Vector3(0.0, -0.255, -0.52)
+	match _variant:
+		1:
+			goals = [Vector3(0.1, -0.1, -0.52), Vector3(-0.2, -0.3, -0.3)]
+			pack_at = Vector3(0.1, -0.13, -0.52)
+		2:
+			goals = [Vector3(0.14, -0.38, -0.46), Vector3(-0.14, -0.38, -0.46)]
+			pack_at = Vector3(0.0, -0.4, -0.48)
+	if sold:
+		# towar oddany: prawa dłoń wraca, lewa wystawiona po pieniądze
+		goals[0] = Vector3(0.2, -0.26, -0.4)
+		goals[1] = Vector3(-0.1, -0.2, -0.5)
 	if ik != null:
 		ik.give = give
+		ik.give_goals = goals
 	if give <= 0.001:
 		if pack != null:
 			pack.visible = false
@@ -213,8 +231,8 @@ func _hold_give(dt: float) -> void:
 		pack = Stations.brick("dym")
 		player.cam.add_child(pack)
 		Props._no_shadow(pack)
-	pack.visible = true
+	pack.visible = not sold
 	var k := smoothstep(0.0, 1.0, give)
-	pack.position = Vector3(0.0, -0.255, -0.52)
+	pack.position = pack_at
 	pack.rotation = Vector3(-0.1, 0.35, 0.0)
 	pack.scale = Vector3.ONE * lerpf(0.85, 1.0, k)

@@ -1805,12 +1805,13 @@ func _render_deal() -> void:
 			elif deal.over or deal.pushed:
 				Chars.emote(deal_npc.rig, "zlosc", 0.9, 3.0)
 		if deal_said != "" and deal_npc != null and deal_npc.get("rig") != null:
+			# klient reaguje różnie: po sprzedaży odbiera towar, kiwa głową albo chowa do kieszeni
 			if deal.sold:
-				Chars.one_shot(deal_npc.rig, "Interact")
+				Chars.one_shot(deal_npc.rig, ["Interact", "PickUp_Table", "Yes"].pick_random())
 			elif deal.over or deal.pushed:
 				Chars.one_shot(deal_npc.rig, "Idle_No")
 			else:
-				Chars.one_shot(deal_npc.rig, "Yes")
+				Chars.one_shot(deal_npc.rig, ["Yes", "Interact"].pick_random())
 			var gt := create_tween()
 			gt.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 			gt.tween_interval(1.7)
