@@ -59,6 +59,10 @@ func _ready() -> void:
 	cam.position = Vector3(0, 1.66, 0)
 	add_child(cam)
 	cam.current = true
+	var fps_body = load("res://scripts/fps_arms.gd").new()
+	fps_body.name = "FpsBody"
+	add_child(fps_body)
+	fps_body.setup(self)
 	# Latarka: szeroki, miękki stożek z jaśniejszym środkiem (bez pierścieni), światło słabnie z odległością
 	# jak prawdziwe i sięga pod nogi. Druga, słaba lampa daje poświatę dookoła, żeby pierwszy plan nie był czarny.
 	flash = SpotLight3D.new()
