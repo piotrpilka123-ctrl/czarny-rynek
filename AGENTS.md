@@ -16,6 +16,12 @@ Nad grą pracują na zmianę Codex i Claude. Obaj czytają ten plik (Codex: AGEN
 - Po commicie i zakończeniu bloku pracy: `./tools/zwolnij.sh`. Blokada starsza niż 2 godziny jest uznawana za porzuconą.
 - `tools/commit.sh` robi `git add -A` — dlatego dwa agenty nie mogą edytować jednocześnie.
 
+## Nie zacinać komputera Piotra (Mac M2, 8 GB)
+
+- Godota (okno, zrzuty, testy, import) i Blendera uruchamia TYLKO czat, który ma blokadę. Bez blokady: wyłącznie czytanie kodu i planowanie.
+- Zawsze z `nice -n 12` przed Godotem/Blenderem; zrzuty w 1280x720 lub mniej, jak najmniej klatek (`--frames`).
+- Każde okno/proces po zrzucie musi się zakończyć; nie zostawiaj procesów w tle po zwolnieniu blokady.
+
 ## Porządek
 
 - Na początku: `git status` (ma być czysto) i `git log --oneline -5` — zobacz, co zrobił drugi agent.
