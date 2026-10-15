@@ -16,6 +16,8 @@ var _lim := 0.0
 var bag: Node3D = null      # plecak trzymany przed sobą, gdy otwarty jest ekwipunek
 var hold := 0.0             # 0 = ręce luzem, 1 = plecak w rękach
 var _opened := false
+var phone: Node3D = null    # telefon w prawej ręce, gdy otwarta jest aplikacja telefonu
+var phone_hold := 0.0
 
 
 func setup(p) -> void:
@@ -76,6 +78,7 @@ func _process(dt: float) -> void:
 			return
 	rig.root.visible = not player.hidden
 	_hold_bag(dt)
+	_hold_phone(dt)
 	if player.crouching:
 		Chars.play(rig, "Crouch_Fwd" if player.moving else "Crouch_Idle")
 	else:
@@ -137,3 +140,26 @@ func _brighten(n: Node) -> void:
 				mi.set_surface_override_material(i, d)
 	for c in n.get_children():
 		_brighten(c)
+
+
+## Otwarty telefon: prawa dłoń unosi smartfon ekranem do oczu (lewa zostaje luzem).
+func _hold_phone(dt: float) -> void:
+	var want: bool = (G.ui != null and G.ui.mode == "phone") or OS.get_cmdline_user_args().has("--fpsphone")
+	phone_hold = move_toward(phone_hold, 1.0 if (want and not player.hidden and hold < 0.5) else 0.0, dt * 4.0)
+	if ik != null:
+		ik.phone = phone_hold
+	if phone_hold <= 0.001:
+		if phone != null:
+			phone.visible = false
+		return
+	if phone == null:
+		var ps: PackedScene = load("res://assets/models/gracz_telefon.glb")
+		if ps == null:
+			return
+		phone = ps.instantiate()
+		player.cam.add_child(phone)
+		Props._no_shadow(phone)
+	phone.visible = true
+	var k := smoothstep(0.0, 1.0, phone_hold)
+	phone.position = Vector3(lerpf(0.2, 0.09, k), lerpf(-0.5, -0.1, k), lerpf(-0.3, -0.33, k))
+	phone.rotation = Vector3(lerpf(0.0, 0.32, k), 0.0, lerpf(0.0, -0.06, k))
