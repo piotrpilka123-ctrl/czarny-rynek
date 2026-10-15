@@ -7,7 +7,7 @@ var player
 
 ## tor prawej dłoni z telefonem w układzie kamery: z postawy luzem do kieszeni na biodrze (k 0→0,4), potem z kieszeni przed oczy
 static func phone_path(k: float) -> Vector3:
-	var rest := Vector3(0.2, -0.24, -0.42)
+	var rest := Vector3(0.28, -0.42, -0.3)
 	var pocket := Vector3(0.27, -0.72, -0.04)
 	var front := Vector3(0.1, -0.12, -0.33)
 	if k < 0.4:
@@ -57,7 +57,8 @@ func _process_modification_with_delta(dt: float) -> void:
 	for s in range(2):
 		var side := 1.0 if s == 0 else -1.0
 		var ph: float = player.bob * 0.5 + (0.0 if s == 0 else PI)
-		var lp := Vector3(side * 0.2 + cos(ph) * amp * 0.5, -0.24 - absf(sin(ph)) * amp + (0.04 if player.sprinting else 0.0), -reach)
+		# w spoczynku ręce zwisają luźno poza kadrem (widać je dopiero po spojrzeniu w dół); pełne ręce tylko przy akcjach
+		var lp := Vector3(side * 0.28 + cos(ph) * amp * 0.5, -0.42 - absf(sin(ph)) * amp + (0.05 if player.sprinting else 0.0), -0.3 * reach / 0.42)
 		if hold > 0.0:
 			lp = lp.lerp(Vector3(side * 0.15, -0.2 if s == 0 else -0.26, -0.43), smoothstep(0.0, 1.0, hold))
 		if give > 0.0:
