@@ -373,30 +373,30 @@ static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 	dec.add_child(cold)
 	# podłoga: oleiste plamy, kałuże odczynników, ślady wózka i zacieki (zużyty beton zamiast czystej płyty)
 	var fl := Vector3(-PI / 2.0, 0, 0)
-	for e in [[-1.0, 0.5, 1.8, 1.2, 0.3], [3.2, 1.6, 1.3, 0.9, 1.1], [-4.2, 1.8, 1.5, 1.0, 2.0], [1.2, -2.8, 1.1, 0.8, 0.5], [5.4, 2.2, 0.9, 1.3, 0.2], [-2.0, -4.0, 1.2, 0.9, 1.8]]:
-		Interior.stain(dec, Vector3(cx + e[0], 0.006, e[1]), Vector3(-PI / 2.0, 0.0, e[4]), Vector2(e[2], e[3]), Color(0.03, 0.03, 0.03, 0.5))
-	for e in [[2.4, -1.0, 0.8, 0.55], [-3.4, -1.6, 0.7, 0.5], [0.2, 3.8, 0.9, 0.6]]:
+	for e in [[-1.0, 0.5, 1.8, 1.2, 0.3], [3.2, 1.6, 1.3, 0.9, 1.1], [-2.6, 2.4, 1.5, 1.0, 2.0], [-3.0, -0.6, 1.4, 1.0, 0.7], [1.2, -2.8, 1.1, 0.8, 0.5], [5.4, 2.2, 0.9, 1.3, 0.2], [-2.0, -4.0, 1.2, 0.9, 1.8], [0.0, 3.2, 1.6, 1.0, 0.4]]:
+		Interior.stain(dec, Vector3(cx + e[0], 0.006, e[1]), Vector3(-PI / 2.0, 0.0, e[4]), Vector2(e[2] * 1.4, e[3] * 1.4), Color(0.02, 0.02, 0.02, 0.8))
+	for e in [[2.4, -1.0, 1.3, 0.9], [-3.4, -1.6, 1.1, 0.8], [0.2, 3.8, 1.4, 0.9], [-1.6, 0.9, 1.0, 0.7], [-3.8, 0.4, 0.9, 0.6]]:
 		Interior.stain(dec, Vector3(cx + e[0], 0.008, e[1]), Vector3(-PI / 2.0, 0.0, e[2] * 3.0), Vector2(e[2], e[3]), Color(0.34, 0.5, 0.42, 0.42))
-		Interior.stain(dec, Vector3(cx + e[0] + 0.05, 0.01, e[1]), Vector3(-PI / 2.0, 0.0, e[2] * 3.0), Vector2(e[2] * 0.45, e[3] * 0.45), Color(0.72, 0.85, 0.82, 0.3))
+		_puddle(dec, Vector3(cx + e[0], 0.011, e[1]), Vector2(e[2] * 0.8, e[3] * 0.8), e[2] * 3.0)
 	for e in [[-1.3, 1.2, 0.0, 0.17, 8.0], [-0.7, 1.5, 0.0, 0.17, 8.0], [3.8, 0.8, 0.12, 0.2, 6.0]]:
 		Interior.stain(dec, Vector3(cx + e[0], 0.007, e[1]), Vector3(-PI / 2.0, 0.0, PI / 2.0 + e[2]), Vector2(e[4], e[3]), Color(0.04, 0.04, 0.04, 0.28))
 	# bałagan przy ścianach: palety, worki, wiadra, skrzynie, opony (większe sztuki z kolizją, drobiazgi bez)
-	W._rp(dec, "pallet", cx - 5.9, 0.9, 0.2, 0.16)
+	var pal: Node3D = W._rp(dec, "pallet", cx - 6.1, 0.5, 0.15, 0.16)
+	_age(pal, Color(0.42, 0.37, 0.32))
 	for j in range(2):
-		W._rp(dec, "cement_bag", cx - 5.95 + j * 0.3, 0.9 - j * 0.1, 0.4 + j, 0.2, 0.16 + j * 0.12)
-	W.add_col(cx - 6.5, cx - 5.3, 0.3, 1.5, 0.6, true, -1.0)
+		W._rp(dec, "cement_bag", cx - 6.2 + j * 0.28, 0.5 - j * 0.08, 0.4 + j, 0.2, 0.16 + j * 0.12)
+	W.add_col(cx - 6.7, cx - 5.5, -0.1, 1.1, 0.6, true, -1.0)
 	W.rects.pop_back()
 	for j in range(3):
-		W._rp(dec, "plastic_crate_01", cx + 6.4, -5.0 + (0.0 if j < 2 else 0.2), 0.1 * j, 0.28, 0.28 * (1 if j == 2 else 0) + 0.0, 0.0, 0.0)
-	W._rp(dec, "plastic_crate_01", cx + 6.4, -4.4, 0.4, 0.28)
-	W.add_col(cx + 6.0, cx + 6.8, -5.4, -4.0, 0.9, true, -1.0)
+		W._rp(dec, "plastic_crate_01", cx + 6.4, -5.0 + (0.0 if j < 2 else 0.1), 0.1 * j, 0.28, 0.28 * (1 if j == 2 else 0) + 0.0, 0.0, 0.0)
+	W.add_col(cx + 6.0, cx + 6.8, -5.4, -4.6, 0.9, true, -1.0)
 	W.rects.pop_back()
 	for e in [[2.9, -5.1, 0.3], [3.2, -4.9, 1.2], [2.6, -4.8, 2.0]]:
 		W._rp(dec, "trashbag_1", cx + e[0] - 0.9, e[1], e[2], 0.5)
 	W._rp(dec, "wooden_crate_02", cx + 6.4, 2.9, 0.2, 0.5, 0.0, 0.35, 0.35)
 	W._rp(dec, "old_tyre", cx - 3.2, 3.3, 0.3, 0.16)
 	W._rp(dec, "old_tyre", cx - 3.1, 3.35, 0.9, 0.16, 0.16)
-	W._rp(dec, "plastic_container", cx - 0.2, -5.0, 0.4, 0.4, 0.0, 0.3, 0.3)
+	W._rp(dec, "plastic_container", cx - 0.2, -3.9, 0.4, 0.4, 0.0, 0.3, 0.3)
 	W._rp(dec, "can_rusted", cx + 1.0, 0.9, 0.5, 0.2)
 	W._rp(dec, "can_rusted", cx - 1.9, 1.9, 2.1, 0.2)
 	W._rp(dec, "plastic_bottle_gallon", cx + 3.2, 1.0, 0.3, 0.32)
@@ -404,8 +404,8 @@ static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 	W._rp(dec, "cardboard_box_01", cx - 2.2, 1.0, 0.7, 0.4)
 	W._rp(dec, "trashbag", cx - 1.5, 4.0, 0.2, 0.5)
 	# prowizoryczny stół ze sklejki i przedłużacze po podłodze
-	W._rp(dec, "woodentable_01", cx - 5.4, -0.1, PI / 2.0, 0.8, 0.0, 0.45, 0.8)
-	for e in [[-4.6, 0.4, -4.0, 2.4, 0.0], [0.4, 1.0, 1.7, 2.3, 0.0]]:
+	W._rp(dec, "metal_stool_01", cx - 4.7, 1.9, 0.5, 0.6)
+	for e in [[-4.1, 0.7, -3.3, 2.6, 0.0], [0.4, 1.0, 1.7, 2.3, 0.0]]:
 		var a := Vector2(e[0], e[1])
 		var b := Vector2(e[2], e[3])
 		var cord: MeshInstance3D = Models.cyl(dec, 0.012, 0.012, a.distance_to(b), Vector3(cx + (a.x + b.x) * 0.5, 0.014, (a.y + b.y) * 0.5), Models.mat("c46a1e", 0.6), Vector3(PI / 2.0, atan2(b.x - a.x, b.y - a.y), 0.0), 6)
@@ -418,3 +418,47 @@ static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 	Interior.note(dec, Vector3(cx - 3.0, 1.5, -2.55), 0.0, "HALL 2\nAUTHORISED ONLY", 0.42, 0.3, "e8e2cf")
 	Interior.note(dec, Vector3(cx - 2.43, 1.4, -4.9), PI / 2.0, "NO NAKED FLAMES\nVENTILATE!", 0.4, 0.28, "f2e8a8")
 	W._skr_shadows(dec)
+
+
+## postarza model z assets: mnoży kolory materiałów (np. jaskrawa paleta → szare stare drewno)
+static func _age(n: Node, tint: Color) -> void:
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		var mi := n as MeshInstance3D
+		for si in range(mi.mesh.get_surface_count()):
+			var m: Material = mi.get_active_material(si)
+			if m is BaseMaterial3D:
+				var m2: BaseMaterial3D = (m as BaseMaterial3D).duplicate()
+				m2.albedo_color = m2.albedo_color * tint
+				mi.set_surface_override_material(si, m2)
+	for c in n.get_children():
+		_age(c, tint)
+
+
+## kałuża odczynnika: ciemna, gładka, odbija światło lamp
+static func _puddle(g: Node3D, pos: Vector3, size: Vector2, rot: float) -> void:
+	var q := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = size
+	q.mesh = qm
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.05, 0.1, 0.09, 0.78)
+	m.albedo_texture = Props._soft_tex()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.roughness = 0.04
+	m.metallic = 0.25
+	m.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
+	q.material_override = m
+	q.position = pos
+	q.rotation = Vector3(-PI / 2.0, 0.0, rot)
+	q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	g.add_child(q)
+
+
+## obrysy (x, z lokalne) rekwizytów z kolizją w labie oraz strefy przejść — dla testu przenikania
+const LAB_FOOTPRINTS := {
+	"paleta": Rect2(-6.7, -0.1, 1.2, 1.2), "skrzynie_ne": Rect2(6.0, -5.4, 0.8, 0.8),
+	"skrzynia_e": Rect2(6.05, 2.55, 0.7, 0.7), "pojemnik": Rect2(-0.5, -4.2, 0.6, 0.6), "suszarnia": Rect2(-1.85, -5.5, 2.55, 0.9),
+	"chemia_sw": Rect2(-6.9, 3.8, 1.6, 1.5), "reaktor": Rect2(3.28, -4.92, 1.24, 1.24), "stol_pakowanie": Rect2(0.58, 1.95, 2.04, 0.9),
+	"stol_synt1": Rect2(6.0, -4.52, 0.9, 2.04), "stol_synt2": Rect2(6.0, -2.32, 0.9, 2.04), "stol_synt3": Rect2(6.0, -0.12, 0.9, 2.04)}
+const LAB_PASSAGES := {
+	"otwor_wschodni": Rect2(-3.7, -4.6, 2.2, 1.2), "otwor_poludniowy": Rect2(-6.1, -3.6, 1.2, 2.2), "tylne_drzwi": Rect2(-6.8, 2.2, 1.8, 1.6)}

@@ -88,6 +88,19 @@ static func run(T) -> void:
 	await reach(T, r, "lab: hala → magazyn (otwór wschodni)", [[-1.5, -1.5], [-1.5, -4.0], [-3.6, -4.0]])
 	await reach(T, r, "lab: hala → magazyn (otwór południowy)", [[-5.5, -1.5], [-5.5, -3.2]])
 	await blocked(T, r, "lab: ściana magazynu", [-1.5, -3.0], [-4.0, -3.0], "x", -2.2, false)
+	# rekwizyty w labie: żadne dwa obrysy się nie przenikają i żaden nie stoi w przejściu
+	var RP = load("res://scripts/room_parts.gd")
+	var names: Array = RP.LAB_FOOTPRINTS.keys()
+	var bad := ""
+	for i in range(names.size()):
+		var a: Rect2 = RP.LAB_FOOTPRINTS[names[i]]
+		for k in range(i + 1, names.size()):
+			if a.grow(-0.01).intersects((RP.LAB_FOOTPRINTS[names[k]] as Rect2).grow(-0.01)):
+				bad += "%s×%s " % [names[i], names[k]]
+		for pn in RP.LAB_PASSAGES:
+			if a.grow(-0.01).intersects(RP.LAB_PASSAGES[pn]):
+				bad += "%s w przejściu %s " % [names[i], pn]
+	T.ok(bad == "", "lab: rekwizyty się nie przenikają i nie stoją w przejściach (%s)" % bad)
 	player.place(saved_pos, saved_yaw)
 	player.loc = saved_loc
 	player.set_physics_process(was_physics)
