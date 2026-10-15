@@ -7,6 +7,7 @@ var arms: Array = []     # [[ramię, przedramię, dłoń, palec], …] prawa i l
 var head := -1
 var reach := 0.42
 var sway := 0.0
+var hold := 0.0     # 1 = dłonie na plecaku przed kamerą
 
 
 func bind(sk: Skeleton3D, p) -> bool:
@@ -44,6 +45,8 @@ func _process_modification_with_delta(dt: float) -> void:
 		var side := 1.0 if s == 0 else -1.0
 		var ph: float = player.bob * 0.5 + (0.0 if s == 0 else PI)
 		var lp := Vector3(side * 0.2 + cos(ph) * amp * 0.5, -0.24 - absf(sin(ph)) * amp + (0.04 if player.sprinting else 0.0), -reach)
+		if hold > 0.0:
+			lp = lp.lerp(Vector3(side * 0.15, -0.2 if s == 0 else -0.26, -0.43), smoothstep(0.0, 1.0, hold))
 		var goal := sk.to_local(cam.to_global(lp))
 		var shoulder: Vector3 = sk.get_bone_global_pose(arms[s][0]).origin
 		var pole := sk.to_local(cam.to_global(Vector3(side * 0.55, -0.6, 0.2)))

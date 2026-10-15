@@ -4,6 +4,8 @@ extends Node3D
 ## przy spojrzeniu w dół widać tułów, nogi z animacją chodu i własny cień.
 
 const Chars = preload("res://scripts/chars.gd")
+const Models = preload("res://scripts/models.gd")
+const Props = preload("res://scripts/props.gd")
 
 var player
 var rig: Dictionary = {}
@@ -11,11 +13,14 @@ var ik: Node
 var _sig := ""
 var _check := 0.0
 var _lim := 0.0
+var bag: Node3D = null      # plecak trzymany przed sobą, gdy otwarty jest ekwipunek
+var hold := 0.0             # 0 = ręce luzem, 1 = plecak w rękach
+var _opened := false
 
 
 func setup(p) -> void:
 	player = p
-	process_mode = Node.PROCESS_MODE_PAUSABLE
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
 
 
@@ -70,6 +75,7 @@ func _process(dt: float) -> void:
 			_build()
 			return
 	rig.root.visible = not player.hidden
+	_hold_bag(dt)
 	if player.crouching:
 		Chars.play(rig, "Crouch_Fwd" if player.moving else "Crouch_Idle")
 	else:
@@ -77,3 +83,55 @@ func _process(dt: float) -> void:
 		if player.moving:
 			sp = 5.5 if player.sprinting else 2.6
 		Chars.animate(rig, dt, sp, "")
+
+
+## Otwarty ekwipunek: plecak zsuwa się z ramienia do rąk, a suwak i klapa otwierają się przed oczami (bez opóźniania okna).
+func _hold_bag(dt: float) -> void:
+	var want: bool = ((G.ui != null and G.ui.mode == "inv") or OS.get_cmdline_user_args().has("--fpsbag")) and G.S.has("upg") and G.upg("plecak1") and not player.hidden
+	hold = move_toward(hold, 1.0 if want else 0.0, dt * 3.2)
+	if ik != null:
+		ik.hold = hold
+	if hold <= 0.001:
+		if bag != null:
+			bag.visible = false
+			bag.opened = false
+			_opened = false
+		return
+	if bag == null:
+		bag = load("res://scripts/player_backpack.gd").new()
+		player.cam.add_child(bag)
+		_set_layer(bag, 1)
+		_brighten(bag)
+		Props._no_shadow(bag)
+		bag.scale = Vector3.ONE * 0.62
+		bag.position = Vector3(0.0, -0.31, -0.5)
+		bag.rotation = Vector3(-0.55, PI, 0.0)
+	bag.visible = true
+	bag.configure(G.upg("plecak2"), float(G.carry_total()) / maxf(1.0, float(G.capacity())))
+	var k := smoothstep(0.0, 1.0, hold)
+	bag.position = Vector3(0.0, lerpf(-0.75, -0.2, k), lerpf(-0.15, -0.46, k))
+	if hold > 0.95 and not _opened:
+		_opened = true
+		bag.inspect()
+
+
+func _set_layer(n: Node, bit: int) -> void:
+	if n is VisualInstance3D:
+		n.layers = bit
+	for c in n.get_children():
+		_set_layer(c, bit)
+
+
+## ciemny nylon plecaka pod światłem pokoju wychodzi czarny: własne kopie materiałów, rozjaśnione tylko w widoku FPS
+func _brighten(n: Node) -> void:
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		var mi := n as MeshInstance3D
+		for i in range(mi.mesh.get_surface_count()):
+			var m := mi.mesh.surface_get_material(i)
+			if m is BaseMaterial3D and (m as BaseMaterial3D).albedo_texture != null:
+				var d: BaseMaterial3D = m.duplicate()
+				d.albedo_color = Color(2.6, 2.6, 2.6)
+				d.roughness = maxf(d.roughness, 0.85)
+				mi.set_surface_override_material(i, d)
+	for c in n.get_children():
+		_brighten(c)
