@@ -296,7 +296,7 @@ static func build(W: Node3D, g: Node3D, cx: float, room: String, h: float, mat: 
 ## LABORATORIUM W HUCIE: ściana działowa magazynu chemii z folią, folia na wschodniej ścianie i podłodze linii syntezy,
 ## suszarnia z lampami, wyciąg, maski, kable i narożnik z chemią (modele skr_* z make_skrytka.py)
 static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: float) -> void:
-	var brick := Props.pbr("factory_brick", 0.5, Color(0.8, 0.76, 0.72))
+	var brick := Props.pbr("factory_brick", 0.5, Color(0.55, 0.5, 0.46))
 	# magazyn chemii w NW rogu: dwie ściany z otworami 1,2 m
 	wall(W, g, cx, Vector2(-2.5, -d * 0.5), Vector2(-2.5, -2.6), h, brick, [[-4.6, -3.4]], THICK + 0.08, "5a544e")
 	wall(W, g, cx, Vector2(-w * 0.5, -2.6), Vector2(-2.5, -2.6), h, brick, [[-6.1, -4.9]], THICK + 0.08, "5a544e")
@@ -371,4 +371,50 @@ static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 	cold.omni_range = 4.5
 	cold.shadow_enabled = false
 	dec.add_child(cold)
+	# podłoga: oleiste plamy, kałuże odczynników, ślady wózka i zacieki (zużyty beton zamiast czystej płyty)
+	var fl := Vector3(-PI / 2.0, 0, 0)
+	for e in [[-1.0, 0.5, 1.8, 1.2, 0.3], [3.2, 1.6, 1.3, 0.9, 1.1], [-4.2, 1.8, 1.5, 1.0, 2.0], [1.2, -2.8, 1.1, 0.8, 0.5], [5.4, 2.2, 0.9, 1.3, 0.2], [-2.0, -4.0, 1.2, 0.9, 1.8]]:
+		Interior.stain(dec, Vector3(cx + e[0], 0.006, e[1]), Vector3(-PI / 2.0, 0.0, e[4]), Vector2(e[2], e[3]), Color(0.03, 0.03, 0.03, 0.5))
+	for e in [[2.4, -1.0, 0.8, 0.55], [-3.4, -1.6, 0.7, 0.5], [0.2, 3.8, 0.9, 0.6]]:
+		Interior.stain(dec, Vector3(cx + e[0], 0.008, e[1]), Vector3(-PI / 2.0, 0.0, e[2] * 3.0), Vector2(e[2], e[3]), Color(0.34, 0.5, 0.42, 0.42))
+		Interior.stain(dec, Vector3(cx + e[0] + 0.05, 0.01, e[1]), Vector3(-PI / 2.0, 0.0, e[2] * 3.0), Vector2(e[2] * 0.45, e[3] * 0.45), Color(0.72, 0.85, 0.82, 0.3))
+	for e in [[-1.3, 1.2, 0.0, 0.17, 8.0], [-0.7, 1.5, 0.0, 0.17, 8.0], [3.8, 0.8, 0.12, 0.2, 6.0]]:
+		Interior.stain(dec, Vector3(cx + e[0], 0.007, e[1]), Vector3(-PI / 2.0, 0.0, PI / 2.0 + e[2]), Vector2(e[4], e[3]), Color(0.04, 0.04, 0.04, 0.28))
+	# bałagan przy ścianach: palety, worki, wiadra, skrzynie, opony (większe sztuki z kolizją, drobiazgi bez)
+	W._rp(dec, "pallet", cx - 5.9, 0.9, 0.2, 0.16)
+	for j in range(2):
+		W._rp(dec, "cement_bag", cx - 5.95 + j * 0.3, 0.9 - j * 0.1, 0.4 + j, 0.2, 0.16 + j * 0.12)
+	W.add_col(cx - 6.5, cx - 5.3, 0.3, 1.5, 0.6, true, -1.0)
+	W.rects.pop_back()
+	for j in range(3):
+		W._rp(dec, "plastic_crate_01", cx + 6.4, -5.0 + (0.0 if j < 2 else 0.2), 0.1 * j, 0.28, 0.28 * (1 if j == 2 else 0) + 0.0, 0.0, 0.0)
+	W._rp(dec, "plastic_crate_01", cx + 6.4, -4.4, 0.4, 0.28)
+	W.add_col(cx + 6.0, cx + 6.8, -5.4, -4.0, 0.9, true, -1.0)
+	W.rects.pop_back()
+	for e in [[2.9, -5.1, 0.3], [3.2, -4.9, 1.2], [2.6, -4.8, 2.0]]:
+		W._rp(dec, "trashbag_1", cx + e[0] - 0.9, e[1], e[2], 0.5)
+	W._rp(dec, "wooden_crate_02", cx + 6.4, 2.9, 0.2, 0.5, 0.0, 0.35, 0.35)
+	W._rp(dec, "old_tyre", cx - 3.2, 3.3, 0.3, 0.16)
+	W._rp(dec, "old_tyre", cx - 3.1, 3.35, 0.9, 0.16, 0.16)
+	W._rp(dec, "plastic_container", cx - 0.2, -5.0, 0.4, 0.4, 0.0, 0.3, 0.3)
+	W._rp(dec, "can_rusted", cx + 1.0, 0.9, 0.5, 0.2)
+	W._rp(dec, "can_rusted", cx - 1.9, 1.9, 2.1, 0.2)
+	W._rp(dec, "plastic_bottle_gallon", cx + 3.2, 1.0, 0.3, 0.32)
+	W._rp(dec, "plastic_bottle_gallon", cx - 4.9, 0.4, 1.0, 0.32)
+	W._rp(dec, "cardboard_box_01", cx - 2.2, 1.0, 0.7, 0.4)
+	W._rp(dec, "trashbag", cx - 1.5, 4.0, 0.2, 0.5)
+	# prowizoryczny stół ze sklejki i przedłużacze po podłodze
+	W._rp(dec, "woodentable_01", cx - 5.4, -0.1, PI / 2.0, 0.8, 0.0, 0.45, 0.8)
+	for e in [[-4.6, 0.4, -4.0, 2.4, 0.0], [0.4, 1.0, 1.7, 2.3, 0.0]]:
+		var a := Vector2(e[0], e[1])
+		var b := Vector2(e[2], e[3])
+		var cord: MeshInstance3D = Models.cyl(dec, 0.012, 0.012, a.distance_to(b), Vector3(cx + (a.x + b.x) * 0.5, 0.014, (a.y + b.y) * 0.5), Models.mat("c46a1e", 0.6), Vector3(PI / 2.0, atan2(b.x - a.x, b.y - a.y), 0.0), 6)
+		cord.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# ścianka magazynu: zacieki i ogłoszenia
+	for e in [[-6.0, 1.3, 0.6, 1.5], [-4.3, 1.1, 0.5, 1.8], [-3.2, 1.4, 0.7, 1.4]]:
+		Interior.stain(dec, Vector3(cx + e[0], e[1], -2.54), Vector3.ZERO, Vector2(e[2], e[3]), Color(0.1, 0.07, 0.04, 0.45))
+	Interior.stain(dec, Vector3(cx - 2.44, 0.9, -3.0), Vector3(0, PI / 2.0, 0), Vector2(1.4, 1.6), Color(0.08, 0.06, 0.04, 0.4))
+	Interior.stain(dec, Vector3(cx - 4.0, 0.3, -2.54), Vector3.ZERO, Vector2(3.2, 0.6), Color(0.05, 0.05, 0.04, 0.5))
+	Interior.note(dec, Vector3(cx - 3.0, 1.5, -2.55), 0.0, "HALL 2\nAUTHORISED ONLY", 0.42, 0.3, "e8e2cf")
+	Interior.note(dec, Vector3(cx - 2.43, 1.4, -4.9), PI / 2.0, "NO NAKED FLAMES\nVENTILATE!", 0.4, 0.28, "f2e8a8")
 	W._skr_shadows(dec)

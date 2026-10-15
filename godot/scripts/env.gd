@@ -48,7 +48,7 @@ const KEYS := [
 var we: WorldEnvironment
 var env: Environment
 var sky_mat: ShaderMaterial
-const ROOM_AMBIENT := {"club": [Color(0.55, 0.42, 0.95), 0.6], "lab": [Color(0.72, 0.62, 1.0), 0.4], "basement": [Color(1.0, 0.86, 0.7), 0.24]}
+const ROOM_AMBIENT := {"club": [Color(0.55, 0.42, 0.95), 0.6], "lab": [Color(0.78, 0.9, 0.84), 0.3], "basement": [Color(1.0, 0.86, 0.7), 0.24]}
 var _amb_loc := ""
 var sun: DirectionalLight3D
 var rain_fx: GPUParticles3D
