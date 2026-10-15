@@ -241,6 +241,38 @@ static func run(T) -> void:
 				park_bad.append(tag + " (na przejściu)")
 	T.ok(W0.parked.size() >= 8 and park_bad.is_empty(), "zaparkowane auta (%d): pas ruchu przejezdny, żadne na osi ani przejściu %s" % [W0.parked.size(), str(park_bad)])
 
+	# --- miejsca spotkań: nowe punkty stoją na wolnym gruncie, są osiągalne pieszo z domu klienta, a klient nie wraca dwa razy w to samo miejsce
+	var new_spots := ["zlom", "skate", "stacja", "bazar", "szklarnie"]
+	var spots_ok := true
+	var spot_bad := []
+	var users := 0
+	for sid3 in new_spots:
+		var sp3: Dictionary = G.spot_def(sid3)
+		if sp3.is_empty() or not W0.is_free(float(sp3.x), float(sp3.z), 0.6):
+			spots_ok = false
+			spot_bad.append(sid3 + " (zajęte)")
+			continue
+		for cd3 in D.CLIENTS:
+			if not (cd3.spots as Array).has(sid3):
+				continue
+			users += 1
+			var pth: Array = G.main.nav.path_between(Vector2(float(D.HOMES[cd3.home].x), float(D.HOMES[cd3.home].z)), Vector2(float(sp3.x), float(sp3.z)))
+			if pth.size() < 2:
+				spots_ok = false
+				spot_bad.append("%s←%s (brak drogi)" % [sid3, cd3.id])
+	T.ok(spots_ok and users >= 10, "nowe miejsca spotkań: wolne, osiągalne pieszo, używane przez %d klientów %s" % [users, str(spot_bad)])
+	var rot_ok := true
+	for cd4 in D.CLIENTS:
+		if (cd4.spots as Array).size() < 2:
+			continue
+		G.S.cust[cd4.id]["last_spot"] = ""
+		var prev := ""
+		for k4 in range(12):
+			var o4: Dictionary = G.make_order(cd4)
+			rot_ok = rot_ok and String(o4.spot) != prev
+			prev = String(o4.spot)
+	T.ok(rot_ok, "rotacja miejsc: klient nigdy nie wraca dwa razy z rzędu w to samo miejsce")
+
 	# --- tarcza zegara do umawiania godziny: kliknięty punkt → pora, tylko w dozwolonym łuku (dziś, od teraz)
 	var dial = load("res://scripts/clock_dial.gd").new()
 	G.ui.add_child(dial)

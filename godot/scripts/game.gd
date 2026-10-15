@@ -2117,7 +2117,12 @@ func make_order(c: Dictionary, force_g := 0, force_p := "") -> Dictionary:
 	for sid in c.spots:
 		if sid != "huta" or int(S.lvl) >= 4:
 			spots.append(sid)
+	# rotacja: ten sam klient nie wraca dwa razy z rzędu w to samo miejsce, o ile ma inne do wyboru
+	var last_spot := String(st.get("last_spot", ""))
+	if spots.size() > 1:
+		spots.erase(last_spot)
 	var spot := spot_def(spots.pick_random())
+	st["last_spot"] = String(spot.id)
 	var noise := randf_range(0.94, 1.06)
 	var mx := max_price(c, st, product, maxi(int(c.minpur), 60), g, {"noise": noise})
 	var stated: int = maxi(5, int(round(mx * float(c.honesty) * randf_range(0.9, 0.98))))
