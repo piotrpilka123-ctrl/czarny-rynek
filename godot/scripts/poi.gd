@@ -43,6 +43,7 @@ static func build(W) -> void:
 	_greenhouses(W)
 	_podworko(W)
 	_obozowisko(W)
+	_kebab(W)
 	W.rng.state = st
 
 
@@ -507,3 +508,27 @@ static func _obozowisko(W) -> void:
 	_scatter(W, c, [["wooden_crate_02", 3.0, 5.5, 0.3, 0.42], ["wooden_crate_02", 7.0, 5.0, 1.1, 0.42], ["pallet", 2.0, 0.0, 0.6, 0.16], ["trashbag", -7.0, 0.5, 0.2, 0.5],
 		["trashbag_1", -6.0, 2.0, 1.0, 0.6], ["old_tyre", 9.0, 4.0, 0.2, 0.16], ["can_rusted", 4.5, 4.5, 0.0, 0.13], ["barrel_01", -2.0, -3.5, 0.5, 0.9]])
 	_stash(W, "oboz_zawiniatko", c.x - 5.5 * INV, c.y + 4.0 * INV, "Zajrzyj pod legowisko", 40, "Pod legowiskiem leżało zawiniątko z kilkoma banknotami", 0.2)
+
+
+## Budka z kebabem i stragan przy pętli autobusowej: wieczorne życie obok pustego pasa południowego.
+static func _kebab(W) -> void:
+	var c := Vector2(-46.0, 153.0)
+	var km: Node3D = Stations.model("kebab_budka")
+	if km != null:
+		var lens := Stations._find(km, "Swiatlo") as MeshInstance3D
+		if lens != null:
+			lens.material_override = W.lamp_mat
+			lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		Props.set_range(W._place(km, c.x, c.y, PI / 2.0, 1.2, 1.8, 2.5), 140.0)
+	for tz in [-6.0, 6.0]:
+		W._prop("painted_wooden_table", c.x + 10.0, c.y + tz, 0.0, 0.75, 1.0)
+		W._prop("plastic_monobloc_chair_01", c.x + 10.0 - 1.4 * INV, c.y + tz, 1.6, 0.86, 0.0, false)
+		W._prop("plastic_monobloc_chair_01", c.x + 10.0 + 1.4 * INV, c.y + tz, -1.6, 0.86, 0.0, false)
+	var sm: Node3D = Stations.model("bazar_stoisko_2")
+	if sm != null:
+		Props.set_range(W._place(sm, c.x - 1.0, c.y + 16.0, 0.0, 1.8, 0.7, 0.9), 130.0)
+	W._bin(c.x + 6.0, c.y + 11.0, 0.0)
+	_scatter(W, c, [["cardboard_box_01", -5.0, 4.0, 0.4, 0.34], ["trashbag", -5.0, -5.0, 0.8, 0.5], ["can_rusted", 9.0, 0.0, 0.0, 0.13], ["plastic_crate_01", -4.0, -4.0, 0.3, 0.3]])
+	_light(W, c.x + 4.0 * INV, c.y, 2.8, Color(1.0, 0.55, 0.35), 0.6, 10.0)
+	_dump(W, "poi_kebab_kosz", c.x + 6.0, c.y + 11.0, "Pogrzeb w koszu przy kebabie", "bin")
+	_stash(W, "kebab_lada", c.x + 1.5 * INV, c.y - 2.0 * INV, "Zajrzyj za budkę", 50, "Za budką leżała reklamówka z utargiem sprzed zamknięcia", 0.2)
