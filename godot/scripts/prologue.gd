@@ -1083,7 +1083,7 @@ func _boom() -> void:
 				var far: Vector3 = drop_bag.position + Vector3(out_dir.x, 0.0, out_dir.y) * 2.4
 				arig.root.position = Vector3(far.x, W.height(far.x, far.z), far.z)
 				arig.root.rotation.y = atan2(out_dir.x, out_dir.y)
-				Chars.play(arig, "Walk", 1.0, 0.0)
+				Chars.play(arig, "Walk", 1.25 / float(Chars.ANIM_SPEED.get("Walk", 1.0)), 0.0)
 			if grabbed == 2:
 				arig.root.position += Vector3(out_dir.x, 0.0, out_dir.y) * 1.25 * dt
 				arig.root.position.y = W.height(arig.root.position.x, arig.root.position.z)

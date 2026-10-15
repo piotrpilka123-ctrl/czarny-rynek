@@ -5542,7 +5542,7 @@ func _hospital_room() -> void:
 	Models.box(g, Vector3(0.012, 1.3, d), Vector3(cx + w * 0.5 - 0.006, 0.65, 0), lam, Vector3.ZERO, false)
 	for lx in [-1.9, 1.9]:
 		Interior.ceiling_lamp(g, Vector3(cx + lx, h, 0.0), "tube", Color(0.9, 0.97, 1.0))
-		var li := _room_light(g, cx + lx, 0.0, h - 0.15, 1.15, Color(0.86, 0.95, 1.0), 8.0)
+		var li := _room_light(g, cx + lx, 0.0, h - 0.6, 1.15, Color(0.86, 0.95, 1.0), 8.0)
 		li.shadow_enabled = lx < 0.0
 	var bz := -d * 0.5 + 1.1
 	for k in range(3):
@@ -5577,7 +5577,7 @@ func _station_room() -> void:
 	Interior.baseboards(g, cx, w, d, "4a5560")
 	for lx in [-2.0, 2.0]:
 		Interior.ceiling_lamp(g, Vector3(cx + lx, h, 0.3), "tube", Color(0.85, 0.92, 1.0))
-		var li := _room_light(g, cx + lx, 0.3, h - 0.15, 1.0, Color(0.82, 0.9, 1.0), 8.0)
+		var li := _room_light(g, cx + lx, 0.3, h - 0.6, 1.0, Color(0.82, 0.9, 1.0), 8.0)
 		li.shadow_enabled = lx < 0.0
 	# cela w północno-zachodnim rogu: krata od południa, ściana od wschodu
 	var x0 := cx - w * 0.5

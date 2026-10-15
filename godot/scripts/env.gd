@@ -376,7 +376,7 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		# były w południe niemal czarne.
 		env.ambient_light_sky_contribution = lerpf(0.3, 0.5, night)
 		# (nocne dawniej mocno niebieskie i jasne: dalekie budynki świeciły granatem na tle brunatnego nieba)
-		env.ambient_light_color = Color(0.6, 0.66, 0.75).lerp(Color(0.16, 0.19, 0.27), night)
+		env.ambient_light_color = Color(0.6, 0.66, 0.75).lerp(Color(0.26, 0.31, 0.42), night)
 		env.ambient_light_energy = lerpf(1.2, 1.7, night) * (1.0 - ov * 0.25)
 		env.tonemap_exposure = lerpf(0.92, 1.2, night) * bright
 		env.glow_hdr_threshold = lerpf(1.6, 0.85, night)
