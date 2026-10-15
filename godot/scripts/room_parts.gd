@@ -286,3 +286,8 @@ static func blocks(room: String) -> Array:
 static func build(W: Node3D, g: Node3D, cx: float, room: String, h: float, mat: Material) -> void:
 	for p in PARTS.get(room, []):
 		wall(W, g, cx, p.a, p.b, h, mat, p.gaps, THICK, "9a968c")
+	# osobne podłogi pomieszczeń dobudowanych ścianami (inna faktura niż w hali / sali głównej)
+	var fl: Dictionary = {"garage": [-3.0, -4.5, 3.0, -2.3, "dirty_concrete", Color(0.8, 0.8, 0.78)], "basement": [-4.5, -5.0, 0.5, -1.9, "concrete_floor_worn_001", Color(0.7, 0.68, 0.64)]}
+	if fl.has(room):
+		var f: Array = fl[room]
+		floor_patch(g, cx, f[0], f[1], f[2], f[3], Props.pbr(f[4], 0.5, f[5]))
