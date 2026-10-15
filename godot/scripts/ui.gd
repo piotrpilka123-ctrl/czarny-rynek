@@ -21,6 +21,8 @@ var l_time: Label
 var l_lvl: Label
 var l_next: Label
 var bar_xp: ProgressBar
+var l_xp_lvl: Label
+var xp_last := 0.0
 var bar_stam: ProgressBar
 var bar_susp: ProgressBar
 var bar_heat: ProgressBar
@@ -320,6 +322,17 @@ func _build_hud() -> void:
 	bar_stam.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	strow.add_child(bar_stam)
 	bl.add_child(strow)
+	# cienki pasek postępu do następnego poziomu; błyska, gdy rośnie
+	var xrow := K.hbox(8)
+	_ign(xrow)
+	l_xp_lvl = K.head("", 13, K.C_DIM)
+	l_xp_lvl.custom_minimum_size = Vector2(16, 0)
+	xrow.add_child(l_xp_lvl)
+	bar_xp = _thin_bar(Color(0.98, 0.8, 0.3, 0.8))
+	bar_xp.custom_minimum_size = Vector2(210, 3)
+	bar_xp.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	xrow.add_child(bar_xp)
+	bl.add_child(xrow)
 
 	# --- środek u góry: „oko” — pojawia się dopiero, gdy patrol zaczyna się Tobie przyglądać
 	susp_box = K.vbox(3)
@@ -2239,6 +2252,13 @@ func update_hud() -> void:
 	var P = G.player
 	if P == null:
 		return
+	var xpp: float = G.xp_progress()
+	if xpp > xp_last + 0.001:
+		bar_xp.modulate = Color(2.2, 2.0, 1.4)
+	xp_last = xpp
+	bar_xp.modulate = bar_xp.modulate.lerp(Color(1, 1, 1, 0.6), 0.25)
+	bar_xp.value = xpp
+	l_xp_lvl.text = str(int(S.lvl))
 	bar_stam.max_value = P.max_stamina()
 	bar_stam.value = P.stamina
 	bar_stam.modulate.a = 0.55 if (P.stamina >= P.max_stamina() - 0.01 and not P.crouching) else 1.0

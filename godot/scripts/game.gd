@@ -1412,6 +1412,15 @@ func level_title() -> String:
 	return D.LEVEL_TITLES[mini(int(S.lvl) - 1, D.LEVEL_TITLES.size() - 1)]
 
 
+## postęp do następnego poziomu, 0..1 (na ostatnim poziomie: 1)
+func xp_progress() -> float:
+	var lv := int(S.lvl)
+	if lv >= D.XP_LEVELS.size():
+		return 1.0
+	var lo := float(D.XP_LEVELS[lv - 1])
+	return clampf((float(S.xp) - lo) / maxf(1.0, float(D.XP_LEVELS[lv]) - lo), 0.0, 1.0)
+
+
 func add_xp(n: float) -> void:
 	S.xp = float(S.xp) + n
 	while int(S.lvl) < D.XP_LEVELS.size() and float(S.xp) >= float(D.XP_LEVELS[int(S.lvl)]):

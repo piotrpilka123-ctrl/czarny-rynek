@@ -839,6 +839,13 @@ func run() -> void:
 		G.take_pack(S.inv, "dym", 40, 99)
 	ok(rejected >= 30, "mocno rozrobionego towaru doświadczony klient nie bierze (%d/40 prób)" % rejected)
 	# seria transakcji: rośnie, gaśnie po przerwie i po odrzuceniu, daje do +40% XP
+	var xp_keep: float = S.xp
+	var lv_keep: int = int(S.lvl)
+	S.lvl = 2
+	S.xp = float(D.XP_LEVELS[1]) + (float(D.XP_LEVELS[2]) - float(D.XP_LEVELS[1])) * 0.5
+	ok(absf(G.xp_progress() - 0.5) < 0.01, "pasek poziomu pokazuje postęp do następnego")
+	S.lvl = lv_keep
+	S.xp = xp_keep
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")
