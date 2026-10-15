@@ -8,6 +8,7 @@ var head := -1
 var reach := 0.42
 var sway := 0.0
 var phone := 0.0    # 1 = prawa dłoń z telefonem przed oczami
+var give := 0.0     # 1 = obie dłonie wysunięte z paczką
 var hold := 0.0     # 1 = dłonie na plecaku przed kamerą
 
 
@@ -48,6 +49,8 @@ func _process_modification_with_delta(dt: float) -> void:
 		var lp := Vector3(side * 0.2 + cos(ph) * amp * 0.5, -0.24 - absf(sin(ph)) * amp + (0.04 if player.sprinting else 0.0), -reach)
 		if hold > 0.0:
 			lp = lp.lerp(Vector3(side * 0.15, -0.2 if s == 0 else -0.26, -0.43), smoothstep(0.0, 1.0, hold))
+		if give > 0.0:
+			lp = lp.lerp(Vector3(side * 0.12, -0.22, -0.5), smoothstep(0.0, 1.0, give))
 		if phone > 0.0 and s == 0:
 			lp = lp.lerp(Vector3(0.1, -0.12, -0.33), smoothstep(0.0, 1.0, phone))
 		var goal := sk.to_local(cam.to_global(lp))

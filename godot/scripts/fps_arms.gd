@@ -6,6 +6,7 @@ extends Node3D
 const Chars = preload("res://scripts/chars.gd")
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
+const Stations = preload("res://scripts/stations.gd")
 
 var player
 var rig: Dictionary = {}
@@ -18,6 +19,8 @@ var hold := 0.0             # 0 = ręce luzem, 1 = plecak w rękach
 var _opened := false
 var phone: Node3D = null    # telefon w prawej ręce, gdy otwarta jest aplikacja telefonu
 var phone_hold := 0.0
+var pack: Node3D = null     # paczka w wyciągniętych dłoniach przy wymianie z klientem
+var give := 0.0
 
 
 func setup(p) -> void:
@@ -79,6 +82,7 @@ func _process(dt: float) -> void:
 	rig.root.visible = not player.hidden
 	_hold_bag(dt)
 	_hold_phone(dt)
+	_hold_give(dt)
 	if player.crouching:
 		Chars.play(rig, "Crouch_Fwd" if player.moving else "Crouch_Idle")
 	else:
@@ -163,3 +167,23 @@ func _hold_phone(dt: float) -> void:
 	var k := smoothstep(0.0, 1.0, phone_hold)
 	phone.position = Vector3(lerpf(0.2, 0.09, k), lerpf(-0.5, -0.1, k), lerpf(-0.3, -0.33, k))
 	phone.rotation = Vector3(lerpf(0.0, 0.32, k), 0.0, lerpf(0.0, -0.06, k))
+
+
+## Wymiana z klientem: obie dłonie wysuwają się do przodu z paczką, jak przy podaniu z ręki do ręki.
+func _hold_give(dt: float) -> void:
+	var want: bool = (G.ui != null and G.ui.deal_npc != null and G.ui.mode == "modal") or OS.get_cmdline_user_args().has("--fpsdeal")
+	give = move_toward(give, 1.0 if (want and not player.hidden) else 0.0, dt * 3.0)
+	if ik != null:
+		ik.give = give
+	if give <= 0.001:
+		if pack != null:
+			pack.visible = false
+		return
+	if pack == null:
+		pack = Stations.brick("dym")
+		player.cam.add_child(pack)
+		Props._no_shadow(pack)
+	pack.visible = true
+	var k := smoothstep(0.0, 1.0, give)
+	pack.position = Vector3(0.0, lerpf(-0.5, -0.255, k), lerpf(-0.25, -0.52, k))
+	pack.rotation = Vector3(lerpf(0.0, -0.1, k), 0.35, 0.0)
