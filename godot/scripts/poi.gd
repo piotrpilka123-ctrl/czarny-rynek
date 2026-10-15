@@ -29,6 +29,8 @@ static func paint(W) -> void:
 	W._pr(2, STATION.x - 6.0, 88.0, STATION.x + 2.0, STATION.y - 20.0)
 	W._pr(3, BAZAAR.x - 19.0, BAZAAR.y - 15.0, BAZAAR.x + 19.0, BAZAAR.y + 15.0)
 	W._pr(4, GREEN.x - 16.0, GREEN.y - 21.0, GREEN.x + 16.0, GREEN.y + 21.0)
+	W._pr(1, -58.0, 144.0, -31.0, 167.0)
+	W._pr(1, -31.0, 151.5, -20.0, 154.5)
 	W._pr(2, GREEN.x - 2.0, GREEN.y + 21.0, GREEN.x + 3.0, -112.0)
 
 
@@ -513,6 +515,12 @@ static func _obozowisko(W) -> void:
 ## Budka z kebabem i stragan przy pętli autobusowej: wieczorne życie obok pustego pasa południowego.
 static func _kebab(W) -> void:
 	var c := Vector2(-46.0, 153.0)
+	# utwardzony plac z krawężnikiem (płyty chodnikowe w mapie nawierzchni, paint) i ścieżka do chodnika pętli
+	W._curb(-58.0, 143.6, -31.0, 143.6)
+	W._curb(-58.0, 167.4, -31.0, 167.4)
+	W._curb(-58.4, 143.6, -58.4, 167.4)
+	W._curb(-30.6, 143.6, -30.6, 150.8)
+	W._curb(-30.6, 155.2, -30.6, 167.4)
 	var km: Node3D = Stations.model("kebab_budka")
 	if km != null:
 		var lens := Stations._find(km, "Swiatlo") as MeshInstance3D
@@ -526,9 +534,23 @@ static func _kebab(W) -> void:
 		W._prop("plastic_monobloc_chair_01", c.x + 10.0 + 1.4 * INV, c.y + tz, -1.6, 0.86, 0.0, false)
 	var sm: Node3D = Stations.model("bazar_stoisko_2")
 	if sm != null:
-		Props.set_range(W._place(sm, c.x - 1.0, c.y + 16.0, 0.0, 1.8, 0.7, 0.9), 130.0)
+		Props.set_range(W._place(sm, c.x - 1.0, c.y + 11.5, 0.0, 1.8, 0.7, 0.9), 130.0)
 	W._bin(c.x + 6.0, c.y + 11.0, 0.0)
+	# menu na stojaku przy ladzie
+	var post: Node3D = Stations.model("ul_slupek")
+	if post != null:
+		Props.set_range(W._place(post, c.x + 4.5, c.y - 3.5, 0.0, 0.15, 0.15, 1.2), 70.0)
+	W._sign("MENU\nkebab 22 zł\nzapiekanka 14 zł", Vector3(c.x + 4.5, W.hd(c.x + 4.5, c.y - 3.5) + 1.3, c.y - 3.5 + 0.2), Color(0.95, 0.9, 0.75), 30, PI / 2.0, 0.004, 6)
 	_scatter(W, c, [["cardboard_box_01", -5.0, 4.0, 0.4, 0.34], ["trashbag", -5.0, -5.0, 0.8, 0.5], ["can_rusted", 9.0, 0.0, 0.0, 0.13], ["plastic_crate_01", -4.0, -4.0, 0.3, 0.3]])
+	# girlanda żarówek nad stolikami, na dwóch słupkach
+	for gz in [-9.0, 9.0]:
+		_pole(W, c.x + 10.0, c.y + gz, true)
+	var n := 16
+	for i in range(n):
+		var t := float(i) / float(n - 1)
+		var bz := lerpf(c.y - 9.0, c.y + 9.0, t)
+		Models.sphere(W.city, 0.08 * INV, Vector3(c.x + 10.0, W.hd(c.x + 10.0, bz) + 4.9 - 0.5 * (1.0 - pow(2.0 * t - 1.0, 2.0)), bz), W.lamp_mat, Vector3(1, 1, 1), false, 6)
 	_light(W, c.x + 4.0 * INV, c.y, 2.8, Color(1.0, 0.55, 0.35), 0.6, 10.0)
+	_light(W, c.x + 4.0 * INV + 8.0, c.y, 3.0, Color(1.0, 0.78, 0.5), 0.45, 9.0)
 	_dump(W, "poi_kebab_kosz", c.x + 6.0, c.y + 11.0, "Pogrzeb w koszu przy kebabie", "bin")
 	_stash(W, "kebab_lada", c.x + 1.5 * INV, c.y - 2.0 * INV, "Zajrzyj za budkę", 50, "Za budką leżała reklamówka z utargiem sprzed zamknięcia", 0.2)
