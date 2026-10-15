@@ -301,6 +301,14 @@ func _static(o: Dictionary) -> Dictionary:
 			Chars.say(rig, clampf(float(line.length()) / 16.0, 1.5, 6.0))
 			G.ui.dialog({"name": n.name, "lines": [line]})}
 	Chars.animate(rig, 0.0, 0.0, n.pose)
+	# żeby stojący nie oddychali w jednym rytmie jak figurki: losowa faza i lekko inne tempo animacji,
+	# a stojący bez zajęcia co kilkanaście sekund zmieniają pozę (ręce skrzyżowane, telefon, luz)
+	if rig.anim.current_animation != "":
+		rig.anim.seek(randf() * maxf(0.1, rig.anim.current_animation_length), true)
+	if not n.has("anim_speed"):
+		n["anim_speed"] = randf_range(0.93, 1.07)
+	n["pose0"] = String(n.pose)
+	n["idle_t"] = randf_range(4.0, 14.0)
 	statics.append(n)
 	all.append(n)
 	return n
@@ -1313,6 +1321,11 @@ func update(dt: float) -> void:
 			n.node.rotation.y += _ang_diff(atan2(pp.x - n.x, pp.z - n.z), n.node.rotation.y) * minf(1.0, dt * 3.0)
 		Chars.set_active(n.rig, dp3 < 60.0)
 		if dp3 < 60.0:
+			if String(n.get("pose0", "x")) in ["", "arms"] and not n.has("goto") and not bool(n.get("cop", false)):
+				n.idle_t = float(n.idle_t) - dt
+				if float(n.idle_t) <= 0.0:
+					n.idle_t = randf_range(8.0, 18.0)
+					n.pose = ["", "arms", "", "phone"].pick_random()
 			var pose_now: String = "talk" if (n.track and dp3 < 3.4) else n.pose
 			# mimika: z bliska widać, że postacie żyją — co kilka sekund uśmiech, zdziwienie albo grymas (zależnie od tego,
 			# co robią), a gdy gracz podchodzi pierwszy raz od dłuższej chwili, przywitanie uśmiechem

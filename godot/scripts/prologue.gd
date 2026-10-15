@@ -409,6 +409,7 @@ func _setup_world() -> void:
 		siwy.x = float(lr.cx) + 4.6
 		siwy.z = -3.1
 		siwy.pose = "arms"
+		siwy["pose0"] = "arms"
 		siwy.track = true
 		siwy.node.position = Vector3(siwy.x, 0.0, siwy.z)
 		siwy.node.rotation.y = PI * 0.9
@@ -518,6 +519,7 @@ func _begin_raid() -> void:
 		# Siwy odskakuje od bramy (w którą walą), biegnie do ładunku przy wschodniej ścianie i klęka przy zapalniku
 		var lr: Dictionary = D.ROOMS.lab
 		siwy.track = false
+		siwy["pose0"] = "raid"
 		siwy.pose = "crouch"
 		siwy.goto_speed = 3.2
 		siwy.goto = [Vector2(float(lr.cx) + 4.6, 1.9), Vector2(float(lr.cx) + 6.4, 2.4)]
