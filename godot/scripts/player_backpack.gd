@@ -12,6 +12,7 @@ var zipper_start:=Vector3.ZERO
 var interacting:=false
 var interaction_time:=0.0
 var reach_weight:=0.0
+var worn:=true   # false: plecak zdjęty i stoi obok postaci (tylko podgląd)
 func inspect() -> bool:
 	if interacting: return false
 	opened=not opened
@@ -44,7 +45,7 @@ func _process(dt:float):
 	if interacting:
 		interaction_time+=dt
 		step=clampf(interaction_time-0.30,0.0,dt)
-		reach_weight=smoothstep(0.0,0.30,interaction_time)*(1.0-smoothstep(0.72,1.12,interaction_time))
+		reach_weight=(smoothstep(0.0,0.30,interaction_time)*(1.0-smoothstep(0.72,1.12,interaction_time)) if worn else 0.0)
 		if interaction_time>=1.12: cancel_reach()
 	opening=move_toward(opening,1.0 if opened else 0.0,step*2.4)
 	# Najpierw jedzie suwak, dopiero potem uchyla się klapa; zamknięcie w odwrotnej kolejności.

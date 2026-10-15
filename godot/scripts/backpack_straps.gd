@@ -104,7 +104,7 @@ func update_straps() -> void:
 	if not is_instance_valid(bag): return
 	var viewport:=get_viewport() as SubViewport
 	if viewport!=null and viewport.render_target_update_mode==SubViewport.UPDATE_DISABLED: return
-	visible=bag.visible
+	visible=bag.visible and bool(bag.get("worn"))
 	if not visible: return
 	var center:=skeleton.to_global(skeleton.get_bone_global_pose(chest).origin)
 	var shoulder_r:=skeleton.to_global(skeleton.get_bone_global_pose(arms[0][0]).origin)

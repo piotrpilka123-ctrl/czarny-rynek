@@ -3350,6 +3350,12 @@ func _test_ui(what: String) -> void:
 				if te.kind == "bulk":
 					ui.inv.ask_amount(te, "bag", "stash")
 					ui.inv._ask_set(5.5)
+		"plecakoff":
+			# zrzut: karta postaci z plecakiem zdjętym i stojącym obok (--bagon: założonym)
+			G.S.upg["plecak1"] = true
+			ui.open_inventory("", "char")
+			if not args.has("bagon"):
+				ui.inv.toggle_bag_worn()
 		"char":
 			# --fed: po kebabie (linijka o kondycji)
 			if args.has("fed"):

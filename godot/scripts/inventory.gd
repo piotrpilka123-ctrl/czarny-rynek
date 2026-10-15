@@ -33,6 +33,9 @@ var spin_rest:=0.0
 var spin_drag := false
 var preview_motion:=0
 var backpack_button:Button
+var bag_off_button:Button
+var bag_home: Node = null
+var bag_home_xf := Transform3D.IDENTITY
 var ask := {}                # otwarte okno wyboru ilości: {e, from, to, max, step, v}
 var ask_box: Control = null
 var ask_big: Label
@@ -259,6 +262,26 @@ func preview_pose(mode:int) -> void:
 	preview_motion=clampi(mode,0,2)
 	Chars.animate(rig,0.0,[0.0,2.4,5.5][preview_motion])
 	if bag_mesh!=null: bag_mesh.motion=float(preview_motion)
+
+## zdejmowanie plecaka w podglądzie: schodzi z pleców i staje na podłodze obok postaci (nic nie zmienia w ekwipunku)
+func toggle_bag_worn() -> void:
+	if bag_mesh == null or not bag_mesh.visible or bag_mesh.interacting:
+		return
+	bag_mesh.cancel_reach()
+	if bag_mesh.worn:
+		bag_home = bag_mesh.get_parent()
+		bag_home_xf = bag_mesh.transform
+		bag_mesh.reparent(rig.root, false)
+		bag_mesh.transform = Transform3D(Basis(Vector3.UP, 2.4), Vector3(0.4, 0.27, 0.3))
+		bag_mesh.worn = false
+		spin_rest = 0.0
+	elif is_instance_valid(bag_home):
+		bag_mesh.reparent(bag_home, false)
+		bag_mesh.transform = bag_home_xf
+		bag_mesh.worn = true
+	if is_instance_valid(bag_off_button):
+		bag_off_button.text = "Załóż plecak" if not bag_mesh.worn else "Zdejmij plecak"
+
 
 func inspect_backpack() -> void:
 	if bag_mesh==null or not bag_mesh.visible: return
@@ -1309,6 +1332,8 @@ func _tab_char() -> void:
 	if G.upg("plecak1"):
 		backpack_button=K.btn("Zamknij kieszeń" if bag_mesh.opened else "Obejrzyj plecak",inspect_backpack,"",true)
 		rv.add_child(backpack_button)
+		bag_off_button=K.btn("Zdejmij plecak" if bag_mesh.worn else "Załóż plecak",toggle_bag_worn,"",true)
+		rv.add_child(bag_off_button)
 		rv.add_child(K.lbl("Zapełnienie: %s / %s miejsc" %[G.units(G.carry_total()),G.units(G.capacity())],11,T.C_MID))
 	var anyu := false
 	for u in D.UPGRADES:
