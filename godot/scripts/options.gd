@@ -173,6 +173,7 @@ func _video() -> void:
 	_choice("Cienie", "shadows", [["", "Auto"], ["low", "Niskie"], ["med", "Średnie"], ["high", "Wysokie"]])
 	_toggle("Mgła i snopy światła", "fog")
 	_toggle("Cieniowanie zakamarków (SSAO)", "ssao")
+	_toggle("Filtry obrazu", "filtry", "Delikatna winieta, ziarno, wyostrzenie i barwienie cieni. Wyłącz, jeśli wolisz czysty obraz.")
 	_slider("Pole widzenia", "fov", 60.0, 95.0, 1.0, func(x: float): return "%d°" % int(x))
 	_slider("Jasność", "bright", 0.7, 1.5, 0.05, _pct, "Podbij, jeśli noc jest dla Ciebie za ciemna.")
 	_section("EKRAN")

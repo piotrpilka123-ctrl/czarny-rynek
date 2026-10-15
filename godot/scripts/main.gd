@@ -328,7 +328,7 @@ func _light_ranges(n: Node) -> void:
 # ================================================================ ustawienia (osobny plik, niezależny od zapisu gry)
 const SETTINGS_PATH := "user://ustawienia.json"
 var settings := {"quality": "med", "fullscreen": true, "muted": false,
-	"res_scale": 1.0, "dyn_res": true, "shadows": "", "fog": true, "ssao": true, "vsync": true, "fps_cap": 0, "fov": 70.0, "bright": 1.0,
+	"res_scale": 1.0, "dyn_res": true, "shadows": "", "fog": true, "ssao": true, "filtry": true, "vsync": true, "fps_cap": 0, "fov": 70.0, "bright": 1.0,
 	"vol_master": 0.8, "vol_music": 0.8, "vol_sfx": 1.0, "vol_ambient": 0.9, "vol_voice": 0.9,
 	"sens": 1.0, "invert_y": false, "keys": {}, "minimap": false}
 
@@ -379,6 +379,7 @@ func apply_settings() -> void:
 		env.opt_shadows = String(settings.shadows)
 		env.opt_fog = bool(settings.fog)
 		env.opt_ssao = bool(settings.ssao)
+		env.opt_filters = bool(settings.filtry)
 		env.set_quality(String(settings.quality))
 	if player != null:
 		player.base_fov = clampf(float(settings.fov), 55.0, 100.0)

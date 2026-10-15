@@ -111,6 +111,17 @@ func build(_noise_tex: Texture2D) -> void:
 	we = WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
+	var fl := CanvasLayer.new()
+	fl.layer = -10
+	add_child(fl)
+	_filter_mat = ShaderMaterial.new()
+	_filter_mat.shader = Shader.new()
+	_filter_mat.shader.code = SH_FILTER
+	_filter_rect = ColorRect.new()
+	_filter_rect.material = _filter_mat
+	_filter_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_filter_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fl.add_child(_filter_rect)
 
 	sun = DirectionalLight3D.new()
 	sun.shadow_enabled = true
@@ -169,6 +180,35 @@ var bright := 1.0
 var opt_shadows := ""       # "" = jak w poziomie jakości, "low" | "med" | "high"
 var opt_fog := true
 var opt_ssao := true
+var opt_filters := true
+var _filter_rect: ColorRect = null
+var _filter_mat: ShaderMaterial = null
+
+## Filtry obrazu: lekki grading (chłodniejsze cienie, cieplejsze światła), delikatne wyostrzenie, winieta i ziarno.
+## Jedno przejście na gotowym obrazie, pod interfejsem; wyłączane w opcjach.
+const SH_FILTER := """
+shader_type canvas_item;
+uniform sampler2D scr : hint_screen_texture, filter_linear_mipmap;
+uniform float night = 0.0;
+uniform float inside = 0.0;
+uniform float vig = 0.26;
+uniform float grain = 0.022;
+uniform float sharp = 0.35;
+void fragment() {
+	vec3 c = textureLod(scr, SCREEN_UV, 0.0).rgb;
+	vec3 b = textureLod(scr, SCREEN_UV, 1.0).rgb;
+	c += clamp(c - b, vec3(-0.06), vec3(0.06)) * sharp;
+	float l = dot(c, vec3(0.299, 0.587, 0.114));
+	vec3 sh = mix(vec3(0.975, 1.0, 1.03), vec3(0.95, 0.99, 1.06), night);
+	vec3 hi = mix(vec3(1.03, 1.0, 0.965), vec3(1.0, 0.985, 0.97), night);
+	c *= mix(sh, hi, smoothstep(0.12, 0.75, l));
+	vec2 d = (SCREEN_UV - 0.5) * vec2(1.0, 0.9);
+	c *= 1.0 - vig * mix(1.0, 0.6, inside) * smoothstep(0.3, 0.85, length(d) * 1.35);
+	float n = fract(sin(dot(SCREEN_UV * vec2(1731.0, 977.0) + fract(TIME) * vec2(31.0, 17.0), vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+	c += n * grain * (1.0 - l * 0.7);
+	COLOR = vec4(c, 1.0);
+}
+"""
 var fog_on := true
 
 
@@ -391,6 +431,10 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		env.volumetric_fog_albedo = Color(0.86, 0.88, 0.92).lerp(Color(0.52, 0.54, 0.58), night)
 	RenderingServer.global_shader_parameter_set("night", 0.0 if inside else night)
 	RenderingServer.global_shader_parameter_set("wet", wet)
+	if _filter_rect != null:
+		_filter_rect.visible = opt_filters and quality != "low"
+		_filter_mat.set_shader_parameter("night", 0.0 if inside else night)
+		_filter_mat.set_shader_parameter("inside", 1.0 if inside else 0.0)
 
 	# --- latarnie, ogniska, telewizory
 	var on := night > 0.08 and not inside
