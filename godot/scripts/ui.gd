@@ -184,6 +184,7 @@ func build() -> void:
 	_build_cut()
 	G.toast.connect(toast_add)
 	G.sale_made.connect(_sale_pop)
+	G.level_up.connect(func(l): _pop("POZIOM %d" % int(l), G.level_title(), K.C_GOLD))
 	G.batch_done.connect(func(t, sub): _pop(String(t), String(sub), K.C_TXT))
 	G.sms.connect(_on_sms)
 

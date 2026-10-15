@@ -23,6 +23,10 @@ Sześć towarów w grze (wszystko fikcyjne): marihuana, amfetamina, metamfetamin
 
 Nowe miejsca spotkań i skrytek: ogródki działkowe oraz zaplecze Repair Yard. Każdy nowy klient ma też swoją rozmowę telefoniczną, która dopisuje kolejny kawałek historii o tym, kto sprzedał ekipę Wiktora.
 
+## Dopamina w grze
+
+Po każdej sprzedaży wylatuje kwota, a kolejne udane transakcje z rzędu budują serię (do +40% doświadczenia). Rzadko trafia się klient w dobrym nastroju, który płaci ponad stawkę. Każdego dnia są dwa małe cele z drobną nagrodą, cienki pasek przy kondycji pokazuje postęp do następnego poziomu, a po śnie dostajesz krótkie podsumowanie dnia z rekordami. Gotowa partia w laboratorium ma własny dźwięk i wyskakującą liczbę przy odbiorze.
+
 ## Pliki
 
 `godot/` zawiera kod, scenę, modele, tekstury, animacje, muzykę i dźwięki aktualnej gry. Zapis gry jest przechowywany w danych użytkownika Godota, poza repozytorium.

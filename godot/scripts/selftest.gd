@@ -846,6 +846,11 @@ func run() -> void:
 	ok(absf(G.xp_progress() - 0.5) < 0.01, "pasek poziomu pokazuje postęp do następnego")
 	S.lvl = lv_keep
 	S.xp = xp_keep
+	var lv_seen := []
+	G.level_up.connect(func(l): lv_seen.append(int(l)))
+	var lv0: int = int(S.lvl)
+	G.add_xp(float(D.XP_LEVELS[lv0]) - float(S.xp) + 1.0)
+	ok(lv_seen == [lv0 + 1], "awans na poziom wysyła sygnał do wyskakującego napisu")
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")
