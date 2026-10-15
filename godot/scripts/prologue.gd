@@ -403,6 +403,9 @@ func _setup_world() -> void:
 		# powrót na miejsce przy powtórnym uruchomieniu prologu
 		var lr: Dictionary = D.ROOMS.lab
 		siwy.erase("goto")
+		if siwy.get("hands") is Node:
+			siwy.hands.queue_free()
+		siwy["hands"] = null
 		siwy.x = float(lr.cx) + 4.6
 		siwy.z = -3.1
 		siwy.pose = "arms"
@@ -517,8 +520,8 @@ func _begin_raid() -> void:
 		siwy.track = false
 		siwy.pose = "crouch"
 		siwy.goto_speed = 3.2
-		siwy.goto = [Vector2(float(lr.cx) + 4.6, 1.9), Vector2(float(lr.cx) + 6.15, 2.4)]
-		siwy.pose_end = "kneel"
+		siwy.goto = [Vector2(float(lr.cx) + 4.6, 1.9), Vector2(float(lr.cx) + 6.4, 2.4)]
+		siwy.pose_end = ""
 		siwy.rot_end = PI / 2.0
 		Chars.emote(siwy.rig, "zdziwienie", 1.0, 4.0)
 	M.ui.dialog({"name": "Siwy", "lines": [
@@ -593,6 +596,7 @@ func _process(dt: float) -> void:
 				_hinted["table"] = true
 				G.notify("Stół z cegłami stoi pod lampką. Podejdź, naceluj na niego i naciśnij [%s]." % G.kn("use"))
 		"raid":
+			_siwy_hands(dt)
 			var fl: Array = M.world.lab_fx.get("flash", [])
 			for i in range(fl.size()):
 				fl[i].light_energy = 7.0 if (k + i) % 2 == 0 else 0.2
@@ -1311,3 +1315,24 @@ func _finish() -> void:
 		await get_tree().process_frame
 	await M.ui.fade_to(0.0, 0.4)
 	queue_free()
+
+
+## Siwy przy panelu ładunku: obie dłonie na wysokości panelu (IK), po chwili „łączy przewody”
+func _siwy_hands(dt: float) -> void:
+	if siwy == null or siwy.has("goto"):
+		return
+	var rh = siwy.get("hands")
+	if rh == null:
+		rh = load("res://scripts/rig_hands.gd").new()
+		if not rh.bind(siwy.rig.skel):
+			rh.free()
+			siwy["hands"] = false
+			return
+		siwy.rig.skel.add_child(rh)
+		siwy["hands"] = rh
+		var lr: Dictionary = D.ROOMS.lab
+		var px := float(lr.cx) + float(lr.w) * 0.5 - 0.08
+		rh.goals = [Vector3(px, 1.42, 2.3), Vector3(px, 1.58, 2.52)]
+	if rh is bool:
+		return
+	rh.weight = minf(1.0, rh.weight + dt * 2.0)

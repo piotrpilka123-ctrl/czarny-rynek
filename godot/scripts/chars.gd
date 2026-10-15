@@ -151,14 +151,14 @@ const HAIR_F := ["hair_long", "hair_buns", "hair_long", "hair_buzzedfemale", "ha
 ## naturalna prędkość animacji (m/s) do synchronizacji kroków
 const ANIM_SPEED := {"Walk_Swagger": 0.97, "Walk_Hunched": 0.9, "Walk_Phone": 0.97, "Walk_Folded": 0.97, "Walk_Stiff": 0.97, "Walk_Loose": 0.97, "Walk": 0.97, "Walk_Formal": 0.97, "Jog_Fwd": 5.36, "Sprint": 8.25, "Zombie_Walk_Fwd": 1.05, "Walk_Carry": 0.65, "Crouch_Fwd": 0.75}
 const POSES := {"": "Idle", "phone": "Idle_TalkingPhone", "talk": "Idle_Talking", "arms": "Idle_FoldArms", "lean": "Idle_Rail", "smoke": "Idle",
-	"sit": "Sitting_Idle", "sit_talk": "Sitting_Talking", "sit_sip": "Sitting_Sip", "dance": "Dance", "dance2": "Dance_Sway", "dance3": "Dance_Wild", "dance4": "Dance_Drink", "dance5": "Dance_Hips", "dance6": "Dance_Cool", "junkie": "Zombie_Idle", "kneel": "Fixing_Kneeling", "no": "Idle_No",
+	"sit": "Sitting_Idle", "sit_talk": "Sitting_Talking", "sit_sip": "Sitting_Sip", "dance": "Dance", "dance2": "Dance_Sway", "dance3": "Dance_Wild", "dance4": "Dance_Drink", "dance5": "Dance_Hips", "dance6": "Dance_Cool", "junkie": "Zombie_Idle", "kneel": "Fixing_Kneeling", "work": "Interact", "work2": "Chest_Open", "no": "Idle_No",
 	"crouch": "Crouch_Idle", "handsup": "Idle", "lantern": "Idle_Lantern", "drive": "Driving", "gun": "Pistol_Idle", "aim": "Pistol_Aim_Neutral"}
 
-const USED := ["Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Idle_No", "Yes", "Interact", "PickUp_Table", "Sitting_Idle", "Sitting_Talking",
+const USED := ["Chest_Open", "Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Idle_No", "Yes", "Interact", "PickUp_Table", "Sitting_Idle", "Sitting_Talking",
 	"Dance", "Zombie_Idle", "Zombie_Walk_Fwd", "Walk", "Walk_Formal", "Walk_Carry", "Jog_Fwd", "Sprint", "Crouch_Idle", "Fixing_Kneeling", "Consume", "Hit_Chest",
 	"Idle_Lantern", "Driving", "Push", "Sitting_Enter", "Sitting_Exit", "Pistol_Idle", "Pistol_Aim_Neutral", "Hit_Knockback", "Melee_Hook", "Sword_Attack", "Death01",
 	"Sword_Regular_A", "Sword_Regular_B", "Sword_Heavy_Combo", "TreeChopping", "OverhandThrow", "Hit_Head"]
-const LOOPED := ["Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Sitting_Idle", "Sitting_Talking", "Dance", "Zombie_Idle", "Idle_No",
+const LOOPED := ["Interact", "Chest_Open", "Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Sitting_Idle", "Sitting_Talking", "Dance", "Zombie_Idle", "Idle_No",
 	"Walk", "Walk_Formal", "Jog_Fwd", "Sprint", "Zombie_Walk_Fwd", "Walk_Carry", "Crouch_Idle", "Fixing_Kneeling", "Idle_Lantern", "Driving", "Push", "Pistol_Idle", "Pistol_Aim_Neutral"]
 ## o ile wyprostować nogi w pozach stojących (0 = oryginał)
 const RELAX := {"Idle": 0.7, "Idle_Talking": 0.7, "Idle_FoldArms": 0.7, "Idle_TalkingPhone": 0.7, "Idle_No": 0.7, "Yes": 0.7, "Consume": 0.6, "Interact": 0.5, "Idle_Lantern": 0.6}
