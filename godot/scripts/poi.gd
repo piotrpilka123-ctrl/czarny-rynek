@@ -41,6 +41,8 @@ static func build(W) -> void:
 	_station(W)
 	_bazaar(W)
 	_greenhouses(W)
+	_podworko(W)
+	_obozowisko(W)
 	W.rng.state = st
 
 
@@ -455,3 +457,53 @@ static func _greenhouses(W) -> void:
 	_stash(W, "szklarnie_termos", c.x + 4.0 * INV, c.y - 14.0 * INV, "Zajrzyj do termosu za workami", 95, "W termosie, zamiast herbaty, zwitek banknotów od odbiorców Mietka", 0.3)
 	_dump(W, "poi_szklarnie_kompost", c.x - 9.0 * INV, c.y + 14.0 * INV, "Przekop kompost", "bin")
 	_box(W, c.x - 9.0 * INV, c.y + 14.0 * INV, Vector3(2.0, 0.8, 1.4), soil, 0.0, 0.2, 0.0)
+
+
+# ---------------------------------------------------------------- małe sceny życia na pustych polach
+## Podwórko z trzepakami i praniem na zachodnim polu: piaskownica, huśtawka, ławki, kosz.
+static func _podworko(W) -> void:
+	var c := Vector2(-132.0, -121.0)
+	var tr1: Node3D = Props.trzepak()
+	Props.set_range(W._place(tr1, c.x - 7.0, c.y - 5.0, 0.0, 1.3, 0.12, 2.0), 110.0)
+	var tr2: Node3D = Props.trzepak()
+	Props.set_range(W._place(tr2, c.x + 5.0, c.y - 5.0, 0.0, 1.3, 0.12, 2.0), 110.0)
+	# pranie na sznurze między trzepakami (modele ubrań z Blendera)
+	var cl := ["ciuch_koszula", "ciuch_spodnie", "ciuch_bluza", "ciuch_spodnie", "ciuch_koszula"]
+	for i in range(cl.size()):
+		var m: Node3D = Stations.model(String(cl[i]))
+		if m == null:
+			continue
+		var px := c.x - 4.0 + float(i) * 2.3
+		m.position = Vector3(px, W.hd(px, c.y - 5.0) + 1.9, c.y - 5.0)
+		m.rotation.y = 0.2 * float(i)
+		m.scale = Vector3(INV, 1.0, INV)
+		W.city.add_child(m)
+		Props.set_range(m, 55.0)
+	var pk: Node3D = Stations.model("plac_piaskownica")
+	if pk != null:
+		Props.set_range(W._place(pk, c.x + 8.0, c.y + 6.0, 0.1, 1.55, 1.55, 0.3), 95.0)
+	Props.set_range(W._place(Props.swing(), c.x - 8.0, c.y + 7.0, 0.0, 1.6, 0.9, 2.4), 110.0)
+	W._bench(c.x - 1.0, c.y + 11.0, PI)
+	W._bench(c.x + 3.0, c.y - 1.0, 0.0)
+	W._bin(c.x + 12.0, c.y + 1.0, 0.0)
+	_scatter(W, c, [["dirty_football", 2.0, 4.0, 0.0, 0.22], ["trashbag", 9.0, -4.0, 0.7, 0.5], ["plastic_crate_01", -3.0, -2.0, 0.4, 0.3], ["can_rusted", 4.0, 8.0, 0.2, 0.13]])
+	_pole(W, c.x + 12.0, c.y + 6.0)
+	_stash(W, "podworko_trzepak", c.x + 5.0 + 1.4 * INV, c.y - 5.0 + 0.5 * INV, "Zajrzyj za trzepak", 35, "Za trzepakiem ktoś schował słoik z drobnymi", 0.2)
+
+
+## Obozowisko w kącie południowo-zachodnim: wiata, ognisko, legowiska, skrzynki.
+static func _obozowisko(W) -> void:
+	var c := Vector2(-180.0, 122.0)
+	var wm: Node3D = Stations.model("ul_wiata")
+	if wm != null:
+		Props.set_range(W._place(wm, c.x, c.y, 0.3, 2.4, 1.2, 2.4), 130.0)
+	for e in [["bezd_ognisko", 5.0, 3.0, 0.4, 0.55, 0.55, 0.4], ["bezd_legowisko", -4.0, 4.5, 0.6, 0.0, 0.0, 0.0], ["bezd_wozek", 8.5, -1.0, 2.2, 0.3, 0.45, 1.0]]:
+		var m: Node3D = Stations.model(String(e[0]))
+		if m != null:
+			var p := _p(c, float(e[1]), float(e[2]))
+			Props.set_range(W._place(m, p.x, p.y, float(e[3]), float(e[4]), float(e[5]), float(e[6])), 95.0)
+	var fp := _p(c, 5.0, 3.0)
+	Fx.fire(W, Vector3(fp.x * SC, W.hd(fp.x, fp.y) + 0.12, fp.y * SC), 0.28, W.lamps)
+	_scatter(W, c, [["wooden_crate_02", 3.0, 5.5, 0.3, 0.42], ["wooden_crate_02", 7.0, 5.0, 1.1, 0.42], ["pallet", 2.0, 0.0, 0.6, 0.16], ["trashbag", -7.0, 0.5, 0.2, 0.5],
+		["trashbag_1", -6.0, 2.0, 1.0, 0.6], ["old_tyre", 9.0, 4.0, 0.2, 0.16], ["can_rusted", 4.5, 4.5, 0.0, 0.13], ["barrel_01", -2.0, -3.5, 0.5, 0.9]])
+	_stash(W, "oboz_zawiniatko", c.x - 5.5 * INV, c.y + 4.0 * INV, "Zajrzyj pod legowisko", 40, "Pod legowiskiem leżało zawiniątko z kilkoma banknotami", 0.2)
