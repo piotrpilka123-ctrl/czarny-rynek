@@ -69,19 +69,23 @@ static func _baseboard(g: Node3D, cx: float, along_z: bool, fixed: float, s0: fl
 
 ## futryna: dwa ościeża i nadproże z listew, wystające z obu stron ściany
 static func _frame(g: Node3D, cx: float, along_z: bool, fixed: float, g0: float, g1: float, thick: float) -> void:
-	var m := Props.pbr("old_wood_floor", 1.6, Color(1.5, 1.4, 1.25))
-	var dep := thick + 0.04
-	for e in [g0 + TRIM * 0.5, g1 - TRIM * 0.5]:
+	# opaska (listwa maskująca) 7 cm dookoła otworu, po obu stronach ściany; ościeża i nadproże zostają tynkiem
+	var m := Props.pbr("old_wood_floor", 2.0, Color(1.3, 1.2, 1.05))
+	var cw := 0.07
+	var ct := 0.014
+	for side in [-1.0, 1.0]:
+		var off: float = side * (thick * 0.5 + ct * 0.5)
+		for e in [g0 - cw * 0.5, g1 + cw * 0.5]:
+			if along_z:
+				Models.box(g, Vector3(ct, DOOR_H + cw, cw), Vector3(cx + fixed + off, (DOOR_H + cw) * 0.5, e), m, Vector3.ZERO, false)
+			else:
+				Models.box(g, Vector3(cw, DOOR_H + cw, ct), Vector3(cx + e, (DOOR_H + cw) * 0.5, fixed + off), m, Vector3.ZERO, false)
+		var mid := (g0 + g1) * 0.5
+		var l := g1 - g0 + cw * 2.0
 		if along_z:
-			Models.box(g, Vector3(dep, DOOR_H, TRIM), Vector3(cx + fixed, DOOR_H * 0.5, e), m, Vector3.ZERO, false)
+			Models.box(g, Vector3(ct, cw, l), Vector3(cx + fixed + off, DOOR_H + cw * 0.5, mid), m, Vector3.ZERO, false)
 		else:
-			Models.box(g, Vector3(TRIM, DOOR_H, dep), Vector3(cx + e, DOOR_H * 0.5, fixed), m, Vector3.ZERO, false)
-	var mid := (g0 + g1) * 0.5
-	var l := g1 - g0
-	if along_z:
-		Models.box(g, Vector3(dep, TRIM, l), Vector3(cx + fixed, DOOR_H - TRIM * 0.5, mid), m, Vector3.ZERO, false)
-	else:
-		Models.box(g, Vector3(l, TRIM, dep), Vector3(cx + mid, DOOR_H - TRIM * 0.5, fixed), m, Vector3.ZERO, false)
+			Models.box(g, Vector3(l, cw, ct), Vector3(cx + mid, DOOR_H + cw * 0.5, fixed + off), m, Vector3.ZERO, false)
 
 
 ## próg: niska listwa w poprzek otworu — tylko wizualna, bez kolizji (gracz przechodzi bez podskoku)
