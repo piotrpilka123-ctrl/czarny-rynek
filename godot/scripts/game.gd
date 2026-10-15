@@ -3199,6 +3199,8 @@ func complete_sale(ctx: Dictionary, p: String, pur: int, g: int, price: float, m
 	add_xp(xp * streak_xp_mult())
 	add_minutes(4.0)
 	goals_check()
+	if int(S.stats.deals) >= 2 and prologue == null:
+		tip("cele", "Cele dnia i seria", "Co dzień dostajesz dwa małe cele (pod zleceniem w rogu ekranu) — za każdy 25 zł i trochę doświadczenia. Udane transakcje z rzędu budują serię: im dłuższa, tym więcej XP. Pasek przy kondycji pokazuje postęp do następnego poziomu.", 12.0)
 	if ctx.get("street", false) and player != null and player.loc == "out":
 		after_deal_risk(ctx, g)
 	check_unlocks()

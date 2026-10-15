@@ -866,6 +866,7 @@ func run() -> void:
 	await frames(40)
 	ok(U.dialog_box.scale == Vector2.ONE and U.dialog_box.modulate.a > 0.99, "okno kończy wsuwanie w pełni widoczne")
 	U.dialog_box.visible = false
+	ok(S.flags.get("tip_cele", false) or int(S.stats.deals) < 2, "po drugiej transakcji gracz dostaje wyjaśnienie celów dnia i serii")
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")
