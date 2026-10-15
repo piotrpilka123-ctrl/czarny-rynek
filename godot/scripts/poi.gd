@@ -76,7 +76,7 @@ static func _light(W, x: float, z: float, y: float, color: Color, gain: float, r
 	li.light_color = color
 	li.light_energy = 0.0
 	li.omni_range = rng_m
-	li.omni_attenuation = 1.1
+	li.omni_attenuation = 1.7
 	li.shadow_enabled = false
 	li.visible = false
 	li.distance_fade_enabled = true
@@ -95,8 +95,8 @@ static func _pole(W, x: float, z: float, dead := false) -> void:
 	_box(W, x, z, Vector3(0.14, 5.2, 0.14), m, 0.0, 0.0, 0.0)
 	_box(W, x, z, Vector3(0.5, 0.1, 0.22), m, 5.2)
 	if not dead:
-		_box(W, x, z, Vector3(0.4, 0.03, 0.16), W.lamp_mat, 5.15, 0.0, -1.0, false)
-		_light(W, x, z, 4.8, Color(1.0, 0.72, 0.42), 0.8, 12.0)
+		_box(W, x, z, Vector3(0.26, 0.02, 0.1), W.lamp_mat, 5.17, 0.0, -1.0, false)
+		_light(W, x, z, 5.8, Color(1.0, 0.72, 0.42), 0.5, 13.0)
 
 
 ## skrytka z gotówką: raz na zapis, podpowiedź wraca do „pusto”
