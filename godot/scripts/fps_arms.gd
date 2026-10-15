@@ -87,7 +87,9 @@ func _process(dt: float) -> void:
 
 ## Otwarty ekwipunek: plecak zsuwa się z ramienia do rąk, a suwak i klapa otwierają się przed oczami (bez opóźniania okna).
 func _hold_bag(dt: float) -> void:
-	var want: bool = ((G.ui != null and G.ui.mode == "inv") or OS.get_cmdline_user_args().has("--fpsbag")) and G.S.has("upg") and G.upg("plecak1") and not player.hidden
+	if OS.get_cmdline_user_args().has("--fpsbag") and G.S != null and G.S.has("upg"):
+		G.S.upg["plecak1"] = true   # tylko do zrzutów
+	var want: bool = ((G.ui != null and (G.ui.mode == "inv" or G.ui.inv_pre > 0.0)) or OS.get_cmdline_user_args().has("--fpsbag")) and G.S.has("upg") and G.upg("plecak1") and not player.hidden
 	hold = move_toward(hold, 1.0 if want else 0.0, dt * 3.2)
 	if ik != null:
 		ik.hold = hold
@@ -130,7 +132,7 @@ func _brighten(n: Node) -> void:
 			var m := mi.mesh.surface_get_material(i)
 			if m is BaseMaterial3D and (m as BaseMaterial3D).albedo_texture != null:
 				var d: BaseMaterial3D = m.duplicate()
-				d.albedo_color = Color(2.6, 2.6, 2.6)
+				d.albedo_color = Color(1.45, 1.45, 1.45)
 				d.roughness = maxf(d.roughness, 0.85)
 				mi.set_surface_override_material(i, d)
 	for c in n.get_children():

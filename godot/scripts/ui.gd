@@ -1477,6 +1477,29 @@ func open_stash(room: String) -> void:
 
 
 ## ekwipunek: plecak, postać, organizer; `room` = skrytka otwarta po prawej stronie
+var inv_pre := 0.0      # >0: plecak jest w rękach (widok FPS), a okno ekwipunku jeszcze się nie otworzyło
+var _inv_token := 0
+
+
+## klawisz ekwipunku w świecie: najpierw ok. 0,35 s plecaka w rękach, potem okno; drugie naciśnięcie pomija animację
+func _inv_from_world() -> void:
+	if inv_pre > 0.0:
+		_inv_token += 1
+		inv_pre = 0.0
+		open_inventory("")
+		return
+	if G.test_mode or not G.upg("plecak1") or G.player == null or G.player.hidden or G.busy:
+		open_inventory("")
+		return
+	_inv_token += 1
+	var tk := _inv_token
+	inv_pre = 0.35
+	get_tree().create_timer(0.35).timeout.connect(func():
+		if _inv_token == tk and inv_pre > 0.0:
+			inv_pre = 0.0
+			open_inventory(""))
+
+
 func open_inventory(room := "", tab := "inv") -> void:
 	dialog_box.visible = false
 	modal.visible = false
@@ -3119,7 +3142,7 @@ func _input(event: InputEvent) -> void:
 			else:
 				match act:
 					"phone": open_phone("sms" if G.unread_total() > 0 else "")
-					"inv": open_inventory("")
+					"inv": _inv_from_world()
 					"map": open_phone("mapa")
 					"use": G.main.interact()
 					"flash": G.main.toggle_flash()
