@@ -196,24 +196,27 @@ func _sale_pop(paid: float, streak: int) -> void:
 
 
 ## duża liczba z drobnym podpisem: sprężyście wchodzi, unosi się i gaśnie
+var pop_n := 0
+
 func _pop(text: String, sub: String, col: Color) -> void:
 	if hud == null or not hud.visible:
 		return
+	pop_n += 1
 	var box := K.vbox(0)
 	var vp := hud.get_viewport_rect().size
 	box.custom_minimum_size = Vector2(300, 0)
-	box.position = Vector2(vp.x * 0.5 - 150.0, vp.y * 0.5 + 70.0)
+	box.position = Vector2(vp.x * 0.5 - 150.0, vp.y * 0.5 + 70.0 + 62.0 * float(pop_n - 1))
 	box.pivot_offset = Vector2(150, 20)
 	box.scale = Vector2(0.6, 0.6)
 	_ign(box)
-	var l := K.head(text, 34, col)
+	var l := K.head(text, 30, col)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_shadow(l, 6)
+	_shadow(l, 3)
 	box.add_child(l)
 	if sub != "":
 		var s := K.head(sub, 15, K.C_GOLD)
 		s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_shadow(s)
+		_shadow(s, 2)
 		box.add_child(s)
 	hud.add_child(box)
 	var tw := box.create_tween()
@@ -221,7 +224,9 @@ func _pop(text: String, sub: String, col: Color) -> void:
 	tw.tween_property(box, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(box, "position:y", box.position.y - 50.0, 1.6).set_ease(Tween.EASE_OUT)
 	tw.tween_property(box, "modulate:a", 0.0, 0.5).set_delay(1.1)
-	tw.chain().tween_callback(box.queue_free)
+	tw.chain().tween_callback(func():
+		pop_n = maxi(0, pop_n - 1)
+		box.queue_free())
 
 
 func _ign(c: Control) -> Control:

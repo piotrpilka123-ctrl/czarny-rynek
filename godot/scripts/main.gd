@@ -3650,6 +3650,10 @@ func _shot() -> void:
 		last_us = now_us
 		if i == 30 and args.has("ui"):
 			_test_ui(String(args.ui))
+		if args.has("juice") and i == int(args.get("frames", "150")) - 2:
+			# podgląd „soku”: kwota po sprzedaży z serią i napis awansu
+			G.sale_made.emit(340.0, 4)
+			G.batch_done.emit("+24 g", "Wytwórnia • 88%")
 		if i == 40 and args.has("labpose") and lab_care.active:
 			lab_care.set_meta("preview_phase", float(args.labpose))
 		if i == 36 and args.has("demo_step") and ui.inv.demo_tween != null and ui.inv.demo_tween.is_valid():
