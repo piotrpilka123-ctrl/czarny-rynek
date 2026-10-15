@@ -6658,7 +6658,7 @@ func _goods_locations() -> void:
 	_wall(Signs.plate("AFTER 24H", Color(0.95, 0.4, 0.62), 1.4), 61.1, 2.5, 183.5, PI / 2.0)
 	var stol: Node3D = Stations.model("rep_stol")
 	if stol != null:
-		Props.set_range(_place(stol, 69.0, 182.0, PI, 2.0, 0.6, 1.0), 120.0)
+		Props.set_range(_place(stol, 66.0, 189.0, 0.0, 2.0, 0.6, 1.0), 120.0)
 
 
 ## Krawędzie nowej sieci są wyznaczone po zbudowaniu kolizji, a nie na ślepo przez płoty.
