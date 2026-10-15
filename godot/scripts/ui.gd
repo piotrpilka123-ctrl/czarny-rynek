@@ -1008,12 +1008,30 @@ func hurt() -> void:
 const HARD_PAUSE := ["pause", "options", "controls", "title", "end"]
 
 func set_mode(m: String) -> void:
+	var was := mode
 	mode = m
+	if was == "" and not G.test_mode:
+		var win: Control = {"dialog": dialog_box, "modal": modal_box, "skill": skill_box}.get(m)
+		if win != null:
+			_pop_in.call_deferred(win)
 	if G.running and not G.test_hide_hud and m != "title" and m != "end":
 		hud.visible = not (m in ["inv", "modal", "pause", "controls", "options"])
 	# rozmowa, telefon, plecak i handel dzieją się w biegnącym świecie — gra staje tylko w menu
 	get_tree().paused = m in HARD_PAUSE
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if (m != "" or G.test_mode) else Input.MOUSE_MODE_CAPTURED
+
+
+## okno wsuwa się krótko i delikatnie: lekkie powiększenie i pojawienie się (działa też w pauzie)
+func _pop_in(win: Control) -> void:
+	if win == null or not is_instance_valid(win) or not win.visible:
+		return
+	win.pivot_offset = win.size * 0.5
+	win.scale = Vector2(0.95, 0.95)
+	win.modulate.a = 0.0
+	var tw := win.create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.set_parallel(true)
+	tw.tween_property(win, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(win, "modulate:a", 1.0, 0.12)
 
 
 func is_open() -> bool:

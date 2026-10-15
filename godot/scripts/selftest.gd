@@ -860,6 +860,12 @@ func run() -> void:
 		G.player.shake = 0.0
 		S.wanted = wanted_keep
 		Sfx.siren(false)
+	U.dialog_box.visible = true
+	U._pop_in(U.dialog_box)
+	ok(U.dialog_box.modulate.a < 0.5, "okno zaczyna wsuwanie od przezroczystości")
+	await frames(40)
+	ok(U.dialog_box.scale == Vector2.ONE and U.dialog_box.modulate.a > 0.99, "okno kończy wsuwanie w pełni widoczne")
+	U.dialog_box.visible = false
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")
