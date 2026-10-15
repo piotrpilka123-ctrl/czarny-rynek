@@ -240,7 +240,11 @@ void vertex() {
 	vec3 o = MODEL_MATRIX[3].xyz;
 	tone = fract(sin(dot(o.xz, vec2(12.9898, 78.233))) * 43758.5453);
 	float sway = sin(TIME * 1.5 + o.x * 0.9 + o.z * 1.3) + sin(TIME * 2.7 + o.z * 0.6) * 0.5;
-	VERTEX.x += sway * 0.04 * hh * hh * tall;
+	float gust = sin(TIME * 0.6 + o.x * 0.11 + o.z * 0.07);
+	VERTEX.x += (sway * 0.07 + gust * 0.05) * hh * hh * tall;
+	VERTEX.z += cos(TIME * 1.1 + o.x * 0.7 + o.z * 0.5) * 0.04 * hh * hh * tall;
+	// kępy różnej wysokości, a nie jedna sztywna kopia
+	VERTEX.y *= 0.8 + tone * 0.45;
 	// kępy płynnie maleją z odległością, zamiast znikać skokowo
 	float dcam = distance(CAMERA_POSITION_WORLD, o);
 	VERTEX *= 1.0 - smoothstep(far0, far1, dcam);
@@ -250,7 +254,7 @@ void fragment() {
 	vec4 c = texture(tex, UV);
 	ALPHA = texture(tex, UV, -1.0).a;
 	ALPHA_SCISSOR_THRESHOLD = 0.4;
-	vec3 col = c.rgb * mix(0.55, 1.0, hh) * mix(vec3(0.82, 0.86, 0.7), vec3(1.05, 0.98, 0.78), tone);
+	vec3 col = c.rgb * mix(0.5, 1.0, hh) * mix(vec3(0.66, 0.84, 0.56), vec3(0.98, 0.94, 0.66), smoothstep(0.2, 0.9, tone));
 	ALBEDO = col * 0.8;
 	ROUGHNESS = 1.0;
 	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);

@@ -119,6 +119,8 @@ void fragment() {
 		float rnd3 = hash21(cell * 2.3 + b_seed * 5.7 + 3.0);
 		vec2 tuv = vec2(u, v) * tex_scale;
 		vec3 tex = texture(wall_tex, tuv).rgb;
+		// cegła bez tynku (alt_amount 0): przygaś pomarańczowe fugi, bliżej szarości reszty miasta
+		if (style == 1 && alt_amount < 0.01) tex = mix(vec3(dot(tex, vec3(0.3, 0.55, 0.15))), tex, 0.62) * 0.95;
 		vec3 nmap = texture(wall_nor, tuv).rgb;
 		vec3 base = tex * b_wall * 1.25;
 		vec3 col = base;
@@ -215,11 +217,16 @@ void fragment() {
 					col *= mix(0.78, 1.0, smoothstep(0.012, 0.032, seam));
 				}
 			}
-			vec3 bk = texture(alt_tex, vec2(u, v) * 0.33).rgb * vec3(0.95, 0.8, 0.72);
+			vec3 bk = texture(alt_tex, vec2(u, v) * 0.33).rgb * vec3(0.92, 0.82, 0.76);
+			// fugi mniej pomarańczowe i kontrastowe: cegła zszarzała, bliżej reszty miasta
+			bk = mix(vec3(dot(bk, vec3(0.3, 0.55, 0.15))), bk, 0.72);
+			// brud i wilgoć u dołu ściany (rozbryzgi, kurz z jezdni)
+			if (ground) bk *= mix(0.55, 1.0, smoothstep(0.0, 1.1, v + (texture(noise_tex, vec2(u, 0.0) * 0.35).r - 0.5) * 0.5));
 			// ściana ogniowa (ślepa): prawie sama cegła, tynk tylko w łatach
 			if (blind) { brick = max(brick, smoothstep(0.34, 0.4, dmg)); edge *= 0.5; }
 			col = mix(col, bk, brick);
 			col *= 1.0 - edge * 0.45;
+			if (ground) col *= mix(0.72, 1.0, smoothstep(0.0, 0.9, v + (texture(noise_tex, vec2(u, 0.0) * 0.35).r - 0.5) * 0.5));
 			if (brick > 0.5) nmap = vec3(0.5, 0.5, 1.0);
 		} else if (style == 3) {
 			// filary między oknami
