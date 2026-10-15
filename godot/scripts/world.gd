@@ -6884,8 +6884,10 @@ func gang_tick() -> void:
 func _tenement_roof(w: float,d: float,rise: float,style: int) -> Node3D:
 	var group := Node3D.new()
 	group.name = "TenementRoof"
-	var tint: Color = [Color(0.54,0.5,0.47),Color(0.56,0.36,0.27),Color(0.37,0.43,0.44)][style]
-	var material := Props.pbr("asbestos_sheet" if style == 0 else "rusty_corrugated_iron",0.42,tint)
+	var tint: Color = [Color(0.95,0.9,0.84),Color(1.2,1.1,1.0),Color(0.8,0.9,0.92)][style]
+	# każdy dach inny: cztery odcienie wypłowienia/rdzy (z wymiarów), zamiast jednego ciemnego koloru dla całego miasta
+	tint = tint * [0.86, 1.0, 1.14, 1.28][posmod(int(w * 13.0 + d * 7.0), 4)]
+	var material := Props.pbr("rusty_corrugated_iron" if style == 1 else "asbestos_sheet",0.42,tint)
 	if style != 2:
 		var mesh := PrismMesh.new()
 		mesh.size = Vector3(minf(w,d),rise,maxf(w,d))
