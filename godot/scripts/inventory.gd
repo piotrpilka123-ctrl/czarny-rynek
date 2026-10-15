@@ -149,7 +149,7 @@ func set_rig(outfit_id: String) -> void:
 	rig = Chars.make(look)
 	pivot.add_child(rig.root)
 	rig.anim.process_mode = Node.PROCESS_MODE_ALWAYS
-	Chars.animate(rig, 0.0, [0.0,2.4,5.5][preview_motion], "")
+	Chars.animate(rig, 0.0, [0.0,1.7,5.5][preview_motion], "")
 	# plecak na plecach (widoczny po zakupie)
 	bag_mesh = load("res://scripts/player_backpack.gd").new()
 	var skel: Skeleton3D = rig.skel
@@ -260,7 +260,7 @@ func _spin_input(ev: InputEvent) -> void:
 func preview_pose(mode:int) -> void:
 	if bag_mesh!=null: bag_mesh.cancel_reach()
 	preview_motion=clampi(mode,0,2)
-	Chars.animate(rig,0.0,[0.0,2.4,5.5][preview_motion])
+	Chars.animate(rig,0.0,[0.0,1.7,5.5][preview_motion])
 	if bag_mesh!=null: bag_mesh.motion=float(preview_motion)
 
 ## zdejmowanie plecaka w podglądzie: schodzi z pleców i staje na podłodze obok postaci (nic nie zmienia w ekwipunku)

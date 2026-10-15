@@ -21,6 +21,8 @@ var phone: Node3D = null    # telefon w prawej ręce, gdy otwarta jest aplikacja
 var phone_hold := 0.0
 var pack: Node3D = null     # paczka w wyciągniętych dłoniach przy wymianie z klientem
 var give := 0.0
+var _spd := 0.0
+var _ang := 0.0
 
 
 func setup(p) -> void:
@@ -50,7 +52,7 @@ func _build() -> void:
 	rig = Chars.make(look)
 	add_child(rig.root)
 	rig.root.rotation.y = PI
-	rig.root.position = Vector3(0.0, 0.0, 0.13)
+	rig.root.position = Vector3(0.0, -0.03, 0.26)
 	_sig = _signature()
 	Chars.dress(rig, G.S.get("gear", {}))
 	ik = load("res://scripts/fps_arms_ik.gd").new()
@@ -83,13 +85,32 @@ func _process(dt: float) -> void:
 	_hold_bag(dt)
 	_hold_phone(dt)
 	_hold_give(dt)
+	# prędkość i kierunek ruchu bierzemy z faktycznego ruchu gracza (wygładzone, żeby chwilowe zatrzymania o ścianę nie przeskakiwały w idle)
+	var vel := Vector2(player.velocity.x, player.velocity.z)
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--fpswalk="):   # tylko do zrzutów: sztuczna prędkość i kierunek (m/s, stopnie względem patrzenia)
+			var q := a.substr(10).split(",")
+			vel = Vector2(0.0, -1.0).rotated(deg_to_rad(float(q[1])) - player.rotation.y) * float(q[0])
+	_spd = lerpf(_spd, vel.length(), minf(1.0, dt * 10.0))
+	var ang := 0.0
+	var rev := false
+	if vel.length() > 0.3:
+		var lv: Vector3 = player.global_transform.basis.inverse() * Vector3(vel.x, 0.0, vel.y)
+		ang = atan2(lv.x, -lv.z)
+		if absf(ang) > 2.0:
+			rev = true
+			ang -= signf(ang) * PI
+	_ang = lerp_angle(_ang, ang, minf(1.0, dt * 8.0))
+	rig.root.rotation.y = PI - _ang * 0.55
 	if player.crouching:
-		Chars.play(rig, "Crouch_Fwd" if player.moving else "Crouch_Idle")
+		if _spd > 0.4:
+			Chars.play(rig, "Crouch_Fwd", clampf(_spd / float(Chars.ANIM_SPEED["Crouch_Fwd"]), 0.6, 2.0))
+		else:
+			Chars.play(rig, "Crouch_Idle")
 	else:
-		var sp := 0.0
-		if player.moving:
-			sp = 5.5 if player.sprinting else 2.6
-		Chars.animate(rig, dt, sp, "")
+		Chars.animate(rig, dt, _spd if _spd > 0.5 else 0.0, "")
+	if rev and _spd > 0.5:
+		rig.anim.speed_scale = -absf(rig.anim.speed_scale)
 
 
 ## Otwarty ekwipunek: plecak zsuwa się z ramienia do rąk, a suwak i klapa otwierają się przed oczami (bez opóźniania okna).

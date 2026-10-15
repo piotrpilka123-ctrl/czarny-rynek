@@ -1544,8 +1544,11 @@ static func animate(rig: Dictionary, _dt: float, speed: float, pose := "") -> vo
 	if fc != null and is_instance_valid(fc):
 		# w pozach rozmowy usta się ruszają, przy telefonie trochę rzadziej
 		fc.chatter = 0.75 if (speed <= 0.15 and pose in ["talk", "sit_talk"]) else (0.45 if (speed <= 0.15 and pose == "phone") else 0.0)
-	if speed > 4.2:
-		play(rig, "Jog_Fwd", clampf(speed / 5.36, 0.8, 1.35))
+	if speed > 5.8:
+		play(rig, "Sprint", clampf(speed / float(ANIM_SPEED["Sprint"]), 0.6, 1.3))
+	elif speed > 2.3:
+		# szybki krok: bieg w wolniejszym tempie zamiast marszu przyspieszonego ponad miarę (stopy się ślizgały)
+		play(rig, "Jog_Fwd", clampf(speed / float(ANIM_SPEED["Jog_Fwd"]), 0.45, 1.35))
 	elif speed > 0.15:
 		var w: String = rig.walk
 		play(rig, w, clampf(speed / float(ANIM_SPEED.get(w, 1.0)), 0.6, 1.9))
