@@ -514,6 +514,19 @@ func _build_static() -> void:
 	_static({"x": -87.94, "z": 64.14, "rot": 0.4, "pose": "sit", "name": "Pan Henryk",
 		"look": {"model": "mg1", "kind": "jacket", "top": "55504a", "bottom": "3b3630", "hair": "hair_buzzed", "hair_color": "d8d2c4", "hat": "cap", "hat_color": "3a3530", "build": 1.05, "height": 1.7, "seed": 34},
 		"lines": ["Jak huta stała, to tu było życie. A teraz? Sam pan widzi.", "Trzydzieści lat przy piecu. I co mi z tego zostało?", "Kiedyś to na tej górce saneczki, festyny… Dziś strach wieczorem wyjść."]})
+	# siedzący na ławkach w parku i na przystankach (pozycja siedziska: 15 cm od środka ławki, w stronę jej przodu)
+	# [x, z, obrót ławki, imię, model, kobieta, godziny, poza, kwestie]
+	for e in [
+		[-124.0, 101.0, 2.4, "Pani Danuta", "f08", true, [8.0, 18.0], "sit", ["Usiądź, usiądź. Ławka nie gryzie.", "Wnuki mi się wyprowadziły, to przychodzę popatrzeć na gołębie."]],
+		[-150.0, 62.5, 0.2, "Pan Zbyszek", "m03", false, [9.0, 20.0], "sit", ["Tu jest cisza. W domu telewizor, tu ptaki.", "Dawniej tu stał kiosk z lodami. Pamiętam."]],
+		[-128.0, 148.0, 3.0, "Kasia", "fb3", true, [14.0, 23.0], "sit", ["Czekam na kogoś. Spóźnia się, jak zawsze.", "Nie, nic nie chcę. Dzięki."]],
+		[-62.0, 102.0, 1.6, "Marek", "m14", false, [16.0, 24.0], "sit", ["Mam przerwę. Dziesięć minut i wracam na budowę.", "Kawa z termosu, nic więcej. Chcesz łyka?"]],
+		[-9.0, 167.7, PI, "Pani Wanda", "fb3", true, [6.0, 19.0], "sit", ["Dwunastka znowu spóźniona. Jak zawsze.", "Do córki jadę, na drugi koniec miasta."]],
+		[-72.0, 220.0, PI / 2.0, "Rysiek", "m16", false, [10.0, 23.0], "sit", ["Autobus? Jaki autobus. Ja tu tylko siedzę.", "Zimno dzisiaj, co?"]]]:
+		var br: float = float(e[2])
+		_static({"x": float(e[0]) + 0.15 * sin(br), "z": float(e[1]) + 0.15 * cos(br), "rot": br, "pose": String(e[7]), "name": String(e[3]), "hours": e[6],
+			"look": {"model": String(e[4]), "female": bool(e[5]), "seed": 600 + int(absf(float(e[0]))), "build": 1.0},
+			"lines": e[8]})
 	# pijaczek pod monopolowym
 	# (siedzi na skrzynce pod ścianą; wcześniej stał zgięty wpół jak zombie)
 	_static({"x": 34.9, "z": 11.3, "rot": 0.3, "pose": "sit", "y": 0.02, "name": "Zdzichu",
