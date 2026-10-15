@@ -867,6 +867,12 @@ func run() -> void:
 	ok(U.dialog_box.scale == Vector2.ONE and U.dialog_box.modulate.a > 0.99, "okno kończy wsuwanie w pełni widoczne")
 	U.dialog_box.visible = false
 	ok(S.flags.get("tip_cele", false) or int(S.stats.deals) < 2, "po drugiej transakcji gracz dostaje wyjaśnienie celów dnia i serii")
+	var drops_keep: Array = S.drops
+	S.drops = [{"state": "wait", "ready": S.t + 42.0}]
+	ok(G.drop_eta_text().contains("~42 min"), "cel zamówienia pokazuje odliczanie do paczki")
+	S.drops = []
+	ok(G.drop_eta_text() == "", "bez zamówionej paczki nie ma odliczania")
+	S.drops = drops_keep
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

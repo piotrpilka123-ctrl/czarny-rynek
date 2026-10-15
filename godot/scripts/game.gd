@@ -1940,6 +1940,7 @@ func on_tick() -> void:
 	for d in S.drops.duplicate():
 		if d.state == "wait" and S.t >= float(d.ready):
 			d.state = "ready"
+			Sfx.play("level")
 			chat("wiktor", "Paczka czeka: %s. Szukaj znaku sprejem: %s. Masz 16 godzin, potem znika." % [Market.spot_name(d), drop_mark(Market.spot(d))])
 			if S.track == null:
 				S.track = "drop"
@@ -3425,6 +3426,19 @@ func order_goods(p: String, g: int, _high := false, _on_credit := true) -> bool:
 	return not Market.order_cart([{"p": p, "g": g}]).is_empty()
 
 
+## odliczanie w celu: ile jeszcze do paczki w skrytce ("" gdy żadna nie czeka)
+func drop_eta_text() -> String:
+	var best := -1.0
+	for d in S.drops:
+		if d.state == "wait":
+			var left: float = float(d.ready) - S.t
+			if best < 0.0 or left < best:
+				best = left
+	if best < 0.0:
+		return ""
+	return " Paczka będzie gotowa za ~%d min." % maxi(1, int(ceil(best)))
+
+
 func ready_drop() -> Variant:
 	for d in S.drops:
 		if d.state == "ready":
@@ -4297,7 +4311,7 @@ func _build_story() -> void:
 			"done": func(): return _tutorial_dry(), "marker": _bench_marker, "on_done": _on_pack_done},
 		{"id": "sell1", "text": _first_delivery_text,
 			"done": func(): return int(S.stats.sold) >= 1 or (_tutorial_dry() and packed_total(S.inv) + packed_total(S.stash.safe) <= 0), "marker": _buyer_marker, "on_done": _on_first_sale},
-		{"id": "order1", "text": func(): return "Zamów u Wiktora 10 g marihuany i 10 g amfetaminy: telefon [%s] → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem." % kn("phone"),
+		{"id": "order1", "text": func(): return "Zamów u Wiktora 10 g marihuany i 10 g amfetaminy: telefon [%s] → Wiadomości → Wiktor → „Zamów towar”. Paczkę odbierz ze skrytki oznaczonej sprejem.%s" % [kn("phone"), drop_eta_text()],
 			"done": func(): return int(S.stats.pickups) >= 2, "marker": _drop_marker},
 		{"id": "repay1", "text": func(): return "Zanieś pierwsze pieniądze do skrzynki Wiktora — to stara skrzynka gazowa na tyłach pawilonu. Otwórz ją [E] i przeciągnij do niej gotówkę. (%s / %s)" % [money(minf(float(D.BOX_FIRST), float(S.stats.get("box_paid", 0.0)))), money(D.BOX_FIRST)],
 			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST), "marker": _box_marker, "on_done": _on_repay_done},
