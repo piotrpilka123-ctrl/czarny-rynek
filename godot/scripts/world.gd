@@ -202,8 +202,10 @@ void fragment() {
 	alb /= tot; nrm /= tot; rgh /= tot;
 	// wytarte linie na jezdni
 	float wear = smoothstep(0.3, 0.62, nz * 0.7 + mid * 0.5);
-	float mark = smoothstep(0.45, 0.7, texture(ctl2, muv).g) * smoothstep(0.25, 0.5, nz) * smoothstep(0.3, 0.55, nzb);
-	alb = mix(alb, vec3(0.6, 0.6, 0.56), mark * wear * 0.7);
+	float mark = smoothstep(0.5, 0.58, texture(ctl2, muv).g) * smoothstep(0.25, 0.5, nz) * smoothstep(0.3, 0.55, nzb);
+	// wytarta farba: drobne ubytki (szum o wysokiej częstotliwości) zamiast gładkiej, rozmytej plamy
+	float chip = smoothstep(0.32, 0.5, texture(noise_tex, wpos.xz * 2.3).r * 0.6 + texture(noise_tex, wpos.zx * 5.1).r * 0.4);
+	alb = mix(alb, vec3(0.52, 0.52, 0.48), mark * wear * chip * 0.62);
 	// kałuże i mokra nawierzchnia
 	float hard = clamp(w.r + w.g + w.b, 0.0, 1.0);
 	float puddle = smoothstep(0.56, 0.66, big * 0.6 + mid * 0.5) * hard * wet;
@@ -3947,19 +3949,19 @@ func _far_textures() -> void:
 	var ch := 40
 	var img := Image.create(FAR_COLS * cw, FAR_ROWS * ch, true, Image.FORMAT_RGB8)
 	var em := Image.create(FAR_COLS * cw, FAR_ROWS * ch, true, Image.FORMAT_RGB8)
-	img.fill(Color(0.74, 0.76, 0.8))
+	img.fill(Color(0.78, 0.76, 0.72))
 	em.fill(Color(0, 0, 0))
 	var fr := RandomNumberGenerator.new()
 	fr.seed = 4711
 	for r in range(FAR_ROWS):
 		# pas międzykondygnacyjny
-		img.fill_rect(Rect2i(0, r * ch + ch - 5, FAR_COLS * cw, 3), Color(0.58, 0.6, 0.64))
+		img.fill_rect(Rect2i(0, r * ch + ch - 5, FAR_COLS * cw, 3), Color(0.62, 0.6, 0.57))
 		for c in range(FAR_COLS):
 			var wx := c * cw + 7
 			var wy := r * ch + 9
 			var tone := fr.randf_range(0.8, 1.15)
 			img.fill_rect(Rect2i(wx, wy, 18, 22), Color(0.2, 0.24, 0.3) * tone)
-			img.fill_rect(Rect2i(wx + 8, wy, 2, 22), Color(0.7, 0.72, 0.75))
+			img.fill_rect(Rect2i(wx + 8, wy, 2, 22), Color(0.74, 0.73, 0.7))
 			if fr.randf() < 0.34:
 				var warm := Color(1.0, 0.78, 0.45).lerp(Color(0.8, 0.9, 1.0), 0.25 * fr.randf())
 				em.fill_rect(Rect2i(wx, wy, 18, 22), warm * fr.randf_range(0.6, 1.0))
@@ -3975,7 +3977,7 @@ func far_mat(shade := 1.0) -> StandardMaterial3D:
 		_far_textures()
 		var fm := StandardMaterial3D.new()
 		fm.albedo_texture = _far_tex
-		fm.albedo_color = Color(0.6, 0.62, 0.65) * shade
+		fm.albedo_color = Color(0.78, 0.7, 0.6).lerp(Color(0.7, 0.68, 0.64), fposmod(shade * 7.3, 1.0)) * shade
 		fm.emission_enabled = true
 		fm.emission_texture = _far_emit
 		fm.emission_energy_multiplier = 0.0
