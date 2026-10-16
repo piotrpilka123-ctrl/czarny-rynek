@@ -966,6 +966,18 @@ func run() -> void:
 		S.erase("errand_day")
 	else:
 		S["errand_day"] = errd_keep
+	var dem_keep: Dictionary = S.demand.duplicate()
+	var hurt_md = S.flags.get("hurt_on")
+	S.flags["hurt_on"] = true
+	for pk in S.demand:
+		S.demand[pk] = 1.0
+	ok(G.market_day_apply(6) == "" and not S.has("market_day"), "dzień targu: nie w zwykły dzień")
+	var md_p: String = G.market_day_apply(14)
+	ok(md_p != "" and absf(float(S.demand[md_p]) - 1.25) < 0.001 and S.market_day.p == md_p, "dzień targu: co siódmy dzień jeden towar drożeje o 25%")
+	S.demand = dem_keep
+	S.erase("market_day")
+	if hurt_md == null:
+		S.flags.erase("hurt_on")
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

@@ -2172,6 +2172,27 @@ func _has_order(cid: String) -> bool:
 	return false
 
 
+## dzień targu: co siódmy dzień (gdy już handlujesz u Wiktora) jeden towar idzie o 25% drożej
+const MARKET_DAY_BONUS := 1.25
+
+func market_day_apply(d: int) -> String:
+	S.erase("market_day")
+	if d % 7 != 0 or not flag("hurt_on"):
+		return ""
+	var pool: Array = []
+	for p in D.PRODUCTS:
+		if int(S.lvl) >= int(D.PRODUCTS[p].lvl):
+			pool.append(String(p))
+	if pool.is_empty():
+		return ""
+	var pick := String(pool.pick_random())
+	S.demand[pick] = snappedf(float(S.demand[pick]) * MARKET_DAY_BONUS, 0.01)
+	S["market_day"] = {"day": d, "p": pick}
+	chat("wiktor", "Dziś targ na osiedlu: ludzie chętnie płacą za %s — o 25%% więcej niż zwykle. Warto mieć towar przy sobie." % String(D.PRODUCTS[pick].name).to_lower(), false, true)
+	notify("Dzień targu: %s po wyższej cenie (+25%%)." % String(D.PRODUCTS[pick].name), "good")
+	return pick
+
+
 func on_day() -> void:
 	var d := day()
 	loot_spawn()
@@ -2179,6 +2200,7 @@ func on_day() -> void:
 	for p in S.demand:
 		S.demand[p] = snappedf(randf_range(0.94, 1.1), 0.01)
 	S.cost_mult = snappedf(randf_range(0.96, 1.06), 0.01)
+	market_day_apply(d)
 	if flag("hurt_on"):
 		var prices := []
 		for p in D.PRODUCTS:
