@@ -11,6 +11,7 @@ var birds: Array = []
 
 
 var _built := false
+var _off := OS.get_cmdline_user_args().has("--nobirds")   # przełącznik do pomiarów wydajności
 
 
 func setup(n) -> void:
@@ -49,10 +50,14 @@ func _build() -> void:
 			node.position = Vector3(pos.x, npc._h(pos.x, pos.z), pos.z)
 			node.rotation.y = b.yaw
 			node.visible = false
+			_no_shadow(node)
+			b["gy"] = npc._h(pos.x, pos.z)
 			birds.append(b)
 
 
 func update(dt: float, pp: Vector3, outside: bool) -> void:
+	if _off:
+		return
 	if not _built and not G.world.entrance_spots.is_empty():
 		_build()
 	var day: bool = G.night < 0.5
@@ -106,7 +111,8 @@ func update(dt: float, pp: Vector3, outside: bool) -> void:
 				var p := from.lerp(to, smoothstep(0.0, 1.0, k))
 				b.x = p.x
 				b.z = p.y
-				var ground: float = npc._h(p.x, p.y)
+				var ground: float = float(b.gy) if float(b.air) < 0.1 else npc._h(p.x, p.y) if int(float(b.air) * 20.0) % 4 == 0 else float(b.get("gy_air", b.gy))
+				b.gy_air = ground
 				node.position = Vector3(p.x, ground + sin(k * PI) * float(b.h) + (1.0 - k) * 0.0, p.y)
 				node.rotation = Vector3(-0.25 * sin(k * PI), float(b.yaw), 0.0)
 				var flap := sin(float(b.air) * 62.0)
@@ -121,7 +127,9 @@ func update(dt: float, pp: Vector3, outside: bool) -> void:
 						(b.wl as Node3D).rotation.z = 0.0
 						(b.wr as Node3D).rotation.z = 0.0
 		if b.state != "air":
-			node.position = Vector3(b.x, npc._h(b.x, b.z), b.z)
+			if b.state == "walk":
+				b.gy = npc._h(b.x, b.z)      # wysokość terenu liczymy tylko ptakom, które się ruszają
+			node.position = Vector3(b.x, float(b.gy), b.z)
 			node.rotation = Vector3(0.0, float(b.yaw), 0.0)
 
 
@@ -137,3 +145,10 @@ func _flee(b: Dictionary, pp: Vector3) -> void:
 	b.yaw = atan2(away.x, away.y)
 	b.state = "air"
 	b.home = b.to
+
+
+func _no_shadow(n: Node) -> void:
+	if n is GeometryInstance3D:
+		(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for c in n.get_children():
+		_no_shadow(c)
