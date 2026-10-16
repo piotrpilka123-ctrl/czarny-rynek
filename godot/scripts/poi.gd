@@ -744,6 +744,8 @@ static func _trawnik11(W) -> void:
 ## Budowa na południowym wschodzie: szkielet żelbetowy z rusztowaniem, betoniarka, kontener-biuro, zapory i reflektor roboczy.
 static func _budowa(W) -> void:
 	var c := Vector2(170.0, 173.0)
+	# lampa robocza pod stropem: bez niej nocą z szkieletu zostaje ciemna sylwetka
+	_light(W, c.x, c.y, 3.2, Color(1.0, 0.82, 0.55), 0.7, 13.0)
 	var sk: Node3D = Stations.model("budowa_szkielet")
 	if sk != null:
 		Props.set_range(W._place(sk, c.x, c.y, 0.0, 0.0, 0.0, 0.0), 170.0)
@@ -815,6 +817,8 @@ static func _siatkowka(W) -> void:
 ## Wulkanizacja pod chmurką między garażami a nasypem: betonowy plac, budka z wjazdem, podnośnik z uniesionym autem, opony, lampy.
 static func _wulkanizacja(W) -> void:
 	var c := Vector2(116.0, -46.0)
+	# żarówka nad stanowiskiem pod wiatą: nocą oświetla podnośnik i plac
+	_light(W, c.x, c.y - 6.0, 2.7, Color(1.0, 0.84, 0.58), 0.6, 11.0)
 	var bm: Node3D = Stations.model("wulkan_budka")
 	if bm != null:
 		Props.set_range(W._place(bm, c.x, c.y - 9.0, 0.0, 3.1, 2.1, 2.9), 140.0)
