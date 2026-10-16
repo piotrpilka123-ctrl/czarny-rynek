@@ -2440,6 +2440,7 @@ func _dress(name: String, x: float, y: float, zw: float, dz: float, off: float, 
 
 func _shop_dressing() -> void:
 	# lombard + kantor, piekarnia + apteka (świecące wysięgniki nad chodnikiem)
+	_dress("sklep_kursy", -75.0 + 3.5 * INV, 1.15, 10.0, 1.0, 0.02, 60.0)
 	_dress("sklep_kantor", -75.0 + 3.6 * INV, 2.55, 10.0, 1.0, 0.05, 90.0)
 	_dress("sklep_krzyz", 104.0 - 3.4 * INV, 2.6, 10.0, 1.0, 0.05, 90.0)
 	# second hand: markiza, wieszak z używanymi ubraniami i potykacz przed zamkniętą roletą

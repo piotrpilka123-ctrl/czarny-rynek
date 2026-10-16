@@ -501,13 +501,40 @@ static func _collect_meshes(n: Node, out: Array) -> void:
 
 
 static func _mesh_blind() -> ArrayMesh:
-	# roleta: płat płótna od górnej krawędzi w dół (wysokość = skala Y) z listwą dolną i sznurkiem; kolor z instancji
+	# roleta z lamelami: płat z teksturą (12 lameli na metr, cień pod każdą), listwa dolna i sznurek; kolor z instancji
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_box(st, Vector3(0, -0.5, 0.012), Vector3(1.9, 1.0, 0.014), Color(1, 1, 1))
-	_box(st, Vector3(0, -1.0, 0.02), Vector3(1.94, 0.025, 0.03), Color(0.62, 0.6, 0.56))
+	var w := 1.9
+	var quad := [[Vector3(-w * 0.5, 0.0, 0.012), Vector2(0, 0)], [Vector3(w * 0.5, 0.0, 0.012), Vector2(1, 0)], [Vector3(w * 0.5, -1.0, 0.012), Vector2(1, 12)], [Vector3(-w * 0.5, -1.0, 0.012), Vector2(0, 12)]]
+	for tri in [[0, 1, 2], [0, 2, 3]]:
+		for k in tri:
+			st.set_normal(Vector3(0, 0, 1))
+			st.set_color(Color(1, 1, 1))
+			st.set_uv(quad[k][1])
+			st.add_vertex(quad[k][0])
+	_box(st, Vector3(0, -1.0, 0.02), Vector3(1.94, 0.03, 0.03), Color(0.62, 0.6, 0.56))
+	_box(st, Vector3(0, 0.02, 0.025), Vector3(1.94, 0.05, 0.05), Color(0.6, 0.58, 0.54))
 	_box(st, Vector3(0.75, -0.5, 0.025), Vector3(0.008, 1.0, 0.008), Color(0.7, 0.7, 0.66))
 	return st.commit()
+
+
+static var _slat_tex: ImageTexture = null
+
+
+static func _slat_texture() -> ImageTexture:
+	if _slat_tex == null:
+		var img := Image.create(8, 16, true, Image.FORMAT_RGB8)
+		for y in range(16):
+			var v := 0.92
+			if y < 2:
+				v = 1.0
+			elif y > 12:
+				v = 0.55 - (y - 13) * 0.1
+			for x in range(8):
+				img.set_pixel(x, y, Color(v, v, v))
+		img.generate_mipmaps()
+		_slat_tex = ImageTexture.create_from_image(img)
+	return _slat_tex
 
 
 static func _mesh_stain() -> ArrayMesh:
@@ -636,6 +663,9 @@ static func flush(W: Node3D) -> void:
 			mat.metallic = 0.25 if name in ["antenna", "grate", "pipe"] else 0.0
 			if name == "laundry" or name == "blind":
 				mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+			if name == "blind":
+				mat.albedo_texture = _slat_texture()
+				mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 			if name == "stain":
 				mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 				mat.cull_mode = BaseMaterial3D.CULL_DISABLED
