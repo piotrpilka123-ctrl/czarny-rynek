@@ -1171,6 +1171,15 @@ func _dog_spawn() -> void:
 	add_child(lost_dog)
 	lost_dog.scale = Vector3(0.9, 0.9, 0.9)
 	lost_dog.position = Vector3(at.x, world.height(at.x, at.y), at.y)
+	lost_dog.set_meta("ap", lost_dog.find_child("AnimationPlayer", true, false))
+	lost_dog.set_meta("cur", "")
+	lost_dog.set_meta("follow", false)
+	var ap0: AnimationPlayer = lost_dog.get_meta("ap")
+	if ap0 != null:
+		for nm in ["Walk", "Idle", "Idle_2", "Eating", "Run"]:
+			if ap0.has_animation(nm):
+				ap0.get_animation(nm).loop_mode = Animation.LOOP_LINEAR
+		ap0.play("Idle")
 
 
 func _dog_remove() -> void:
@@ -1182,20 +1191,52 @@ func _dog_remove() -> void:
 func _dog_inter() -> Variant:
 	G.errand_expire()
 	if String(G.S.get("errand", "")) != "pies":
-		_dog_remove()
+		if String(G.S.get("errand", "")) != "pies_wraca":
+			_dog_remove()
 		return null
 	if player.loc != "out":
 		return null
 	if lost_dog == null or not is_instance_valid(lost_dog):
 		_dog_spawn()
-	if lost_dog == null:
+	if lost_dog == null or bool(lost_dog.get_meta("follow", false)):
 		return null
 	var p := lost_dog.position
 	return {"loc": "out", "x": p.x, "z": p.z, "y0": 0.0, "y1": 0.9, "r": 0.8, "reach": 2.5, "id": "pies", "label": func(): return "Burek — zawołaj psa",
 		"act": func():
 			if G.dog_found():
-				_dog_remove()
+				lost_dog.set_meta("follow", true)       # Burek idzie za graczem do Pani Krysi
 				G.notify("Znalazłeś Bureka! Zaprowadź go do Pani Krysi na przystanek.", "good")}
+
+
+## Burek żyje: siedzi i merda (animacja), obraca się w stronę gracza, a gdy ten podejdzie na 14 m, podbiega i siada przy nim;
+## po znalezieniu idzie za graczem (chód do prędkości) i znika dopiero u Pani Krysi.
+func _dog_tick(dt: float) -> void:
+	if lost_dog == null or not is_instance_valid(lost_dog) or player == null:
+		return
+	if String(G.S.get("errand", "")) not in ["pies", "pies_wraca"]:
+		_dog_remove()
+		return
+	var pp := player.global_position
+	var d := Vector2(pp.x - lost_dog.position.x, pp.z - lost_dog.position.z)
+	var follow: bool = bool(lost_dog.get_meta("follow", false))
+	var want := "Idle"
+	var speed := 0.0
+	var stop := 2.2 if follow else 3.0
+	if (follow and d.length() > stop) or (not follow and d.length() < 14.0 and d.length() > stop):
+		speed = clampf((d.length() - stop) * 1.6, 1.2, 6.0)
+		want = "Run" if speed > 3.2 else "Walk"
+		var step := d.normalized() * speed * dt
+		lost_dog.position.x += step.x
+		lost_dog.position.z += step.y
+		lost_dog.position.y = world.height(lost_dog.position.x, lost_dog.position.z)
+	if d.length() < 14.0 or follow:
+		lost_dog.rotation.y = lerp_angle(lost_dog.rotation.y, atan2(d.x, d.y), minf(1.0, dt * 6.0))
+	var ap: AnimationPlayer = lost_dog.get_meta("ap")
+	if ap != null:
+		if lost_dog.get_meta("cur") != want and ap.has_animation(want):
+			lost_dog.set_meta("cur", want)
+			ap.play(want, 0.25)
+		ap.speed_scale = clampf(speed / (1.5 if want == "Walk" else 4.5), 0.7, 1.6) if speed > 0.0 else 1.0
 
 
 ## sąsiedzi ze zleceniem: Pan Józek daje kopertę, Pani Krysia ją odbiera
@@ -1219,6 +1260,7 @@ func talk_neighbor(who: String) -> void:
 			ui.dialog({"name": "Pani Krysia", "lines": ["Od Józka? Dobry człowiek. Masz tu na bułki, kochany."]})
 			G.notify("Koperta doręczona: +%s." % G.money(G.ERRAND_PAY), "good")
 		elif G.dog_return():
+			_dog_remove()
 			ui.dialog({"name": "Pani Krysia", "lines": ["Burek! Wrócił! Dziecko by płakało. Masz, kochany, to dla ciebie."]})
 			G.notify("Pies wrócił do domu: +%s." % G.money(G.DOG_PAY), "good")
 		elif String(G.S.get("errand", "")) == "pies":
@@ -2151,6 +2193,7 @@ func _build_tick() -> void:
 func _process(dt: float) -> void:
 	if ui == null:
 		return
+	_dog_tick(dt)
 	if ui.mode == "title":
 		title_t += dt
 		# powolny przelot kamery nad miastem o zmierzchu

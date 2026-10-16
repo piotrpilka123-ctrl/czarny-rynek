@@ -987,6 +987,27 @@ func run() -> void:
 	ok(G.errand_take_dog() and String(S.errand) == "pies" and not G.dog_spot().is_empty(), "zgubiony pies: zlecenie startuje z miejscem poszukiwań")
 	ok(G.dog_found() and G.dog_return() and S.cash == dg_cash + G.DOG_PAY, "zgubiony pies: po znalezieniu wraca do właścicielki za nagrodę")
 	ok(not G.dog_found() and not G.errand_can_take(), "zgubiony pies: nagroda tylko raz, następne zlecenie jutro")
+	# Burek żyje: animacje zapętlone, podbiega do gracza, a po znalezieniu idzie za nim
+	var main_dg = G.main
+	if main_dg != null and main_dg.has_method("_dog_tick"):
+		S["errand"] = "pies"
+		main_dg._dog_spawn()
+		var bd = main_dg.lost_dog
+		ok(bd != null and bd.get_meta("ap") != null and String(bd.get_meta("cur")) == "", "Burek: ma animację i stoi w miejscu poszukiwań")
+		if bd != null:
+			var bpos0: Vector3 = bd.position
+			main_dg.player.place(Vector3(bpos0.x + 9.0, 0.0, bpos0.z), 0.0)
+			for dgi in range(90):
+				main_dg._dog_tick(0.05)
+			ok(bd.position.distance_to(bpos0) > 3.0 and String(bd.get_meta("cur")) in ["Idle", "Walk", "Run"], "Burek: podbiega do gracza, który podszedł na kilka metrów")
+			S["errand"] = "pies_wraca"
+			bd.set_meta("follow", true)
+			main_dg.player.place(Vector3(bpos0.x + 25.0, 0.0, bpos0.z), 0.0)
+			for dgi2 in range(200):
+				main_dg._dog_tick(0.05)
+			ok(Vector2(main_dg.player.global_position.x - bd.position.x, main_dg.player.global_position.z - bd.position.z).length() < 3.0, "Burek: po znalezieniu idzie za graczem")
+			main_dg._dog_remove()
+			S["errand"] = ""
 	S.stats.earned = dg_earned
 	S["errand"] = "" if dg_keep == null else dg_keep
 	if dgd_keep == null:
