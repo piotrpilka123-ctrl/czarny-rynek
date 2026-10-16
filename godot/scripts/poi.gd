@@ -36,6 +36,9 @@ static func paint(W) -> void:
 	W._pr(3, 184.0, 146.0, 190.0, 197.0)
 	W._pr(4, 156.0, 158.0, 184.0, 190.0)
 	W._pr(3, 184.0, 169.0, 190.0, 175.0)
+	W._pr(4, -182.0, 145.0, -166.0, 175.0)
+	W._pr(3, -158.0, 158.0, -128.0, 162.0)
+	W._pr(1, -160.0, 144.0, -154.0, 177.0)
 	W._pr(1, 169.8, -64.0, 179.0, -46.0)
 	W._pr(1, -4.5, -150.0, -1.5, -136.0)
 	W._pr(1, -14.0, -147.0, 8.0, -143.5)
@@ -61,6 +64,7 @@ static func build(W) -> void:
 	_trawnik11(W)
 	_budowa(W)
 	_przystanek_huta(W)
+	_siatkowka(W)
 	W.rng.state = st
 
 
@@ -767,3 +771,25 @@ static func _przystanek_huta(W) -> void:
 	_scatter(W, c, [["old_tyre", 12.0, -12.0, 0.4, 0.16], ["old_tyre", 12.8, -11.4, 0.9, 0.16, 0.16], ["trashbag", 6.0, 5.0, 0.7, 0.5], ["can_rusted", 3.0, 3.0, 0.2, 0.13], ["cardboard_box_01", 9.0, -14.0, 0.5, 0.34]])
 	_stash(W, "przystanek_rozklad", c.x + 1.8 * INV, c.y - 2.0 * INV, "Zajrzyj za ławkę na przystanku", 40, "Za ławką tkwiła kopertówka z drobnymi", 0.3)
 	_dump(W, "poi_przystanek_wrak", 182.5, -69.0 + 3.0 * INV, "Przeszukaj wrak przy drodze")
+
+
+## Boisko do siatkówki plażowej w południowo-zachodnim rogu parku: piasek w drewnianej obwódce, siatka, ławki, kosz, latarnia i ścieżka z parku.
+static func _siatkowka(W) -> void:
+	var c := Vector2(-174.0, 160.0)
+	var bm: Node3D = Stations.model("siatkowka_boisko")
+	if bm != null:
+		Props.set_range(W._place(bm, c.x, c.y, 0.0), 140.0)
+	for sx in [-4.4, 4.4]:
+		W.add_col(c.x + (sx - 0.2) * INV, c.x + (sx + 0.2) * INV, c.y - 0.2 * INV, c.y + 0.2 * INV, 2.6)
+		W.rects.pop_back()
+	# drewniana obwódka zatrzymuje na kolanie: kolizja po obu dłuższych bokach
+	for sx in [-4.07, 4.07]:
+		W.add_col(c.x + (sx - 0.1) * INV, c.x + (sx + 0.1) * INV, c.y - 8.0 * INV, c.y + 8.0 * INV, 0.2)
+		W.rects.pop_back()
+	W._bench(c.x + 8.5, c.y - 6.0, -PI / 2.0)
+	W._bench(c.x + 8.5, c.y + 6.0, -PI / 2.0)
+	W._bin(c.x + 8.5, c.y, 0.0)
+	_pole(W, c.x + 8.0, c.y - 9.0)
+	_pole(W, c.x + 8.0, c.y + 9.0)
+	_scatter(W, c, [["dirty_football", 1.0, 3.0, 0.0, 0.22, 0.14], ["can_rusted", 9.0, 3.0, 0.2, 0.13], ["trashbag", 9.0, 8.5, 0.6, 0.5], ["plastic_bottle_gallon", 9.4, -2.5, 0.3, 0.3]])
+	_stash(W, "siatkowka_lawka", c.x + 8.5 + 1.2 * INV, c.y - 6.0 + 1.0 * INV, "Zajrzyj pod ławkę przy boisku", 45, "Pod ławką ktoś zostawił skarbonkę z drobnymi", 0.2)
