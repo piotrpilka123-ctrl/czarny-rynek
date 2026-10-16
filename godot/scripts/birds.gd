@@ -8,6 +8,10 @@ const SPOOK_RUN := 7.5       # bieg płoszy z dalszej odległości
 
 var npc
 var birds: Array = []
+var crows: Array = []
+var cats: Array = []
+var _cat_spawn := 20.0 if not OS.get_cmdline_user_args().has("--catnow") else 0.3   # --catnow: tylko do zrzutów
+var _cat_near := OS.get_cmdline_user_args().has("--catnow")
 
 
 var _built := false
@@ -21,6 +25,7 @@ func setup(n) -> void:
 ## wejścia do klatek powstają razem ze światem, więc ptaki stawiamy przy pierwszej klatce gry
 func _build() -> void:
 	_built = true
+	_build_crows()
 	var spots: Array = G.world.entrance_spots
 	if spots.is_empty():
 		return
@@ -58,6 +63,8 @@ func _build() -> void:
 func update(dt: float, pp: Vector3, outside: bool) -> void:
 	if _off:
 		return
+	_update_crows(dt, pp, outside)
+	_update_cats(dt, pp, outside)
 	if not _built and not G.world.entrance_spots.is_empty():
 		_build()
 	var day: bool = G.night < 0.5
@@ -152,3 +159,224 @@ func _no_shadow(n: Node) -> void:
 		(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for c in n.get_children():
 		_no_shadow(c)
+
+
+# ---------------------------------------------------------------- wrony na latarniach
+func _build_crows() -> void:
+	var ps: PackedScene = load("res://assets/models/golab.glb")
+	if ps == null or G.world.lamp_list.is_empty():
+		return
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.17, 0.18, 0.2)
+	dark.roughness = 0.7
+	var lamps: Array = G.world.lamp_list
+	var step := maxi(1, int(lamps.size() / 7))
+	var i := 0
+	while i < lamps.size() and crows.size() < 7:
+		var node: Node3D = ps.instantiate()
+		add_child(node)
+		node.scale = Vector3.ONE * 1.45
+		for m in node.find_children("*", "MeshInstance3D", true, false):
+			(m as MeshInstance3D).material_override = dark
+		_no_shadow(node)
+		node.visible = false
+		crows.append({"node": node, "lamp": i, "state": "perch", "t": randf_range(8.0, 50.0), "air": 0.0, "dur": 2.0, "from": Vector3.ZERO, "to": Vector3.ZERO,
+			"head": node.find_child("Glowa", true, false), "wl": node.find_child("SkrzydloL", true, false), "wr": node.find_child("SkrzydloP", true, false),
+			"yaw": 0.0, "look_t": randf_range(2.0, 6.0), "pos": Vector3.ZERO})
+		_perch(crows[crows.size() - 1], i)
+		i += step
+
+
+func _lamp_seat(idx: int) -> Vector3:
+	var l: Dictionary = G.world.lamp_list[idx]
+	var x: float = float(l.x) * D.SC
+	var z: float = float(l.z) * D.SC
+	var ry: float = float(l.ry)
+	return Vector3(x + sin(ry) * 0.9, npc._h(x, z) + 7.35, z + cos(ry) * 0.9)
+
+
+func _perch(c: Dictionary, idx: int) -> void:
+	c.lamp = idx
+	c.pos = _lamp_seat(idx)
+	c.state = "perch"
+	c.t = randf_range(25.0, 70.0)
+	c.yaw = float(G.world.lamp_list[idx].ry) + PI * 0.5 * (1.0 if randf() < 0.5 else -1.0)
+
+
+func _update_crows(dt: float, pp: Vector3, outside: bool) -> void:
+	var day: bool = G.night < 0.55
+	for c in crows:
+		var node: Node3D = c.node
+		var cp: Vector3 = c.pos
+		var dist := Vector2(pp.x - cp.x, pp.z - cp.z).length()
+		if not outside or not day or dist > 90.0:
+			node.visible = false
+			continue
+		node.visible = true
+		if c.state == "perch":
+			c.t = float(c.t) - dt
+			c.look_t = float(c.look_t) - dt
+			if float(c.look_t) <= 0.0:
+				c.look_t = randf_range(2.0, 7.0)
+				c.yaw = float(c.yaw) + randf_range(-0.9, 0.9)
+			node.position = cp
+			node.rotation = Vector3(0.0, lerp_angle(node.rotation.y, float(c.yaw), minf(1.0, dt * 6.0)), 0.0)
+			if c.head != null:
+				(c.head as Node3D).rotation.x = sin(G.now * 1.7 + cp.x) * 0.12
+			if float(c.t) <= 0.0 or dist < 9.0 and G.player != null and G.player.moving:
+				var pick: int = randi() % G.world.lamp_list.size()
+				var to := _lamp_seat(pick)
+				if Vector2(to.x - cp.x, to.z - cp.z).length() < 6.0:
+					c.t = 6.0
+					continue
+				c.from = cp
+				c.to = to
+				c.dur = clampf(Vector2(to.x - cp.x, to.z - cp.z).length() / 7.0, 1.5, 6.0)
+				c.air = 0.0
+				c.state = "air"
+				c.lamp = pick
+		else:
+			c.air = float(c.air) + dt
+			var k := clampf(float(c.air) / float(c.dur), 0.0, 1.0)
+			var from: Vector3 = c.from
+			var to: Vector3 = c.to
+			var p := from.lerp(to, smoothstep(0.0, 1.0, k))
+			p.y += sin(k * PI) * 2.2
+			node.position = p
+			var dv := Vector2(to.x - from.x, to.z - from.z)
+			node.rotation = Vector3(-0.2 * sin(k * PI), atan2(dv.x, dv.y), 0.0)
+			var flap := sin(float(c.air) * 38.0)
+			if c.wl != null:
+				(c.wl as Node3D).rotation.z = 0.3 + flap * 0.9
+				(c.wr as Node3D).rotation.z = -0.3 - flap * 0.9
+			if k >= 1.0:
+				if c.wl != null:
+					(c.wl as Node3D).rotation.z = 0.0
+					(c.wr as Node3D).rotation.z = 0.0
+				_perch(c, int(c.lamp))
+
+
+# ---------------------------------------------------------------- koty
+func _update_cats(dt: float, pp: Vector3, outside: bool) -> void:
+	var night: bool = G.night > 0.4 or _cat_near
+	if cats.is_empty():
+		var ps: PackedScene = load("res://assets/models/kot.glb")
+		if ps == null:
+			return
+		for col in [Color(0.34, 0.32, 0.3), Color(0.58, 0.36, 0.17)]:
+			var node: Node3D = ps.instantiate()
+			add_child(node)
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = col
+			mat.roughness = 0.9
+			for m in node.find_children("*", "MeshInstance3D", true, false):
+				var nm := String((m as MeshInstance3D).name)
+				if not nm.begins_with("Glowa") or true:
+					(m as MeshInstance3D).material_override = mat
+			_no_shadow(node)
+			node.visible = false
+			cats.append({"node": node, "active": false, "x": 0.0, "z": 0.0, "wi": 0, "pi": -1, "tx": 0.0, "tz": 0.0, "state": "walk", "t": 0.0, "ph": 0.0, "yaw": 0.0,
+				"legs": [node.find_child("LapaFL", true, false), node.find_child("LapaFR", true, false), node.find_child("LapaBL", true, false), node.find_child("LapaBR", true, false)],
+				"tail": node.find_child("Ogon", true, false), "flee": 0.0})
+	_cat_spawn -= dt
+	for c in cats:
+		var node: Node3D = c.node
+		if not outside or not night:
+			node.visible = false
+			c.active = false
+			continue
+		if not c.active:
+			if _cat_spawn > 0.0:
+				continue
+			_cat_spawn = randf_range(15.0, 40.0)
+			var wps: Array = G.world.wp
+			for tries in range(200):
+				var wi: int = randi() % wps.size()
+				var d: float = Vector2(wps[wi].x - pp.x, wps[wi].z - pp.z).length()
+				if d > (7.0 if _cat_near else 18.0) and d < (22.0 if _cat_near else 55.0) and not wps[wi].links.is_empty():
+					c.active = true
+					c.wi = wi
+					c.pi = -1
+					c.x = wps[wi].x
+					c.z = wps[wi].z
+					c.tx = c.x
+					c.tz = c.z
+					c.state = "walk"
+					if _cat_near:
+						var fw: Vector2 = G.player.forward()      # zrzuty: kot 5 m przed graczem
+						c.x = pp.x + fw.x * 5.0
+						c.z = pp.z + fw.y * 5.0
+						c.tx = c.x + fw.y * 6.0
+						c.tz = c.z - fw.x * 6.0
+					break
+			if not c.active:
+				continue
+		var dist := Vector2(pp.x - c.x, pp.z - c.z).length()
+		if dist > 85.0:
+			c.active = false
+			node.visible = false
+			continue
+		node.visible = true
+		var wps2: Array = G.world.wp
+		if c.state != "flee" and dist < 4.5:
+			c.state = "flee"
+			c.flee = 3.0
+			c.t = 0.0
+			_cat_next(c, wps2, pp, true)
+		var sp := 0.0
+		if c.state == "sit":
+			c.t = float(c.t) - dt
+			if float(c.t) <= 0.0:
+				c.state = "walk"
+				_cat_next(c, wps2, pp, false)
+		else:
+			sp = 4.8 if c.state == "flee" else 1.3
+			var to := Vector2(c.tx - c.x, c.tz - c.z)
+			var dl := to.length()
+			if dl < 0.3:
+				if c.state == "flee":
+					c.flee = float(c.flee) - 0.5
+					if float(c.flee) <= 0.0:
+						c.state = "walk"
+				elif randf() < 0.3:
+					c.state = "sit"
+					c.t = randf_range(3.0, 7.0)
+					sp = 0.0
+				if c.state != "sit":
+					_cat_next(c, wps2, pp, c.state == "flee")
+			else:
+				var stp: Vector2 = to.normalized() * minf(dl, sp * dt)
+				c.x += stp.x
+				c.z += stp.y
+				c.yaw = lerp_angle(float(c.yaw), atan2(to.x, to.y), minf(1.0, dt * 9.0))
+		c.ph = float(c.ph) + dt * (sp * 6.0)
+		var amp := 0.55 if sp < 2.0 else 0.95
+		var legs: Array = c.legs
+		for li in range(legs.size()):
+			if legs[li] != null:
+				(legs[li] as Node3D).rotation.x = (sin(float(c.ph) + (PI if li == 1 or li == 2 else 0.0)) * amp) if sp > 0.0 else 0.0
+		if c.tail != null:
+			(c.tail as Node3D).rotation.z = sin(G.now * (3.0 if c.state == "sit" else 1.4)) * (0.5 if c.state == "sit" else 0.2)
+		node.position = Vector3(c.x, npc._h(c.x, c.z), c.z)
+		node.rotation = Vector3(-0.25 if c.state == "sit" else 0.0, float(c.yaw), 0.0)
+
+
+func _cat_next(c: Dictionary, wps: Array, pp: Vector3, away: bool) -> void:
+	var cur: Dictionary = wps[int(c.wi)]
+	var best := -1
+	var best_score := -1e9
+	for l in cur.links:
+		var sc := randf()
+		if int(l) == int(c.pi) and cur.links.size() > 1:
+			sc -= 0.8
+		if away:
+			sc += Vector2(wps[l].x - pp.x, wps[l].z - pp.z).length() * 0.2
+		if sc > best_score:
+			best_score = sc
+			best = int(l)
+	if best < 0:
+		return
+	c.pi = c.wi
+	c.wi = best
+	c.tx = wps[best].x
+	c.tz = wps[best].z
