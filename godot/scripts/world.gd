@@ -3002,6 +3002,7 @@ func _fake_entrance(x: float, zw: float, facing: float) -> void:
 # ---------------------------------------------------------------- dolne miasto
 func _lower_town() -> void:
 	_place(Props.bus_stop(), 66.2, 9.4, 0.0, 2.0, 0.3, 2.4)
+	_night_light(66.2, 9.4 + 0.8 * INV, 2.6, Color(0.85, 0.93, 1.0), 0.32, 8.0)
 	rects.pop_back()
 	_sign("HUTNICZA ST. 02", Vector3(62.0, 2.2, 8.75), Color(0.9, 0.9, 0.9), 34, 0.0, 0.006, 6)
 	var km := Stations.model("kiosk")
@@ -3989,6 +3990,24 @@ func tick_train(dt: float, night_f: float) -> void:
 		train.snd.stop()
 
 
+## punktowe światło nocą bez cieni (wspólny sterownik w env.gd: gain skaluje moc) — np. podświetlona wiata przystankowa
+func _night_light(x: float, z: float, y: float, color: Color, gain: float, rng_m: float) -> void:
+	var li := OmniLight3D.new()
+	li.position = Vector3(x * SC, hd(x, z) + y, z * SC)
+	li.light_color = color
+	li.light_energy = 0.0
+	li.omni_range = rng_m
+	li.omni_attenuation = 1.6
+	li.shadow_enabled = false
+	li.visible = false
+	li.distance_fade_enabled = true
+	li.distance_fade_begin = 40.0
+	li.distance_fade_length = 14.0
+	li.set_meta("gain", gain)
+	add_child(li)
+	lamps.append(li)
+
+
 func _lamps() -> void:
 	var x := -190.0
 	var k := 0
@@ -4321,6 +4340,7 @@ func _bus_loop() -> void:
 		sb.add_child(cs)
 		bus.add_child(sb)
 	_place(Props.bus_stop(), 8.0, 167.2, PI, 2.0, 0.3, 2.4)
+	_night_light(8.0, 167.2 - 0.8 * INV, 2.6, Color(0.85, 0.93, 1.0), 0.32, 8.0)
 	_sign("12  HUTNIK LOOP", Vector3(8.0, 2.62, 165.8), Color(0.95, 0.85, 0.35), 34, PI, 0.005, 8)
 	_bin(13.4, 167.6)
 	_bench(-9.0, 167.7, PI)
