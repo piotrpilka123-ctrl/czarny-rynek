@@ -2648,7 +2648,7 @@ func _garages() -> void:
 			var xa: float = pt[0]
 			var xb: float = pt[1]
 			var by0 := _base(xa, z0, xb, z0 + 6.0)
-			Models.box(city, Vector3(xb - xa, 2.9, 6.0), Vector3((xa + xb) * 0.5, by0 + 1.2, z0 + 3.0), Props.pbr(_garage_sheet(xa, z0), 1.0))
+			Models.box(city, Vector3(xb - xa, 2.9, 6.0), Vector3((xa + xb) * 0.5, by0 + 1.2, z0 + 3.0), Props.pbr(_garage_sheet(xa, z0), 1.0, Color(0.74, 0.72, 0.66)))
 			Models.box(city, Vector3(xb - xa + 0.6, 0.12, 6.6), Vector3((xa + xb) * 0.5, by0 + 2.72, z0 + 3.0), Props.pbr("asbestos_sheet", 0.5), Vector3(0.03 if row == 0 else -0.03, 0, 0))
 			add_col(xa, xb, z0, z0 + 6.0, 3.0)
 			blds.append({"x0": xa, "x1": xb, "z0": z0, "z1": z0 + 6.0, "low": true})
@@ -3356,7 +3356,7 @@ func _garage_sheet(x: float, z: float) -> String:
 
 func _garage_row_ns(x0: float, z0: float, z1: float, west: bool, first_no: int) -> void:
 	var by := _base(x0, z0, x0 + 6.0, z1)
-	Models.box(city, Vector3(6.0, 2.9, z1 - z0), Vector3(x0 + 3.0, by + 1.2, (z0 + z1) * 0.5), Props.pbr(_garage_sheet(x0, z0), 1.0))
+	Models.box(city, Vector3(6.0, 2.9, z1 - z0), Vector3(x0 + 3.0, by + 1.2, (z0 + z1) * 0.5), Props.pbr(_garage_sheet(x0, z0), 1.0, Color(0.74, 0.72, 0.66)))
 	Models.box(city, Vector3(6.6, 0.12, z1 - z0 + 0.6), Vector3(x0 + 3.0, by + 2.72, (z0 + z1) * 0.5), Props.pbr("asbestos_sheet", 0.5), Vector3(0, 0, 0.03 if west else -0.03))
 	add_col(x0, x0 + 6.0, z0, z1, 3.0)
 	blds.append({"x0": x0, "x1": x0 + 6.0, "z0": z0, "z1": z1, "low": true})
@@ -3372,7 +3372,7 @@ func _garage_row_ns(x0: float, z0: float, z1: float, west: bool, first_no: int) 
 
 func _garage_row_ew(x0: float, x1: float, z0: float, north: bool, first_no: int) -> void:
 	var by := _base(x0, z0, x1, z0 + 6.0)
-	Models.box(city, Vector3(x1 - x0, 2.9, 6.0), Vector3((x0 + x1) * 0.5, by + 1.2, z0 + 3.0), Props.pbr(_garage_sheet(x0, z0), 1.0))
+	Models.box(city, Vector3(x1 - x0, 2.9, 6.0), Vector3((x0 + x1) * 0.5, by + 1.2, z0 + 3.0), Props.pbr(_garage_sheet(x0, z0), 1.0, Color(0.74, 0.72, 0.66)))
 	Models.box(city, Vector3(x1 - x0 + 0.6, 0.12, 6.6), Vector3((x0 + x1) * 0.5, by + 2.72, z0 + 3.0), Props.pbr("asbestos_sheet", 0.5), Vector3(-0.03 if north else 0.03, 0, 0))
 	add_col(x0, x1, z0, z0 + 6.0, 3.0)
 	blds.append({"x0": x0, "x1": x1, "z0": z0, "z1": z0 + 6.0, "low": true})
