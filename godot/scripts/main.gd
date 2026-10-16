@@ -3954,13 +3954,15 @@ func _pick_center() -> void:
 		var hit = box.intersects_ray(o, d)
 		if hit != null:
 			var t: float = o.distance_to(hit)
-			if t > 0.3 and t < best_t:
-				best_t = t
+			# najmniejszy z trafionych w zasięgu 25 m — duże płaszczyzny (teren, bryły budynków) nie zasłaniają drobnych obiektów
+			var vol: float = box.size.x * box.size.y * box.size.z
+			if t > 0.3 and t < 25.0 and vol < best_t:
+				best_t = vol
 				best = mi
 	if best == null:
 		print("PICK nic")
 		return
-	print("PICK %.1f m  %s  mesh=%s" % [best_t, best.get_path(), best.mesh.resource_path])
+	print("PICK vol %.0f m3  %s  mesh=%s" % [best_t, best.get_path(), best.mesh.resource_path])
 	var mats: Array = []
 	if best.material_override != null:
 		mats.append(best.material_override)
