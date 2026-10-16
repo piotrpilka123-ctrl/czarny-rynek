@@ -843,6 +843,15 @@ static func run(T) -> void:
 	T.ok((parked.get_meta("lamps", []) as Array).size() >= 4 and lit == 0, "zaparkowane auto ma zgaszone reflektory i lampy tylne (%d kloszy)" % (parked.get_meta("lamps", []) as Array).size())
 	CarsT.lamps_on(parked, true)
 	T.ok(((parked.get_meta("lamps")[0] as MeshInstance3D).material_override) == null, "jadący radiowóz zapala klosze świateł")
+	CarsT.brake_lamps(parked, true)
+	var rear_red := 0
+	for lm1 in parked.get_meta("lamps", []):
+		var m1 := (lm1 as MeshInstance3D).material_override as StandardMaterial3D
+		if String((lm1 as MeshInstance3D).name).begins_with("LampaTyl") and m1 != null and m1.emission_energy_multiplier > 3.0:
+			rear_red += 1
+	T.ok(rear_red >= 1, "hamujące auto zapala mocne czerwone światła stopu (%d lamp)" % rear_red)
+	CarsT.brake_lamps(parked, false)
+	T.ok(((parked.get_meta("lamps")[2] as MeshInstance3D).material_override) == null or rear_red >= 1, "po zwolnieniu hamulca światła stopu wracają do zwykłych")
 	parked.free()
 	T.ok(G.world.road_signs >= 25, "przy przejściach i na skrzyżowaniach stoją znaki drogowe (%d)" % G.world.road_signs)
 	T.ok(G.world.drains >= 40, "w jezdniach są kratki ściekowe przy krawężnikach (%d)" % G.world.drains)

@@ -717,8 +717,31 @@ func _car_move(dt: float) -> void:
 	var yr := _h(car.x - fz * 0.75, car.z + fx * 0.75)
 	node.position = Vector3(car.x, (yf + yb) * 0.5, car.z)
 	node.rotation = Vector3(-atan2(yf - yb, 2.6), float(car.rot), atan2(yr - yl, 1.5) * 0.6)
+	# skręt przednich kół (z szybkości zmiany kursu), toczenie wszystkich, światła stopu i zanurzenie przodu przy hamowaniu
+	var rot_now := float(car.rot)
+	var yaw_rate := _ang_diff(rot_now, float(car.get("rot_prev", rot_now))) / maxf(dt, 0.001)
+	car["rot_prev"] = rot_now
+	var steer_t := clampf(yaw_rate * 0.9 / maxf(absf(sp), 1.5), -0.55, 0.55) * (1.0 if sp >= 0.0 else -1.0)
+	car["steer"] = lerpf(float(car.get("steer", 0.0)), steer_t, minf(1.0, dt * 8.0))
+	var acc := (sp - float(car.get("sp_prev", sp))) / maxf(dt, 0.001)
+	car["sp_prev"] = sp
+	car["acc"] = lerpf(float(car.get("acc", 0.0)), acc, minf(1.0, dt * 6.0))
 	for w in car.wheels:
-		(w as Node3D).rotate_object_local(Vector3.UP, sp * dt / 0.31)
+		var wn := w as Node3D
+		if not wn.has_meta("b0"):
+			wn.set_meta("b0", wn.basis)
+			wn.set_meta("spin", 0.0)
+		var spin := float(wn.get_meta("spin")) + sp * dt / 0.31
+		wn.set_meta("spin", spin)
+		var front := wn.position.z > 0.0
+		var b0: Basis = wn.get_meta("b0")
+		var steer_b := Basis(Vector3.UP, float(car.steer)) if front else Basis.IDENTITY
+		wn.basis = steer_b * b0 * Basis(Vector3.UP, spin)
+	var braking: bool = float(car.acc) < -0.8 or (sp < 0.3 and float(car.get("wait", 0.0)) > 0.0)
+	if braking != bool(car.get("braking", false)):
+		car["braking"] = braking
+		Models.Cars.brake_lamps(node, braking)
+	node.rotation.x += clampf(-float(car.acc) * 0.006, -0.05, 0.05) * clampf(absf(sp) / 3.0, 0.0, 1.0)
 
 
 # ---------------------------------------------------------------- pies

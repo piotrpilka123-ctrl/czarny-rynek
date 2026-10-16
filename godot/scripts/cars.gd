@@ -422,6 +422,31 @@ static func lamps_on(car_node: Node, on: bool) -> void:
 		mi.material_override = _lamp_off[id]
 
 
+## światła stopu: tylne lampy świecą mocniej i bardziej na czerwono, gdy auto hamuje
+static var _brake_mat := {}
+
+static func brake_lamps(car_node: Node, on: bool) -> void:
+	for l in car_node.get_meta("lamps", []):
+		var mi := l as MeshInstance3D
+		if mi == null or mi.mesh == null or not String(mi.name).begins_with("LampaTyl"):
+			continue
+		if not on:
+			mi.material_override = null
+			continue
+		var src := mi.mesh.surface_get_material(0) as StandardMaterial3D
+		if src == null:
+			continue
+		var id := src.get_instance_id()
+		if not _brake_mat.has(id):
+			var m := src.duplicate() as StandardMaterial3D
+			m.emission_enabled = true
+			m.emission = Color(1.0, 0.1, 0.06)
+			m.emission_energy_multiplier = 3.5
+			m.albedo_color = Color(0.9, 0.12, 0.08)
+			_brake_mat[id] = m
+		mi.material_override = _brake_mat[id]
+
+
 ## dawna bryła z przekrojów — zostaje jako zapas, gdyby zabrakło modeli
 static func _car_old(type := "", color = null, police := false) -> Node3D:
 	if type == "" or not TYPES.has(type):
