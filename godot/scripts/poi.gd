@@ -162,17 +162,56 @@ static func _dump(W, id: String, x: float, z: float, label: String, source := "d
 		"act": func(): G.main.search_bin(id, source)})
 
 
+## blacha wraka: resztki lakieru w kolorze auta i plamy rdzy (szum w układzie modelu), gęstsze przy progach i nadkolach
+const SH_RUST := """
+shader_type spatial;
+render_mode specular_disabled;
+uniform vec3 paint : source_color = vec3(0.4, 0.2, 0.15);
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform sampler2D rust_tex : source_color, repeat_enable, filter_linear_mipmap;
+varying vec3 opos;
+void vertex() { opos = VERTEX; }
+void fragment() {
+	float n = texture(noise_tex, opos.xz * 0.55 + vec2(opos.y * 0.31, 0.0)).r;
+	float n2 = texture(noise_tex, opos.zy * 1.7 + vec2(0.37, opos.x * 0.8)).r;
+	float low = 1.0 - smoothstep(0.1, 0.65, opos.y);
+	float rustk = smoothstep(0.5, 0.64, n * 0.55 + n2 * 0.25 + low * 0.38);
+	vec3 r = texture(rust_tex, opos.xz * 1.3 + opos.yy * 0.7).rgb * vec3(1.15, 0.9, 0.75);
+	vec3 p = paint * (0.75 + 0.35 * n2);
+	ALBEDO = mix(p, r, rustk);
+	ROUGHNESS = mix(0.82, 1.0, rustk);
+	METALLIC = 0.0;
+}
+"""
+static var _rust_shader: Shader = null
+static var _rust_noise: NoiseTexture2D = null
+
+static func _rust_material(c: Color) -> ShaderMaterial:
+	if _rust_shader == null:
+		_rust_shader = Shader.new()
+		_rust_shader.code = SH_RUST
+		var fn := FastNoiseLite.new()
+		fn.frequency = 0.02
+		fn.fractal_octaves = 4
+		_rust_noise = NoiseTexture2D.new()
+		_rust_noise.noise = fn
+		_rust_noise.seamless = true
+		_rust_noise.width = 256
+		_rust_noise.height = 256
+	var m := ShaderMaterial.new()
+	m.shader = _rust_shader
+	m.set_shader_parameter("paint", c.lerp(Color(0.45, 0.32, 0.26), 0.25))
+	m.set_shader_parameter("noise_tex", _rust_noise)
+	m.set_shader_parameter("rust_tex", Props.tex("res://assets/tex/rusty_painted_metal_diff.jpg"))
+	return m
+
+
 ## ze lśniącego auta robi wrak: matowa, zardzewiała blacha w kolorze lakieru, brudne szyby; wear 2 = bez kół i szyb, 3 = dodatkowo zgnieciony dach
 static func _ruin(car: Node3D, color: String, wear: int) -> void:
 	var c := Color.html("#" + color)
-	var tint := c.lerp(Color(0.55, 0.34, 0.24), 0.4) * 1.6
 	var body := Cars._find(car, "TintKaroseria") as MeshInstance3D
 	if body != null:
-		var m := Props.pbr("rusty_painted_metal", 0.4, tint).duplicate() as StandardMaterial3D
-		m.metallic = 0.1
-		m.roughness = 1.0
-		m.clearcoat_enabled = false
-		body.material_override = m
+		body.material_override = _rust_material(c)
 	var det := Cars._find(car, "Detale") as MeshInstance3D
 	if det != null and det.mesh != null:
 		for i in range(det.mesh.get_surface_count()):
@@ -284,7 +323,7 @@ static func _yard(W) -> void:
 			Props.set_range(kn, 110.0)
 	# wraki: jeden na drugim, jeden przechylony na oponach, jeden bez kół w rogu
 	_wreck(W, c.x + 2.0 * INV, c.y + 2.0 * INV, 0.35, "sedan", "6b3a2a", 0.0, Vector3.ZERO, 3)
-	_wreck(W, c.x + 2.2 * INV, c.y + 2.0 * INV, 0.3, "hatch", "4a4f55", 1.15, Vector3(0.0, 0.0, 0.08))
+	_wreck(W, c.x + 2.2 * INV, c.y + 2.0 * INV, 0.3, "hatch", "4a4f55", 1.1, Vector3(0.0, 0.0, 0.05), 2)
 	_wreck(W, c.x + 12.0 * INV, c.y + 5.0 * INV, -0.7, "kombi", "5a5a40", 0.0, Vector3(0.05, 0.0, -0.07))
 	_wreck(W, c.x - 3.0 * INV, c.y + 9.0 * INV, 1.9, "maluch", "7a6a3a", 0.0, Vector3.ZERO, 2)
 	_wreck(W, c.x + 15.0 * INV, c.y - 7.0 * INV, 0.1, "van", "4d5a64")
