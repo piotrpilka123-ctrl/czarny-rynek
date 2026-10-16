@@ -34,6 +34,8 @@ static func paint(W) -> void:
 	W._pr(4, GREEN.x - 16.0, GREEN.y - 21.0, GREEN.x + 16.0, GREEN.y + 21.0)
 	W._pr(4, 154.0, 197.0, 202.0, 233.0)
 	W._pr(3, 184.0, 146.0, 190.0, 197.0)
+	W._pr(4, 156.0, 158.0, 184.0, 190.0)
+	W._pr(3, 184.0, 169.0, 190.0, 175.0)
 	W._pr(1, -4.5, -150.0, -1.5, -136.0)
 	W._pr(1, -14.0, -147.0, 8.0, -143.5)
 	W._pr(1, -58.0, 144.0, -31.0, 167.0)
@@ -56,6 +58,7 @@ static func build(W) -> void:
 	_kebab(W)
 	_blaszaki(W)
 	_trawnik11(W)
+	_budowa(W)
 	W.rng.state = st
 
 
@@ -713,3 +716,37 @@ static func _trawnik11(W) -> void:
 	_pole(W, c.x + 3.0, c.y - 1.0)
 	_scatter(W, c, [["dirty_football", 4.0, -2.0, 0.0, 0.22], ["trashbag", -10.0, 4.0, 0.6, 0.5], ["can_rusted", 2.0, 1.0, 0.3, 0.13], ["plastic_crate_01", -6.0, -9.0, 0.4, 0.3]])
 	_stash(W, "trawnik_suszarka", c.x - 8.5 + 1.2 * INV, c.y - 8.0, "Zajrzyj pod suszarkę", 30, "Pod suszarką ktoś zgubił zwitek drobnych", 0.2)
+
+
+## Budowa na południowym wschodzie: szkielet żelbetowy z rusztowaniem, betoniarka, kontener-biuro, zapory i reflektor roboczy.
+static func _budowa(W) -> void:
+	var c := Vector2(170.0, 173.0)
+	var sk: Node3D = Stations.model("budowa_szkielet")
+	if sk != null:
+		Props.set_range(W._place(sk, c.x, c.y, 0.0, 0.0, 0.0, 0.0), 170.0)
+	# kolizja: cztery słupy i ścianki murowane (strop nad głową nie blokuje)
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			W.add_col(c.x + (sx * 3.7 - 0.25) * INV, c.x + (sx * 3.7 + 0.25) * INV, c.y + (sy * 2.7 - 0.25) * INV, c.y + (sy * 2.7 + 0.25) * INV, 6.0)
+			W.rects.pop_back()
+	W.add_col(c.x - 3.6 * INV, c.x + 3.6 * INV, c.y + 2.55 * INV, c.y + 2.85 * INV, 1.8)
+	W.rects.pop_back()
+	W.add_col(c.x + 3.45 * INV, c.x + 3.75 * INV, c.y - 2.6 * INV, c.y + 2.6 * INV, 1.4)
+	W.rects.pop_back()
+	for rz in [-2.0, 2.0]:
+		var rm: Node3D = Stations.model("budowa_rusztowanie")
+		if rm != null:
+			Props.set_range(W._place(rm, c.x + 9.0, c.y + rz * 1.9, PI / 2.0, 0.65, 1.55, 5.0), 140.0)
+	var bm: Node3D = Stations.model("budowa_betoniarka")
+	if bm != null:
+		Props.set_range(W._place(bm, c.x - 11.0, c.y + 8.0, 0.5, 0.5, 0.5, 1.5), 90.0)
+	W._prop("container_green", c.x - 12.0, c.y - 8.0, 0.1, 2.6, 0.0)
+	W._prop("container_red", c.x - 12.0, c.y - 8.0, 0.1, 2.6, 0.0, true, 2.6)
+	_scatter(W, c, [["cement_bag", -8.0, 8.0, 0.3, 0.2], ["cement_bag", -8.8, 8.5, 1.0, 0.2], ["cement_bag", -7.5, 9.0, 0.1, 0.2, 0.2], ["pallet", -4.0, 10.0, 0.4, 0.16], ["cinderblock", -4.0, 10.0, 0.2, 0.2, 0.16],
+		["cinderblock", -3.4, 10.4, 0.5, 0.2, 0.16], ["pipes", 5.0, 10.5, 0.2, 0.7], ["hand_truck", -9.0, 3.0, 0.8, 1.3], ["trafficbarrier_1", 12.0, 9.0, 1.4, 0.9], ["plasticbarrier", 14.0, 4.0, 1.5, 0.9],
+		["trafficcone_1", 13.0, -6.0, 0.0, 0.6], ["trafficcone_2", 13.5, -6.8, 0.0, 0.6], ["barrel_01", 8.0, 10.0, 0.0, 0.9], ["trashbag", 4.0, -11.0, 0.5, 0.5], ["wooden_crate_02", -2.0, 11.0, 0.2, 0.42]])
+	_pole(W, c.x + 13.0, c.y + 11.0)
+	_pole(W, c.x - 14.0, c.y + 1.0)
+	_light(W, c.x + 8.0, c.y, 5.2, Color(1.0, 0.92, 0.75), 0.9, 13.0)
+	_dump(W, "poi_budowa_gruz", c.x - 3.4, c.y + 10.4 + 1.6 * INV, "Przekop gruz i odpady budowlane")
+	_stash(W, "budowa_kontener", c.x - 12.0 + 3.2 * INV, c.y - 8.0 + 0.0, "Zajrzyj do biura budowy", 70, "W kontenerze budowy ktoś zostawił kopertę z wypłatą", 0.8)
