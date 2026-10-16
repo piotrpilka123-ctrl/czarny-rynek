@@ -952,6 +952,20 @@ func run() -> void:
 		S.erase("zdz_job_day")
 	else:
 		S["zdz_job_day"] = zday_keep
+	var err_keep = S.get("errand")
+	var errd_keep = S.get("errand_day")
+	S["errand"] = ""
+	S.erase("errand_day")
+	var cash_e: float = S.cash
+	var earned_e: float = float(S.stats.earned)
+	ok(not G.errand_deliver() and G.errand_take() and not G.errand_take(), "zlecenie sąsiada: koperta do wzięcia raz")
+	ok(G.errand_deliver() and S.cash == cash_e + G.ERRAND_PAY and not G.errand_can_take(), "zlecenie sąsiada: doręczona koperta daje premię, drugiej dziś nie będzie")
+	S.stats.earned = earned_e
+	S["errand"] = "" if err_keep == null else err_keep
+	if errd_keep == null:
+		S.erase("errand_day")
+	else:
+		S["errand_day"] = errd_keep
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

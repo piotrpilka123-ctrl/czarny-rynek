@@ -49,7 +49,7 @@ func build() -> void:
 	_static({"x": 72.0, "z": 182.0, "rot": 0.3, "pose": "arms", "name": "Roman", "worker_id":"roman", "hours": [6, 19],
 		"act":func(): G.main.talk_worker(), "look": {"model": "m09", "seed": 94}, "lines": ["Tu kiedyś naprawiali wszystkie auta z osiedla. Dziś zostało tyle, co na paletach.", "W tych kontenerach czasem leży coś do sprzedania. Zenek w lombardzie skupuje części.", "Za furtką jest stary teren rekreacyjny. Jeszcze parę lat temu ludzie tu przychodzili po pracy."]})
 	_static({"x": 52.0, "z": 219.0, "rot": PI / 2.0, "pose": "arms", "name": "Pan Józek", "hours": [6,20],
-		"look": {"model": "m16", "seed": 102}, "lines": ["Kiedyś cały zakład przychodził tu po pracy. Teraz został spokój i te garaże.", "Rano ptaki robią więcej hałasu niż huta. Nie ma co się spieszyć.", "Pokręcisz się tu, czasem znajdziesz coś, czego komuś szkoda było wyrzucić do zwykłego kosza."]})
+		"look": {"model": "m16", "seed": 102}, "act": func(): G.main.talk_neighbor("jozek"), "lines": ["Kiedyś cały zakład przychodził tu po pracy. Teraz został spokój i te garaże.", "Rano ptaki robią więcej hałasu niż huta. Nie ma co się spieszyć.", "Pokręcisz się tu, czasem znajdziesz coś, czego komuś szkoda było wyrzucić do zwykłego kosza."]})
 	_static({"x": -68.0, "z": 179.0, "rot": 0.0, "pose": "arms", "name": "Borys", "range": 2.4,
 		"look": {"model":"m11","seed":116}, "act":func(): G.main.talk_gang()})
 	_static({"x": -51.0, "z": 188.0, "rot": 0.0, "pose": "arms", "name": "Strażnik Black Court",
@@ -417,7 +417,7 @@ func _build_edges() -> void:
 	# pasażerowie na pętli: starsza pani na ławce w wiacie i chłopak z telefonem
 	_static({"x": 8.6, "z": 166.75, "rot": PI, "pose": "sit", "y": 0.05, "name": "Pani Krysia", "hours": [6.0, 20.0],
 		"look": {"model": "fb3", "female": true, "kind": "coat", "top": "6a5a48", "bottom": "2a2622", "seed": 961},
-		"lines": ["Dwunastka miała być dziesięć po. Kierowca pali, to i nie jedzie.", "Do przychodni jadę. Trzeci raz w tym tygodniu.", "Kiedyś to tu kwiaty na pętli rosły. Teraz butelki."]})
+		"lines": ["Dwunastka miała być dziesięć po. Kierowca pali, to i nie jedzie.", "Do przychodni jadę. Trzeci raz w tym tygodniu.", "Kiedyś to tu kwiaty na pętli rosły. Teraz butelki."], "act": func(): G.main.talk_neighbor("krysia")})
 	_static({"x": 11.6, "z": 164.55, "rot": 2.4, "pose": "phone", "name": "Chłopak z pętli", "hours": [7.0, 23.5],
 		"look": {"model": "m16", "kind": "hoodie", "top": "2c3340", "bottom": "20242c", "seed": 967},
 		"lines": ["Czekam na kumpla. Nie twoja sprawa.", "Autobus? Nie, ja tu tylko stoję.", "Masz ogień?"]})

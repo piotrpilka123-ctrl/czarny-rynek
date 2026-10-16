@@ -1096,6 +1096,32 @@ func beer_give() -> bool:
 	return true
 
 
+## zanieś kopertę: Pan Józek (za garażami) prosi o doniesienie jej Pani Krysi na przystanek; raz na dzień
+const ERRAND_PAY := 35.0
+
+func errand_can_take() -> bool:
+	return String(S.get("errand", "")) == "" and int(S.get("errand_day", 0)) != day()
+
+
+func errand_take() -> bool:
+	if not errand_can_take():
+		return false
+	S["errand"] = "koperta"
+	return true
+
+
+func errand_deliver() -> bool:
+	if String(S.get("errand", "")) != "koperta":
+		return false
+	S["errand"] = ""
+	S["errand_day"] = day()
+	S.cash = float(S.cash) + ERRAND_PAY
+	S.stats.earned = float(S.stats.earned) + ERRAND_PAY
+	add_xp(5.0)
+	Sfx.play("cash")
+	return true
+
+
 ## robota dla Zdzicha: raz na dzień trzy puszki naraz za premię (40 zł, trochę doświadczenia, śledztwo stygnie)
 const ZDZ_CANS := 3
 const ZDZ_PAY := 40.0

@@ -1157,6 +1157,30 @@ func supply_talk() -> void:
 	]})
 
 
+## sąsiedzi ze zleceniem: Pan Józek daje kopertę, Pani Krysia ją odbiera
+func talk_neighbor(who: String) -> void:
+	if G.busy or ui.mode != "":
+		return
+	if who == "jozek":
+		var lines: Array = ["Kiedyś cały zakład przychodził tu po pracy. Teraz został spokój i te garaże.", "Rano ptaki robią więcej hałasu niż huta. Nie ma co się spieszyć."]
+		var ch := []
+		if String(G.S.get("errand", "")) == "koperta":
+			lines = ["Koperta jeszcze u ciebie? Pani Krysia czeka na przystanku."]
+		elif G.errand_can_take():
+			ch.append({"label": "Mogę coś zanieść", "kind": "go", "act": func():
+				if G.errand_take():
+					G.notify("Koperta od Pana Józka — zanieś ją Pani Krysi na przystanek.", "good")})
+			lines.append("Masz chwilę? Mam kopertę dla Krysi z przystanku. Nogi już nie te.")
+		ch.append({"label": "Do widzenia."})
+		ui.dialog({"name": "Pan Józek", "lines": [lines[G.day() % lines.size()]], "choices": ch})
+	else:
+		if G.errand_deliver():
+			ui.dialog({"name": "Pani Krysia", "lines": ["Od Józka? Dobry człowiek. Masz tu na bułki, kochany."]})
+			G.notify("Koperta doręczona: +%s." % G.money(G.ERRAND_PAY), "good")
+		else:
+			ui.dialog({"name": "Pani Krysia", "lines": [["Dwunastka miała być dziesięć po. Kierowca pali, to i nie jedzie.", "Do przychodni jadę. Trzeci raz w tym tygodniu."][G.day() % 2]]})
+
+
 ## Zdzichu siedzi pod monopolowym i wszystko widzi. Za piwo (raz na dzień) zapomina, co widział.
 func zdzichu_talk() -> void:
 	if G.busy or ui.mode != "":
