@@ -36,6 +36,7 @@ static func paint(W) -> void:
 	W._pr(3, 184.0, 146.0, 190.0, 197.0)
 	W._pr(4, 156.0, 158.0, 184.0, 190.0)
 	W._pr(3, 184.0, 169.0, 190.0, 175.0)
+	W._pr(1, 169.8, -64.0, 179.0, -46.0)
 	W._pr(1, -4.5, -150.0, -1.5, -136.0)
 	W._pr(1, -14.0, -147.0, 8.0, -143.5)
 	W._pr(1, -58.0, 144.0, -31.0, 167.0)
@@ -59,6 +60,7 @@ static func build(W) -> void:
 	_blaszaki(W)
 	_trawnik11(W)
 	_budowa(W)
+	_przystanek_huta(W)
 	W.rng.state = st
 
 
@@ -750,3 +752,18 @@ static func _budowa(W) -> void:
 	_light(W, c.x + 8.0, c.y, 5.2, Color(1.0, 0.92, 0.75), 0.9, 13.0)
 	_dump(W, "poi_budowa_gruz", c.x - 3.4, c.y + 10.4 + 1.6 * INV, "Przekop gruz i odpady budowlane")
 	_stash(W, "budowa_kontener", c.x - 12.0 + 3.2 * INV, c.y - 8.0 + 0.0, "Zajrzyj do biura budowy", 70, "W kontenerze budowy ktoś zostawił kopertę z wypłatą", 0.8)
+
+
+## Przystanek na drodze do huty (x 162–170): wiata z ławką na utwardzonym pasie, rozkład jazdy, kosz, latarnia nad jezdnią i porzucony wrak za chodnikiem.
+static func _przystanek_huta(W) -> void:
+	var c := Vector2(174.5, -55.0)
+	var bs: Node3D = Props.bus_stop()
+	Props.set_range(W._place(bs, c.x, c.y, -PI / 2.0, 0.3, 2.0, 2.4), 130.0)
+	W._sign("13  HUTA — STARA BRAMA\n6:10  14:40  22:15", Vector3(c.x - 0.4, W.hd(c.x, c.y) + 2.35, c.y + 3.2), Color(0.95, 0.85, 0.35), 24, -PI / 2.0, 0.005, 6)
+	W._bin(c.x + 1.0, c.y + 7.0, 0.0)
+	W._bench(c.x + 3.0, c.y - 6.0, -PI / 2.0)
+	W._lamp(171.2, -47.0, -PI / 2.0)
+	_wreck(W, 182.5, -69.0, 0.35, "sedan", "2a2826", 0.0, Vector3(0.0, 0.0, 0.03))
+	_scatter(W, c, [["old_tyre", 12.0, -12.0, 0.4, 0.16], ["old_tyre", 12.8, -11.4, 0.9, 0.16, 0.16], ["trashbag", 6.0, 5.0, 0.7, 0.5], ["can_rusted", 3.0, 3.0, 0.2, 0.13], ["cardboard_box_01", 9.0, -14.0, 0.5, 0.34]])
+	_stash(W, "przystanek_rozklad", c.x + 1.8 * INV, c.y - 2.0 * INV, "Zajrzyj za ławkę na przystanku", 40, "Za ławką tkwiła kopertówka z drobnymi", 0.3)
+	_dump(W, "poi_przystanek_wrak", 182.5, -69.0 + 3.0 * INV, "Przeszukaj wrak przy drodze")
