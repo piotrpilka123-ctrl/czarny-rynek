@@ -262,6 +262,23 @@ static func _ruin(car: Node3D, color: String, wear: int) -> void:
 		car.scale.y = 0.78
 
 
+## przygasza i zszarza materiały modelu (zmiana na kopiach — wspólne materiały modelu zostają nietknięte): jaskrawy, czysty lakier → wypłowiała, zakurzona maszyna
+static func _weather_tint(n: Node, tint: Color) -> void:
+	for ch in n.find_children("*", "MeshInstance3D", true, false):
+		var mi := ch as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		for i in range(mi.mesh.get_surface_count()):
+			var src := mi.get_active_material(i) as StandardMaterial3D
+			if src == null:
+				continue
+			var m := src.duplicate() as StandardMaterial3D
+			m.albedo_color = m.albedo_color * tint
+			m.roughness = maxf(m.roughness, 0.85)
+			m.metallic = minf(m.metallic, 0.15)
+			mi.set_surface_override_material(i, m)
+
+
 static func _wreck(W, x: float, z: float, ry: float, type: String, color: String, y := 0.0, tilt := Vector3.ZERO, wear := 1) -> Node3D:
 	var car: Node3D = Models.car(type, color, false)
 	_ruin(car, color, wear)
@@ -976,6 +993,7 @@ static func _wysypisko(W) -> void:
 	var c := Vector2(64.0, 156.0)
 	var km: Node3D = Stations.model("wysypisko_koparka")
 	if km != null and W.is_free(c.x * SC, c.y * SC, 1.5):
+		_weather_tint(km, Color(0.74, 0.68, 0.54))
 		Props.set_range(W._place(km, c.x, c.y, 0.0, 2.4, 2.8, 2.9), 140.0)
 	for h in [[84.0, 160.0, 0.4], [50.0, 164.0, 2.0], [76.0, 166.0, 4.0]]:
 		var x: float = h[0]
