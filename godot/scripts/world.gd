@@ -2648,7 +2648,7 @@ func _garages() -> void:
 			var xa: float = pt[0]
 			var xb: float = pt[1]
 			var by0 := _base(xa, z0, xb, z0 + 6.0)
-			Models.box(city, Vector3(xb - xa, 2.9, 6.0), Vector3((xa + xb) * 0.5, by0 + 1.2, z0 + 3.0), Props.pbr(_garage_sheet(xa, z0), 1.0, Color(0.74, 0.72, 0.66)))
+			Models.box(city, Vector3(xb - xa, 2.9, 6.0), Vector3((xa + xb) * 0.5, by0 + 1.2, z0 + 3.0), Props.pbr(_garage_sheet(xa, z0), 0.4, Color(0.74, 0.72, 0.66)))
 			Models.box(city, Vector3(xb - xa + 0.6, 0.12, 6.6), Vector3((xa + xb) * 0.5, by0 + 2.72, z0 + 3.0), Props.pbr("asbestos_sheet", 0.5), Vector3(0.03 if row == 0 else -0.03, 0, 0))
 			add_col(xa, xb, z0, z0 + 6.0, 3.0)
 			blds.append({"x0": xa, "x1": xb, "z0": z0, "z1": z0 + 6.0, "low": true})
@@ -2661,6 +2661,14 @@ func _garages() -> void:
 			if row == 0 and (i == 4 or i == 5):
 				continue
 			var c := Models.col(cols[(i + row * 3) % 10])
+			var gt := Stations.model("gar_rynna")
+			if gt != null:
+				# rynna nad bramą, spust przy jednym boku boksu — od strony wjazdu
+				gt.position = Vector3(x, by + 2.55, z0 + 6.0 + 0.12 if row == 0 else z0 - 0.12)
+				gt.rotation.y = 0.0 if row == 0 else PI
+				gt.scale = Vector3(INV, 1.0, INV)
+				city.add_child(gt)
+				Props.set_range(gt, 60.0)
 			if not _garage_door(x, by, z0 + 6.0 if row == 0 else z0, 0.0 if row == 0 else PI, c * 1.5):
 				Models.box(city, Vector3(2.9, 2.2, 0.08), Vector3(x, by + 1.1, fz), Props.pbr("painted_metal_shutter" if (i + row) % 3 != 0 else "rusted_shutter", 0.5, c * 1.5))
 			_sign(str(i + 1 + row * 11), Vector3(x, by + 2.44, fz + (0.06 if row == 0 else -0.06)), Color(0.9, 0.9, 0.85), 36, 0.0 if row == 0 else PI, 0.006, 6)
@@ -3356,7 +3364,7 @@ func _garage_sheet(x: float, z: float) -> String:
 
 func _garage_row_ns(x0: float, z0: float, z1: float, west: bool, first_no: int) -> void:
 	var by := _base(x0, z0, x0 + 6.0, z1)
-	Models.box(city, Vector3(6.0, 2.9, z1 - z0), Vector3(x0 + 3.0, by + 1.2, (z0 + z1) * 0.5), Props.pbr(_garage_sheet(x0, z0), 1.0, Color(0.74, 0.72, 0.66)))
+	Models.box(city, Vector3(6.0, 2.9, z1 - z0), Vector3(x0 + 3.0, by + 1.2, (z0 + z1) * 0.5), Props.pbr(_garage_sheet(x0, z0), 0.4, Color(0.74, 0.72, 0.66)))
 	Models.box(city, Vector3(6.6, 0.12, z1 - z0 + 0.6), Vector3(x0 + 3.0, by + 2.72, (z0 + z1) * 0.5), Props.pbr("asbestos_sheet", 0.5), Vector3(0, 0, 0.03 if west else -0.03))
 	add_col(x0, x0 + 6.0, z0, z1, 3.0)
 	blds.append({"x0": x0, "x1": x0 + 6.0, "z0": z0, "z1": z1, "low": true})
@@ -3372,7 +3380,7 @@ func _garage_row_ns(x0: float, z0: float, z1: float, west: bool, first_no: int) 
 
 func _garage_row_ew(x0: float, x1: float, z0: float, north: bool, first_no: int) -> void:
 	var by := _base(x0, z0, x1, z0 + 6.0)
-	Models.box(city, Vector3(x1 - x0, 2.9, 6.0), Vector3((x0 + x1) * 0.5, by + 1.2, z0 + 3.0), Props.pbr(_garage_sheet(x0, z0), 1.0, Color(0.74, 0.72, 0.66)))
+	Models.box(city, Vector3(x1 - x0, 2.9, 6.0), Vector3((x0 + x1) * 0.5, by + 1.2, z0 + 3.0), Props.pbr(_garage_sheet(x0, z0), 0.4, Color(0.74, 0.72, 0.66)))
 	Models.box(city, Vector3(x1 - x0 + 0.6, 0.12, 6.6), Vector3((x0 + x1) * 0.5, by + 2.72, z0 + 3.0), Props.pbr("asbestos_sheet", 0.5), Vector3(-0.03 if north else 0.03, 0, 0))
 	add_col(x0, x1, z0, z0 + 6.0, 3.0)
 	blds.append({"x0": x0, "x1": x1, "z0": z0, "z1": z0 + 6.0, "low": true})
