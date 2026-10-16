@@ -1233,11 +1233,32 @@ func update(dt: float) -> void:
 			if d < 0.35:
 				if not panicking and randf() < 0.22:
 					n.idle = randf_range(2.0, 8.0)
+					# przystanek: czasem zerknięcie w telefon (dłużej), czasem rozejrzenie się z rękami skrzyżowanymi
+					var pick_idle := randf()
+					if pick_idle < 0.4 and not n.drunk:
+						n.idle_pose = "phone"
+						n.idle = randf_range(4.0, 10.0)
+					elif pick_idle < 0.65:
+						n.idle_pose = "arms"
 				_pick_next(n, false)
 			else:
 				sp = maxf(float(n.speed), 2.8) if panicking else n.speed * (1.3 if G.rain > 0.3 else 1.0)
+				# ostry zakręt: zwalnia, żeby obrót nie odbywał się w pełnym biegu (stopy nie jadą bokiem)
+				var turn := absf(_ang_diff(atan2(dx, dz), n.node.rotation.y))
+				sp *= lerpf(1.0, 0.55, clampf((turn - 0.35) / 1.0, 0.0, 1.0))
 				n.x += dx / d * sp * dt
 				n.z += dz / d * sp * dt
+				# mijanie się: odpychanie od najbliższego przechodnia w zasięgu 0,75 m
+				for o in citizens:
+					if o == n or not o.node.visible:
+						continue
+					var ox: float = n.x - o.x
+					var oz: float = n.z - o.z
+					var od2 := ox * ox + oz * oz
+					if od2 < 0.5625 and od2 > 0.0001:
+						var od := sqrt(od2)
+						n.x += ox / od * (0.75 - od) * dt * 2.5
+						n.z += oz / od * (0.75 - od) * dt * 2.5
 				n.rot = atan2(dx, dz)
 			n.node.rotation.y += _ang_diff(n.rot + (sin(G.now * 1.05 + float(n.idx)) * 0.32 if (n.drunk and sp > 0.0) else 0.0), n.node.rotation.y) * minf(1.0, dt * 8.0)
 		n.node.position = Vector3(n.x, _h(n.x, n.z), n.z)
