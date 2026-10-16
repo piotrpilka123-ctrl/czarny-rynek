@@ -1368,9 +1368,9 @@ func _balconies(b: Dictionary) -> void:
 			var along := (float(g[0]) + (cx + 0.5) * cs.x) * INV
 			for fl in range(1, floors):
 				var y := float(b.by) + fl * cs.y + 0.09
-				var col: Color = (b.accent as Color).lerp(Color(0.6, 0.6, 0.57), rng.randf_range(0.0, 0.85)) * rng.randf_range(0.55, 1.0)
+				var col: Color = (b.accent as Color).lerp(Color(0.6, 0.6, 0.57), rng.randf_range(0.0, 0.85)) * rng.randf_range(0.3, 0.55)
 				if rng.randf() < 0.12:
-					col = Color(0.75, 0.74, 0.7)
+					col = Color(0.5, 0.49, 0.46)
 				var basis := Basis(Vector3.UP, PI / 2.0) if xface else Basis.IDENTITY
 				var ps := Vector3(wall_c + out * 0.34 * INV, y, float(b.z0) + along) if xface else Vector3(float(b.x0) + along, y, wall_c + out * 0.34 * INV)
 				var pr := Vector3(wall_c + out * 0.7 * INV, y + 0.56, float(b.z0) + along) if xface else Vector3(float(b.x0) + along, y + 0.56, wall_c + out * 0.7 * INV)
@@ -4227,7 +4227,7 @@ func _border_gates() -> void:
 func _flush_multimeshes() -> void:
 	_multimesh(_curbs, Vector3(2.0 * INV, 0.26, 0.2 * INV), Props.pbr("concrete_wall_008", 0.5, Color(0.62, 0.62, 0.6)), false)
 	_curbs.clear()
-	_multimesh(_bal_slab, Vector3(3.2 * INV, 0.14, 0.8 * INV), Props.pbr("concrete_wall_008", 0.4, Color(0.7, 0.7, 0.68)), true)
+	_multimesh(_bal_slab, Vector3(3.2 * INV, 0.14, 0.8 * INV), Props.pbr("concrete_wall_008", 0.4, Color(0.3, 0.3, 0.28)), true)
 	if not _bal_rail.is_empty():
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
