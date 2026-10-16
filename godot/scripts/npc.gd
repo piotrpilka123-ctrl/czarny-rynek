@@ -15,6 +15,7 @@ const CAR_ROUTE := [[-152.0, 20.0], [-106.0, 20.0], [-106.0, -130.0], [95.0, -13
 
 var all: Array = []
 var traffic: Node = null
+var birds: Node = null
 var bus_people := {}
 var cops: Array = []
 ## strzały w pościgu: ile sekund uciekasz na widoku, etap (0 nic, 1 okrzyk, 2 po strzale ostrzegawczym), odstęp między strzałami
@@ -59,6 +60,9 @@ func build() -> void:
 	traffic = load("res://scripts/traffic.gd").new()
 	add_child(traffic)
 	traffic.setup(self)
+	birds = load("res://scripts/birds.gd").new()
+	add_child(birds)
+	birds.setup(self)
 	_build_dog()
 
 
@@ -1454,6 +1458,7 @@ func update(dt: float) -> void:
 		update_shots(dt, pp, P.moving)
 	_update_car(dt, pp, outside)
 	traffic.update(dt, pp, outside)
+	birds.update(dt, pp, outside)
 	_update_dog(dt, pp, outside)
 
 
