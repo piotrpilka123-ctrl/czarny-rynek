@@ -71,6 +71,7 @@ static func build(W) -> void:
 	_wulkanizacja(W)
 	_ulica_detale(W)
 	_ulica_detale2(W)
+	_klub_ulica(W)
 	W.rng.state = st
 
 
@@ -878,3 +879,23 @@ static func _ulica_detale2(W) -> void:
 		if W.is_free(float(b[0]) * SC, float(b[1]) * SC, 0.8):
 			W._bench(float(b[0]), float(b[1]), float(b[2]))
 			W._bin(float(b[0]) + (1.0 if float(b[0]) < 0.0 else -1.0) * 0.5, float(b[1]) + 3.0, 0.0)
+
+
+## Przed klubem Neon (Robotnicza z 100 do 145): słupy z neonowymi szyldami i popielnicami, nocą dają różową i błękitną poświatę.
+static func _klub_ulica(W) -> void:
+	var list := [["klub_neon_a", 6.2, 111.0, -PI / 2.0, Color(1.0, 0.25, 0.8)], ["klub_neon_b", 6.2, 141.0, -PI / 2.0, Color(0.25, 0.8, 1.0)], ["klub_neon_a", -6.4, 120.0, PI / 2.0, Color(1.0, 0.25, 0.8)],
+		["klub_neon_b", -6.4, 138.0, PI / 2.0, Color(0.25, 0.8, 1.0)]]
+	for e in list:
+		var x: float = e[1]
+		var z: float = e[2]
+		if not W.is_free(x * SC, z * SC, 0.5):
+			continue
+		var m: Node3D = Stations.model(String(e[0]))
+		if m == null:
+			continue
+		var lens := Stations._find(m, "Swiatlo") as MeshInstance3D
+		if lens != null:
+			lens.material_override = W.lamp_mat
+			lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		Props.set_range(W._place(m, x, z, float(e[3]), 0.3, 0.3, 2.9), 120.0)
+		_light(W, x + (-2.5 if x > 0.0 else 2.5), z, 3.0, e[4], 0.35, 8.0)
