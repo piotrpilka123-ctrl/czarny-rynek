@@ -1096,6 +1096,27 @@ func beer_give() -> bool:
 	return true
 
 
+## robota dla Zdzicha: raz na dzień trzy puszki naraz za premię (40 zł, trochę doświadczenia, śledztwo stygnie)
+const ZDZ_CANS := 3
+const ZDZ_PAY := 40.0
+
+func zdzichu_job_ready() -> bool:
+	return int(S.get("zdz_job_day", 0)) != day()
+
+
+func zdzichu_job_give() -> bool:
+	if not zdzichu_job_ready() or item("piwo") < ZDZ_CANS:
+		return false
+	S.items["piwo"] = item("piwo") - ZDZ_CANS
+	S["zdz_job_day"] = day()
+	S.cash = float(S.cash) + ZDZ_PAY
+	S.stats.earned = float(S.stats.earned) + ZDZ_PAY
+	add_xp(6.0)
+	add_invest(-BEER_INVEST)
+	Sfx.play("cash")
+	return true
+
+
 ## monopolowy: puszka piwa do plecaka (cena jak u Zdzicha); czynny całą dobę
 func liquor_beer_buy() -> bool:
 	if float(S.cash) < float(BEER_PRICE):

@@ -935,6 +935,23 @@ func run() -> void:
 	S.wanted = true
 	ok(not G.npcs.greet_try(gr_n, 2.0), "podczas pościgu nikt nie macha")
 	S.wanted = wanted_gr
+	var beers_keep: int = G.item("piwo")
+	var zday_keep = S.get("zdz_job_day")
+	S.erase("zdz_job_day")
+	S.items["piwo"] = 2
+	ok(not G.zdzichu_job_give(), "robota Zdzicha: dwie puszki to za mało")
+	S.items["piwo"] = 3
+	var cash_z: float = S.cash
+	var earned_z: float = float(S.stats.earned)
+	ok(G.zdzichu_job_give() and S.cash == cash_z + G.ZDZ_PAY and G.item("piwo") == 0, "robota Zdzicha: trzy puszki za premię")
+	S.items["piwo"] = 3
+	ok(not G.zdzichu_job_give(), "robota Zdzicha: tylko raz na dzień")
+	S.items["piwo"] = beers_keep
+	S.stats.earned = earned_z
+	if zday_keep == null:
+		S.erase("zdz_job_day")
+	else:
+		S["zdz_job_day"] = zday_keep
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

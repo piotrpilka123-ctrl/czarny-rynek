@@ -1168,6 +1168,13 @@ func zdzichu_talk() -> void:
 				G.notify("Zdzichu: „Ja? Ja tu nikogo nie widziałem, panie władzo.” Śledztwo trochę stygnie.", "good")
 			else:
 				G.notify("Nie masz nawet na piwo.", "warn")})
+	if G.zdzichu_job_ready() and G.item("piwo") >= G.ZDZ_CANS:
+		choices.append({"label": "Oddaj %d puszki (robota)" % G.ZDZ_CANS, "kind": "go", "act": func():
+			if G.zdzichu_job_give():
+				G.notify("Zdzichu: „Kierownik to ma głowę. Masz czterdziestkę.” +%s" % G.money(G.ZDZ_PAY), "good")})
+	elif G.zdzichu_job_ready():
+		choices.append({"label": "Masz jakąś robotę?", "act": func():
+			ui.dialog({"name": "Zdzichu", "lines": ["Przynieś mi %d puszki z monopolowego naraz, to dam ci %s. Tylko szybko, bo sucho w gardle." % [G.ZDZ_CANS, G.money(G.ZDZ_PAY)]]})})
 	choices.append({"label": "Trzymaj się, Zdzichu."})
 	var lines: Array = ["Kierowniku… postaw piwko. Ja tu wszystko widzę. Wszyściutko. Ale za piwko — nic nie mówię.", "Wczoraj pytali o takiego jednego w dresie. Nic nie powiedziałem. Jeszcze.", "Zimno dziś, co? Piwko by rozgrzało."] if G.beer_ready() else ["Dzięki, kierowniku. Dziś jestem ślepy i głuchy.", "Jutro też będzie dzień. I też będzie się chciało pić."]
 	ui.dialog({"name": "Zdzichu", "lines": [lines[G.day() % lines.size()]], "choices": choices})
