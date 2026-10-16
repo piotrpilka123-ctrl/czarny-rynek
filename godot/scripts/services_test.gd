@@ -818,6 +818,22 @@ static func run(T) -> void:
 				bus_body = true
 	T.ok(bus_ok and bus_body and G.world.surface_at(0.0, (float(lp[3]) - 1.0) * D.SC) == "concrete" and G.world.surface_at(0.0, 151.0 * D.SC) == "grass",
 		"Robotnicza kończy się pętlą: jezdnia dookoła wysepki i autobus przy peronie")
+	# drzwi klatek: skrzydło na zawiasie otwiera się przed lokatorem i wraca na miejsce
+	var door_ok := false
+	var tn = N.tenants
+	for dsp in G.world.entrance_spots:
+		if dsp.door != null:
+			var dn: Node3D = dsp.door
+			tn._hold[dn] = 2.0
+			for dk in range(20):
+				tn._animate_doors(0.1, G.world.entrance_spots)
+			var opened: float = dn.rotation.y
+			tn._hold[dn] = 0.0
+			for dk2 in range(40):
+				tn._animate_doors(0.1, G.world.entrance_spots)
+			door_ok = opened < -1.0 and absf(dn.rotation.y) < 0.05 and dn.get_child_count() >= 1
+			break
+	T.ok(door_ok, "drzwi klatki otwierają się na zawiasie (skrzydło z klamką) i zamykają za lokatorem")
 	T.ok(G.world.is_free(-12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(0.0, 145.5 * D.SC, 0.8), "pętlę da się objechać: obok autobusu zostaje wolny pas")
 	T.ok(names.has("Pan Mirek") and names.has("Pan Bogdan") and names["Pan Mirek"].has("interact") and G.world.is_free(float(names["Pan Bogdan"].x), float(names["Pan Bogdan"].z), 0.3) and G.world.is_free(float(names["Pan Mirek"].x), float(names["Pan Mirek"].z), 0.3),
 		"na pętli stoi kierowca, a przy bramie huty stróż — z oboma da się pogadać")

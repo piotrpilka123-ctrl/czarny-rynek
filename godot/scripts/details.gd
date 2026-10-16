@@ -273,7 +273,7 @@ static func bench(color := Color(0.2, 0.36, 0.26)) -> Node3D:
 # ================================================================ wejścia do klatek
 ## Wejście do klatki bloku: drzwi we wnęce, daszek, schodki, ścianka z boku, domofon, światło.
 ## `pos`: punkt na murze u podstawy (metry świata), `rot_y`: kierunek ściany.
-static func entrance(W: Node3D, pos: Vector3, rot_y: float, accent: Color, label: String, rng: RandomNumberGenerator) -> void:
+static func entrance(W: Node3D, pos: Vector3, rot_y: float, accent: Color, label: String, rng: RandomNumberGenerator) -> Node3D:
 	var g := Node3D.new()
 	g.transform = Transform3D(Basis(Vector3.UP, rot_y), pos)
 	W.add_child(g)
@@ -289,6 +289,20 @@ static func entrance(W: Node3D, pos: Vector3, rot_y: float, accent: Color, label
 		var sw := Stations._find(unit, "Swiatlo") as MeshInstance3D
 		if sw != null:
 			sw.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# skrzydło drzwi (z klamką) na własnym zawiasie: tenants.gd otwiera je przed wchodzącym i wychodzącym
+		var leaf := Stations._find(unit, "TintSkrzydlo") as Node3D
+		if leaf != null:
+			var hinge: Vector3 = leaf.position + Vector3(-0.55, 0.0, 0.0)
+			var piv := Node3D.new()
+			unit.add_child(piv)
+			piv.position = hinge
+			for part in [leaf, Stations._find(unit, "Okucia") as Node3D]:
+				if part != null and part.get_parent() == unit:
+					var xf: Transform3D = part.transform
+					unit.remove_child(part)
+					piv.add_child(part)
+					part.transform = Transform3D(xf.basis, xf.origin - hinge)
+			g.set_meta("door", piv)
 	else:
 		Models.box(g, Vector3(1.7, 2.3, 0.12), Vector3(0, 1.15, 0.03), dark)
 		Models.box(g, Vector3(0.98, 2.05, 0.08), Vector3(-0.2, 1.03, 0.1), door_m)
@@ -349,6 +363,7 @@ static func entrance(W: Node3D, pos: Vector3, rot_y: float, accent: Color, label
 	var bp := pos + t * side * 1.14 + n * 0.8 + Vector3(0, 1.45, 0)
 	decal(W, pick("poster", rng), bp + Vector3(0, 0.0, 0) + n * 0.25, rot_y - side * PI / 2.0, 0.42, 1.0, 25.0)
 	decal(W, pick("poster", rng), bp + n * -0.25, rot_y - side * PI / 2.0, 0.4, 1.0, 25.0)
+	return g
 
 
 static func entrances(W: Node3D) -> void:
@@ -377,8 +392,8 @@ static func entrances(W: Node3D) -> void:
 					real = true
 			if real:
 				continue
-			entrance(W, p, face_rot(code), b.accent, lab, rng)
-			W.entrance_spots.append({"p": p, "rot": face_rot(code), "label": lab})
+			var eg := entrance(W, p, face_rot(code), b.accent, lab, rng)
+			W.entrance_spots.append({"p": p, "rot": face_rot(code), "label": lab, "door": eg.get_meta("door", null)})
 			# ławka albo kosz przy co drugim wejściu
 			var n := Vector3(sin(face_rot(code)), 0.0, cos(face_rot(code)))
 			var t := Vector3(cos(face_rot(code)), 0.0, -sin(face_rot(code)))
