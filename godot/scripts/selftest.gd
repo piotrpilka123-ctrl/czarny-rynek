@@ -905,6 +905,18 @@ func run() -> void:
 	ok(S.cash == c_ev - 40.0, "pożyczka: w 20% przypadków przepada")
 	S["pending_cash"] = pc_keep
 	ok(not G.street_event_try(0.5), "zdarzenie uliczne odpala się tylko przy niskim rzucie")
+	var heat_ev: float = S.heat
+	G.street_event_apply("radiowoz", "hide", 0.0)
+	ok(S.heat <= heat_ev, "radiowóz: schowanie się w bramie nie podnosi uwagi policji")
+	G.street_event_apply("radiowoz", "walk", 0.1)
+	ok(S.heat >= heat_ev, "radiowóz: pójście dalej bywa ryzykowne")
+	var inv_ev: Dictionary = S.inv
+	S.inv = G.new_store()
+	G.add_pack(S.inv, "dym", 70, 3, 1)
+	var cash_ok: float = S.cash
+	G.street_event_apply("okazja", "sell", 0.1)
+	ok(S.cash > cash_ok and G.packed_total(S.inv) == 0, "okazja: nieznajomy płaci ponad stawkę za 3 g")
+	S.inv = inv_ev
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

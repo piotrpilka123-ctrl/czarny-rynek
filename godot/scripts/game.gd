@@ -1999,7 +1999,7 @@ func on_hour() -> void:
 
 # ================================================================ zdarzenia na ulicy
 ## rzadkie spotkanie z decyzją: raz na dzień, w dzień, na zewnątrz, gdy nic innego się nie dzieje
-const STREET_EVENTS := ["portfel", "pozyczka"]
+const STREET_EVENTS := ["portfel", "pozyczka", "radiowoz", "okazja"]
 
 
 func street_event_ok() -> bool:
@@ -2014,12 +2014,21 @@ func street_event_try(r: float) -> bool:
 	if r >= 0.07 or not street_event_ok():
 		return false
 	S["street_day"] = day()
-	street_event_show(String(STREET_EVENTS.pick_random()))
+	var pool: Array = STREET_EVENTS.filter(func(e): return e != "okazja" or packed_total(S.inv) >= 3)
+	street_event_show(String(pool.pick_random()))
 	return true
 
 
 func street_event_show(id: String) -> void:
 	match id:
+		"radiowoz":
+			ui.dialog({"name": "Ulica", "lines": ["Zza rogu wolno wyjeżdża radiowóz. Jeszcze Cię nie widzą, ale jadą w Twoją stronę."], "choices": [
+				{"label": "Schowaj się w bramie", "act": func(): street_event_apply(id, "hide", 0.0)},
+				{"label": "Idź dalej, jakby nic", "act": func(): street_event_apply(id, "walk", randf())}]})
+		"okazja":
+			ui.dialog({"name": "Nieznajomy", "lines": ["Psst. Ktoś mi mówił, że masz towar. Dam trzydzieści procent więcej niż zwykle, ale tu i teraz — i bez gadania."], "choices": [
+				{"label": "Sprzedaj mu 3 g", "act": func(): street_event_apply(id, "sell", randf())},
+				{"label": "Nie znam cię", "act": func(): street_event_apply(id, "refuse", 0.0)}]})
 		"portfel":
 			ui.dialog({"name": "Chodnik", "lines": ["Pod ławką leży portfel. Gruby. W środku gotówka i żadnych dokumentów — nikt nie patrzy. Chyba."], "choices": [
 				{"label": "Weź pieniądze", "act": func(): street_event_apply(id, "take", randf())},
@@ -2055,6 +2064,41 @@ func street_event_apply(id: String, choice: String, roll: float) -> void:
 			S["pending_cash"] = S.get("pending_cash", []) + [{"t": S.t + 1440.0, "amt": 160.0 if back else 0.0}]
 			add_xp(3.0)
 			notify("Pożyczasz 100 zł. Zobaczymy, czy wróci.", "good")
+		"radiowoz:hide":
+			add_minutes(12.0)
+			add_heat(-6.0)
+			notify("Przeczekujesz w bramie. Radiowóz odjeżdża.", "good")
+		"radiowoz:walk":
+			if roll < 0.35:
+				add_heat(15.0)
+				notify("Policjant odprowadza Cię wzrokiem…", "warn")
+			else:
+				add_xp(4.0)
+				notify("Mijasz radiowóz. Serce wali, ale nic.", "good")
+		"okazja:sell":
+			var got := 0.0
+			for st in stacks(S.inv, "pack"):
+				var need := 3
+				var n: int = mini(int(st.n), maxi(1, need / int(st.g)))
+				if n * int(st.g) < need and int(st.n) > n:
+					n += 1
+				var taken: int = take_pack(S.inv, String(st.p), int(st.pur), n, int(st.g))
+				got += market_price(String(st.p), int(st.pur)) * 1.3 * float(taken * int(st.g))
+				break
+			got = round(got)
+			if got <= 0.0:
+				notify("Nie masz czego sprzedać.", "warn")
+				return
+			S.cash += got
+			S.stats.earned = float(S.stats.earned) + got
+			add_heat(8.0)
+			notify("Szybki interes: +%s." % money(got), "good")
+			Sfx.play("cash")
+			if roll > 0.8:
+				add_heat(10.0)
+				notify("Ktoś mógł to widzieć…", "warn")
+		"okazja:refuse":
+			notify("Nieznajomy wzrusza ramionami i znika.", "")
 		"pozyczka:refuse":
 			notify("Kolega kiwa głową i odchodzi.", "")
 
