@@ -482,6 +482,49 @@ static func _mesh_flowers() -> ArrayMesh:
 	return st.commit()
 
 
+## siatka z modelu GLB (rupiecie balkonowe z Blendera) do MultiMesh
+static func _glb_mesh(name: String) -> ArrayMesh:
+	var n: Node3D = Stations.model(name)
+	if n == null:
+		return null
+	var found: Array = []
+	_collect_meshes(n, found)
+	n.free()
+	return found[0] if not found.is_empty() else null
+
+
+static func _collect_meshes(n: Node, out: Array) -> void:
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh is ArrayMesh:
+		out.append((n as MeshInstance3D).mesh)
+	for c in n.get_children():
+		_collect_meshes(c, out)
+
+
+static func _mesh_blind() -> ArrayMesh:
+	# roleta: płat płótna od górnej krawędzi w dół (wysokość = skala Y) z listwą dolną i sznurkiem; kolor z instancji
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_box(st, Vector3(0, -0.5, 0.012), Vector3(1.9, 1.0, 0.014), Color(1, 1, 1))
+	_box(st, Vector3(0, -1.0, 0.02), Vector3(1.94, 0.025, 0.03), Color(0.62, 0.6, 0.56))
+	_box(st, Vector3(0.75, -0.5, 0.025), Vector3(0.008, 1.0, 0.008), Color(0.7, 0.7, 0.66))
+	return st.commit()
+
+
+static func _mesh_stain() -> ArrayMesh:
+	# zaciek pod parapetem: pionowy pas, na górze ciemny, ku dołowi zanika (kanał alfa wierzchołków)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var w := 1.0
+	var pts := [Vector3(-0.5 * w, 0.0, 0), Vector3(0.5 * w, 0.0, 0), Vector3(0.28 * w, -1.0, 0), Vector3(-0.3 * w, -1.0, 0)]
+	var cols := [Color(1, 1, 1, 0.55), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.0)]
+	for tri in [[0, 1, 2], [0, 2, 3]]:
+		for i in tri:
+			st.set_normal(Vector3(0, 0, 1))
+			st.set_color(cols[i])
+			st.add_vertex(pts[i])
+	return st.commit()
+
+
 static func facade_props(W: Node3D) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2231
@@ -529,19 +572,38 @@ static func facade_props(W: Node3D) -> void:
 				for fl in range(floors):
 					var r := rng.randf()
 					var y0 := fl * cs.y
+					if not (loggia and fl > 0):
+						# zacieki pod parapetem i rolety w części okien (lekkie instancje, bez cieni)
+						var win_c := y0 + 0.56 * cs.y
+						if rng.randf() < 0.6:
+							_queue("stain", _xf(face_pos(b, code, u, win_c - 0.74, 0.014), rot, Vector3(1.7 + rng.randf() * 0.3, 0.55 + rng.randf() * 0.6, 1.0)), Color(0.09, 0.07, 0.05))
+						if (fl > 0 or not bool(b.plyta)) and rng.randf() < 0.2:
+							var bl := rng.randf_range(0.3, 1.15)
+							_queue("blind", _xf(face_pos(b, code, u, win_c + 0.68, 0.02), rot, Vector3(1.0, bl, 1.0)), [Color(0.86, 0.82, 0.72), Color(0.7, 0.72, 0.66), Color(0.55, 0.62, 0.55), Color(0.78, 0.7, 0.58)][rng.randi() % 4])
 					if bool(b.plyta) and fl == 0:
 						# kraty w oknach parteru
 						if r < 0.55 and float(b.dead) < 0.5:
 							_queue("grate", _xf(face_pos(b, code, u, y0 + 0.56 * cs.y, 0.0), rot))
 						continue
 					if loggia and fl > 0:
-						# balkon: antena, pranie albo skrzynka z kwiatami
-						if r < 0.2:
+						# balkon: każde piętro inne — rower, rupiecie, suszarka z praniem, donice, antena, sznurek z praniem albo pusto
+						var jx := rng.randf_range(-0.45, 0.45)
+						if r < 0.14:
+							pass
+						elif r < 0.27:
+							_queue("rower", _xf(face_pos(b, code, u + jx, y0 + 0.5, 0.5), rot + PI / 2.0 + (0.0 if rng.randf() < 0.5 else PI), Vector3.ONE * 0.95))
+						elif r < 0.42:
+							_queue("rup_a", _xf(face_pos(b, code, u + jx, y0 + 0.5, 0.45), rot + rng.randf_range(-0.2, 0.2), Vector3.ONE * 1.15))
+						elif r < 0.56:
+							_queue("rup_b", _xf(face_pos(b, code, u + jx, y0 + 0.5, 0.45), rot + rng.randf_range(-0.2, 0.2), Vector3.ONE * 1.15))
+						elif r < 0.7:
+							_queue("suszarka", _xf(face_pos(b, code, u + jx * 0.6, y0 + 0.5, 0.45), rot + rng.randf_range(-0.15, 0.15), Vector3.ONE * 1.1))
+						elif r < 0.82:
+							_queue("donice", _xf(face_pos(b, code, u + jx, y0 + 0.97, 0.74), rot))
+						elif r < 0.9:
 							_queue("dish", _xf(face_pos(b, code, u + rng.randf_range(-1.1, 1.1), y0 + 1.25, 0.76), rot + rng.randf_range(-0.5, 0.5)))
-						elif r < 0.36:
+						else:
 							_queue("laundry", _xf(face_pos(b, code, u, y0 + 1.75 + rng.randf_range(0.0, 0.25), 0.45), rot), Color.from_hsv(rng.randf(), rng.randf_range(0.0, 0.35), rng.randf_range(0.7, 1.0)))
-						elif r < 0.5:
-							_queue("flowers", _xf(face_pos(b, code, u + rng.randf_range(-0.9, 0.9), y0 + 1.16, 0.78), rot))
 					elif fl > 0:
 						if r < 0.07:
 							_queue("ac", _xf(face_pos(b, code, u + rng.randf_range(-0.5, 0.5), y0 + 0.5, 0.0), rot))
@@ -553,20 +615,31 @@ static func facade_props(W: Node3D) -> void:
 
 ## zamienia zebrane pozycje w kilka obiektów MultiMesh (jeden na rodzaj detalu)
 static func flush(W: Node3D) -> void:
-	var makers := {"dish": _mesh_dish, "ac": _mesh_ac, "grate": _mesh_grate, "antenna": _mesh_antenna, "laundry": _mesh_laundry, "pipe": _mesh_pipe, "flowers": _mesh_flowers}
-	var ranges := {"dish": 70.0, "ac": 80.0, "grate": 45.0, "antenna": 150.0, "laundry": 80.0, "pipe": 110.0, "flowers": 45.0}
+	var makers := {"dish": _mesh_dish, "ac": _mesh_ac, "grate": _mesh_grate, "antenna": _mesh_antenna, "laundry": _mesh_laundry, "pipe": _mesh_pipe, "flowers": _mesh_flowers,
+		"blind": _mesh_blind, "stain": _mesh_stain,
+		"rower": func(): return _glb_mesh("ul_rower"), "rup_a": func(): return _glb_mesh("fas_rupiecie_a"), "rup_b": func(): return _glb_mesh("fas_rupiecie_b"),
+		"suszarka": func(): return _glb_mesh("fas_suszarka"), "donice": func(): return _glb_mesh("fas_donice")}
+	var glb_kinds := ["rower", "rup_a", "rup_b", "suszarka", "donice"]
+	var ranges := {"dish": 70.0, "ac": 80.0, "grate": 45.0, "antenna": 150.0, "laundry": 80.0, "pipe": 110.0, "flowers": 45.0, "blind": 60.0, "stain": 70.0,
+		"rower": 40.0, "rup_a": 45.0, "rup_b": 45.0, "suszarka": 50.0, "donice": 45.0}
 	for name in _mm:
 		var xfs: Array = _mm[name]
 		if xfs.is_empty() or not makers.has(name):
 			continue
 		var mesh: ArrayMesh = (makers[name] as Callable).call()
-		var mat := StandardMaterial3D.new()
-		mat.vertex_color_use_as_albedo = true
-		mat.roughness = 0.75
-		mat.metallic = 0.25 if name in ["antenna", "grate", "pipe"] else 0.0
-		if name == "laundry":
-			mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mesh.surface_set_material(0, mat)
+		if mesh == null:
+			continue
+		if not (name in glb_kinds):
+			var mat := StandardMaterial3D.new()
+			mat.vertex_color_use_as_albedo = true
+			mat.roughness = 0.75
+			mat.metallic = 0.25 if name in ["antenna", "grate", "pipe"] else 0.0
+			if name == "laundry" or name == "blind":
+				mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+			if name == "stain":
+				mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+			mesh.surface_set_material(0, mat)
 		# dzielimy na kafle 60 x 60 m, żeby odległe detale w ogóle nie trafiały do rysowania
 		var tiles := {}
 		for i in range(xfs.size()):
