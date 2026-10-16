@@ -70,6 +70,7 @@ static func build(W) -> void:
 	_zabawa_boisko(W)
 	_wulkanizacja(W)
 	_ulica_detale(W)
+	_ulica_detale2(W)
 	W.rng.state = st
 
 
@@ -852,3 +853,28 @@ static func _ulica_detale(W) -> void:
 	for u in [[-62.0, 13.2], [60.0, 26.8], [-8.0, 26.9], [126.0, 13.3]]:
 		if W.is_free(float(u[0]) * SC, float(u[1]) * SC, 0.5):
 			W._prop("utility_box_01", float(u[0]), float(u[1]), 0.0 if float(u[1]) < 20.0 else PI, 1.0, 0.0)
+
+
+## Detale przy Robotniczej i osiedlowych drogach: ławka z koszem, stojaki rowerowe, tablice ogłoszeń; zajęte pozycje są pomijane.
+static func _ulica_detale2(W) -> void:
+	# [x, z, obrót] — stojaki rowerowe stoją przy chodniku, front w stronę jezdni
+	for r in [[-5.3, 72.0, PI / 2.0], [5.3, 120.0, -PI / 2.0], [-104.5, -50.0, PI / 2.0], [93.5, -90.0, PI / 2.0]]:
+		var x: float = r[0]
+		var z: float = r[1]
+		if not W.is_free(x * SC, z * SC, 0.7):
+			continue
+		var rm: Node3D = Stations.model("ulica_rowery")
+		if rm != null:
+			Props.set_range(W._place(rm, x, z, float(r[2]), 0.3, 1.8, 0.7), 90.0)
+	for t in [[-6.2, 56.0, PI / 2.0], [6.2, 100.0, -PI / 2.0], [-112.0, -70.0, PI / 2.0], [-101.0, 4.0, -PI / 2.0], [44.0, 13.4, 0.0]]:
+		var x2: float = t[0]
+		var z2: float = t[1]
+		if not W.is_free(x2 * SC, z2 * SC, 0.7):
+			continue
+		var tm: Node3D = Stations.model("ulica_tablica")
+		if tm != null:
+			Props.set_range(W._place(tm, x2, z2, float(t[2]), 1.0, 0.2, 2.3), 100.0)
+	for b in [[-6.0, 82.0, PI / 2.0], [6.0, 66.0, -PI / 2.0], [-6.0, 130.0, PI / 2.0]]:
+		if W.is_free(float(b[0]) * SC, float(b[1]) * SC, 0.8):
+			W._bench(float(b[0]), float(b[1]), float(b[2]))
+			W._bin(float(b[0]) + (1.0 if float(b[0]) < 0.0 else -1.0) * 0.5, float(b[1]) + 3.0, 0.0)
