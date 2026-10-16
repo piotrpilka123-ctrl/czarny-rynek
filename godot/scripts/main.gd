@@ -3723,6 +3723,8 @@ func _shot() -> void:
 	if times.size() > 4:
 		times.sort()
 		print("BENCH med_ms=%.2f p90_ms=%.2f min_ms=%.2f scale=%.2f n=%d" % [times[int(times.size() / 2.0)], times[int(times.size() * 0.9)], times[0], get_viewport().scaling_3d_scale, times.size()])
+	if args.has("pick"):
+		_pick_center()
 	print("SHOT ", args.shot, " fps=", Engine.get_frames_per_second(), " draw_calls=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 		" objects=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
 		" tris=", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
@@ -3929,3 +3931,45 @@ func talk_lab_staff() -> void:
 		var state: Dictionary = G.S.labstaff
 		choices.push_front({"label":"Wznów" if state.paused else "Wstrzymaj","act":func(): state.paused=not state.paused; talk_lab_staff()})
 		ui.dialog({"name":"Igor","lines":["%s. Czynności dziś %d/2, zapłacono %s."%[state.status,state.actions_today,G.money(state.paid)]],"choices":choices})
+
+
+## --pick: co rysuje środek kadru — najbliższy mesh trafiony promieniem z kamery (ścieżka, mesh, materiały i ich tekstury)
+func _pick_center() -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var o := cam.global_position
+	var d := -cam.global_transform.basis.z
+	var best: MeshInstance3D = null
+	var best_t := 1e9
+	var st: Array = [get_tree().root]
+	while not st.is_empty():
+		var n: Node = st.pop_back()
+		for ch in n.get_children():
+			st.append(ch)
+		var mi := n as MeshInstance3D
+		if mi == null or mi.mesh == null or not mi.is_visible_in_tree():
+			continue
+		var box: AABB = mi.global_transform * mi.get_aabb()
+		var hit = box.intersects_ray(o, d)
+		if hit != null:
+			var t: float = o.distance_to(hit)
+			if t > 0.3 and t < best_t:
+				best_t = t
+				best = mi
+	if best == null:
+		print("PICK nic")
+		return
+	print("PICK %.1f m  %s  mesh=%s" % [best_t, best.get_path(), best.mesh.resource_path])
+	var mats: Array = []
+	if best.material_override != null:
+		mats.append(best.material_override)
+	else:
+		for i in range(best.mesh.get_surface_count()):
+			mats.append(best.get_active_material(i))
+	for m in mats:
+		if m is StandardMaterial3D:
+			print("PICK  mat %s albedo=%s tex=%s" % [m.resource_name, m.albedo_color, m.albedo_texture.resource_path if m.albedo_texture else "-"])
+		elif m is ShaderMaterial:
+			var wt = m.get_shader_parameter("wall_tex")
+			print("PICK  shader wall_tex=%s style=%s b_wall=%s b_accent=%s" % [wt.resource_path if wt else "-", m.get_shader_parameter("style"), best.get_instance_shader_parameter("b_wall"), best.get_instance_shader_parameter("b_accent")])
