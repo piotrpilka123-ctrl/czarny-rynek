@@ -1268,8 +1268,28 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 		while px2 < x1 - 2.0:
 			var chimney_z := (z0+z1)*0.5 + rng.randf_range(-3.0,3.0)
 			# Komin przecina połać; niski warsztat nie dostaje komina wiszącego nad dachem.
-			Models.box(city,Vector3(0.9,1.8,0.9),Vector3(px2,top+rise*0.65+0.6,chimney_z),Props.pbr("factory_brick",0.5,Color(0.7,0.6,0.55)))
+			_roof_prop("dach_komin", px2, top + rise * 0.65 + 0.6 - 0.9, chimney_z, 0.0)
 			px2 += rng.randf_range(7.0,12.0)
+		# lukarny na dwuspadowych połaciach (styl 2 to dach czterospadowy — bez lukarn)
+		if roof_style != 2:
+			var drng := RandomNumberGenerator.new()
+			drng.seed = int(x0 * 31.0 + z0 * 17.0)
+			var long_x := w >= d
+			var rw := w + 0.8
+			var rd := d + 0.8
+			var length := (rw if long_x else rd)
+			var count := int(length * SC / 5.5)
+			for di in range(count):
+				var u := -length * 0.5 + (di + 0.5) * length / maxf(1.0, float(count))
+				for sg in [-1.0, 1.0]:
+					if drng.randf() < 0.4:
+						continue
+					var f := 0.42
+					var y := top + 0.28 + rise * f - 0.3
+					if long_x:
+						_roof_prop("dach_lukarna", (x0 + x1) * 0.5 + u, y, (z0 + z1) * 0.5 + sg * rd * 0.5 * (1.0 - f), 0.0 if sg > 0.0 else PI)
+					else:
+						_roof_prop("dach_lukarna", (x0 + x1) * 0.5 + sg * rw * 0.5 * (1.0 - f), y, (z0 + z1) * 0.5 + u, PI / 2.0 if sg > 0.0 else -PI / 2.0)
 	elif h > 12.0:
 		var k := 0
 		var px := x0 + 6.0
@@ -1280,6 +1300,14 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 				Models.cyl(city, 0.03, 0.04, 5.0, Vector3(px + 1.0, top + 4.5, (z0 + z1) * 0.5), rm, Vector3.ZERO, 5)
 			px += 14.0
 			k += 1
+	if not (key.begins_with("kam") or key == "cegla2" or key == "klub" or key == "urzad" or key.begins_with("hala")) and h < 40.0:
+		# płaski dach: łaty z papy, wyłaz z kominkami wentylacyjnymi
+		var frng := RandomNumberGenerator.new()
+		frng.seed = int(x0 * 13.0 + z0 * 7.0)
+		var area := w * d * SC * SC
+		for li in range(1 + int(area / 160.0)):
+			_roof_prop("dach_lata", lerpf(x0 + 3.0, x1 - 3.0, frng.randf()), top + 0.285, lerpf(z0 + 3.0, z1 - 3.0, frng.randf()), frng.randf() * TAU, 80.0)
+		_roof_prop("dach_nadstawka", lerpf(x0 + 3.0, x1 - 3.0, frng.randf()), top + 0.285, lerpf(z0 + 3.0, z1 - 3.0, frng.randf()), frng.randf() * TAU, 90.0)
 	# Bryły charakterystycznych lokali pozostają w obrębie obrysu budynku.
 	if key == "klub":
 		var crown := Models.mat("3c3445",0.8)
@@ -1301,6 +1329,18 @@ func building(x0: float, z0: float, x1: float, z1: float, h: float, key: String,
 		_balconies(blds.back())
 	elif (key.begins_with("kam") or key == "cegla2") and opt.get("balc", true):
 		_juliets(blds.back())
+
+
+## detal dachu z modelu (plan miasta: skala x/z kompensuje skalę `city`); znika z oddali
+func _roof_prop(name: String, x: float, y: float, z: float, ry: float, range_m := 90.0) -> void:
+	var m := Stations.model(name)
+	if m == null:
+		return
+	m.position = Vector3(x, y, z)
+	m.rotation.y = ry
+	m.scale = Vector3(INV, 1.0, INV)
+	city.add_child(m)
+	Props.set_range(m, range_m)
 
 
 ## Kamienice nie są gładkie: część okien (mniej więcej co szóste, nigdy parter) dostaje żelazny balkonik —
