@@ -2417,9 +2417,45 @@ func _buildings() -> void:
 			if e_li != null:
 				e_li.light_energy = 0.7
 			_front_model(String(e[0]), float(e[1]), 30.0, -1.0, e[5], e[6], e_li)
+	_shop_dressing()
 	_sign("COAL DEPOT", Vector3(57.0, 6.2, 29.9), Color(0.8, 0.78, 0.7), 110, PI, 0.007, 8)
 	_sign("HALL NO. 2", Vector3(175.9, hd(176.0, -80.0) + 11.0, -80.0), Color(0.7, 0.68, 0.62), 220, -PI / 2.0, 0.01, 8)
 	_sign("FOR SALE\ncall 600 100 …", Vector3(190.0, hd(190.0, -51.0) + 4.6, -51.9), Color(0.95, 0.85, 0.2), 90, 0.0, 0.007, 10)
+
+
+## parter ulicy handlowej: markizy, tablice kantor/apteka, skrzynki z warzywami, wieszak z ciuchami, potykacze i naklejki na roletach
+func _dress(name: String, x: float, y: float, zw: float, dz: float, off: float, range_m := 70.0, rot_add := 0.0, solid := false) -> Node3D:
+	var m := Stations.model(name)
+	if m == null:
+		return null
+	_wall(m, x, y, zw + dz * (0.1 + off * INV), (0.0 if dz > 0.0 else PI) + rot_add)
+	Props.set_range(m, range_m)
+	if solid:
+		add_col(x - 0.9, x + 0.9, zw + dz * (0.1 + off * INV) - 0.5, zw + dz * (0.1 + off * INV) + 0.5, 0.8, true, -1.0)
+		rects.pop_back()
+	return m
+
+
+func _shop_dressing() -> void:
+	# lombard + kantor, piekarnia + apteka (świecące wysięgniki nad chodnikiem)
+	_dress("sklep_kantor", -75.0 + 3.6 * INV, 2.55, 10.0, 1.0, 0.05, 90.0)
+	_dress("sklep_krzyz", 104.0 - 3.4 * INV, 2.6, 10.0, 1.0, 0.05, 90.0)
+	# second hand: markiza, wieszak z używanymi ubraniami i potykacz przed zamkniętą roletą
+	_dress("sklep_markiza_a", -131.0, 2.5, 10.0, 1.0, 0.04, 80.0)
+	_dress("sklep_wieszak", -131.0 + 1.6 * INV, 0.0, 10.0, 1.0, 1.1, 50.0, 0.0, true)
+	_dress("sklep_potykacz", -131.0 - 2.0 * INV, 0.0, 10.0, 1.0, 0.9, 40.0, 0.4)
+	# kebab: zielona markiza i skrzynki z warzywami; monopolowy: potykacz z promocją
+	_dress("sklep_warzywa", -43.0 + 3.2 * INV, 0.0, 10.0, 1.0, 0.75, 45.0, 0.0, true)
+	_dress("sklep_potykacz", 31.0 + 2.3 * INV, 0.0, 10.0, 1.0, 0.9, 40.0, -0.3)
+	# naklejki i plakaty na roletach i murze obok lokali
+	var prng := RandomNumberGenerator.new()
+	prng.seed = 88
+	for e in [[-131.0, 10.0, 1.0], [-70.0, 30.0, -1.0], [-26.0, 30.0, -1.0], [24.0, 30.0, -1.0], [-43.0, 10.0, 1.0]]:
+		for k in range(2):
+			var sx: float = float(e[0]) + (k * 2 - 1) * (2.0 + prng.randf() * 1.2) * INV
+			var rot_d: float = 0.0 if float(e[2]) > 0.0 else PI
+			var nv := Vector3(sin(rot_d), 0.0, cos(rot_d))
+			Details.decal(self, Details.pick("poster", prng), Vector3(sx * SC, hd(sx, float(e[1])) + 1.5 + prng.randf() * 0.5, (float(e[1]) + float(e[2]) * 0.12) * SC) + nv * 0.02, rot_d, 0.42, 1.0, 25.0)
 
 
 ## roleta zamkniętego sklepu: blacha trapezowa pomalowana na kolor lokalu. („rusted_shutter” wyglądał jak ciemny mur,
