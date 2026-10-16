@@ -69,6 +69,7 @@ static func build(W) -> void:
 	_siatkowka(W)
 	_zabawa_boisko(W)
 	_wulkanizacja(W)
+	_ulica_detale(W)
 	W.rng.state = st
 
 
@@ -826,3 +827,28 @@ static func _wulkanizacja(W) -> void:
 	_light(W, c.x, c.y - 6.5, 3.2, Color(1.0, 0.85, 0.6), 0.6, 12.0, true)
 	_dump(W, "poi_wulkan_opony", c.x - 9.0, c.y + 1.5 * INV - 3.0, "Przeszukaj stos opon i felg")
 	_stash(W, "wulkan_kasetka", c.x - 2.0, c.y - 9.0 + 2.2 * INV, "Zajrzyj do kasetki na ladzie", 80, "W kasetce wulkanizatora leżał utarg za dwie felgi", 0.9)
+
+
+## Detale wzdłuż Hutniczej: budki telefoniczne (świecą nocą), hydranty i skrzynki techniczne; pozycje, które wypadły w czymś zajętym, są pomijane.
+static func _ulica_detale(W) -> void:
+	var booths := [[-128.0, 13.4, 0.0], [97.0, 26.6, PI], [-168.0, 26.6, PI], [14.0, 13.4, 0.0]]
+	for b in booths:
+		var x: float = b[0]
+		var z: float = b[1]
+		if not W.is_free(x * SC, z * SC, 0.5):
+			continue
+		var bm: Node3D = Stations.model("budka_telefon")
+		if bm == null:
+			continue
+		var lens := Stations._find(bm, "Swiatlo") as MeshInstance3D
+		if lens != null:
+			lens.material_override = W.lamp_mat
+			lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		Props.set_range(W._place(bm, x, z, float(b[2]), 0.6, 0.6, 2.5), 110.0)
+		_light(W, x, z, 2.1, Color(1.0, 0.95, 0.8), 0.25, 5.0)
+	for h in [[-150.0, 13.2], [-40.0, 26.8], [30.0, 26.8], [110.0, 13.2], [150.0, 26.8], [-100.0, 13.2]]:
+		if W.is_free(float(h[0]) * SC, float(h[1]) * SC, 0.4):
+			W._prop("firehydrant", float(h[0]), float(h[1]), float(h[0]) * 0.1, 0.8, 0.0)
+	for u in [[-62.0, 13.2], [60.0, 26.8], [-8.0, 26.9], [126.0, 13.3]]:
+		if W.is_free(float(u[0]) * SC, float(u[1]) * SC, 0.5):
+			W._prop("utility_box_01", float(u[0]), float(u[1]), 0.0 if float(u[1]) < 20.0 else PI, 1.0, 0.0)
