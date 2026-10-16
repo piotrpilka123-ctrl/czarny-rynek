@@ -6,6 +6,7 @@ extends Node
 
 const Fx = preload("res://scripts/fx.gd")
 const Models = preload("res://scripts/models.gd")
+const Props = preload("res://scripts/props.gd")
 const Chars = preload("res://scripts/chars.gd")
 const Stations = preload("res://scripts/stations.gd")
 
@@ -29,6 +30,8 @@ const FAR_PATROLS := [[207.0, -138.0, 0.9], [152.0, -140.0, 168.0, -146.0], [153
 const SWAT_VANS := [[201.0, -133.0, 1.2], [158.0, -145.0, 0.25], [149.5, -57.0, -1.35]]
 const CORDON_R := 8.5
 var siwy = null
+var radio_it: Dictionary = {}   # radio patrolu przy ogródkach: podsłuchasz je w drodze do siatki
+var _radio_heard := false
 var _bang := 0.0
 var _steps_heard := false     # bieg antyterrorystów po korytarzu zagrał już w trakcie rozmowy
 var _shout := 0.0
@@ -119,6 +122,49 @@ func step() -> Dictionary:
 			return {"text": func(): return "Jesteś za siatką. Teraz biegiem [%s] między garaże!" % G.kn("sprint"),
 				"done": func(): return false, "marker": func(): return {"loc": "out", "x": run_end().x, "z": run_end().y}}
 	return {"text": func(): return "", "done": func(): return false}
+
+
+## Zgubione radio patrolu na skrzynce pod ogródkami: słychać z niego, że ktoś wiedział, którędy pójdziesz
+func _build_radio() -> void:
+	var W = M.world
+	if radio_it.is_empty():
+		var rp := P(158.0, -104.0)
+		var g := Node3D.new()
+		var crate := Props.make("wooden_crate_02", 0.5)
+		if crate != null:
+			g.add_child(crate)
+		var body := Models.box(g, Vector3(0.07, 0.17, 0.045), Vector3(0.0, 0.58, 0.0), Models.mat("1c1f22", 0.5), Vector3(0.0, 0.5, 0.0), false)
+		Models.box(body, Vector3(0.012, 0.012, 0.004), Vector3(0.0, 0.04, 0.026), Models.mat("45e070", 0.3, 0.0, 1.6), Vector3.ZERO, false)
+		Models.cyl(g, 0.004, 0.004, 0.2, Vector3(0.03, 0.74, 0.0), Models.mat("101214", 0.4), Vector3.ZERO, 4)
+		var led := OmniLight3D.new()
+		led.light_color = Color(0.3, 1.0, 0.45)
+		led.omni_range = 3.0
+		led.light_energy = 0.35
+		led.shadow_enabled = false
+		led.position = Vector3(0.0, 0.68, 0.1)
+		g.add_child(led)
+		g.position = Vector3(rp.x, W.height(rp.x, rp.y), rp.y)
+		g.rotation.y = 0.6
+		M.add_child(g)
+		nodes.append(g)
+		radio_it = {"loc": "out", "x": rp.x, "z": rp.y, "y0": 0.0, "y1": 0.9, "r": 0.9, "reach": 3.0, "id": "prolog_radio",
+			"label": func(): return "Podsłuchaj radio patrolu", "act": func(): radio_listen()}
+	_radio_heard = false
+	W.inter.erase(radio_it)
+
+
+func radio_listen() -> void:
+	if stage != "escape" or G.busy or _radio_heard:
+		return
+	_radio_heard = true
+	M.world.inter.erase(radio_it)
+	G.S.flags["prolog_radio"] = true
+	M.ui.dialog({"name": "Radio patrolu", "lines": [
+		"„…Bravo do centrali. Od frontu czysto, furgony trzymają kordon. Na północy i wschodzie mysz się nie prześliźnie.”",
+		"„Przyjąłem. Informator mówił, że pójdzie na zachód, pod siatką za torami. Mamy tam kogoś?”",
+		"„Negatywne. Szef kazał nie ruszać. Niech sam dojdzie do garaży — tam na niego poczekają.”",
+		{"n": "Ty", "t": "Niech sam dojdzie… Skąd oni wiedzą, którędy pójdę?"}],
+		"on_end": func(): G.notify("Ktoś im powiedział, którędy pójdziesz. Ktoś, kto znał ten plan.", "warn")})
 
 
 func _wait(sec: float) -> void:
@@ -413,6 +459,7 @@ func _setup_world() -> void:
 		siwy.track = true
 		siwy.node.position = Vector3(siwy.x, 0.0, siwy.z)
 		siwy.node.rotation.y = PI * 0.9
+	_build_radio()
 	if W.door_tape != null:
 		W.door_tape.visible = false
 	W.set_mill_burnt(false)
@@ -544,6 +591,8 @@ func on_outside() -> void:
 	for l in M.world.lab_fx.get("flash", []):
 		l.light_energy = 0.0
 	G.notify("Radiowozy stoją od frontu, a z boków furgony antyterrorystów zamknęły kordon. Zostaje jedna droga: na zachód, obok patroli z latarkami, pod siatką za torami.", "warn")
+	if not radio_it.is_empty() and not M.world.inter.has(radio_it) and not _radio_heard:
+		M.world.inter.append(radio_it)
 
 
 func _caught(why := "") -> void:
@@ -1264,6 +1313,7 @@ func _finish() -> void:
 	G.S.inv = G.new_store()
 	G.S.stash.erase("lab")
 	var W = M.world
+	M.world.inter.erase(radio_it)
 	for n in nodes:
 		if is_instance_valid(n):
 			n.queue_free()

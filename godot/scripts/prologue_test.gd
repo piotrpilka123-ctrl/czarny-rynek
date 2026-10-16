@@ -53,6 +53,10 @@ static func run(T) -> void:
 	await M.exit_room()
 	var e: Vector2 = pr.exit_pos()
 	T.ok(P.loc == "out" and pr.stage == "escape" and Vector2(P.global_position.x - e.x, P.global_position.z - e.y).length() < 0.5, "wyjście tyłem huty: etap ucieczki")
+	T.ok(not pr.radio_it.is_empty() and W.inter.has(pr.radio_it) and not pr.radio_it.label.call().is_empty(), "przy ogródkach leży radio patrolu do podsłuchania")
+	pr.radio_listen()
+	T.ok(U.mode == "dialog" and G.flag("prolog_radio") and not W.inter.has(pr.radio_it) and String(U.dlg.lines[0].t).contains("Bravo"), "radio: ktoś znał trasę ucieczki, podsłuch tylko raz")
+	await T.skip_dialog()
 	await T.frames(3)
 	T.ok(G.night > 0.6, "na zewnątrz jest jeszcze ciemno (noc %.2f)" % G.night)
 

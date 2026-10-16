@@ -3801,6 +3801,51 @@ func _dense() -> void:
 		wd2.position = Vector3(wx2, hd(wx2, wz2) - 0.03, wz2)
 		wd2.scale *= Vector3(INV, 1.0, INV)
 		city.add_child(wd2)
+	_prologue_yard()
+
+
+## Zaniedbane ogródki za halą Starej Huty, którymi ucieka się w prologu: grządki wśród chwastów, krzaki, stare skrzynki,
+## opony i palety, sznur z praniem, altanka z krasnalem. Wszystko trzyma się z dala od trasy ucieczki — ma dawać cień i kryjówki, nie blokować.
+func _prologue_yard() -> void:
+	var yr := RandomNumberGenerator.new()
+	yr.seed = 7711
+	var route := [Vector2(176.0, -113.5), Vector2(166.0, -106.0), Vector2(153.0, -97.0), Vector2(142.0, -93.0), Vector2(130.6, -90.0)]
+	var junk := [["pallet", 0.16], ["old_tyre", 0.16], ["wooden_crate_02", 0.45], ["barrel_01", 0.9], ["trashbag", 0.5], ["plastic_crate_01", 0.28], ["cement_bag", 0.18]]
+	var beds := ["pod_grzadka", "pod_grzadka", "pod_kwiaty"]
+	for i in range(route.size() - 1):
+		var a: Vector2 = route[i]
+		var b: Vector2 = route[i + 1]
+		var dir := (b - a).normalized()
+		var nor := Vector2(-dir.y, dir.x)
+		var n := int(a.distance_to(b) / 2.6)
+		for j in range(n):
+			var base := a.lerp(b, (j + 0.5) / n)
+			for side in [-1.0, 1.0]:
+				var off: float = yr.randf_range(3.2, 9.0) * float(side)
+				var p: Vector2 = base + nor * off + dir * yr.randf_range(-1.2, 1.2)
+				if not _soft_ground(p.x, p.y):
+					continue
+				var kind := yr.randi() % 7
+				if kind <= 1:
+					for k in range(2):
+						var wd := Props.weeds(yr.randi(), yr.randf_range(1.0, 1.6))
+						wd.position = Vector3(p.x + yr.randf_range(-0.6, 0.6), hd(p.x, p.y) - 0.03, p.y + yr.randf_range(-0.6, 0.6))
+						wd.scale *= Vector3(INV, 1.0, INV)
+						city.add_child(wd)
+				elif kind == 2:
+					_bush(p.x, p.y, yr.randf_range(0.9, 1.4))
+				elif kind == 3 or kind == 4:
+					var gm := Stations.model(String(beds[yr.randi() % beds.size()]))
+					if gm != null:
+						Props.set_range(_place(gm, p.x, p.y, yr.randf_range(-0.4, 0.4) + (PI / 2.0 if yr.randf() < 0.5 else 0.0)), 150.0)
+				else:
+					var jk: Array = junk[yr.randi() % junk.size()]
+					_prop(String(jk[0]), p.x, p.y, yr.randf_range(0.0, TAU), float(jk[1]), 0.0, false)
+	# sznur z praniem i altanka pod płotem, trochę dalej od trasy
+	for e in [["pod_sznur", 170.0, -96.0, 0.3], ["pod_wiata", 163.0, -87.5, 0.0], ["pod_krasnal", 160.5, -89.5, 2.4], ["pod_stolik", 166.5, -88.0, 0.5]]:
+		var pm := Stations.model(String(e[0]))
+		if pm != null and _soft_ground(float(e[1]), float(e[2])):
+			Props.set_range(_place(pm, float(e[1]), float(e[2]), float(e[3])), 150.0)
 
 
 # ---------------------------------------------------------------- krawężniki, ściółka, kępy trawy
