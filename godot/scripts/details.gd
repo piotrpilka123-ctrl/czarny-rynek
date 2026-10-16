@@ -638,6 +638,19 @@ static func facade_props(W: Node3D) -> void:
 			tl.position = Vector3(0, 0.0, 0.02)
 			pn.add_child(tl)
 			Props.set_range(pn, 35.0)
+		# --- bloki: tabliczka „os. Hutnik — blok N” na szczycie od strony klatek, wysoko nad parterem (przy narożniku)
+		if bool(b.get("plyta", false)) and String(b.get("no", "")) != "":
+			var bc: int = int(b.front)
+			var bn := Node3D.new()
+			var bp := face_pos(b, bc, 1.0, 2.6, 0.03)
+			bn.transform = Transform3D(Basis(Vector3.UP, face_rot(bc)), bp)
+			W.add_child(bn)
+			Models.box(bn, Vector3(0.62, 0.34, 0.02), Vector3.ZERO, Models.mat("f0eee6", 0.4, 0.2), Vector3.ZERO, false)
+			Models.box(bn, Vector3(0.58, 0.3, 0.025), Vector3(0, 0, 0.004), Models.mat("7a1f1c", 0.35, 0.3), Vector3.ZERO, false)
+			var bl := Signs.text("OS. HUTNIK\nBLOK %s" % String(b.no), "barlowc", 34, Color(0.95, 0.95, 0.92), 0.0042)
+			bl.position = Vector3(0, 0.0, 0.02)
+			bn.add_child(bl)
+			Props.set_range(bn, 40.0)
 		# --- anteny i wywietrzniki na dachu
 		if bool(b.get("plyta", false)) or bool(b.get("old", false)):
 			var cnt := int(face_len(b, 1) / 7.0) + 1
