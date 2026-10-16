@@ -1296,6 +1296,9 @@ func run() -> void:
 	load("res://scripts/music_test.gd").run(self)
 	await load("res://scripts/club_layout_test.gd").run(self)
 	await load("res://scripts/room_layout_test.gd").run(self)
+	# detale fasad (rupiecie, rolety, kraty, zacieki) stoją przy ścianach istniejących budynków, nic nie wisi w powietrzu
+	var floating: Array = load("res://scripts/details.gd").audit(G.world)
+	ok(floating.is_empty(), "żaden detal fasady nie wisi w powietrzu (%d podejrzanych)" % floating.size())
 	await load("res://scripts/player_equipment_test.gd").run(self)
 
 	# --- prolog: nalot na laboratorium, ucieczka, eksplozje

@@ -103,7 +103,40 @@ static func is_blind(b: Dictionary, code: int) -> bool:
 	return (int(b.blind) == 1 and code >= 3) or (int(b.blind) == 2 and code <= 2)
 
 
+## pozycje wszystkich zakolejkowanych detali fasad (do testu: żaden nie może wisieć w powietrzu)
+static var placed: Array = []
+
+
+## detale, które nie stoją przy ścianie żadnego budynku (ściana = obrys budynku ±1,3 m, wysokość od podstawy do dachu)
+static func audit(W: Node3D) -> Array:
+	var bad: Array = []
+	for e in placed:
+		if e[0] == "antenna":
+			continue                      # anteny stoją na dachach, ponad obrysem ściany
+		var o: Vector3 = e[1]
+		var ok := false
+		for b in W.blds:
+			if not b.has("key"):
+				continue
+			var x0: float = float(b.x0) * SC
+			var x1: float = float(b.x1) * SC
+			var z0: float = float(b.z0) * SC
+			var z1: float = float(b.z1) * SC
+			var by: float = b.by
+			if o.y < by - 0.5 or o.y > by + float(b.h) + 0.5:
+				continue
+			var on_x: bool = o.z > z0 - 0.3 and o.z < z1 + 0.3 and (absf(o.x - x0) < 1.3 or absf(o.x - x1) < 1.3)
+			var on_z: bool = o.x > x0 - 0.3 and o.x < x1 + 0.3 and (absf(o.z - z0) < 1.3 or absf(o.z - z1) < 1.3)
+			if on_x or on_z:
+				ok = true
+				break
+		if not ok:
+			bad.append(e)
+	return bad
+
+
 static func _queue(mesh: String, xf: Transform3D, col := Color.WHITE) -> void:
+	placed.append([mesh, xf.origin])
 	if not _mm.has(mesh):
 		_mm[mesh] = []
 		_mm_col[mesh] = []
