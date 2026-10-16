@@ -273,6 +273,20 @@ static func run(T) -> void:
 			prev = String(o4.spot)
 	T.ok(rot_ok, "rotacja miejsc: klient nigdy nie wraca dwa razy z rzędu w to samo miejsce")
 
+	# --- trawnik przy bloku 11: obrysy rekwizytów nie przenikają się, alejka z kostki zostaje wolna
+	var tb: Array = load("res://scripts/poi.gd").trawnik_boxes
+	var overlap := []
+	for i5 in range(tb.size()):
+		for j5 in range(i5 + 1, tb.size()):
+			var a5: Array = tb[i5]
+			var b5: Array = tb[j5]
+			if float(a5[1]) > float(b5[2]) and float(b5[1]) > float(a5[2]) and float(a5[3]) < float(b5[4]) and float(b5[3]) < float(a5[4]):
+				overlap.append("%s×%s" % [a5[0], b5[0]])
+		var al: Array = tb[i5]
+		if float(al[2]) > -4.5 and float(al[1]) < -1.5 and float(al[4]) > -150.0 and float(al[3]) < -136.0:
+			overlap.append(str(al[0]) + " (w alejce)")
+	T.ok(tb.size() >= 10 and overlap.is_empty(), "trawnik przy bloku 11: %d rekwizytów, bez przenikania i bez blokowania alejki %s" % [tb.size(), str(overlap)])
+
 	# --- tarcza zegara do umawiania godziny: kliknięty punkt → pora, tylko w dozwolonym łuku (dziś, od teraz)
 	var dial = load("res://scripts/clock_dial.gd").new()
 	G.ui.add_child(dial)

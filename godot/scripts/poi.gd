@@ -20,6 +20,8 @@ const BAZAAR := Vector2(11.0, 209.0)      # bazar (środek)
 const GREEN := Vector2(188.0, -140.0)     # szklarnie (środek)
 ## stoły pamiątek i skrytki: [id, x, z] — używane też przez test przejść
 static var stashes: Array = []
+## obrysy rekwizytów trawnika przy bloku 11 [nazwa, x0, x1, z0, z1] — pilnuje ich test (nic się nie przenika, alejka wolna)
+static var trawnik_boxes: Array = []
 
 
 ## nawierzchnia pod nowymi miejscami (wołane na końcu _paint)
@@ -41,6 +43,7 @@ static func paint(W) -> void:
 
 static func build(W) -> void:
 	stashes.clear()
+	trawnik_boxes.clear()
 	var st: int = W.rng.state
 	W.rng.seed = 20261014
 	_yard(W)
@@ -676,6 +679,10 @@ static func _blaszaki(W) -> void:
 	_stash(W, "blaszak_13", 170.0, 207.0 + 3.0 * INV, "Zajrzyj przez szparę w blaszaku nr 13", 85, "Przez szparę wyciągnąłeś zwiniętą kopertę z gotówką", 0.9)
 
 
+static func _fp(n: String, x: float, z: float, hx_m: float, hz_m: float) -> void:
+	trawnik_boxes.append([n, x - hx_m * INV, x + hx_m * INV, z - hz_m * INV, z + hz_m * INV])
+
+
 ## Trawnik między blokami 9 i 11: alejka z kostki od chodnika, trzepak z suszarką, piaskownica, huśtawka, ławki, kosze i latarnia.
 static func _trawnik11(W) -> void:
 	var c := Vector2(-3.0, -143.0)
@@ -687,12 +694,22 @@ static func _trawnik11(W) -> void:
 	var pk: Node3D = Stations.model("plac_piaskownica")
 	if pk != null:
 		Props.set_range(W._place(pk, c.x + 7.0, c.y - 6.0, 0.1, 1.55, 1.55, 0.3), 95.0)
-	Props.set_range(W._place(Props.swing(), c.x + 7.0, c.y + 1.0, PI, 1.6, 0.9, 2.4), 110.0)
+	Props.set_range(W._place(Props.swing(), c.x + 10.5, c.y + 1.0, PI, 1.6, 0.9, 2.4), 110.0)
+	_fp("huśtawka", c.x + 10.5, c.y + 1.0, 1.6, 0.9)
+	_fp("ławka_p", c.x + 3.5, c.y + 2.5, 0.9, 0.35)
+	_fp("ławka_l", c.x - 6.0, c.y + 3.0, 0.9, 0.35)
+	_fp("ławka_t", c.x - 3.5, c.y - 5.5, 0.9, 0.35)
+	_fp("piaskownica", c.x + 7.0, c.y - 6.0, 1.55, 1.55)
+	_fp("trzepak", c.x - 8.0, c.y - 3.0, 1.3, 0.12)
+	_fp("suszarka", c.x - 8.5, c.y - 8.0, 0.9, 0.9)
+	_fp("kosz_1", c.x - 5.0, c.y + 6.0, 0.35, 0.35)
+	_fp("kosz_2", c.x + 3.5, c.y - 8.0, 0.35, 0.35)
+	_fp("latarnia", c.x + 3.0, c.y - 1.0, 0.2, 0.2)
 	W._bench(c.x - 6.0, c.y + 3.0, PI)
 	W._bench(c.x + 3.5, c.y + 2.5, PI)
 	W._bench(c.x - 3.5, c.y - 5.5, 0.0)
 	W._bin(c.x - 5.0, c.y + 6.0, 0.0)
 	W._bin(c.x + 3.5, c.y - 8.0, 0.0)
-	_pole(W, c.x + 1.5, c.y - 1.0)
+	_pole(W, c.x + 3.0, c.y - 1.0)
 	_scatter(W, c, [["dirty_football", 4.0, -2.0, 0.0, 0.22], ["trashbag", -10.0, 4.0, 0.6, 0.5], ["can_rusted", 2.0, 1.0, 0.3, 0.13], ["plastic_crate_01", -6.0, -9.0, 0.4, 0.3]])
 	_stash(W, "trawnik_suszarka", c.x - 8.5 + 1.2 * INV, c.y - 8.0, "Zajrzyj pod suszarkę", 30, "Pod suszarką ktoś zgubił zwitek drobnych", 0.2)
