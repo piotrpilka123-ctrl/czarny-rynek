@@ -65,7 +65,14 @@ static func build(W) -> void:
 	_budowa(W)
 	_przystanek_huta(W)
 	_siatkowka(W)
+	_zabawa_boisko(W)
 	W.rng.state = st
+
+
+## plac zabaw i boisko do kosza: po jednej małej skrytce z drobnymi
+static func _zabawa_boisko(W) -> void:
+	_stash(W, "plac_zabaw_ławka", -14.8, -110.0, "Zajrzyj pod ławkę przy placu zabaw", 35, "Pod ławką leżał skarbonkowy słoik po dzieciach z osiedla", 0.2)
+	_stash(W, "boisko_kosz_torba", 14.2, -44.4, "Zajrzyj za siatkę boiska", 40, "Za siatką ktoś zostawił torbę z drobnymi po meczu", 0.2)
 
 
 # ---------------------------------------------------------------- pomocnicze
@@ -162,8 +169,9 @@ static func _stash(W, id: String, x: float, z: float, label: String, cash: int, 
 				return
 			G.S.flags[flag] = true
 			G.S.cash += float(cash)
-			Sfx.play("good")
-			G.notify("%s (+%s)" % [msg, G.money(cash)], "good")})
+			G.S.stats["tajniki"] = int(G.S.stats.get("tajniki", 0)) + 1
+			Sfx.play("level")
+			G.notify("%s (+%s) — skrytki: %d/%d" % [msg, G.money(cash), int(G.S.stats.tajniki), stashes.size()], "good")})
 
 
 ## kontener/stos do przeszukania: raz na dobę, jak zwykły śmietnik

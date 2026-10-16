@@ -917,6 +917,10 @@ func run() -> void:
 	G.street_event_apply("okazja", "sell", 0.1)
 	ok(S.cash > cash_ok and G.packed_total(S.inv) == 0, "okazja: nieznajomy płaci ponad stawkę za 3 g")
 	S.inv = inv_ev
+	var poi_ids := []
+	for sh in G.world.Poi.stashes:
+		poi_ids.append(String(sh[0]))
+	ok(poi_ids.has("poi_plac_zabaw_ławka") and poi_ids.has("poi_boisko_kosz_torba"), "plac zabaw i boisko mają skrytki z gotówką")
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")
