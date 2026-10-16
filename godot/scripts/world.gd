@@ -2736,6 +2736,8 @@ func _court() -> void:
 	top.position = Vector3(cx, COURT_H + 0.046, cz)
 	top.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	city.add_child(top)
+	# nocą światło z okien bloku i alejki ledwie sięga płyty: miękki, chłodny blask nad środkiem boiska (bez cieni)
+	_night_light(cx, cz, 5.0, Color(0.9, 0.9, 1.0), 0.34, 15.0)
 	# jeden kosz, przy wschodniej linii końcowej: tablica patrzy w głąb boiska
 	for side in [1.0]:
 		var hoop := Stations.model("boisko_kosz")
