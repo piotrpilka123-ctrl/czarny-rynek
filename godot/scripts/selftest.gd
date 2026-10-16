@@ -993,6 +993,24 @@ func run() -> void:
 		S.erase("errand_day")
 	else:
 		S["errand_day"] = dgd_keep
+	var ex_keep = S.get("errand")
+	var exd_keep = S.get("errand_day")
+	var exs_keep = S.get("errand_start")
+	S["errand"] = ""
+	S.erase("errand_day")
+	G.errand_take()
+	ok(G.errand_text().contains("kopertę"), "aktywne zlecenie sąsiada ma opis w HUD")
+	S["errand_start"] = G.day() - 3
+	ok(G.errand_text() == "" and String(S.errand) == "", "porzucone zlecenie sąsiada wygasa po dwóch dobach")
+	S["errand"] = "" if ex_keep == null else ex_keep
+	if exd_keep == null:
+		S.erase("errand_day")
+	else:
+		S["errand_day"] = exd_keep
+	if exs_keep == null:
+		S.erase("errand_start")
+	else:
+		S["errand_start"] = exs_keep
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

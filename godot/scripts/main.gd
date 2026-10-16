@@ -1180,7 +1180,11 @@ func _dog_remove() -> void:
 
 
 func _dog_inter() -> Variant:
-	if String(G.S.get("errand", "")) != "pies" or player.loc != "out":
+	G.errand_expire()
+	if String(G.S.get("errand", "")) != "pies":
+		_dog_remove()
+		return null
+	if player.loc != "out":
 		return null
 	if lost_dog == null or not is_instance_valid(lost_dog):
 		_dog_spawn()

@@ -1099,14 +1099,36 @@ func beer_give() -> bool:
 ## zanieś kopertę: Pan Józek (za garażami) prosi o doniesienie jej Pani Krysi na przystanek; raz na dzień
 const ERRAND_PAY := 35.0
 
+## zlecenie sąsiada wygasa po dwóch dobach (żeby zapomniana koperta nie blokowała kolejnych)
+const ERRAND_DAYS := 2
+
+func errand_expire() -> void:
+	if String(S.get("errand", "")) != "" and day() - int(S.get("errand_start", day())) > ERRAND_DAYS:
+		S["errand"] = ""
+		S["errand_day"] = day()
+		notify("Sąsiad znalazł kogoś innego do zlecenia.", "")
+
+
 func errand_can_take() -> bool:
+	errand_expire()
 	return String(S.get("errand", "")) == "" and int(S.get("errand_day", 0)) != day()
+
+
+## krótki opis aktywnego zlecenia do HUD ("" gdy nic nie ma)
+func errand_text() -> String:
+	errand_expire()
+	match String(S.get("errand", "")):
+		"koperta": return "Zlecenie sąsiada: zanieś kopertę Pani Krysi (przystanek)"
+		"pies": return "Zlecenie sąsiada: znajdź Bureka %s" % String(dog_spot().name)
+		"pies_wraca": return "Zlecenie sąsiada: Burek znaleziony — wróć do Pani Krysi"
+	return ""
 
 
 func errand_take() -> bool:
 	if not errand_can_take():
 		return false
 	S["errand"] = "koperta"
+	S["errand_start"] = day()
 	return true
 
 
@@ -1134,6 +1156,7 @@ func errand_take_dog() -> bool:
 	if not errand_can_take():
 		return false
 	S["errand"] = "pies"
+	S["errand_start"] = day()
 	S["errand_spot"] = randi() % DOG_SPOTS.size()
 	return true
 

@@ -2411,6 +2411,9 @@ func update_hud() -> void:
 		if sig != last_job:
 			last_job = sig
 			obj_t = maxf(obj_t, 6.0)
+	var errand_line: String = G.errand_text() if G.prologue == null else ""
+	if errand_line != "" and not staged:
+		lines += ("\n" if lines != "" else "") + K.col(errand_line, K.C_GOLD)
 	if G.goals_active() and not staged:
 		var gt: Array = []
 		for g in G.goals_ensure():
