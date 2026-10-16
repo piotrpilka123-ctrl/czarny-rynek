@@ -4,6 +4,7 @@ extends RefCounted
 ## Wszystkie współrzędne w planie miasta (jak w world.gd); wymiary w metrach mnoży się przez INV.
 
 const Models = preload("res://scripts/models.gd")
+const Cars = preload("res://scripts/cars.gd")
 const Props = preload("res://scripts/props.gd")
 const Stations = preload("res://scripts/stations.gd")
 const Interior = preload("res://scripts/interior.gd")
@@ -125,13 +126,13 @@ static func _curb_run(W, ax: float, az: float, bx: float, bz: float) -> void:
 
 
 ## słup z lampą (własny, bez reflektora z cieniem — te nad jezdnią obsługuje world._lamp)
-static func _pole(W, x: float, z: float, dead := false) -> void:
+static func _pole(W, x: float, z: float, dead := false, gain := 0.5, rng_m := 13.0) -> void:
 	var m: Material = Models.mat("5a5d62", 0.6, 0.6)
 	_box(W, x, z, Vector3(0.14, 5.2, 0.14), m, 0.0, 0.0, 0.0)
 	_box(W, x, z, Vector3(0.5, 0.1, 0.22), m, 5.2)
 	if not dead:
 		_box(W, x, z, Vector3(0.26, 0.02, 0.1), W.lamp_mat, 5.17, 0.0, -1.0, false)
-		_light(W, x, z, 5.8, Color(1.0, 0.72, 0.42), 0.5, 13.0)
+		_light(W, x, z, 5.8, Color(1.0, 0.72, 0.42), gain, rng_m)
 
 
 ## skrytka z gotówką: raz na zapis, podpowiedź wraca do „pusto”
@@ -158,11 +159,43 @@ static func _dump(W, id: String, x: float, z: float, label: String, source := "d
 		"act": func(): G.main.search_bin(id, source)})
 
 
-static func _wreck(W, x: float, z: float, ry: float, type: String, color: String, y := 0.0, tilt := Vector3.ZERO) -> Node3D:
+## ze lśniącego auta robi wrak: matowa, zardzewiała blacha w kolorze lakieru, brudne szyby; wear 2 = bez kół i szyb, 3 = dodatkowo zgnieciony dach
+static func _ruin(car: Node3D, color: String, wear: int) -> void:
+	var c := Color.html("#" + color)
+	var tint := c.lerp(Color(0.55, 0.34, 0.24), 0.4) * 1.6
+	var body := Cars._find(car, "TintKaroseria") as MeshInstance3D
+	if body != null:
+		var m := Props.pbr("rusty_painted_metal", 0.4, tint).duplicate() as StandardMaterial3D
+		m.metallic = 0.1
+		m.roughness = 1.0
+		m.clearcoat_enabled = false
+		body.material_override = m
+	var det := Cars._find(car, "Detale") as MeshInstance3D
+	if det != null and det.mesh != null:
+		for i in range(det.mesh.get_surface_count()):
+			var sm := det.mesh.surface_get_material(i) as StandardMaterial3D
+			if sm != null and sm.resource_name == "szyba":
+				var dm := sm.duplicate() as StandardMaterial3D
+				dm.albedo_color = Color(0.1, 0.11, 0.1, 1.0) if wear >= 2 else Color(0.2, 0.22, 0.2, 0.85)
+				dm.roughness = 0.75
+				dm.metallic = 0.0
+				det.set_surface_override_material(i, dm)
+	if wear >= 2:
+		for i in range(1, 5):
+			var w := Cars._find(car, "Kolo%d" % i)
+			if w != null:
+				w.visible = false
+		car.position.y -= 0.2
+	if wear >= 3:
+		car.scale.y = 0.78
+
+
+static func _wreck(W, x: float, z: float, ry: float, type: String, color: String, y := 0.0, tilt := Vector3.ZERO, wear := 1) -> Node3D:
 	var car: Node3D = Models.car(type, color, false)
-	car.position = Vector3(x, W.hd(x, z) + y, z)
+	_ruin(car, color, wear)
+	car.position = Vector3(x, W.hd(x, z) + y + car.position.y, z)
 	car.rotation = Vector3(tilt.x, ry, tilt.z)
-	car.scale = Vector3(INV, 1.0, INV)
+	car.scale = Vector3(INV, car.scale.y, INV)
 	W.city.add_child(car)
 	Props.set_range(car, 120.0)
 	var L: float = Models.CAR_TYPES[type].L * 0.5 * INV
@@ -247,15 +280,15 @@ static func _yard(W) -> void:
 			kn.position.y += float(e[3])
 			Props.set_range(kn, 110.0)
 	# wraki: jeden na drugim, jeden przechylony na oponach, jeden bez kół w rogu
-	_wreck(W, c.x + 2.0 * INV, c.y + 2.0 * INV, 0.35, "sedan", "6b3a2a")
+	_wreck(W, c.x + 2.0 * INV, c.y + 2.0 * INV, 0.35, "sedan", "6b3a2a", 0.0, Vector3.ZERO, 3)
 	_wreck(W, c.x + 2.2 * INV, c.y + 2.0 * INV, 0.3, "hatch", "4a4f55", 1.15, Vector3(0.0, 0.0, 0.08))
 	_wreck(W, c.x + 12.0 * INV, c.y + 5.0 * INV, -0.7, "kombi", "5a5a40", 0.0, Vector3(0.05, 0.0, -0.07))
-	_wreck(W, c.x - 3.0 * INV, c.y + 9.0 * INV, 1.9, "maluch", "7a6a3a")
+	_wreck(W, c.x - 3.0 * INV, c.y + 9.0 * INV, 1.9, "maluch", "7a6a3a", 0.0, Vector3.ZERO, 2)
 	_wreck(W, c.x + 15.0 * INV, c.y - 7.0 * INV, 0.1, "van", "4d5a64")
 	_wreck(W, c.x - 6.0 * INV, c.y - 2.0 * INV, 2.0, "hatch", "5a4a3a", 0.0, Vector3(0.0, 0.0, 0.05))
 	_wreck(W, c.x + 20.0 * INV, c.y + 3.0 * INV, 1.4, "sedan", "3f4a3a")
 	_wreck(W, c.x + 20.5 * INV, c.y + 3.2 * INV, 1.5, "maluch", "7a3a2a", 1.15, Vector3(0.0, 0.0, -0.06))
-	_wreck(W, c.x - 18.0 * INV, c.y - 8.0 * INV, 0.2, "kombi", "6a6a60", 0.0, Vector3(0.04, 0.0, 0.0))
+	_wreck(W, c.x - 18.0 * INV, c.y - 8.0 * INV, 0.2, "kombi", "6a6a60", 0.0, Vector3(0.04, 0.0, 0.0), 2)
 	W._prop("covered_car", c.x - 12.0 * INV, c.y + 9.0 * INV, 0.5, 0.0, 0.0)
 	# hałdy opon i obręczy
 	var tp := _p(c, 9.0, 11.0)
@@ -280,8 +313,9 @@ static func _yard(W) -> void:
 	var fb := _p(c, 8.5, -6.0)
 	_cyl(W, fb.x, fb.y, 0.32, 0.8, Props.pbr("rusty_painted_metal", 0.3, Color(0.7, 0.55, 0.45)), 0.0, true)
 	Fx.fire(W, Vector3(fb.x * SC, W.hd(fb.x, fb.y) + 0.85, fb.y * SC), 0.22, W.lamps)
-	_pole(W, c.x - 4.0, z0 + 5.0)
-	_pole(W, c.x + 14.0, c.y + 12.0)
+	# złomowisko nocą: dwa słupy z mocniejszym reflektorem, żeby w ogóle było coś widać
+	_pole(W, c.x - 4.0, z0 + 5.0, false, 1.5, 19.0)
+	_pole(W, c.x + 14.0, c.y + 12.0, false, 1.5, 19.0)
 	_light(W, o.x + 3.0, o.y + 4.5, 3.6, Color(1.0, 0.68, 0.38), 0.45, 11.0, true)
 	# skrytki
 	var tr := _p(c, 12.0 - 0.0, 5.0)
