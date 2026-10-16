@@ -72,6 +72,7 @@ static func build(W) -> void:
 	_ulica_detale(W)
 	_ulica_detale2(W)
 	_klub_ulica(W)
+	_huta_detale(W)
 	W.rng.state = st
 
 
@@ -899,3 +900,25 @@ static func _klub_ulica(W) -> void:
 			lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		Props.set_range(W._place(m, x, z, float(e[3]), 0.3, 0.3, 2.9), 120.0)
 		_light(W, x + (-2.5 if x > 0.0 else 2.5), z, 3.0, e[4], 0.35, 8.0)
+
+
+## Przy bramie huty (Hutnicza na wschodzie): tablice „wstęp wzbroniony”, koksownik wartownika z ogniem i krzesłem, reflektor nad bramą.
+static func _huta_detale(W) -> void:
+	for t in [[168.0, 27.6, PI], [190.0, 27.6, PI], [203.5, 27.6, PI]]:
+		var x: float = t[0]
+		var z: float = t[1]
+		if not W.is_free(x * SC, z * SC, 0.4):
+			continue
+		var tm: Node3D = Stations.model("huta_tablica")
+		if tm != null:
+			Props.set_range(W._place(tm, x, z, float(t[2]), 0.15, 0.15, 2.4), 90.0)
+	var bp := Vector2(176.0, 26.4)
+	if W.is_free(bp.x * SC, bp.y * SC, 0.8):
+		var km: Node3D = Stations.model("huta_koksownik")
+		if km != null:
+			Props.set_range(W._place(km, bp.x, bp.y, 0.0, 0.35, 0.35, 1.9), 100.0)
+			Fx.fire(W, Vector3(bp.x * SC, W.hd(bp.x, bp.y) + 0.75, bp.y * SC), 0.16, W.lamps)
+		W._prop("plastic_monobloc_chair_01", bp.x - 1.4 * INV, bp.y + 0.6 * INV, 0.7, 0.86, 0.0, false)
+		W._prop("wooden_crate_02", bp.x + 1.2 * INV, bp.y + 0.8 * INV, 0.3, 0.42, 0.0, false)
+		W._prop("can_rusted", bp.x + 0.6 * INV, bp.y - 0.9 * INV, 0.1, 0.13, 0.0, false)
+		_stash(W, "huta_koksownik", bp.x + 1.2 * INV, bp.y + 0.8 * INV + 0.8 * INV, "Zajrzyj do skrzynki wartownika", 60, "W skrzynce wartownika leżała koperta z premią za nocną zmianę", 0.3)
