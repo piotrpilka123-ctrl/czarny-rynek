@@ -180,7 +180,10 @@ void fragment() {
 		alb += a * w.a; nrm += texture(n_dirt, uv * 0.33, lodb).rgb * w.a; rgh += 0.95 * w.a;
 	}
 	if (wg > 0.003) {
-		vec3 a = texture(a_grav, uv * 0.4, lodb).rgb * (0.7 + mid * 0.3);
+		vec3 a = texture(a_grav, uv * 0.4, lodb).rgb;
+		// tłuczeń był żółto-pomarańczowy i czysty: przygaś, zszarz i dodaj ciemne plamy oleju/ziemi (jak reszta nawierzchni)
+		a = mix(vec3(dot(a, vec3(0.3, 0.55, 0.15))), a, 0.5) * vec3(0.9, 0.9, 0.88) * (0.62 + mid * 0.3);
+		a *= 1.0 - 0.35 * smoothstep(0.55, 0.8, big * 0.5 + nz * 0.5);
 		alb += a * wg; nrm += vec3(0.5, 0.5, 1.0) * wg; rgh += 0.95 * wg;
 	}
 	if (grass > 0.003) {
