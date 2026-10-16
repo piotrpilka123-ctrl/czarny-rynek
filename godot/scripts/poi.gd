@@ -36,6 +36,8 @@ static func paint(W) -> void:
 	W._pr(3, 184.0, 146.0, 190.0, 197.0)
 	W._pr(4, 156.0, 158.0, 184.0, 190.0)
 	W._pr(3, 184.0, 169.0, 190.0, 175.0)
+	W._pr(2, 104.0, -61.0, 127.0, -33.0)
+	W._pr(2, 104.0, -68.0, 112.0, -60.0)
 	W._pr(4, -182.0, 145.0, -166.0, 175.0)
 	W._pr(3, -158.0, 158.0, -128.0, 162.0)
 	W._pr(1, -160.0, 144.0, -154.0, 177.0)
@@ -66,6 +68,7 @@ static func build(W) -> void:
 	_przystanek_huta(W)
 	_siatkowka(W)
 	_zabawa_boisko(W)
+	_wulkanizacja(W)
 	W.rng.state = st
 
 
@@ -801,3 +804,25 @@ static func _siatkowka(W) -> void:
 	_pole(W, c.x + 8.0, c.y + 9.0)
 	_scatter(W, c, [["dirty_football", 1.0, 3.0, 0.0, 0.22, 0.14], ["can_rusted", 9.0, 3.0, 0.2, 0.13], ["trashbag", 9.0, 8.5, 0.6, 0.5], ["plastic_bottle_gallon", 9.4, -2.5, 0.3, 0.3]])
 	_stash(W, "siatkowka_lawka", c.x + 8.5 + 1.2 * INV, c.y - 6.0 + 1.0 * INV, "Zajrzyj pod ławkę przy boisku", 45, "Pod ławką ktoś zostawił skarbonkę z drobnymi", 0.2)
+
+
+## Wulkanizacja pod chmurką między garażami a nasypem: betonowy plac, budka z wjazdem, podnośnik z uniesionym autem, opony, lampy.
+static func _wulkanizacja(W) -> void:
+	var c := Vector2(116.0, -46.0)
+	var bm: Node3D = Stations.model("wulkan_budka")
+	if bm != null:
+		Props.set_range(W._place(bm, c.x, c.y - 9.0, 0.0, 3.1, 2.1, 2.9), 140.0)
+	var pm: Node3D = Stations.model("wulkan_podnosnik")
+	if pm != null:
+		Props.set_range(W._place(pm, c.x + 1.0, c.y + 2.0, 0.0), 120.0)
+	for sx in [-1.35, 1.35]:
+		W.add_col(c.x + 1.0 + (sx - 0.2) * INV, c.x + 1.0 + (sx + 0.2) * INV, c.y + 2.0 - 0.2 * INV, c.y + 2.0 + 0.2 * INV, 3.0)
+		W.rects.pop_back()
+	_wreck(W, c.x + 1.0, c.y + 2.0, 0.0, "hatch", "4a5a6a", 1.2)
+	_scatter(W, c, [["old_tyre", -9.0, -3.0, 0.2, 0.16], ["old_tyre", -9.2, -3.2, 0.7, 0.16, 0.16], ["old_tyre", -8.6, -2.6, 1.1, 0.16, 0.32], ["wheels_stack", -10.5, 2.0, 0.4, 0.9], ["wheels_stack", -10.8, 4.0, 1.2, 0.8],
+		["barrel_01", 9.0, -4.0, 0.0, 0.9], ["propane_tank", 9.5, -5.0, 0.0, 0.7], ["rusted_wheel_rim_01", 4.0, 7.0, 0.3, 0.5], ["trashbag", 8.0, 8.0, 0.4, 0.5], ["can_rusted", -3.0, 6.0, 0.1, 0.13], ["hand_truck", -6.0, -6.0, 0.9, 1.3]])
+	_pole(W, c.x + 9.0, c.y + 9.0)
+	_pole(W, c.x - 7.0, c.y + 9.0)
+	_light(W, c.x, c.y - 6.5, 3.2, Color(1.0, 0.85, 0.6), 0.6, 12.0, true)
+	_dump(W, "poi_wulkan_opony", c.x - 9.0, c.y + 1.5 * INV - 3.0, "Przeszukaj stos opon i felg")
+	_stash(W, "wulkan_kasetka", c.x - 2.0, c.y - 9.0 + 2.2 * INV, "Zajrzyj do kasetki na ladzie", 80, "W kasetce wulkanizatora leżał utarg za dwie felgi", 0.9)
