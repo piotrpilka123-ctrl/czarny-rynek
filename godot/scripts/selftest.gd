@@ -921,6 +921,20 @@ func run() -> void:
 	for sh in G.world.Poi.stashes:
 		poi_ids.append(String(sh[0]))
 	ok(poi_ids.has("poi_plac_zabaw_ławka") and poi_ids.has("poi_boisko_kosz_torba"), "plac zabaw i boisko mają skrytki z gotówką")
+	var gr_n := {"name": "Test", "loyalty": 3, "greet_t": 0.0}
+	var wanted_gr: bool = S.wanted
+	S.wanted = false
+	G.set_meta("greet_gap", 0.0)
+	ok(G.npcs.greet_try(gr_n, 2.0) and not G.npcs.greet_try(gr_n, 2.0), "stały klient pozdrawia raz na jakiś czas")
+	G.set_meta("greet_gap", 0.0)
+	gr_n["greet_t"] = 0.0
+	gr_n["loyalty"] = 0
+	ok(not G.npcs.greet_try(gr_n, 2.0), "obcy przechodzień nie pozdrawia")
+	G.set_meta("greet_gap", 0.0)
+	gr_n["loyalty"] = 3
+	S.wanted = true
+	ok(not G.npcs.greet_try(gr_n, 2.0), "podczas pościgu nikt nie macha")
+	S.wanted = wanted_gr
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

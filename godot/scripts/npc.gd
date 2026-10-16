@@ -75,6 +75,26 @@ func _h(x: float, z: float) -> float:
 
 
 # ---------------------------------------------------------------- przechodnie
+## stali klienci z osiedla pozdrawiają Cię, gdy mijają z bliska (nie w pościgu, raz na kilka minut gry)
+func greet_line(n: Dictionary) -> String:
+	if int(n.get("loyalty", 0)) < 2 or G.S.wanted or G.is_night() or G.now < float(n.get("greet_t", 0.0)):
+		return ""
+	return ["„Cześć, szefie.”", "„Dzień dobry panu.”", "„Siema, jak interes?”", "„O, to ty. Trzymaj się.”"].pick_random()
+
+
+func greet_try(n: Dictionary, dp: float) -> bool:
+	if dp > 3.5 or G.now < float(G.get_meta("greet_gap", 0.0)):
+		return false
+	var line := greet_line(n)
+	if line == "":
+		return false
+	n["greet_t"] = G.now + 240.0
+	G.set_meta("greet_gap", G.now + 25.0)
+	G.notify("%s: %s" % [String(n.name), line], "")
+	G.add_xp(0.5)
+	return true
+
+
 func _roll_identity(n: Dictionary) -> void:
 	n.name = (D.NAMES_F if n.female else D.NAMES_M).pick_random()
 	n.user = randf() < 0.36
@@ -1263,6 +1283,7 @@ func update(dt: float) -> void:
 			if G.world.los(n.x, n.z, pp.x, pp.z):
 				n["panic_until"] = G.now + 5.0
 				n.idle = 0.0
+		greet_try(n, dp)
 		var panicking: bool = float(n.get("panic_until", 0.0)) > G.now
 		var sp := 0.0
 		var pose := ""
