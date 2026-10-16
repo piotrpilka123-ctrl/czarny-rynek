@@ -647,6 +647,14 @@ static func facade_props(W: Node3D) -> void:
 				for fl in range(floors):
 					var r := rng.randf()
 					var y0 := fl * cs.y
+					if fl == 0 and bool(b.old) and float(b.dead) < 0.5:
+						# parter kamienic: piwniczne okienko z kratą pod co drugim oknem, skrzynka gazowa i elektryczna rzadziej
+						if rng.randf() < 0.45:
+							_queue("par_piwnica", _xf(face_pos(b, code, u, 0.0, 0.0), rot, Vector3.ONE * 1.5))
+						elif rng.randf() < 0.14:
+							_queue("par_gaz", _xf(face_pos(b, code, u + 1.1, 0.0, 0.0), rot))
+						elif rng.randf() < 0.1:
+							_queue("par_prad", _xf(face_pos(b, code, u - 1.1, 0.0, 0.0), rot))
 					if not (loggia and fl > 0):
 						# zacieki pod parapetem i rolety w części okien (lekkie instancje, bez cieni)
 						var win_c := y0 + 0.56 * cs.y
@@ -693,10 +701,11 @@ static func flush(W: Node3D) -> void:
 	var makers := {"dish": _mesh_dish, "ac": _mesh_ac, "grate": _mesh_grate, "antenna": _mesh_antenna, "laundry": _mesh_laundry, "pipe": _mesh_pipe, "flowers": _mesh_flowers,
 		"blind": _mesh_blind, "stain": _mesh_stain,
 		"rower": func(): return _glb_mesh("ul_rower"), "rup_a": func(): return _glb_mesh("fas_rupiecie_a"), "rup_b": func(): return _glb_mesh("fas_rupiecie_b"),
-		"suszarka": func(): return _glb_mesh("fas_suszarka"), "donice": func(): return _glb_mesh("fas_donice")}
-	var glb_kinds := ["rower", "rup_a", "rup_b", "suszarka", "donice"]
+		"suszarka": func(): return _glb_mesh("fas_suszarka"), "donice": func(): return _glb_mesh("fas_donice"),
+		"par_piwnica": func(): return _glb_mesh("par_piwnica"), "par_gaz": func(): return _glb_mesh("par_gaz"), "par_prad": func(): return _glb_mesh("par_prad")}
+	var glb_kinds := ["rower", "rup_a", "rup_b", "suszarka", "donice", "par_piwnica", "par_gaz", "par_prad"]
 	var ranges := {"dish": 70.0, "ac": 80.0, "grate": 45.0, "antenna": 150.0, "laundry": 80.0, "pipe": 110.0, "flowers": 45.0, "blind": 60.0, "stain": 70.0,
-		"rower": 40.0, "rup_a": 45.0, "rup_b": 45.0, "suszarka": 50.0, "donice": 45.0}
+		"rower": 40.0, "rup_a": 45.0, "rup_b": 45.0, "suszarka": 50.0, "donice": 45.0, "par_piwnica": 45.0, "par_gaz": 40.0, "par_prad": 40.0}
 	for name in _mm:
 		var xfs: Array = _mm[name]
 		if xfs.is_empty() or not makers.has(name):
