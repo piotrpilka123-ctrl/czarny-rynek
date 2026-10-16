@@ -795,6 +795,19 @@ static func fence_post(parent: Node, x: float, h: float) -> void:
 static func fence(length: float, h := 1.6, kind := "mesh") -> Node3D:
 	var g := Node3D.new()
 	var post := Models.mat("4a4f4a", 0.6, 0.5)
+	if kind != "mesh":
+		# stary płot z desek: moduły 2,5 m z Blendera (szare spękane deski, braki, mech), kolejne odbite i w dwóch odmianach
+		var nm: int = max(1, int(round(length / 2.5)))
+		var scn_a: PackedScene = load("res://assets/models/plot_deski_a.glb") if ResourceLoader.exists("res://assets/models/plot_deski_a.glb") else null
+		var scn_b: PackedScene = load("res://assets/models/plot_deski_b.glb") if ResourceLoader.exists("res://assets/models/plot_deski_b.glb") else null
+		if scn_a != null and scn_b != null:
+			for i in range(nm):
+				var mdl: Node3D = (scn_a if (i + int(length * 7.0)) % 2 == 0 else scn_b).instantiate()
+				mdl.position = Vector3(-length * 0.5 + (i + 0.5) * length / nm, 0.0, 0.0)
+				mdl.scale = Vector3(length / nm / 2.5, h / 2.0, 1.0)
+				g.add_child(mdl)
+				set_range(mdl, 110.0)
+			return g
 	var n: int = max(1, int(round(length / 2.5)))
 	for i in range(n + 1):
 		fence_post(g, -length * 0.5 + i * length / n, h)

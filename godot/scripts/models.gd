@@ -8,7 +8,7 @@ const TOPC := ["2f4a6d", "6d2f2f", "2f6d45", "3d3d42", "a8a39a", "7a5c2e", "4b3a
 const BOTC := ["232a36", "2e3a52", "3b3630", "1b1b1e", "4a4f57", "5b4a3a", "283b2e"]
 const SHOEC := ["151515", "3a2a1e", "e8e8e8", "5a1f1f", "22324a"]
 # (czarny lakier to grafit: idealnie czarne auto było na ulicy smolistą plamą)
-const CARCOLS := ["8a1c1c", "1c3f8a", "d9dcdf", "484c55", "b08a1e", "1e6b3a", "5a6068", "5a2d8a", "9aa3ab", "6b1f2a", "28424f"]
+const CARCOLS := ["7a2a28", "2a3f66", "c9ccc8", "484c55", "9a8440", "2e5a40", "5a6068", "4a3d5e", "9aa3ab", "5e2a32", "2a424f"]
 
 static var _mats := {}
 static var _meshes := {}

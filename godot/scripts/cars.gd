@@ -282,6 +282,49 @@ static var _soft := {}
 const SOFT := {"szyba": [Color(0.17, 0.21, 0.26), 0.1, 0.25], "plastik": [Color(0.17, 0.175, 0.19), 0.75, 0.0], "guma": [Color(0.15, 0.15, 0.16), 0.9, 0.0]}
 
 
+## Warstwa brudu na lakierze (next_pass): kurz gęstnieje ku dołowi, błoto na nadkolach, szum plam; `amount` = jak bardzo auto jest zaniedbane
+const DIRT_SH := """shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_back;
+uniform float amount = 0.7;
+uniform float wheel_z = 1.2;
+uniform float seed = 0.0;
+varying vec3 lp;
+float h31(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719)) + seed) * 43758.5453); }
+float vnoise(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	float a = mix(mix(h31(i), h31(i + vec3(1, 0, 0)), f.x), mix(h31(i + vec3(0, 1, 0)), h31(i + vec3(1, 1, 0)), f.x), f.y);
+	float b = mix(mix(h31(i + vec3(0, 0, 1)), h31(i + vec3(1, 0, 1)), f.x), mix(h31(i + vec3(0, 1, 1)), h31(i + vec3(1, 1, 1)), f.x), f.y);
+	return mix(a, b, f.z);
+}
+void vertex() { lp = VERTEX; }
+void fragment() {
+	float low = clamp(1.0 - lp.y / 1.15, 0.0, 1.0);
+	float n = vnoise(lp * 5.0) * 0.6 + vnoise(lp * 21.0) * 0.4;
+	float arch = max(smoothstep(0.8, 0.3, length(vec2(lp.z - wheel_z, lp.y - 0.35))), smoothstep(0.8, 0.3, length(vec2(lp.z + wheel_z, lp.y - 0.35))));
+	float a = (low * low * 0.55 + arch * 0.5 + 0.12) * (0.45 + n) * amount;
+	ALBEDO = mix(vec3(0.40, 0.34, 0.26), vec3(0.22, 0.17, 0.12), arch);
+	ALPHA = clamp(a, 0.0, 0.85);
+	ROUGHNESS = 1.0;
+	SPECULAR = 0.0;
+}
+"""
+static var _dirt_shader: Shader = null
+
+
+static func _dirt_material(amount: float, wheel_z: float, seed_v: float) -> ShaderMaterial:
+	if _dirt_shader == null:
+		_dirt_shader = Shader.new()
+		_dirt_shader.code = DIRT_SH
+	var m := ShaderMaterial.new()
+	m.shader = _dirt_shader
+	m.set_shader_parameter("amount", amount)
+	m.set_shader_parameter("wheel_z", wheel_z)
+	m.set_shader_parameter("seed", seed_v)
+	return m
+
+
 static func _soften(root: Node) -> void:
 	for ch in root.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = ch
@@ -345,7 +388,19 @@ static func car(type := "", color = null, police := false) -> Node3D:
 			m.clearcoat = 0.5
 			m.clearcoat_roughness = 0.25
 			_paint[key] = m
-		body.material_override = _paint[key]
+		if police or type == "swat":
+			body.material_override = _paint[key]
+		else:
+			# zwykłe auto: przygaszony, matowy i przybrudzony lakier (własny egzemplarz materiału z warstwą brudu)
+			var dm: StandardMaterial3D = (_paint[key] as StandardMaterial3D).duplicate()
+			var lum := c.r * 0.3 + c.g * 0.59 + c.b * 0.11
+			dm.albedo_color = c.lerp(Color(lum, lum, lum), 0.28) * 0.92
+			dm.metallic = 0.1
+			dm.roughness = 0.62
+			dm.clearcoat_enabled = false
+			var wz1: float = float(T.get("L", 4.0)) * 0.3
+			dm.next_pass = _dirt_material(randf_range(0.35, 0.85), wz1, randf() * 50.0)
+			body.material_override = dm
 		root.set_meta("body", body)
 	_soften(root)
 	if type == "suv":
