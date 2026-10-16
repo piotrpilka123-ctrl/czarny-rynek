@@ -585,6 +585,17 @@ static func _slat_texture() -> ImageTexture:
 	return _slat_tex
 
 
+static func _mesh_sill() -> ArrayMesh:
+	# parapet blaszany: płat z okapnikiem i bocznymi zawinięciami; kolor (cynk/rdza) z instancji
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_box(st, Vector3(0, 0.0, 0.07), Vector3(1.3, 0.025, 0.2), Color(1, 1, 1), Basis(Vector3.RIGHT, 0.05))
+	_box(st, Vector3(0, -0.03, 0.17), Vector3(1.3, 0.05, 0.02), Color(0.8, 0.8, 0.78))
+	for sx in [-0.645, 0.645]:
+		_box(st, Vector3(sx, 0.0, 0.07), Vector3(0.02, 0.05, 0.2), Color(0.85, 0.85, 0.82))
+	return st.commit()
+
+
 static func _mesh_stain() -> ArrayMesh:
 	# zaciek pod parapetem: pionowy pas, na górze ciemny, ku dołowi zanika (kanał alfa wierzchołków)
 	var st := SurfaceTool.new()
@@ -686,8 +697,11 @@ static func facade_props(W: Node3D) -> void:
 					if not (loggia and fl > 0):
 						# zacieki pod parapetem i rolety w części okien (lekkie instancje, bez cieni)
 						var win_c := y0 + 0.56 * cs.y
+						if bool(b.old) and rng.randf() < 0.75:
+							var rst := rng.randf()
+							_queue("sill", _xf(face_pos(b, code, u, win_c - 1.36, 0.02), rot), Color(0.62, 0.64, 0.64).lerp(Color(0.5, 0.32, 0.22), rst * rst))
 						if rng.randf() < 0.6:
-							_queue("stain", _xf(face_pos(b, code, u, win_c - 0.74, 0.014), rot, Vector3(1.7 + rng.randf() * 0.3, 0.55 + rng.randf() * 0.6, 1.0)), Color(0.09, 0.07, 0.05))
+							_queue("stain", _xf(face_pos(b, code, u, win_c - 1.4, 0.014), rot, Vector3(1.7 + rng.randf() * 0.3, 0.55 + rng.randf() * 0.6, 1.0)), Color(0.09, 0.07, 0.05))
 						if (fl > 0 or not bool(b.plyta)) and rng.randf() < 0.2:
 							var bl := rng.randf_range(0.3, 1.15)
 							_queue("blind", _xf(face_pos(b, code, u, win_c + 0.68, 0.02), rot, Vector3(1.0, bl, 1.0)), [Color(0.86, 0.82, 0.72), Color(0.7, 0.72, 0.66), Color(0.55, 0.62, 0.55), Color(0.78, 0.7, 0.58)][rng.randi() % 4])
@@ -727,12 +741,12 @@ static func facade_props(W: Node3D) -> void:
 ## zamienia zebrane pozycje w kilka obiektów MultiMesh (jeden na rodzaj detalu)
 static func flush(W: Node3D) -> void:
 	var makers := {"dish": _mesh_dish, "ac": _mesh_ac, "grate": _mesh_grate, "antenna": _mesh_antenna, "laundry": _mesh_laundry, "pipe": _mesh_pipe, "flowers": _mesh_flowers,
-		"blind": _mesh_blind, "stain": _mesh_stain,
+		"blind": _mesh_blind, "stain": _mesh_stain, "sill": _mesh_sill,
 		"rower": func(): return _glb_mesh("ul_rower"), "rup_a": func(): return _glb_mesh("fas_rupiecie_a"), "rup_b": func(): return _glb_mesh("fas_rupiecie_b"),
 		"suszarka": func(): return _glb_mesh("fas_suszarka"), "donice": func(): return _glb_mesh("fas_donice"),
 		"par_piwnica": func(): return _glb_mesh("par_piwnica"), "par_gaz": func(): return _glb_mesh("par_gaz"), "par_prad": func(): return _glb_mesh("par_prad")}
 	var glb_kinds := ["rower", "rup_a", "rup_b", "suszarka", "donice", "par_piwnica", "par_gaz", "par_prad"]
-	var ranges := {"dish": 70.0, "ac": 80.0, "grate": 45.0, "antenna": 150.0, "laundry": 80.0, "pipe": 110.0, "flowers": 45.0, "blind": 60.0, "stain": 70.0,
+	var ranges := {"dish": 70.0, "ac": 80.0, "grate": 45.0, "antenna": 150.0, "laundry": 80.0, "pipe": 110.0, "flowers": 45.0, "blind": 60.0, "stain": 70.0, "sill": 55.0,
 		"rower": 40.0, "rup_a": 45.0, "rup_b": 45.0, "suszarka": 50.0, "donice": 45.0, "par_piwnica": 45.0, "par_gaz": 40.0, "par_prad": 40.0}
 	for name in _mm:
 		var xfs: Array = _mm[name]
@@ -745,7 +759,7 @@ static func flush(W: Node3D) -> void:
 			var mat := StandardMaterial3D.new()
 			mat.vertex_color_use_as_albedo = true
 			mat.roughness = 0.75
-			mat.metallic = 0.25 if name in ["antenna", "grate", "pipe"] else 0.0
+			mat.metallic = 0.25 if name in ["antenna", "grate", "pipe", "sill"] else 0.0
 			if name == "laundry" or name == "blind":
 				mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 			if name == "blind":
