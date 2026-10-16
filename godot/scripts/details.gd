@@ -623,6 +623,21 @@ static func facade_props(W: Node3D) -> void:
 					var pp := face_pos(b, code, u, h * 0.5 - 0.1, 0.07)
 					var rust := rng.randf_range(0.0, 1.0)
 					_queue("pipe", _xf(pp, 0.0, Vector3(1.0, h - 0.1, 1.0)), Color(0.42, 0.4, 0.38).lerp(Color(0.42, 0.26, 0.16), rust * 0.7))
+		# --- emaliowana tabliczka z nazwą ulicy i numerem domu przy narożniku kamienicy (granat, biały napis, biała ramka)
+		if bool(b.get("old", false)) and not is_blind(b, 1 if float(b.z0) <= 0.0 else 2):
+			var pc: int = 2 if float(b.z0) > 0.0 else 1      # strona od ulicy Hutniczej (oś z ≈ 0)
+			var pn := Node3D.new()
+			var no := int(absf(float(b.x0) * 3.0 + float(b.z0) * 5.0)) % 40 + 2
+			var street := "HUTNICZA"
+			var pp := face_pos(b, pc, 1.3, 2.7, 0.03)
+			pn.transform = Transform3D(Basis(Vector3.UP, face_rot(pc)), pp)
+			W.add_child(pn)
+			Models.box(pn, Vector3(0.62, 0.34, 0.02), Vector3.ZERO, Models.mat("f0eee6", 0.4, 0.2), Vector3.ZERO, false)
+			Models.box(pn, Vector3(0.58, 0.3, 0.025), Vector3(0, 0, 0.004), Models.mat("1c3f7a", 0.35, 0.3), Vector3.ZERO, false)
+			var tl := Signs.text("%s\n%d" % [street, no], "barlowc", 34, Color(0.95, 0.95, 0.92), 0.0042)
+			tl.position = Vector3(0, 0.0, 0.02)
+			pn.add_child(tl)
+			Props.set_range(pn, 35.0)
 		# --- anteny i wywietrzniki na dachu
 		if bool(b.get("plyta", false)) or bool(b.get("old", false)):
 			var cnt := int(face_len(b, 1) / 7.0) + 1
