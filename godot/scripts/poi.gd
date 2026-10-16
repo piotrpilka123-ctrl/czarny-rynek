@@ -74,6 +74,7 @@ static func build(W) -> void:
 	_klub_ulica(W)
 	_huta_detale(W)
 	_rynek(W)
+	_komisariat_front(W)
 	W.rng.state = st
 
 
@@ -945,3 +946,21 @@ static func _rynek(W) -> void:
 	if W.is_free(71.0 * SC, 2.0 * SC, 0.5):
 		_pole(W, 71.0, 2.0)
 	_stash(W, "rynek_pomnik", pk.x - 3.0 * INV, pk.y + 2.4 * INV, "Zajrzyj za cokół pomnika", 55, "Za cokołem ktoś zostawił kopertę z gotówką pod kwiatami", 0.2)
+
+
+## Przed komisariatem (Cop Corner, drzwi z −181, 9,4): niebieska latarnia POLICJA, maszt z flagą, zapory i stojak na radiowozy.
+static func _komisariat_front(W) -> void:
+	var lp := Vector2(-176.5, 13.2)
+	var lm: Node3D = Stations.model("kom_latarnia")
+	if lm != null and W.is_free(lp.x * SC, lp.y * SC, 0.5):
+		var lens := Stations._find(lm, "Swiatlo") as MeshInstance3D
+		if lens != null:
+			lens.material_override = W.lamp_mat
+			lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		Props.set_range(W._place(lm, lp.x, lp.y, 0.0, 0.25, 0.25, 2.9), 120.0)
+		_light(W, lp.x, lp.y + 2.0 * INV, 2.6, Color(0.3, 0.45, 1.0), 0.5, 8.0)
+	var mp := Vector2(-188.0, 13.5)
+	var mm: Node3D = Stations.model("kom_maszt")
+	if mm != null and W.is_free(mp.x * SC, mp.y * SC, 0.5):
+		Props.set_range(W._place(mm, mp.x, mp.y, 0.3, 0.25, 0.25, 2.9), 140.0)
+	W._bin(-173.0, 12.0, 0.0)
