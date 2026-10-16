@@ -231,6 +231,9 @@ void fragment() {
 			if (brick > 0.5) nmap = vec3(0.5, 0.5, 1.0);
 		} else if (style == 3) {
 			// filary między oknami
+			// jasne spoiny cegły fabrycznej raziły z bliska: skompresuj światła tekstury i zbliż barwę do cegły
+			float bl = dot(col, vec3(0.3, 0.55, 0.15));
+			col *= mix(1.0, 0.74, smoothstep(0.28, 0.6, bl));
 			float pil = smoothstep(0.075, 0.065, min(f.x, 1.0 - f.x));
 			col *= 1.0 + pil * 0.12;
 			col *= 1.0 - smoothstep(0.075, 0.11, min(f.x, 1.0 - f.x)) * smoothstep(0.16, 0.11, min(f.x, 1.0 - f.x)) * 0.25;
