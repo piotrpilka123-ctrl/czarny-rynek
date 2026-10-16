@@ -7,6 +7,8 @@ extends RefCounted
 const Models = preload("res://scripts/models.gd")
 const Props = preload("res://scripts/props.gd")
 const Signs = preload("res://scripts/signs.gd")
+const Stations = preload("res://scripts/stations.gd")
+const Interior = preload("res://scripts/interior.gd")
 const GDIR := "res://assets/graffiti/"
 const SC := 0.56
 const INV := 1.0 / 0.56
@@ -245,39 +247,49 @@ static func entrance(W: Node3D, pos: Vector3, rot_y: float, accent: Color, label
 	var conc := Props.pbr("concrete_wall_008", 0.5, Color(0.72, 0.72, 0.7))
 	var dark := Models.mat("121316", 0.7)
 	var door_m := Props.pbr("rusty_painted_metal", 0.6, accent.lerp(Color(0.5, 0.52, 0.5), 0.5))
-	# wnęka i drzwi z szybką
-	Models.box(g, Vector3(1.7, 2.3, 0.12), Vector3(0, 1.15, 0.03), dark)
-	Models.box(g, Vector3(0.98, 2.05, 0.08), Vector3(-0.2, 1.03, 0.1), door_m)
-	Models.box(g, Vector3(0.42, 2.05, 0.06), Vector3(0.56, 1.03, 0.1), Models.mat("0d1218", 0.15, 0.3))
-	Models.box(g, Vector3(0.3, 0.7, 0.03), Vector3(-0.2, 1.45, 0.15), Models.mat("0a0e12", 0.12, 0.3))
-	Models.box(g, Vector3(0.04, 0.3, 0.06), Vector3(0.18, 1.05, 0.16), Models.mat("9aa3ab", 0.35, 0.7))
-	# schodki i podest
-	Models.box(g, Vector3(2.5, 0.16, 1.5), Vector3(0, 0.08, 0.75), conc)
-	Models.box(g, Vector3(2.9, 0.08, 1.9), Vector3(0, 0.02, 0.9), conc)
-	# Wejścia różnią się profilem daszku: beton, pochylona blacha albo szerszy ganek.
-	var profile := posmod(int(round(pos.x*3.0+pos.z*5.0)),3)
-	var canopy_w := 3.15 if profile == 2 else 2.7
-	var canopy_d := 1.9 if profile == 2 else 1.7
-	if profile != 1:
-		Models.box(g,Vector3(canopy_w,0.13,canopy_d),Vector3(0,2.52,canopy_d*0.5),conc)
-	var trim := Models.mat("2a2c30",0.6,0.4)
-	Models.box(g,Vector3(canopy_w+0.06,0.05,canopy_d+0.06),Vector3(0,2.6,canopy_d*0.5),trim,Vector3(0.09 if profile == 1 else 0.0,0,0),false)
-	if profile == 1:
-		for cx in [-0.95,0.95]:
-			Models.box(g,Vector3(0.045,0.045,1.35),Vector3(cx,2.42,0.65),trim,Vector3(-0.16,0,0),false)
+	# drzwi z szybą zbrojoną, daszek na wspornikach, stopień z wycieraczką, domofon i gablota — jeden model z Blendera
+	var unit: Node3D = Stations.model("ul_wejscie")
+	if unit != null:
+		g.add_child(unit)
+		Props.set_range(unit, 140.0)
+		Interior._tint(unit, accent.lerp(Color(0.62, 0.64, 0.62), 0.6))
+		var sw := Stations._find(unit, "Swiatlo") as MeshInstance3D
+		if sw != null:
+			sw.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	else:
+		Models.box(g, Vector3(1.7, 2.3, 0.12), Vector3(0, 1.15, 0.03), dark)
+		Models.box(g, Vector3(0.98, 2.05, 0.08), Vector3(-0.2, 1.03, 0.1), door_m)
+		Models.box(g, Vector3(2.5, 0.16, 1.5), Vector3(0, 0.08, 0.75), conc)
+		Models.box(g, Vector3(2.7, 0.13, 1.7), Vector3(0, 2.52, 0.85), conc)
 	# ścianka boczna (raz z lewej, raz z prawej) — malowana w kolorze bloku
 	var side := -1.0 if rng.randf() < 0.5 else 1.0
 	var wing := Props.pbr("grey_plaster_03", 0.5, accent.lerp(Color(0.8, 0.8, 0.76), 0.35))
 	Models.box(g, Vector3(0.14, 2.46, 1.45), Vector3(side * 1.22, 1.23, 0.74), wing)
 	Models.cyl(g, 0.035, 0.035, 2.46, Vector3(-side * 1.2, 1.23, 1.5), Models.mat("3a3d42", 0.5, 0.6), Vector3.ZERO, 6)
+	# balustrady przy krawędziach stopnia, skrzynki pocztowe obok drzwi i (czasem) rower oparty o ścianę
+	for bx in [-side * 1.28]:
+		var rail: Node3D = Stations.model("ul_balustrada")
+		if rail != null:
+			rail.position = Vector3(bx, 0.16, 1.02)
+			g.add_child(rail)
+			Props.set_range(rail, 70.0)
+	var mb: Node3D = Stations.model("ul_skrzynki")
+	if mb != null:
+		mb.position = Vector3(-side * 1.72, 0.0, 0.02)
+		g.add_child(mb)
+		Props.set_range(mb, 60.0)
+	if rng.randf() < 0.5:
+		var bike: Node3D = Stations.model("ul_rower")
+		if bike != null:
+			bike.position = Vector3(-side * 4.2, 0.0, 0.3 + rng.randf() * 0.1)
+			bike.rotation.y = PI / 2.0 - side * (PI / 2.0 - 0.05) + rng.randf_range(-0.1, 0.1)
+			g.add_child(bike)
+			Props.set_range(bike, 50.0)
 	# domofon i tabliczka
-	Models.box(g, Vector3(0.16, 0.28, 0.04), Vector3(0.98, 1.4, 0.06), Models.mat("8a9096", 0.4, 0.6))
 	var pl := Signs.plate(label, Color(0.9, 0.86, 0.7))
 	pl.position = Vector3(0, 2.84, 1.69)
 	g.add_child(pl)
 	# lampa pod daszkiem (świeci nocą razem z latarniami)
-	var bulb := Models.box(g, Vector3(0.22, 0.05, 0.22), Vector3(0, 2.43, 0.8), W.lamp_mat, Vector3.ZERO, false)
-	bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var li := OmniLight3D.new()
 	li.position = Vector3(0, 2.2, 0.9)
 	li.light_color = Color(1.0, 0.82, 0.55)
@@ -333,6 +345,7 @@ static func entrances(W: Node3D) -> void:
 			if real:
 				continue
 			entrance(W, p, face_rot(code), b.accent, lab, rng)
+			W.entrance_spots.append({"p": p, "rot": face_rot(code), "label": lab})
 			# ławka albo kosz przy co drugim wejściu
 			var n := Vector3(sin(face_rot(code)), 0.0, cos(face_rot(code)))
 			var t := Vector3(cos(face_rot(code)), 0.0, -sin(face_rot(code)))

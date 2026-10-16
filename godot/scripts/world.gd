@@ -61,6 +61,7 @@ var mill_door_light: SpotLight3D = null   # reflektor nad tylnymi drzwiami huty 
 var windows: Array = []         # okna wnętrz: {pane, light, base} — env.gd gasi je nocą
 var ring2 := 0                      # ile bloków stoi w drugim rzędzie za murem
 var litter_items: Array = []         # [siatka, Transform3D] każdego śmiecia — dla podglądu bez okna (MultiMesh bez karty graficznej nie oddaje pozycji)
+var entrance_spots: Array = []     # wejścia do klatek (generowane): {p: pozycja świata, rot: obrót} — do testów i zrzutów
 var litter_count := 0               # ile drobnych śmieci leży na mieście
 var camp_fire: Node3D = null      # ognisko w obozowisku bezdomnych
 var box_door: Node3D = null       # drzwiczki skrzynki Wiktora (uchylają się, gdy wkładasz pieniądze)
