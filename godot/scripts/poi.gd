@@ -75,6 +75,7 @@ static func build(W) -> void:
 	_huta_detale(W)
 	_rynek(W)
 	_komisariat_front(W)
+	_wysypisko(W)
 	W.rng.state = st
 
 
@@ -968,3 +969,26 @@ static func _komisariat_front(W) -> void:
 	if mm != null and W.is_free(mp.x * SC, mp.y * SC, 0.5):
 		Props.set_range(W._place(mm, mp.x, mp.y, 0.3, 0.25, 0.25, 2.9), 140.0)
 	W._bin(-173.0, 12.0, 0.0)
+
+
+## Wysypisko w The Dumps: porzucona koparka z łyżką w ziemi, hałdy gruzu, kontener, beczki i lampa — blisko ścieżki do obozowiska.
+static func _wysypisko(W) -> void:
+	var c := Vector2(64.0, 156.0)
+	var km: Node3D = Stations.model("wysypisko_koparka")
+	if km != null and W.is_free(c.x * SC, c.y * SC, 1.5):
+		Props.set_range(W._place(km, c.x, c.y, 0.0, 2.4, 2.8, 2.9), 140.0)
+	for h in [[84.0, 160.0, 0.4], [50.0, 164.0, 2.0], [76.0, 166.0, 4.0]]:
+		var x: float = h[0]
+		var z: float = h[1]
+		if not W.is_free(x * SC, z * SC, 1.5):
+			continue
+		var hm: Node3D = Stations.model("wysypisko_halda")
+		if hm != null:
+			Props.set_range(W._place(hm, x, z, float(h[2]), 2.4, 2.4, 1.6), 120.0)
+	W._prop("container_green", 58.0, 134.0, 0.15, 2.6, 0.0)
+	_scatter(W, c, [["barrel_01", 10.0, -6.0, 0.0, 0.9], ["barrel_01", 10.9, -5.4, 0.8, 0.9], ["old_tyre", -4.0, 5.0, 0.3, 0.16], ["trashbag", 6.0, 9.0, 0.5, 0.5], ["trashbag_1", 7.0, 10.0, 1.1, 0.6],
+		["pallet_broken", -8.0, -4.0, 0.7, 0.2], ["pipes", 2.0, -8.0, 0.4, 0.7], ["cement_bag", -6.0, 8.0, 0.2, 0.2]])
+	_pole(W, c.x + 12.0, c.y - 2.0)
+	_light(W, c.x + 4.0, c.y - 6.0, 3.0, Color(1.0, 0.8, 0.55), 0.4, 11.0, true)
+	_dump(W, "poi_wysypisko_halda", 84.0, 160.0 + 5.0, "Przekop hałdę gruzu i śmieci")
+	_stash(W, "wysypisko_koparka", c.x - 1.2 * INV, c.y - 3.8 * INV, "Zajrzyj do kabiny koparki", 65, "W kabinie koparki leżała kaseta z wypłatą operatora", 1.0)
