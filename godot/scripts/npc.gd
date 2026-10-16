@@ -15,6 +15,7 @@ const CAR_ROUTE := [[-152.0, 20.0], [-106.0, 20.0], [-106.0, -130.0], [95.0, -13
 
 var all: Array = []
 var traffic: Node = null
+var bus_people := {}
 var cops: Array = []
 ## strzały w pościgu: ile sekund uciekasz na widoku, etap (0 nic, 1 okrzyk, 2 po strzale ostrzegawczym), odstęp między strzałami
 var flee_t := 0.0
@@ -392,6 +393,20 @@ func _build_edges() -> void:
 	_static({"x": 11.6, "z": 164.55, "rot": 2.4, "pose": "phone", "name": "Chłopak z pętli", "hours": [7.0, 23.5],
 		"look": {"model": "m16", "kind": "hoodie", "top": "2c3340", "bottom": "20242c", "seed": 967},
 		"lines": ["Czekam na kumpla. Nie twoja sprawa.", "Autobus? Nie, ja tu tylko stoję.", "Masz ogień?"]})
+	# autobus linii 12: kierowca, jeden pasażer czeka na przystanku, dwoje wysiada (ukryci do przyjazdu)
+	for st in statics:
+		if String(st.name) == "Pan Mirek":
+			bus_people["driver"] = st
+		elif String(st.name) == "Chłopak z pętli":
+			bus_people["boarder"] = st
+	var alight: Array = []
+	for e in [["Pani Halina", "fb3", true, "coat", "5a4a3a"], ["Student", "m09", false, "hoodie", "3a4a5a"]]:
+		var a := _static({"x": 9.0, "z": 162.9, "rot": 0.0, "pose": "", "name": String(e[0]), "hours": [0.0, 24.0],
+			"look": {"model": String(e[1]), "female": bool(e[2]), "kind": String(e[3]), "top": String(e[4]), "seed": 970 + alight.size()},
+			"lines": ["Dwunastka jak zwykle spóźniona.", "Dobrze, że dojechał."]})
+		a["hide"] = true
+		alight.append(a)
+	bus_people["alight"] = alight
 	# magazynier przy palecie pod hurtownią budowlaną: pali i pilnuje towaru wystawionego na chodnik
 	_static({"x": 95.6, "z": 30.3, "rot": 2.75, "pose": "arms", "name": "Darek", "label": "Darek, magazynier", "hours": [7.0, 18.0],
 		"look": {"model": "m14", "kind": "jacket", "top": "c9641c", "bottom": "2b2f36", "seed": 977, "build": 1.05},
@@ -1354,7 +1369,7 @@ func update(dt: float) -> void:
 			n.node.queue_free()
 
 	for n in statics:
-		var vis: bool = n.loc == P.loc and _hours_ok(n.hours, h)
+		var vis: bool = n.loc == P.loc and _hours_ok(n.hours, h) and not bool(n.get("hide", false))
 		if n.get("worker_id","")=="roman" and G.S.t<float(G.S.workers.get("roman",{}).get("visual_until",0.0)): vis=false
 		if vis and n.get("dealer_id", "") != "" and not G.Dealers.offered(String(n.dealer_id)): vis = false
 		n.node.visible = vis
@@ -1375,6 +1390,8 @@ func update(dt: float) -> void:
 					n.erase("goto")
 					n.pose = String(n.get("pose_end", n.pose))
 					n.node.rotation.y = float(n.get("rot_end", n.node.rotation.y))
+					if bool(n.get("arrive_hide", false)):
+						n["hide"] = true       # wsiadł do autobusu
 			else:
 				var stp := minf(dv.length(), float(n.get("goto_speed", 2.6)) * dt)
 				n.x += dv.normalized().x * stp

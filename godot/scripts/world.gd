@@ -84,6 +84,7 @@ var furn := {}                 # pokój -> Node3D z meblami
 var furn_body := {}
 var body: StaticBody3D
 var city: Node3D
+var bus_node: Node3D = null    # autobus linii 12 (jeździ w traffic.gd)
 var rng := RandomNumberGenerator.new()
 var noise_tex: NoiseTexture2D
 var hg := PackedFloat32Array()
@@ -4245,9 +4246,19 @@ func _bus_loop() -> void:
 	var st := rng.state
 	var bus := Stations.model("autobus")
 	if bus != null:
-		_place(bus, BUS.x, BUS.y, PI / 2.0, 5.55, 1.3, 3.0)
+		# autobus jeździ (traffic.gd): kolizja jedzie razem z nim zamiast stać w jednym miejscu
+		_place(bus, BUS.x, BUS.y, PI / 2.0)
 		Props.set_range(bus, 220.0)
 		Models.Cars.dim(bus)
+		bus_node = bus
+		var sb := StaticBody3D.new()
+		var cs := CollisionShape3D.new()
+		var bx := BoxShape3D.new()
+		bx.size = Vector3(2.6, 3.0, 11.1)
+		cs.shape = bx
+		cs.position = Vector3(0.0, 1.5, 0.0)
+		sb.add_child(cs)
+		bus.add_child(sb)
 	_place(Props.bus_stop(), 8.0, 167.2, PI, 2.0, 0.3, 2.4)
 	_sign("12  HUTNIK LOOP", Vector3(8.0, 2.62, 165.8), Color(0.95, 0.85, 0.35), 34, PI, 0.005, 8)
 	_bin(13.4, 167.6)

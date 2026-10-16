@@ -809,11 +809,14 @@ static func run(T) -> void:
 	var ge: Vector2 = G.world.GATE_E
 	T.ok(not G.world.is_free((ge.x - 3.0) * D.SC, (ge.y + 8.0) * D.SC, 0.2) and G.world.is_free((ge.x - 14.0) * D.SC, 20.0 * D.SC, 0.5), "przy bramie huty stoi portiernia, a dojazd do szlabanu jest wolny")
 	var lp: Array = G.world.LOOP
-	var bus_n := 0
-	for ch2 in G.world.city.get_children():
-		if String(ch2.scene_file_path).contains("autobus"):
-			bus_n += 1
-	T.ok(bus_n == 1 and G.world.surface_at(0.0, (float(lp[3]) - 1.0) * D.SC) == "concrete" and G.world.surface_at(0.0, 151.0 * D.SC) == "grass" and not G.world.is_free(G.world.BUS.x * D.SC, G.world.BUS.y * D.SC, 0.2),
+	# autobus jeździ (traffic.gd): jest jednym węzłem z własną kolizją, która jedzie razem z nim
+	var bus_ok: bool = G.world.bus_node != null and String(G.world.bus_node.scene_file_path).contains("autobus") and G.world.bus_node.get_child_count() > 0
+	var bus_body := false
+	if bus_ok:
+		for chb in G.world.bus_node.get_children():
+			if chb is StaticBody3D:
+				bus_body = true
+	T.ok(bus_ok and bus_body and G.world.surface_at(0.0, (float(lp[3]) - 1.0) * D.SC) == "concrete" and G.world.surface_at(0.0, 151.0 * D.SC) == "grass",
 		"Robotnicza kończy się pętlą: jezdnia dookoła wysepki i autobus przy peronie")
 	T.ok(G.world.is_free(-12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(12.0 * D.SC, 156.0 * D.SC, 0.8) and G.world.is_free(0.0, 145.5 * D.SC, 0.8), "pętlę da się objechać: obok autobusu zostaje wolny pas")
 	T.ok(names.has("Pan Mirek") and names.has("Pan Bogdan") and names["Pan Mirek"].has("interact") and G.world.is_free(float(names["Pan Bogdan"].x), float(names["Pan Bogdan"].z), 0.3) and G.world.is_free(float(names["Pan Mirek"].x), float(names["Pan Mirek"].z), 0.3),

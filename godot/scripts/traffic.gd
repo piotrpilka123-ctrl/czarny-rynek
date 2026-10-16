@@ -12,6 +12,16 @@ const COLORS := ["8a2b2b", "2b4a7a", "c9c6bc", "3d3f44", "5a6a3a", "7a6a3a"]
 
 var npc
 var cars: Array = []
+# autobus linii 12: stoi na pętli, co kilka minut jedzie na przystanek, stoi 11 s (ludzie wsiadają i wysiadają), objeżdża wysepkę i wraca
+const BUS_PATH := [[9.0, 161.2], [13.5, 158.0], [13.5, 146.0], [-13.5, 146.0], [-13.5, 158.0], [-8.0, 161.2], [-2.5, 161.2]]
+var bus: Node3D = null
+var bus_state := "depot"
+var bus_t := 40.0
+var bus_i := 0
+var bus_speed := 0.0
+var bus_x := 0.0
+var bus_z := 0.0
+var bus_rot := PI / 2.0
 
 
 func setup(n) -> void:
@@ -55,6 +65,7 @@ func _spawn(c: Dictionary) -> void:
 
 
 func update(dt: float, pp: Vector3, outside: bool) -> void:
+	_bus(dt, pp, outside)
 	for c in cars:
 		var node: Node3D = c.node
 		if not outside:
@@ -151,3 +162,108 @@ func _drive(c: Dictionary, dt: float, pp: Vector3) -> void:
 	if braking != bool(c.braking):
 		c.braking = braking
 		Models.Cars.brake_lamps(node, braking)
+
+
+func _bus(dt: float, pp: Vector3, outside: bool) -> void:
+	if bus == null:
+		if G.world.bus_node == null:
+			return
+		bus = G.world.bus_node
+		var gp := bus.global_position
+		var gr := bus.global_rotation.y
+		bus.reparent(self, true)
+		if OS.get_cmdline_user_args().has("--busnow"):
+			bus_t = 2.0      # tylko do zrzutów
+		bus_x = gp.x
+		bus_z = gp.z
+		bus_rot = gr
+	if not outside:
+		return
+	var people: Dictionary = npc.bus_people
+	var door := Vector2(9.0 + 1.2, 162.95) * D.SC
+	match bus_state:
+		"depot":
+			bus_t -= dt
+			if bus_t <= 0.0 and Vector2(pp.x - bus_x, pp.z - bus_z).length() > 14.0:
+				bus_state = "go"
+				bus_i = 0
+				if people.has("driver"):
+					people.driver["hide"] = true
+		"dwell":
+			bus_t -= dt
+			if bus_t > 9.5 and not bus.has_meta("opened"):
+				bus.set_meta("opened", true)
+				if people.has("boarder"):
+					var b: Dictionary = people.boarder
+					b["goto"] = [door]
+					b["goto_speed"] = 1.6
+					b["arrive_hide"] = true
+					b["pose_end"] = ""
+				var k := 0
+				for a in people.get("alight", []):
+					a["hide"] = false
+					a["x"] = door.x + 0.2 * k
+					a["z"] = door.y
+					a.node.position = Vector3(a.x, npc._h(a.x, a.z), a.z)
+					a["goto"] = [Vector2(door.x + 1.8 + 1.1 * k, door.y + 2.6), Vector2(door.x + 5.0 + 2.0 * k, door.y + 3.4)]
+					a["goto_speed"] = 1.5
+					a["arrive_hide"] = true      # po dojściu do końca chodnika znikają z widoku (poszli do domu)
+					a["pose_end"] = ""
+					k += 1
+			if bus_t <= 0.0:
+				bus.remove_meta("opened")
+				bus_state = "go"
+				bus_i += 1
+		"go":
+			_bus_drive(dt, pp)
+	bus.global_position = Vector3(bus_x, npc._h(bus_x, bus_z), bus_z)
+	bus.rotation.y = bus_rot
+
+
+func _bus_drive(dt: float, pp: Vector3) -> void:
+	var tgt := Vector2(BUS_PATH[bus_i][0], BUS_PATH[bus_i][1]) * D.SC
+	var pos := Vector2(bus_x, bus_z)
+	var to := tgt - pos
+	var dist := to.length()
+	var last: bool = bus_i == BUS_PATH.size() - 1
+	var stop_here: bool = bus_i == 0 or last
+	if dist < (0.6 if stop_here else 3.0):
+		if bus_i == 0:
+			bus_state = "dwell"
+			bus_t = 11.0
+			bus_speed = 0.0
+			return
+		if last:
+			bus_state = "depot"
+			bus_t = randf_range(90.0, 150.0)
+			bus_speed = 0.0
+			bus_rot = PI / 2.0
+			var people: Dictionary = npc.bus_people
+			if people.has("driver"):
+				people.driver["hide"] = false
+			# pasażer znów czeka na przystanku
+			if people.has("boarder"):
+				var b: Dictionary = people.boarder
+				b["hide"] = false
+				b["arrive_hide"] = false
+				b["x"] = 11.6 * D.SC
+				b["z"] = 164.55 * D.SC
+				b.node.position = Vector3(b.x, npc._h(b.x, b.z), b.z)
+				b["pose"] = "phone"
+			return
+		bus_i += 1
+		return
+	var aim := pos + to.normalized() * minf(dist, 6.0)
+	var want: float = atan2(aim.x - pos.x, aim.y - pos.y)
+	var diff: float = npc._ang_diff(want, bus_rot)
+	var vmax := 3.4 * clampf(1.0 - absf(diff) * 0.7, 0.35, 1.0)
+	if stop_here:
+		vmax = minf(vmax, 0.5 + dist * 0.6)
+	var fwd := Vector2(sin(bus_rot), cos(bus_rot))
+	var to_p := Vector2(pp.x, pp.z) - pos
+	if to_p.length() < 9.0 and to_p.normalized().dot(fwd) > 0.8:
+		vmax = 0.0
+	bus_speed = move_toward(bus_speed, vmax, dt * (1.2 if vmax > bus_speed else 3.0))
+	bus_rot += clampf(diff * 1.6, -0.6, 0.6) * clampf(bus_speed / 2.5, 0.0, 1.0) * dt
+	bus_x += sin(bus_rot) * bus_speed * dt
+	bus_z += cos(bus_rot) * bus_speed * dt
