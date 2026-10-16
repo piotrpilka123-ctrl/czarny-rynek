@@ -3056,6 +3056,7 @@ func _lower_town() -> void:
 		_prop("trashbag", e[0], e[1], rng.randf() * 6.0, 0.5, 0.0, false)
 	_place(Props.trzepak(), -66.0, 54.0, 0.0, 1.3, 0.1, 2.0)
 	_prop("plastic_monobloc_chair_01", 14.0, 54.0, 1.0, 0.86, 0.0, false)
+	_courtyards()
 	# garaże: życie i graty
 	_prop("old_tyre", 107.0, 109.2, 0.0, 0.16, 0.0, false)
 	_prop("old_tyre", 107.1, 109.25, 0.5, 0.16, 0.0, false, 0.17)
@@ -3097,6 +3098,61 @@ func _lower_town() -> void:
 	_place(Props.fence(14.0, 2.0, "mesh"), -157.0, -8.4, 0.0, 7.0, 0.1, 2.0)
 	rects.pop_back()
 	_prop("security_camera_01", -170.0, 8.2, 0.0, 0.3, 0.0, false, 4.0)
+
+
+## Podwórka-studnie za kamienicami: wiaty śmietnikowe, kapliczki, rowery przypięte do rury, sznury z praniem, tylne wejścia z lampą, kałuże i mech przy rynnach
+func _courtyards() -> void:
+	# [model, x, z, obrót, kolizja x, kolizja z, wysokość kolizji, zasięg widoczności] — zaułek północny (tył ściany na z ≈ −10) i podwórka południowe (tył ściany na z ≈ 51)
+	var items := [
+		["pod_wiata", -34.0, -10.9, PI, 2.5, 1.2, 2.1, 70.0], ["pod_wiata", 14.0, -10.9, PI, 2.5, 1.2, 2.1, 70.0],
+		["pod_kapliczka", -8.0, -10.2, PI, 0.5, 0.4, 1.9, 50.0], ["pod_kapliczka", -112.0, 51.2, 0.0, 0.5, 0.4, 1.9, 50.0],
+		["pod_rower_rura", -76.0, -10.2, PI, 1.0, 0.3, 1.0, 40.0], ["pod_rower_rura", -40.0, 51.2, 0.0, 1.0, 0.3, 1.0, 40.0],
+		["pod_wiata", -88.0, 51.6, 0.0, 2.5, 1.2, 2.1, 70.0],
+		["pod_drzwi_tyl", -48.0, -10.15, PI, 0.0, 0.0, 0.0, 70.0], ["pod_drzwi_tyl", -18.0, -10.15, PI, 0.0, 0.0, 0.0, 70.0],
+		["pod_drzwi_tyl", -22.0, 51.15, 0.0, 0.0, 0.0, 0.0, 70.0], ["pod_drzwi_tyl", -72.0, 51.15, 0.0, 0.0, 0.0, 0.0, 70.0]]
+	for e in items:
+		var m := Stations.model(String(e[0]))
+		if m == null:
+			continue
+		var x: float = e[1]
+		var z: float = e[2]
+		if float(e[4]) > 0.0:
+			_place(m, x, z, float(e[3]), float(e[4]), float(e[5]), float(e[6]))
+		else:
+			_wall(m, x, 0.0, z, float(e[3]))
+		Props.set_range(m, float(e[7]))
+		if String(e[0]) == "pod_drzwi_tyl":
+			# lampa nad tylnym wejściem: świeci nocą razem z latarniami
+			var li := OmniLight3D.new()
+			var lp := Vector3(x * SC, hd(x, z) + 2.1, z * SC) + Vector3(sin(float(e[3])), 0.0, cos(float(e[3]))) * 0.3
+			li.position = lp
+			li.light_color = Color(1.0, 0.82, 0.55)
+			li.omni_range = 4.5
+			li.light_energy = 0.0
+			li.visible = false
+			li.distance_fade_enabled = true
+			li.distance_fade_begin = 35.0
+			li.distance_fade_length = 10.0
+			li.set_meta("gain", 0.14)
+			add_child(li)
+			lamps.append(li)
+	# sznury z praniem: słup i drugi słup naprzeciw (sznur zwisa między nimi)
+	for e in [[-96.0, -13.2], [-66.0, 53.4]]:
+		var a1 := Stations.model("pod_sznur")
+		var a2 := Stations.model("pod_sznur")
+		if a1 != null and a2 != null:
+			_wall(a1, float(e[0]), 0.0, float(e[1]), 0.0)
+			_wall(a2, float(e[0]) + 5.0 * INV, 0.0, float(e[1]), PI)
+			Props.set_range(a1, 60.0)
+			Props.set_range(a2, 60.0)
+	# kałuże w nierównościach i mech przy rynnach (zacieki u podstawy rur)
+	var prng := RandomNumberGenerator.new()
+	prng.seed = 5150
+	for e in [[-60.0, -13.5], [-25.0, -14.2], [8.0, -13.0], [-90.0, -14.0], [-50.0, 54.0], [-84.0, 55.0], [-12.0, 54.5], [12.0, 55.5]]:
+		RoomParts._puddle(city, Vector3(float(e[0]), hd(float(e[0]), float(e[1])) + 0.02, float(e[1])), Vector2((1.6 + prng.randf()) * INV, (0.8 + prng.randf() * 0.6) * INV), prng.randf() * 3.0)
+	for e in [[-88.0, -10.1, 0.0], [-62.0, -10.1, 0.0], [-30.0, -10.1, 0.0], [20.0, -10.1, 0.0], [-100.0, 50.9, 0.0], [-56.0, 50.9, 0.0], [-10.0, 50.9, 0.0]]:
+		Interior.stain(city, Vector3(float(e[0]), hd(float(e[0]), float(e[1])) + 0.55, float(e[1])), Vector3.ZERO, Vector2(0.7 * INV, 1.1), Color(0.16, 0.26, 0.1, 0.5))
+		Interior.stain(city, Vector3(float(e[0]), hd(float(e[0]), float(e[1])) + 0.15, float(e[1])), Vector3.ZERO, Vector2(1.0 * INV, 0.35), Color(0.1, 0.2, 0.07, 0.6))
 
 
 # ---------------------------------------------------------------- park
