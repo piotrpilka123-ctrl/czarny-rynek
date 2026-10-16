@@ -3894,14 +3894,59 @@ func _lamps() -> void:
 		_lamp(e[0], e[1], e[2], e[3])
 
 
-## Materiał dalekiej zabudowy: jednolita, chłodna szarość bez okien — z daleka i we mgle czyta się jak sylwetka miasta.
+## Materiał dalekiej zabudowy: chłodna elewacja z siatką okien (jedna mała tekstura, potrójne rzutowanie w układzie świata) —
+## z daleka i we mgle czyta się jak miasto, nie jak gładka bryła; nocą część okien świeci (emisja podbijana w env.gd).
 var _far_mats := {}
+var _far_tex: ImageTexture = null
+var _far_emit: ImageTexture = null
+const FAR_COLS := 8
+const FAR_ROWS := 6
+const FAR_W := 3.2      # m na okno w poziomie
+const FAR_H := 3.4      # m na piętro
+
+func _far_textures() -> void:
+	if _far_tex != null:
+		return
+	var cw := 32
+	var ch := 40
+	var img := Image.create(FAR_COLS * cw, FAR_ROWS * ch, true, Image.FORMAT_RGB8)
+	var em := Image.create(FAR_COLS * cw, FAR_ROWS * ch, true, Image.FORMAT_RGB8)
+	img.fill(Color(0.74, 0.76, 0.8))
+	em.fill(Color(0, 0, 0))
+	var fr := RandomNumberGenerator.new()
+	fr.seed = 4711
+	for r in range(FAR_ROWS):
+		# pas międzykondygnacyjny
+		img.fill_rect(Rect2i(0, r * ch + ch - 5, FAR_COLS * cw, 3), Color(0.58, 0.6, 0.64))
+		for c in range(FAR_COLS):
+			var wx := c * cw + 7
+			var wy := r * ch + 9
+			var tone := fr.randf_range(0.8, 1.15)
+			img.fill_rect(Rect2i(wx, wy, 18, 22), Color(0.2, 0.24, 0.3) * tone)
+			img.fill_rect(Rect2i(wx + 8, wy, 2, 22), Color(0.7, 0.72, 0.75))
+			if fr.randf() < 0.34:
+				var warm := Color(1.0, 0.78, 0.45).lerp(Color(0.8, 0.9, 1.0), 0.25 * fr.randf())
+				em.fill_rect(Rect2i(wx, wy, 18, 22), warm * fr.randf_range(0.6, 1.0))
+	img.generate_mipmaps()
+	em.generate_mipmaps()
+	_far_tex = ImageTexture.create_from_image(img)
+	_far_emit = ImageTexture.create_from_image(em)
+
 
 func far_mat(shade := 1.0) -> StandardMaterial3D:
 	var key := int(round(shade * 20.0))
 	if not _far_mats.has(key):
+		_far_textures()
 		var fm := StandardMaterial3D.new()
-		fm.albedo_color = Color(0.44, 0.47, 0.52) * shade
+		fm.albedo_texture = _far_tex
+		fm.albedo_color = Color(0.6, 0.62, 0.65) * shade
+		fm.emission_enabled = true
+		fm.emission_texture = _far_emit
+		fm.emission_energy_multiplier = 0.0
+		fm.uv1_triplanar = true
+		fm.uv1_world_triplanar = true
+		fm.uv1_scale = Vector3(1.0 / (FAR_W * FAR_COLS), -1.0 / (FAR_H * FAR_ROWS), 1.0 / (FAR_W * FAR_COLS))
+		fm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		fm.roughness = 1.0
 		fm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 		_far_mats[key] = fm

@@ -464,6 +464,8 @@ func update(hour: float, dt: float, loc: String, cam_pos: Vector3, world) -> voi
 		l.visible = (on or (always and not inside)) and e > 0.01
 		l.light_energy = e
 	world.lamp_mat.emission_energy_multiplier = night * 9.0
+	for fk in world._far_mats:
+		(world._far_mats[fk] as StandardMaterial3D).emission_energy_multiplier = night * 1.1
 	# dym z kominów: w dzień jasny, po zmroku ledwie widoczny na tle nieba (materiał nie łapie światła, więc gasimy go sami)
 	var smk := lerpf(1.0, 0.07, night)
 	for sm in world.smoke_mats:
