@@ -4316,7 +4316,7 @@ func _build_story() -> void:
 		{"id": "repay1", "text": func(): return "Zanieś pierwsze pieniądze do skrzynki Wiktora — to stara skrzynka gazowa na tyłach pawilonu. Otwórz ją [E] i przeciągnij do niej gotówkę. (%s / %s)" % [money(minf(float(D.BOX_FIRST), float(S.stats.get("box_paid", 0.0)))), money(D.BOX_FIRST)],
 			"done": func(): return float(S.stats.get("box_paid", 0.0)) >= float(D.BOX_FIRST), "marker": _box_marker, "on_done": _on_repay_done},
 		{"ch": "Rozdział 2: Na swoim", "id": "lvl2", "text": func(): return "Zdobądź poziom 2. Zadowolony Dominik poleci Cię dalej. (%d/%d PD)" % [int(S.xp), int(D.XP_LEVELS[1])],
-			"done": func(): return int(S.lvl) >= 2},
+			"done": func(): return int(S.lvl) >= 2, "marker": _xp_marker},
 		{"id": "rata1", "text": func(): return "Zanieś Wiktorowi do skrzynki pierwsze %s wkładu (ponad zeszyt za towar): awansujesz na Gońca i dostaniesz plecak. Wkład: %s" % [money(D.RANKS[1].at), money(S.paid)],
 			"done": func(): return S.paid >= float(D.RANKS[1].at)},
 		{"id": "lvl3", "text": func(): return "Zdobądź poziom 3 i wybierz pierwszą umiejętność (telefon → Rozwój).",
@@ -4571,6 +4571,16 @@ func _drop_marker() -> Variant:
 		return null
 	var dd: Dictionary = Market.spot(d)
 	return {"loc": "out", "x": dd.x, "z": dd.z}
+
+
+## cel „zdobądź poziom”: wskazuje najbliższy krok — paczka do odebrania, towar do spakowania albo umówiony klient
+func _xp_marker() -> Variant:
+	if packed_total(S.inv) > 0:
+		return _buyer_marker()
+	var d = ready_drop()
+	if d != null:
+		return _drop_marker()
+	return _bench_marker()
 
 
 func _buyer_marker() -> Variant:
