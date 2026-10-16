@@ -428,6 +428,11 @@ func _build_club() -> void:
 		n["user"] = true
 		n["anim_speed"] = rg.randf_range(0.82, 1.22)
 		n.rig.anim.seek(rg.randf() * 4.0, true)
+		# pełny obieg ruchu = całkowita liczba uderzeń (128 BPM), więc wszyscy kiwają się w tym samym rytmie, ale w różnych fazach i odmianach
+		var dl: float = n.rig.anim.current_animation_length
+		if dl > 0.1:
+			var beat := 60.0 / 128.0
+			n["anim_speed"] = dl / (maxf(1.0, round(dl / beat)) * beat) * rg.randf_range(0.98, 1.02)
 		n.interact.act = func(): G.main.club_buyer(n)
 	# ludzie przy stolikach: stoją z drinkiem, gadają
 	for e in [[2.9, 2.6, 2.4, "talk", "Seba z ekipą"], [1.9, 2.3, -0.7, "dance4", "Paula"], [5.1, 3.5, 2.9, "arms", "Rysiek"], [-3.7, 3.5, 0.9, "talk", "Aga"], [-4.7, 3.4, -1.2, "dance4", "Ziomek Agi"]]:
@@ -1355,12 +1360,21 @@ func update(dt: float) -> void:
 			n.node.rotation.y += _ang_diff(atan2(pp.x - n.x, pp.z - n.z), n.node.rotation.y) * minf(1.0, dt * 3.0)
 		Chars.set_active(n.rig, dp3 < 60.0)
 		if dp3 < 60.0:
-			if String(n.get("pose0", "x")) in ["", "arms"] and not n.has("goto") and not bool(n.get("cop", false)):
+			if String(n.get("pose0", "x")) in ["", "arms", "talk"] and not n.has("goto") and not bool(n.get("cop", false)):
 				n.idle_t = float(n.idle_t) - dt
 				if float(n.idle_t) <= 0.0:
 					n.idle_t = randf_range(8.0, 18.0)
-					n.pose = ["", "arms", "", "phone"].pick_random()
+					n.pose = (["talk", "arms", "talk", ""] if String(n.pose0) == "talk" else ["", "arms", "", "phone"]).pick_random()
 			var pose_now: String = "talk" if (n.track and dp3 < 3.4) else n.pose
+			# barman w ruchu: co kilka sekund przez chwilę coś robi przy ladzie (przecieranie, nalewanie)
+			if String(n.name) == "Barman Igor" and pose_now != "talk":
+				n["bar_t"] = float(n.get("bar_t", 3.0)) - dt
+				if float(n.bar_t) <= 0.0:
+					n.bar_t = randf_range(6.0, 12.0)
+					n["bar_on"] = 3.5
+				if float(n.get("bar_on", 0.0)) > 0.0:
+					n.bar_on = float(n.bar_on) - dt
+					pose_now = "work"
 			# mimika: z bliska widać, że postacie żyją — co kilka sekund uśmiech, zdziwienie albo grymas (zależnie od tego,
 			# co robią), a gdy gracz podchodzi pierwszy raz od dłuższej chwili, przywitanie uśmiechem
 			if dp3 < 22.0:
