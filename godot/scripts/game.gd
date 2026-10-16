@@ -4512,6 +4512,10 @@ func _on_first_sale() -> void:
 	if flag("hurt_on"):
 		return
 	S.flags["hurt_on"] = true
+	# pierwsza w życiu sprzedaż: wyróżniony moment i premia w doświadczeniu
+	add_xp(15.0)
+	Sfx.play("level")
+	batch_done.emit("PIERWSZA SPRZEDAŻ", "+15 XP")
 	chat("wiktor", "Widzę, że umiesz sprzedać. To teraz weź coś konkretnego: 10 g zioła i 10 g amfy. „Zamów towar” pod tą rozmową — idzie na zeszyt, paczkę zostawię w skrytce z moim znakiem.", false, true)
 
 

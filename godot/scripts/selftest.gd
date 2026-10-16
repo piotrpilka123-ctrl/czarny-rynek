@@ -878,6 +878,15 @@ func run() -> void:
 	var mk_xp = G._xp_marker()
 	ok(mk_xp == null or (mk_xp is Dictionary and mk_xp.has("x")), "cel poziomu zawsze wskazuje sensowny punkt albo nic")
 	S.inv = inv_keep
+	var fs_seen := []
+	G.batch_done.connect(func(t, sub): fs_seen.append(String(t)))
+	var hurt_keep = S.flags.get("hurt_on")
+	var xp_fs: float = S.xp
+	S.flags.erase("hurt_on")
+	G._on_first_sale()
+	ok(fs_seen == ["PIERWSZA SPRZEDAŻ"] and S.xp >= xp_fs + 15.0 and S.flags.get("hurt_on", false), "pierwsza sprzedaż: wyróżniony moment i 15 XP")
+	if hurt_keep == null:
+		S.flags.erase("hurt_on")
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")
