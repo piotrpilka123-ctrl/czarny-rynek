@@ -32,6 +32,8 @@ static func paint(W) -> void:
 	W._pr(4, GREEN.x - 16.0, GREEN.y - 21.0, GREEN.x + 16.0, GREEN.y + 21.0)
 	W._pr(4, 154.0, 197.0, 202.0, 233.0)
 	W._pr(3, 184.0, 146.0, 190.0, 197.0)
+	W._pr(1, -4.5, -150.0, -1.5, -136.0)
+	W._pr(1, -14.0, -147.0, 8.0, -143.5)
 	W._pr(1, -58.0, 144.0, -31.0, 167.0)
 	W._pr(1, -31.0, 151.5, -20.0, 154.5)
 	W._pr(2, GREEN.x - 2.0, GREEN.y + 21.0, GREEN.x + 3.0, -112.0)
@@ -50,6 +52,7 @@ static func build(W) -> void:
 	_obozowisko(W)
 	_kebab(W)
 	_blaszaki(W)
+	_trawnik11(W)
 	W.rng.state = st
 
 
@@ -632,3 +635,25 @@ static func _blaszaki(W) -> void:
 	_light(W, c.x, c.y + 2.0, 3.4, Color(1.0, 0.72, 0.42), 0.4, 11.0, true)
 	_dump(W, "poi_blaszaki_wrak", 190.0, 214.0 + 3.4 * INV, "Przeszukaj wrak przy blaszakach")
 	_stash(W, "blaszak_13", 170.0, 207.0 + 3.0 * INV, "Zajrzyj przez szparę w blaszaku nr 13", 85, "Przez szparę wyciągnąłeś zwiniętą kopertę z gotówką", 0.9)
+
+
+## Trawnik między blokami 9 i 11: alejka z kostki od chodnika, trzepak z suszarką, piaskownica, huśtawka, ławki, kosze i latarnia.
+static func _trawnik11(W) -> void:
+	var c := Vector2(-3.0, -143.0)
+	var tr: Node3D = Props.trzepak()
+	Props.set_range(W._place(tr, c.x - 8.0, c.y - 3.0, 0.0, 1.3, 0.12, 2.0), 110.0)
+	var su: Node3D = Stations.model("pod_suszarka")
+	if su != null:
+		Props.set_range(W._place(su, c.x - 8.5, c.y - 8.0, 0.4, 0.9, 0.9, 1.6), 80.0)
+	var pk: Node3D = Stations.model("plac_piaskownica")
+	if pk != null:
+		Props.set_range(W._place(pk, c.x + 7.0, c.y - 6.0, 0.1, 1.55, 1.55, 0.3), 95.0)
+	Props.set_range(W._place(Props.swing(), c.x + 7.0, c.y + 1.0, PI, 1.6, 0.9, 2.4), 110.0)
+	W._bench(c.x - 6.0, c.y + 3.0, PI)
+	W._bench(c.x + 3.5, c.y + 2.5, PI)
+	W._bench(c.x - 3.5, c.y - 5.5, 0.0)
+	W._bin(c.x - 5.0, c.y + 6.0, 0.0)
+	W._bin(c.x + 3.5, c.y - 8.0, 0.0)
+	_pole(W, c.x + 1.5, c.y - 1.0)
+	_scatter(W, c, [["dirty_football", 4.0, -2.0, 0.0, 0.22], ["trashbag", -10.0, 4.0, 0.6, 0.5], ["can_rusted", 2.0, 1.0, 0.3, 0.13], ["plastic_crate_01", -6.0, -9.0, 0.4, 0.3]])
+	_stash(W, "trawnik_suszarka", c.x - 8.5 + 1.2 * INV, c.y - 8.0, "Zajrzyj pod suszarkę", 30, "Pod suszarką ktoś zgubił zwitek drobnych", 0.2)
