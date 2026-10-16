@@ -1122,6 +1122,47 @@ func errand_deliver() -> bool:
 	return true
 
 
+## zgubiony pies: Pani Krysia prosi o odnalezienie Bureka (jedno z trzech miejsc), nagroda po znalezieniu; dzieli dzienny limit z kopertą
+const DOG_SPOTS := [
+	{"name": "nad jeziorem Old Reservoir", "x": 54.0, "z": 216.0},
+	{"name": "za garażami", "x": 70.0, "z": 183.0},
+	{"name": "przy skateparku", "x": -136.0, "z": -58.0},
+]
+const DOG_PAY := 60.0
+
+func errand_take_dog() -> bool:
+	if not errand_can_take():
+		return false
+	S["errand"] = "pies"
+	S["errand_spot"] = randi() % DOG_SPOTS.size()
+	return true
+
+
+func dog_spot() -> Dictionary:
+	return DOG_SPOTS[clampi(int(S.get("errand_spot", 0)), 0, DOG_SPOTS.size() - 1)]
+
+
+func dog_found() -> bool:
+	if String(S.get("errand", "")) != "pies":
+		return false
+	S["errand"] = "pies_wraca"
+	add_xp(8.0)
+	Sfx.play("level")
+	return true
+
+
+## pies wrócił do właścicielki: nagroda u Pani Krysi
+func dog_return() -> bool:
+	if String(S.get("errand", "")) != "pies_wraca":
+		return false
+	S["errand"] = ""
+	S["errand_day"] = day()
+	S.cash = float(S.cash) + DOG_PAY
+	S.stats.earned = float(S.stats.earned) + DOG_PAY
+	Sfx.play("cash")
+	return true
+
+
 ## robota dla Zdzicha: raz na dzień trzy puszki naraz za premię (40 zł, trochę doświadczenia, śledztwo stygnie)
 const ZDZ_CANS := 3
 const ZDZ_PAY := 40.0

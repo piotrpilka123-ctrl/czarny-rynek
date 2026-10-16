@@ -1157,6 +1157,43 @@ func supply_talk() -> void:
 	]})
 
 
+var lost_dog: Node3D = null
+
+## Burek siedzi w wybranym miejscu, dopóki ktoś go nie znajdzie
+func _dog_spawn() -> void:
+	_dog_remove()
+	var ps: PackedScene = load("res://assets/props/dog.gltf")
+	if ps == null:
+		return
+	var sp: Dictionary = G.dog_spot()
+	var at: Vector2 = world.near_free(float(sp.x) * D.SC, float(sp.z) * D.SC)
+	lost_dog = ps.instantiate()
+	add_child(lost_dog)
+	lost_dog.scale = Vector3(0.9, 0.9, 0.9)
+	lost_dog.position = Vector3(at.x, world.height(at.x, at.y), at.y)
+
+
+func _dog_remove() -> void:
+	if lost_dog != null and is_instance_valid(lost_dog):
+		lost_dog.queue_free()
+	lost_dog = null
+
+
+func _dog_inter() -> Variant:
+	if String(G.S.get("errand", "")) != "pies" or player.loc != "out":
+		return null
+	if lost_dog == null or not is_instance_valid(lost_dog):
+		_dog_spawn()
+	if lost_dog == null:
+		return null
+	var p := lost_dog.position
+	return {"loc": "out", "x": p.x, "z": p.z, "y0": 0.0, "y1": 0.9, "r": 0.8, "reach": 2.5, "id": "pies", "label": func(): return "Burek — zawołaj psa",
+		"act": func():
+			if G.dog_found():
+				_dog_remove()
+				G.notify("Znalazłeś Bureka! Zaprowadź go do Pani Krysi na przystanek.", "good")}
+
+
 ## sąsiedzi ze zleceniem: Pan Józek daje kopertę, Pani Krysia ją odbiera
 func talk_neighbor(who: String) -> void:
 	if G.busy or ui.mode != "":
@@ -1177,8 +1214,20 @@ func talk_neighbor(who: String) -> void:
 		if G.errand_deliver():
 			ui.dialog({"name": "Pani Krysia", "lines": ["Od Józka? Dobry człowiek. Masz tu na bułki, kochany."]})
 			G.notify("Koperta doręczona: +%s." % G.money(G.ERRAND_PAY), "good")
+		elif G.dog_return():
+			ui.dialog({"name": "Pani Krysia", "lines": ["Burek! Wrócił! Dziecko by płakało. Masz, kochany, to dla ciebie."]})
+			G.notify("Pies wrócił do domu: +%s." % G.money(G.DOG_PAY), "good")
+		elif String(G.S.get("errand", "")) == "pies":
+			ui.dialog({"name": "Pani Krysia", "lines": ["Szukaj Bureka %s. Kudłaty, mały, odpowiada na „Burek”." % String(G.dog_spot().name)]})
 		else:
-			ui.dialog({"name": "Pani Krysia", "lines": [["Dwunastka miała być dziesięć po. Kierowca pali, to i nie jedzie.", "Do przychodni jadę. Trzeci raz w tym tygodniu."][G.day() % 2]]})
+			var kch := []
+			if G.errand_can_take():
+				kch.append({"label": "Pomogę szukać psa", "kind": "go", "act": func():
+					if G.errand_take_dog():
+						G.notify("Burek zniknął %s. Poszukaj go tam." % String(G.dog_spot().name), "good")
+						_dog_spawn()})
+			kch.append({"label": "Do widzenia."})
+			ui.dialog({"name": "Pani Krysia", "lines": [["Burek mi uciekł, pies wnuczki… Jak go zobaczysz, daj znać.", "Do przychodni jadę. Trzeci raz w tym tygodniu."][G.day() % 2]], "choices": kch})
 
 
 ## Zdzichu siedzi pod monopolowym i wszystko widzi. Za piwo (raz na dzień) zapomina, co widział.
@@ -1409,6 +1458,9 @@ func _aim_scan() -> Array:
 	var di = _drop_inter()
 	if di != null:
 		cands.append(di)
+	var dgi = _dog_inter()
+	if dgi != null:
+		cands.append(dgi)
 	for it in world.inter:
 		if it.loc == player.loc:
 			cands.append(it)

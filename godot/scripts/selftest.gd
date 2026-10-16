@@ -978,6 +978,21 @@ func run() -> void:
 	S.erase("market_day")
 	if hurt_md == null:
 		S.flags.erase("hurt_on")
+	var dg_keep = S.get("errand")
+	var dgd_keep = S.get("errand_day")
+	var dg_cash: float = S.cash
+	var dg_earned: float = float(S.stats.earned)
+	S["errand"] = ""
+	S.erase("errand_day")
+	ok(G.errand_take_dog() and String(S.errand) == "pies" and not G.dog_spot().is_empty(), "zgubiony pies: zlecenie startuje z miejscem poszukiwań")
+	ok(G.dog_found() and G.dog_return() and S.cash == dg_cash + G.DOG_PAY, "zgubiony pies: po znalezieniu wraca do właścicielki za nagrodę")
+	ok(not G.dog_found() and not G.errand_can_take(), "zgubiony pies: nagroda tylko raz, następne zlecenie jutro")
+	S.stats.earned = dg_earned
+	S["errand"] = "" if dg_keep == null else dg_keep
+	if dgd_keep == null:
+		S.erase("errand_day")
+	else:
+		S["errand_day"] = dgd_keep
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")
