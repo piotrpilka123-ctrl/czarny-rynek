@@ -73,6 +73,7 @@ static func build(W) -> void:
 	_ulica_detale2(W)
 	_klub_ulica(W)
 	_huta_detale(W)
+	_rynek(W)
 	W.rng.state = st
 
 
@@ -922,3 +923,25 @@ static func _huta_detale(W) -> void:
 		W._prop("wooden_crate_02", bp.x + 1.2 * INV, bp.y + 0.8 * INV, 0.3, 0.42, 0.0, false)
 		W._prop("can_rusted", bp.x + 0.6 * INV, bp.y - 0.9 * INV, 0.1, 0.13, 0.0, false)
 		_stash(W, "huta_koksownik", bp.x + 1.2 * INV, bp.y + 0.8 * INV + 0.8 * INV, "Zajrzyj do skrzynki wartownika", 60, "W skrzynce wartownika leżała koperta z premią za nocną zmianę", 0.3)
+
+
+## Rynek przy Hutniczej (płyty x 48–72, z −17–11): pomnik Hutnika z łańcuchami, tablica z mapą osiedla, kosze i lampa.
+static func _rynek(W) -> void:
+	var pk := Vector2(66.0, -2.0)
+	var pm: Node3D = Stations.model("rynek_pomnik")
+	if pm != null and W.is_free(pk.x * SC, pk.y * SC, 1.5):
+		Props.set_range(W._place(pm, pk.x, pk.y, 0.0, 0.5, 0.5, 3.2), 140.0)
+		# kolizja na obwodzie: łańcuchy zatrzymują pieszego przed cokołem
+		W.add_col(pk.x - 1.2 * INV, pk.x + 1.2 * INV, pk.y - 1.2 * INV, pk.y + 1.2 * INV, 0.6)
+		W.rects.pop_back()
+		_light(W, pk.x, pk.y - 3.0 * INV, 1.2, Color(1.0, 0.9, 0.7), 0.3, 6.0)
+	var mp := Vector2(49.6, 4.5)
+	var mm: Node3D = Stations.model("rynek_mapa")
+	if mm != null and W.is_free(mp.x * SC, mp.y * SC, 0.6):
+		Props.set_range(W._place(mm, mp.x, mp.y, PI / 2.0, 0.2, 1.1, 2.4), 110.0)
+	for b in [[70.0, -9.0], [52.0, 9.0]]:
+		if W.is_free(float(b[0]) * SC, float(b[1]) * SC, 0.6):
+			W._bin(float(b[0]), float(b[1]), 0.0)
+	if W.is_free(71.0 * SC, 2.0 * SC, 0.5):
+		_pole(W, 71.0, 2.0)
+	_stash(W, "rynek_pomnik", pk.x - 3.0 * INV, pk.y + 2.4 * INV, "Zajrzyj za cokół pomnika", 55, "Za cokołem ktoś zostawił kopertę z gotówką pod kwiatami", 0.2)
