@@ -87,6 +87,9 @@ var shop_hint: Label = null
 var modal_dock := "center"
 var deal_said := ""
 var deal_npc = null
+var deal_t := 0.0       # jak długo trwa wymiana z klientem (nerwowość rośnie)
+var _fid_t := 3.0
+var _fid_end := 0.0
 var skill_box: PanelContainer
 var skill_bar: Control
 var l_skill_t: Label
@@ -1717,6 +1720,9 @@ func _deal_stage(ctx: Dictionary) -> void:
 	if deal_npc == null or not (deal_npc is Dictionary) or deal_npc.get("node") == null:
 		deal_npc = null
 		return
+	deal_t = 0.0
+	_fid_t = randf_range(2.0, 4.0)
+	_fid_end = 0.0
 	var node: Node3D = deal_npc.node
 	for ch in node.get_children():
 		if ch is Label3D:
@@ -1751,7 +1757,48 @@ func _deal_anim_done() -> void:
 		Chars.animate(deal_npc.rig, 0.0, 0.0, "talk")
 
 
+## klient w czasie wymiany nie stoi jak słup: rozgląda się, przestępuje z nogi na nogę, a przy długim targowaniu robi się niecierpliwy
+func _deal_fidget(dt: float) -> void:
+	if deal_npc == null or not (deal_npc is Dictionary) or deal_npc.get("rig") == null or mode != "modal" or deal.is_empty():
+		return
+	deal_t += dt
+	var n: Dictionary = deal_npc
+	n.idle = 99.0                       # pętla przechodniów nie ustawia mu własnego obrotu
+	if _fid_end > 0.0:
+		_fid_end -= dt
+		if _fid_end <= 0.0:
+			n.erase("fid_pose")
+			n.rot = atan2(G.player.global_position.x - n.x, G.player.global_position.z - n.z)
+		return
+	_fid_t -= dt
+	if _fid_t > 0.0:
+		return
+	var impatient := deal_t > 40.0
+	_fid_t = randf_range(3.0, 6.0) * (0.5 if deal_t > 20.0 else 1.0)
+	var base := atan2(G.player.global_position.x - n.x, G.player.global_position.z - n.z)
+	match randi() % 3:
+		0:
+			# zerka na boki: czy nikt nie patrzy
+			n.rot = base + (1.0 if randf() < 0.5 else -1.0) * randf_range(0.6, 1.1)
+			_fid_end = 0.9
+		1:
+			# przestępuje z nogi na nogę (inna poza stania na chwilę)
+			n["fid_pose"] = ["arms", ""].pick_random()
+			_fid_end = 2.2
+		_:
+			if impatient:
+				Chars.emote(n.rig, "zlosc", 0.7, 2.0)
+				Chars.one_shot(n.rig, "Idle_No")
+				_fid_end = 1.6
+			else:
+				n.rot = base + (1.0 if randf() < 0.5 else -1.0) * 0.5
+				n["fid_pose"] = ""
+				_fid_end = 1.2
+
+
 func _deal_unstage() -> void:
+	if deal_npc is Dictionary:
+		deal_npc.erase("fid_pose")
 	if deal_npc != null and deal_npc is Dictionary and deal_npc.get("rig") != null and is_instance_valid(deal_npc.rig.anim):
 		deal_npc.rig.anim.process_mode = Node.PROCESS_MODE_INHERIT
 	if deal_npc != null and deal_npc is Dictionary and deal_npc.get("node") != null and is_instance_valid(deal_npc.node):
@@ -2217,6 +2264,7 @@ func _process(dt: float) -> void:
 
 func _process_ui(dt: float) -> void:
 	_call_tick(dt)
+	_deal_fidget(dt)
 	_toast_tick(dt)
 	# okno przyklejone do dołu ekranu (wymiana, rozmowa): powiadomienia wędrują tuż nad nie
 	var lift := 110.0

@@ -1309,7 +1309,7 @@ func update(dt: float) -> void:
 		n.node.position = Vector3(n.x, _h(n.x, n.z), n.z)
 		Chars.set_active(n.rig, dp2 < 70.0)
 		if dp2 < 70.0:
-			Chars.animate(n.rig, dt, csp, "talk" if (dp2 < 4.0 and csp == 0.0) else n.pose)
+			Chars.animate(n.rig, dt, csp, String(n.get("fid_pose", "talk")) if (dp2 < 4.0 and csp == 0.0) else n.pose)
 		n.marker.position.y = n.rig.height + 0.55 + sin(G.now * 3.0) * 0.05
 	for n in leavers.duplicate():
 		n.node.visible = outside
