@@ -887,6 +887,24 @@ func run() -> void:
 	ok(fs_seen == ["PIERWSZA SPRZEDAŻ"] and S.xp >= xp_fs + 15.0 and S.flags.get("hurt_on", false), "pierwsza sprzedaż: wyróżniony moment i 15 XP")
 	if hurt_keep == null:
 		S.flags.erase("hurt_on")
+	var c_ev: float = S.cash
+	G.street_event_apply("portfel", "take", 0.5)
+	ok(S.cash == c_ev + 120.0, "portfel: znalezione pieniądze trafiają do kieszeni")
+	G.street_event_apply("portfel", "leave", 0.0)
+	c_ev = S.cash
+	var pc_keep: Array = S.get("pending_cash", [])
+	S["pending_cash"] = []
+	G.street_event_apply("pozyczka", "give", 0.1)
+	ok(S.cash == c_ev - 100.0 and S.pending_cash.size() == 1, "pożyczka: stówa wychodzi z kieszeni")
+	S.t += 1500.0
+	G.pending_cash_tick()
+	ok(S.cash == c_ev + 60.0 and S.pending_cash.is_empty(), "pożyczka: po dobie wraca 160 zł")
+	G.street_event_apply("pozyczka", "give", 0.95)
+	S.t += 1500.0
+	G.pending_cash_tick()
+	ok(S.cash == c_ev - 40.0, "pożyczka: w 20% przypadków przepada")
+	S["pending_cash"] = pc_keep
+	ok(not G.street_event_try(0.5), "zdarzenie uliczne odpala się tylko przy niskim rzucie")
 	var hc := {"sting": false}
 	S.stats.deals = maxi(int(S.stats.deals), 5)
 	ok(G.deal_hot_roll(hc, 0.01) and not G.deal_hot_roll(hc, 0.5) and not G.deal_hot_roll({"sting": true}, 0.01), "dobra okazja: rzadka i nie dotyczy wpadki")

@@ -1990,9 +1990,88 @@ func on_hour() -> void:
 	if flag("got_first") and not flag("hurt_on") and all_goods() < 1.0 and S.drops.is_empty():
 		S.flags["hurt_on"] = true
 		chat("wiktor", "Słyszę, że zostałeś z niczym. Dobra — pisz do mnie, co ci potrzeba („Zamów towar” pod tą rozmową). Ale to, co wisisz na zeszycie, dalej wisisz.")
+	street_event_try(randf())
+	pending_cash_tick()
 	if not mods.get("sleeping", false) and h >= 10 and h <= 20 and int(S.mom_day) != day() and randf() < 0.1 and day() > 1:
 		S.mom_day = day()
 		chat("mama", D.MOM.pick_random())
+
+
+# ================================================================ zdarzenia na ulicy
+## rzadkie spotkanie z decyzją: raz na dzień, w dzień, na zewnątrz, gdy nic innego się nie dzieje
+const STREET_EVENTS := ["portfel", "pozyczka"]
+
+
+func street_event_ok() -> bool:
+	if prologue != null or player == null or player.loc != "out" or ui == null or ui.is_open() or busy or S.wanted:
+		return false
+	if mods.get("sleeping", false) or int(S.lvl) < 2 or int(S.stats.deals) < 3 or int(S.get("street_day", 0)) == day():
+		return false
+	return hour() >= 9.0 and hour() <= 20.0
+
+
+func street_event_try(r: float) -> bool:
+	if r >= 0.07 or not street_event_ok():
+		return false
+	S["street_day"] = day()
+	street_event_show(String(STREET_EVENTS.pick_random()))
+	return true
+
+
+func street_event_show(id: String) -> void:
+	match id:
+		"portfel":
+			ui.dialog({"name": "Chodnik", "lines": ["Pod ławką leży portfel. Gruby. W środku gotówka i żadnych dokumentów — nikt nie patrzy. Chyba."], "choices": [
+				{"label": "Weź pieniądze", "act": func(): street_event_apply(id, "take", randf())},
+				{"label": "Zostaw", "act": func(): street_event_apply(id, "leave", 0.0)}]})
+		"pozyczka":
+			ui.dialog({"name": "Dawny kolega", "lines": ["Siema. Słuchaj, zabrakło mi na czynsz — pożycz stówę. Jutro oddam z nawiązką, słowo."], "choices": [
+				{"label": "Pożycz 100 zł", "act": func(): street_event_apply(id, "give", randf())},
+				{"label": "Nie mam", "act": func(): street_event_apply(id, "refuse", 0.0)}]})
+
+
+## skutki wyboru; roll 0..1 rozstrzyga ryzyko (do testów podawany wprost)
+func street_event_apply(id: String, choice: String, roll: float) -> void:
+	match id + ":" + choice:
+		"portfel:take":
+			var amt: float = round((60.0 + 120.0 * roll) / 10.0) * 10.0
+			S.cash += amt
+			S.stats.earned = float(S.stats.earned) + amt
+			add_heat(6.0)
+			notify("Znalezione: +%s." % money(amt), "good")
+			Sfx.play("cash")
+			if roll > 0.75:
+				add_heat(10.0)
+				notify("Ktoś widział, jak chowasz portfel…", "warn")
+		"portfel:leave":
+			add_xp(5.0)
+			notify("Zostawiasz portfel. Jakoś lżej.", "good")
+		"pozyczka:give":
+			if S.cash < 100.0:
+				notify("Nie masz tyle przy sobie.", "warn")
+				return
+			S.cash -= 100.0
+			var back := roll < 0.8
+			S["pending_cash"] = S.get("pending_cash", []) + [{"t": S.t + 1440.0, "amt": 160.0 if back else 0.0}]
+			add_xp(3.0)
+			notify("Pożyczasz 100 zł. Zobaczymy, czy wróci.", "good")
+		"pozyczka:refuse":
+			notify("Kolega kiwa głową i odchodzi.", "")
+
+
+## zwrot pożyczki po dobie (albo cisza, gdy kolega zniknął)
+func pending_cash_tick() -> void:
+	var left: Array = []
+	for p in S.get("pending_cash", []):
+		if S.t < float(p.t):
+			left.append(p)
+		elif float(p.amt) > 0.0:
+			S.cash += float(p.amt)
+			notify("Kolega oddał stówę z nawiązką: +%s." % money(p.amt), "good")
+			Sfx.play("cash")
+		else:
+			notify("Kolega się nie odezwał. Stówa przepadła.", "warn")
+	S["pending_cash"] = left
 
 
 func _has_order(cid: String) -> bool:
