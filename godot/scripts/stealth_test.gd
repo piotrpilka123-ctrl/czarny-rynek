@@ -249,6 +249,7 @@ static func run(T) -> void:
 	T.ok(c.state == "investigate" and c.lure, "kamyk, który spadł %d m od patrolu, ściąga jego uwagę" % int(Vector2(land.x - c.x, land.z - c.z).length()))
 
 	# ---------------------------------------------------------------- pościg, zgubienie tropu, przeczesywanie
+	seed(20261016)   # losowanie punktów przeszukania ma być powtarzalne (test bywał raz zielony, raz czerwony)
 	G.night = 0.0
 	_put(P, DARK)
 	_cop_at(c, DARK + east * 10.0, DARK)
