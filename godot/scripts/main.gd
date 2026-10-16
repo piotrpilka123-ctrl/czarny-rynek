@@ -3955,14 +3955,24 @@ func _pick_center() -> void:
 		if hit != null:
 			var t: float = o.distance_to(hit)
 			# najmniejszy z trafionych w zasięgu 25 m — duże płaszczyzny (teren, bryły budynków) nie zasłaniają drobnych obiektów
-			var vol: float = box.size.x * box.size.y * box.size.z
-			if t > 0.3 and t < 25.0 and vol < best_t:
-				best_t = vol
-				best = mi
+			if t > 0.3 and t < 60.0 and t < best_t:
+				# dokładny test po trójkątach (AABB dużych brył zasłaniał drobne obiekty)
+				var inv := mi.global_transform.affine_inverse()
+				var tm: TriangleMesh = mi.mesh.generate_triangle_mesh()
+				if tm == null:
+					continue
+				var rh: Dictionary = tm.intersect_ray(inv * o, (inv.basis * d).normalized())
+				if rh.is_empty():
+					continue
+				var wp: Vector3 = mi.global_transform * (rh.position as Vector3)
+				var tt := o.distance_to(wp)
+				if tt > 0.3 and tt < best_t:
+					best_t = tt
+					best = mi
 	if best == null:
 		print("PICK nic")
 		return
-	print("PICK vol %.0f m3  %s  mesh=%s" % [best_t, best.get_path(), best.mesh.resource_path])
+	print("PICK %.1f m  %s  mesh=%s" % [best_t, best.get_path(), best.mesh.resource_path])
 	var mats: Array = []
 	if best.material_override != null:
 		mats.append(best.material_override)

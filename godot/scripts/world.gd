@@ -3478,12 +3478,22 @@ func _barrier(ax: float, az: float, bx: float, bz: float, kind := "mur", h := 2.
 	var mid := (a + b) * 0.5
 	var ry := atan2(-(bz - az), bx - ax)
 	if kind == "mur":
-		var m := Props.pbr("concrete_wall_008" if rng.randf() < 0.6 else "dirty_concrete", 0.35, Color(0.72, 0.72, 0.7))
 		var segs: int = max(1, int(ln / 6.0))
+		var nrm := Vector2(sin(ry), cos(ry))
 		for i in range(segs):
 			var t := (i + 0.5) / segs
 			var p := a.lerp(b, t)
+			# każda płyta muru inna: ciepły beton z brudem zamiast jednego chłodnego szarego klocka
+			var tone := rng.randf_range(0.62, 0.84)
+			var m := Props.pbr("dirty_concrete" if rng.randf() < 0.7 else "concrete_wall_008", 0.3, Color(0.92, 0.88, 0.8) * tone)
 			Models.box(city, Vector3(ln / segs - 0.06, h, 0.3), Vector3(p.x, hd(p.x, p.y) + h * 0.5 - 0.2, p.y), m, Vector3(0, ry, 0))
+			# ciemniejszy, nieco grubszy cokół: rozbryzgi błota i wilgoć u dołu
+			var skirt := Props.pbr("dirty_concrete", 0.3, Color(0.4, 0.37, 0.33))
+			Models.box(city, Vector3(ln / segs - 0.04, 0.55, 0.33), Vector3(p.x, hd(p.x, p.y) + 0.275 - 0.2, p.y), skirt, Vector3(0, ry, 0), false)
+			if rng.randf() < 0.3:
+				var side := 1.0 if rng.randf() < 0.5 else -1.0
+				var gp := p + nrm * side * 0.17 * INV
+				_graffiti("", gp.x, gp.y, rng.randf_range(0.8, 1.4), ry if side > 0.0 else ry + PI, Color.WHITE, 100)
 			Models.box(city, Vector3(ln / segs + 0.04, 0.1, 0.42), Vector3(p.x, hd(p.x, p.y) + h - 0.18, p.y), Models.mat("5a5a58", 0.9), Vector3(0, ry, 0), false)
 	else:
 		var segs2: int = max(1, int(ln / 12.0))
