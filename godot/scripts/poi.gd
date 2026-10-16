@@ -29,6 +29,8 @@ static func paint(W) -> void:
 	W._pr(2, STATION.x - 6.0, 88.0, STATION.x + 2.0, STATION.y - 20.0)
 	W._pr(3, BAZAAR.x - 19.0, BAZAAR.y - 15.0, BAZAAR.x + 19.0, BAZAAR.y + 15.0)
 	W._pr(4, GREEN.x - 16.0, GREEN.y - 21.0, GREEN.x + 16.0, GREEN.y + 21.0)
+	W._pr(4, 154.0, 197.0, 202.0, 233.0)
+	W._pr(3, 184.0, 146.0, 190.0, 197.0)
 	W._pr(1, -58.0, 144.0, -31.0, 167.0)
 	W._pr(1, -31.0, 151.5, -20.0, 154.5)
 	W._pr(2, GREEN.x - 2.0, GREEN.y + 21.0, GREEN.x + 3.0, -112.0)
@@ -46,6 +48,7 @@ static func build(W) -> void:
 	_podworko(W)
 	_obozowisko(W)
 	_kebab(W)
+	_blaszaki(W)
 	W.rng.state = st
 
 
@@ -92,6 +95,33 @@ static func _light(W, x: float, z: float, y: float, color: Color, gain: float, r
 		li.set_meta("flicker", float(W.rng.randf() * 10.0))
 	W.add_child(li)
 	W.lamps.append(li)
+
+
+## girlanda: kabel zwisający między punktami a, b (plan) na wysokości y (m) z zwisem sag, z żarówkami co kilka punktów
+static func _garland(W, a: Vector2, b: Vector2, y: float, sag: float, n: int) -> void:
+	var cable: Material = Models.mat("1c1c1e", 0.8)
+	var prev := Vector3.ZERO
+	for i in range(n + 1):
+		var t := float(i) / float(n)
+		var q := a.lerp(b, t)
+		var pt := Vector3(q.x, W.hd(q.x, q.y) + y - sag * (1.0 - pow(2.0 * t - 1.0, 2.0)), q.y)
+		if i > 0:
+			var d := pt - prev
+			var mid := (pt + prev) * 0.5
+			var quat := Quaternion(Vector3.UP, d.normalized())
+			Models.cyl(W.city, 0.012 * INV, 0.012 * INV, d.length(), mid, cable, quat.get_euler(), 4)
+		if i > 0 and i < n and i % 2 == 0:
+			Models.sphere(W.city, 0.08 * INV, pt - Vector3(0, 0.1, 0), W.lamp_mat, Vector3(1, 1, 1), false, 6)
+		prev = pt
+
+
+## krawężnik z klocków o równej długości (bez szpar na łączeniach): długość odcinka zaokrąglona do całkowitej liczby klocków
+static func _curb_run(W, ax: float, az: float, bx: float, bz: float) -> void:
+	var seg := 2.0 * INV
+	var a := Vector2(ax, az)
+	var b := Vector2(bx, bz)
+	var n := maxi(1, int(round(a.distance_to(b) / seg)))
+	W._curb(ax, az, a.x + (b.x - a.x) / a.distance_to(b) * seg * n, a.y + (b.y - a.y) / a.distance_to(b) * seg * n)
 
 
 ## słup z lampą (własny, bez reflektora z cieniem — te nad jezdnią obsługuje world._lamp)
@@ -382,12 +412,7 @@ static func _bazaar(W) -> void:
 		var px1 := c.x + 17.0
 		for pxx in [px0, px1]:
 			_box(W, pxx, c.y + gz * INV, Vector3(0.12, 3.6, 0.12), pole, 0.0, 0.0, 0.0)
-		var n := 22
-		for i in range(n):
-			var t := float(i) / float(n - 1)
-			var bx := lerpf(px0, px1, t)
-			var sag := 0.5 * (1.0 - pow(2.0 * t - 1.0, 2.0))
-			Models.sphere(W.city, 0.09 * INV, Vector3(bx, W.hd(bx, c.y + gz * INV) + 3.3 - sag, c.y + gz * INV), W.lamp_mat, Vector3(1, 1, 1), false, 6)
+		_garland(W, Vector2(px0, c.y + gz * INV), Vector2(px1, c.y + gz * INV), 3.3, 0.5, 22)
 	_light(W, c.x - 8.0, c.y, 3.1, Color(1.0, 0.78, 0.5), 0.55, 13.0)
 	_light(W, c.x + 8.0, c.y, 3.1, Color(1.0, 0.78, 0.5), 0.55, 13.0)
 	var bg: Node3D = Stations.model("bazar_brama")
@@ -516,11 +541,11 @@ static func _obozowisko(W) -> void:
 static func _kebab(W) -> void:
 	var c := Vector2(-46.0, 153.0)
 	# utwardzony plac z krawężnikiem (płyty chodnikowe w mapie nawierzchni, paint) i ścieżka do chodnika pętli
-	W._curb(-58.0, 143.6, -31.0, 143.6)
-	W._curb(-58.0, 167.4, -31.0, 167.4)
-	W._curb(-58.4, 143.6, -58.4, 167.4)
-	W._curb(-30.6, 143.6, -30.6, 150.8)
-	W._curb(-30.6, 155.2, -30.6, 167.4)
+	_curb_run(W, -59.0, 143.6, -30.0, 143.6)
+	_curb_run(W, -59.0, 167.4, -30.0, 167.4)
+	_curb_run(W, -58.4, 142.8, -58.4, 168.2)
+	_curb_run(W, -30.6, 142.8, -30.6, 150.8)
+	_curb_run(W, -30.6, 155.2, -30.6, 168.2)
 	var km: Node3D = Stations.model("kebab_budka")
 	if km != null:
 		var lens := Stations._find(km, "Swiatlo") as MeshInstance3D
@@ -545,12 +570,31 @@ static func _kebab(W) -> void:
 	# girlanda żarówek nad stolikami, na dwóch słupkach
 	for gz in [-9.0, 9.0]:
 		_pole(W, c.x + 10.0, c.y + gz, true)
-	var n := 16
-	for i in range(n):
-		var t := float(i) / float(n - 1)
-		var bz := lerpf(c.y - 9.0, c.y + 9.0, t)
-		Models.sphere(W.city, 0.08 * INV, Vector3(c.x + 10.0, W.hd(c.x + 10.0, bz) + 4.9 - 0.5 * (1.0 - pow(2.0 * t - 1.0, 2.0)), bz), W.lamp_mat, Vector3(1, 1, 1), false, 6)
+	_garland(W, Vector2(c.x + 10.0, c.y - 9.0), Vector2(c.x + 10.0, c.y + 9.0), 4.9, 0.5, 18)
 	_light(W, c.x + 4.0 * INV, c.y, 2.8, Color(1.0, 0.55, 0.35), 0.6, 10.0)
 	_light(W, c.x + 4.0 * INV + 8.0, c.y, 3.0, Color(1.0, 0.78, 0.5), 0.45, 9.0)
 	_dump(W, "poi_kebab_kosz", c.x + 6.0, c.y + 11.0, "Pogrzeb w koszu przy kebabie", "bin")
 	_stash(W, "kebab_lada", c.x + 1.5 * INV, c.y - 2.0 * INV, "Zajrzyj za budkę", 50, "Za budką leżała reklamówka z utargiem sprzed zamknięcia", 0.2)
+
+
+## Rząd blaszaków za stacją: żwirowy plac, polna droga od stacji, dwa rzędy garaży, wraki, beczki i lampa.
+static func _blaszaki(W) -> void:
+	var c := Vector2(176.0, 214.0)
+	for row in [0, 1]:
+		for i in range(3):
+			var x := 163.0 + float(i) * 7.0
+			var z := 207.0 if row == 0 else 225.0
+			var bm: Node3D = Stations.model("blaszak_%d" % ((i + row * 2) % 3))
+			if bm != null:
+				Props.set_range(W._place(bm, x, z, 0.0 if row == 0 else PI, 1.45, 2.7, 2.6), 140.0)
+	_wreck(W, 190.0, 214.0, 1.6, "sedan", "4a3a30")
+	_wreck(W, 195.0, 224.0, 0.4, "hatch", "5a5a58", 0.0, Vector3(0.0, 0.0, 0.05))
+	_wreck(W, 195.5, 224.2, 0.5, "maluch", "6a3a2a", 1.15, Vector3(0.0, 0.0, -0.06))
+	W._prop("covered_car", 190.0, 203.0, 0.2, 0.0, 0.0)
+	_scatter(W, c, [["barrel_01", 8.0, 2.0, 0.0, 0.9], ["barrel_01", 8.9, 2.4, 1.0, 0.9], ["old_tyre", 9.5, -4.0, 0.2, 0.16], ["old_tyre", 10.2, -3.4, 0.9, 0.16, 0.16],
+		["wheels_stack", 12.0, 8.0, 0.4, 0.9], ["pallet", -6.0, 1.0, 0.5, 0.16], ["trashbag", 6.0, -1.0, 0.9, 0.5], ["can_rusted", 3.0, 3.0, 0.1, 0.13], ["plastic_crate_01", -2.0, 2.0, 0.3, 0.3]])
+	_pole(W, c.x + 6.0, c.y - 6.0)
+	_pole(W, c.x - 14.0, c.y + 14.0)
+	_light(W, c.x, c.y + 2.0, 3.4, Color(1.0, 0.72, 0.42), 0.4, 11.0, true)
+	_dump(W, "poi_blaszaki_wrak", 190.0, 214.0 + 3.4 * INV, "Przeszukaj wrak przy blaszakach")
+	_stash(W, "blaszak_13", 170.0, 207.0 + 3.0 * INV, "Zajrzyj przez szparę w blaszaku nr 13", 85, "Przez szparę wyciągnąłeś zwiniętą kopertę z gotówką", 0.9)
