@@ -155,11 +155,11 @@ const POSES := {"": "Idle", "phone": "Idle_TalkingPhone", "talk": "Idle_Talking"
 	"crouch": "Crouch_Idle", "handsup": "Idle", "lantern": "Idle_Lantern", "drive": "Driving", "gun": "Pistol_Idle", "aim": "Pistol_Aim_Neutral"}
 
 const USED := ["Chest_Open", "Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Idle_No", "Yes", "Interact", "PickUp_Table", "Sitting_Idle", "Sitting_Talking",
-	"Dance", "Zombie_Idle", "Zombie_Walk_Fwd", "Walk", "Walk_Formal", "Walk_Carry", "Jog_Fwd", "Sprint", "Crouch_Idle", "Fixing_Kneeling", "Consume", "Hit_Chest",
+	"Dance", "Zombie_Idle", "Zombie_Walk_Fwd", "Walk", "Walk_Formal", "Walk_Carry", "Jog_Fwd", "Sprint", "Crouch_Idle", "Crouch_Fwd", "Fixing_Kneeling", "Consume", "Hit_Chest",
 	"Idle_Lantern", "Driving", "Push", "Sitting_Enter", "Sitting_Exit", "Pistol_Idle", "Pistol_Aim_Neutral", "Hit_Knockback", "Melee_Hook", "Sword_Attack", "Death01",
 	"Sword_Regular_A", "Sword_Regular_B", "Sword_Heavy_Combo", "TreeChopping", "OverhandThrow", "Hit_Head"]
 const LOOPED := ["Interact", "Chest_Open", "Idle", "Idle_Talking", "Idle_FoldArms", "Idle_TalkingPhone", "Idle_Rail", "Sitting_Idle", "Sitting_Talking", "Dance", "Zombie_Idle", "Idle_No",
-	"Walk", "Walk_Formal", "Jog_Fwd", "Sprint", "Zombie_Walk_Fwd", "Walk_Carry", "Crouch_Idle", "Fixing_Kneeling", "Idle_Lantern", "Driving", "Push", "Pistol_Idle", "Pistol_Aim_Neutral"]
+	"Walk", "Walk_Formal", "Jog_Fwd", "Sprint", "Zombie_Walk_Fwd", "Walk_Carry", "Crouch_Idle", "Crouch_Fwd", "Fixing_Kneeling", "Idle_Lantern", "Driving", "Push", "Pistol_Idle", "Pistol_Aim_Neutral"]
 ## o ile wyprostować nogi w pozach stojących (0 = oryginał)
 const RELAX := {"Idle": 0.7, "Idle_Talking": 0.7, "Idle_FoldArms": 0.7, "Idle_TalkingPhone": 0.7, "Idle_No": 0.7, "Yes": 0.7, "Consume": 0.6, "Interact": 0.5, "Idle_Lantern": 0.6}
 const LEGS := ["thigh_l", "thigh_r", "calf_l", "calf_r", "foot_l", "foot_r", "ball_l", "ball_r"]

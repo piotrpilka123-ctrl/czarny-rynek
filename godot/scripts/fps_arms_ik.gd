@@ -13,7 +13,24 @@ static func phone_path(k: float) -> Vector3:
 	if k < 0.4:
 		return rest.lerp(pocket, smoothstep(0.0, 1.0, k / 0.4))
 	return pocket.lerp(front, smoothstep(0.0, 1.0, (k - 0.4) / 0.6))
+
+
+## środek telefonu w układzie kamery (fps_arms.gd stawia go tutaj)
+static func phone_at(k: float) -> Vector3:
+	return phone_path(k) + Vector3(-0.01, 0.02, 0.0)
+
+
+## Nadgarstek trzymający telefon: pod dolną krawędzią i tuż za nim — palce idą w górę po pleckach telefonu,
+## kciuk zostaje z przodu nad ekranem. Z kieszeni dłoń wychodzi zwykłym torem, chwyt wchodzi w drugiej połowie ruchu.
+const PHONE_GRIP := Vector3(0.012, -0.095, -0.012)
+
+static func phone_hand(k: float) -> Vector3:
+	var g := smoothstep(0.0, 1.0, clampf((k - 0.4) / 0.6, 0.0, 1.0))
+	return phone_path(k) + (Vector3(-0.01, 0.02, 0.0) + PHONE_GRIP) * g
+
+
 var arms: Array = []     # [[ramię, przedramię, dłoń, palec], …] prawa i lewa
+var thumb := -1          # kciuk prawej dłoni: przy telefonie obracamy dłoń tak, żeby był z przodu
 var head := -1
 var reach := 0.42
 var sway := 0.0
@@ -34,6 +51,9 @@ func bind(sk: Skeleton3D, p) -> bool:
 			chain.append(id)
 		arms.append(chain)
 	head = sk.find_bone("Bip01 Head")
+	thumb = sk.find_bone("Bip01 R Finger01")
+	if thumb < 0:
+		thumb = sk.find_bone("Bip01 R Finger0")
 	return true
 
 
@@ -63,8 +83,10 @@ func _process_modification_with_delta(dt: float) -> void:
 			lp = lp.lerp(Vector3(side * 0.15, -0.2 if s == 0 else -0.26, -0.43), smoothstep(0.0, 1.0, hold))
 		if give > 0.0:
 			lp = lp.lerp(give_goals[s], smoothstep(0.0, 1.0, give))
+		var grip := 0.0
 		if phone > 0.0 and s == 0:
-			lp = phone_path(phone)
+			lp = phone_hand(phone)
+			grip = smoothstep(0.0, 1.0, clampf((phone - 0.4) / 0.6, 0.0, 1.0))
 		var goal := sk.to_local(cam.to_global(lp))
 		var shoulder: Vector3 = sk.get_bone_global_pose(arms[s][0]).origin
 		var pole := sk.to_local(cam.to_global(Vector3(side * 0.55, -0.6, 0.2)))
@@ -73,9 +95,27 @@ func _process_modification_with_delta(dt: float) -> void:
 		var hand: Transform3D = sk.get_bone_global_pose(arms[s][2])
 		var pointing := sk.get_bone_global_pose(arms[s][3]).origin - hand.origin
 		var toward := sk.to_local(cam.to_global(lp + Vector3(0, 0.02, -0.2))) - hand.origin
+		if grip > 0.0:
+			# z telefonem palce idą w górę po jego pleckach, a nie prosto przed siebie
+			var up := sk.to_local(cam.to_global(phone_at(phone) + Vector3(0.0, 0.07, -0.03))) - hand.origin
+			toward = toward.normalized().lerp(up.normalized(), grip)
 		if minf(pointing.length(), toward.length()) > 0.001:
 			hand.basis = Basis(Quaternion(pointing.normalized(), toward.normalized())) * hand.basis
 			sk.set_bone_global_pose(arms[s][2], hand)
+		if grip > 0.0 and thumb >= 0:
+			# obrót dłoni wokół palców: kciuk ma wskazywać kamerę (leży na ekranie), wtedy wnętrze dłoni obejmuje telefon od tyłu
+			hand = sk.get_bone_global_pose(arms[s][2])
+			var axis := (sk.get_bone_global_pose(arms[s][3]).origin - hand.origin)
+			var th := sk.get_bone_global_pose(thumb).origin - hand.origin
+			var eye := sk.to_local(cam.global_position) - hand.origin
+			if axis.length() > 0.001:
+				axis = axis.normalized()
+				th -= axis * th.dot(axis)
+				eye -= axis * eye.dot(axis)
+				if th.length() > 0.001 and eye.length() > 0.001:
+					var ang := th.signed_angle_to(eye, axis)
+					hand.basis = Basis(axis, ang * grip) * hand.basis
+					sk.set_bone_global_pose(arms[s][2], hand)
 		if shoulder.length() < 0.0:
 			return
 	if head >= 0:

@@ -25,6 +25,11 @@ var give := 0.0
 var _variant := 0
 var _spd := 0.0
 var _ang := 0.0
+var _low := 0.0             # 0 = stoi, 1 = kuca (płynnie, razem z kamerą)
+## Przy kucaniu tułów pochyla się, a głowa idzie ~20 cm do przodu (Crouch_Idle/Crouch_Fwd): ciało cofamy o tyle,
+## żeby kamera dalej była w głowie, a nie przed nią — inaczej z góry widać było wnętrze kurtki i barki przed oczami.
+const BODY_Z := 0.26
+const BODY_Z_LOW := 0.42
 
 
 func setup(p) -> void:
@@ -104,11 +109,15 @@ func _process(dt: float) -> void:
 			ang -= signf(ang) * PI
 	_ang = lerp_angle(_ang, ang, minf(1.0, dt * 8.0))
 	rig.root.rotation.y = PI - _ang * 0.55
+	_low = move_toward(_low, 1.0 if player.crouching else 0.0, dt * 4.0)
+	rig.root.position.z = lerpf(BODY_Z, BODY_Z_LOW, smoothstep(0.0, 1.0, _low))
 	if player.crouching:
+		# chód na kucaka (Crouch_Fwd był pomijany przy wczytywaniu animacji — ciało szło wtedy zwykłym krokiem
+		# albo sunęło w nieruchomej pozie); tempo dopasowane do prędkości skradania, żeby stopy się nie ślizgały
 		if _spd > 0.4:
-			Chars.play(rig, "Crouch_Fwd", clampf(_spd / float(Chars.ANIM_SPEED["Crouch_Fwd"]), 0.6, 2.0))
+			Chars.play(rig, "Crouch_Fwd", clampf(_spd / float(Chars.ANIM_SPEED["Crouch_Fwd"]), 0.6, 2.7), 0.22)
 		else:
-			Chars.play(rig, "Crouch_Idle")
+			Chars.play(rig, "Crouch_Idle", 1.0, 0.3)
 	else:
 		Chars.animate(rig, dt, _spd if _spd > 0.5 else 0.0, "")
 	if rev and _spd > 0.5:
@@ -197,8 +206,10 @@ func _hold_phone(dt: float) -> void:
 		Props._no_shadow(phone)
 	phone.visible = phone_hold > 0.4
 	var k := smoothstep(0.0, 1.0, clampf((phone_hold - 0.4) / 0.6, 0.0, 1.0))
-	phone.position = IK.phone_path(phone_hold) + Vector3(-0.01, 0.02, 0.0)
-	phone.rotation = Vector3(lerpf(0.0, 0.32, k), 0.0, lerpf(0.0, -0.06, k))
+	phone.position = IK.phone_at(phone_hold)
+	# ekran zwrócony do oczu: telefon jest poniżej i na prawo od wzroku, więc górą odchyla się od twarzy
+	# i lekko skręca do środka (dawniej górą leciał do twarzy i ekran patrzył w klatkę piersiową)
+	phone.rotation = Vector3(lerpf(0.0, -0.3, k), lerpf(0.0, -0.22, k), lerpf(0.0, -0.06, k))
 
 ## Wymiana z klientem: obie dłonie wysuwają się do przodu z paczką, jak przy podaniu z ręki do ręki.
 func _hold_give(dt: float) -> void:
