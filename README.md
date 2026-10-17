@@ -1,36 +1,86 @@
+<div align="center">
+
 # Czarny Rynek
 
-Aktualna wersja gry Piotra Piłki w Godocie 4: symulator z widokiem pierwszoosobowym, osadzony w fikcyjnym polskim mieście.
+**Pierwszoosobowa gra o półświatku w fikcyjnym polskim mieście.**
+Produkuj, handluj, negocjuj, uciekaj przed policją i spłać dług, zanim on spłaci Ciebie.
 
-## Uruchomienie
+[![Pobierz grę](https://img.shields.io/badge/Pobierz-Windows%20%7C%20macOS%20%7C%20Linux-c0392b?style=for-the-badge)](https://github.com/piotrpilka123-ctrl/czarny-rynek/releases/latest)
+&nbsp;
+![Godot 4.7](https://img.shields.io/badge/Godot-4.7-478cbf?style=for-the-badge&logo=godotengine&logoColor=white)
+&nbsp;
+![Język](https://img.shields.io/badge/j%C4%99zyk-polski-white?style=for-the-badge)
+
+![Klub Neon nocą](godot/assets/loading/klub.jpg)
+
+</div>
+
+## O grze
+
+Ostatnia noc w laboratorium w Starej Hucie kończy się nalotem, ucieczką przez tory i wybuchem, po którym zostajesz
+z niczym — poza długiem u Wiktora. Trzy tygodnie później zaczynasz od zera w wynajętej kawalerce na blokowisku.
+
+- **Otwarte miasto:** blokowiska, kamienice przy Hutniczej, klub Neon, bazar, garaże, ogródki działkowe, tory i Stara Huta.
+- **Handel z ludźmi, nie z tabelką:** klienci mają charaktery i nastroje, z każdym negocjujesz osobno, a stali klienci
+  dzwonią z kolejnymi kawałkami historii o tym, kto sprzedał ekipę.
+- **Produkcja:** od szafy grzybowej po stół laboratoryjny. Lepszy sprzęt to lepszy towar i większe ryzyko nalotu.
+- **Policja i skradanie:** patrole z latarkami, kordon, pościgi. Kucanie, cień i krzaki naprawdę pomagają.
+- **Dzień i noc, pogoda, deszcz, mgła** — miasto wygląda i zachowuje się inaczej o każdej porze.
+- **Rozwój:** poziomy, umiejętności, ubrania wpływające na to, jak bardzo rzucasz się w oczy, ekipa i kryjówki.
+
+> Wszystko w grze jest fikcją. Gra porusza tematy narkotyków i przestępczości — przeznaczona dla dorosłych (18+).
+
+<table>
+<tr>
+<td><img src="godot/assets/loading/hutnicza.jpg" alt="Ulica Hutnicza"></td>
+<td><img src="godot/assets/loading/osiedle.jpg" alt="Osiedle"></td>
+</tr>
+<tr>
+<td><img src="godot/assets/loading/blok.jpg" alt="Blok nocą"></td>
+<td><img src="godot/assets/loading/wybuch.jpg" alt="Wybuch Starej Huty"></td>
+</tr>
+<tr>
+<td><img src="godot/assets/loading/policja.jpg" alt="Komisariat w deszczu"></td>
+<td><img src="godot/assets/loading/lab.jpg" alt="Kryjówka z produkcją"></td>
+</tr>
+</table>
+
+## Jak zagrać
+
+1. Wejdź w **[Wydania (Releases)](https://github.com/piotrpilka123-ctrl/czarny-rynek/releases/latest)** i pobierz paczkę dla swojego systemu.
+2. Rozpakuj i uruchom — **Godot nie jest potrzebny**.
+   - **Windows:** `CzarnyRynek.exe`. Na słabszej karcie (np. Intel Iris Xe) użyj `Czarny Rynek - tryb zgodnosci.bat`.
+   - **macOS:** kliknij `Czarny Rynek.app` prawym przyciskiem → **Otwórz** (aplikacja nie jest podpisana przez Apple).
+   - **Linux:** `./CzarnyRynek.x86_64`.
+
+**Sterowanie:** WASD — ruch, mysz — rozglądanie, E — interakcja, F11 — pełny ekran. Resztę klawiszy gra pokazuje w samouczku.
+
+Własna muzyka do klubu: wrzuć pliki MP3 do folderu `muzyka` obok gry.
+
+<details>
+<summary><b>Uruchomienie z kodu źródłowego (dla twórców)</b></summary>
 
 - **macOS:** zainstaluj Godot 4.7 i otwórz `Uruchom Czarny Rynek.command`. Skrypt oczekuje Godota w `/Applications/Godot.app`.
-- **Windows:** rozpakuj całe archiwum gry. Zainstaluj lub rozpakuj Godot 4.7.2 do folderu `Godot` obok projektu (paczka Windows zawiera go już w tym folderze). Kliknij `Uruchom Czarny Rynek.bat`. Domyślnie używa trybu zgodności OpenGL, sprawdzonego na Intel Iris Xe. Skrypt wyszukuje tez Godota w Pobranych i w PATH. Ten sam tryb uruchamia `Uruchom zgodnosc Windows.bat`. Logi: `import-windows.log` i `gra-windows.log`. Mozesz tez zaimportowac `godot/project.godot` w edytorze Godot 4.7 i nacisnac **F5**.
-- **Linux:** zaimportuj `godot/project.godot` w Godocie 4.7 i nacisnij **F5**.
+- **Windows:** zainstaluj lub rozpakuj Godot 4.7.2 do folderu `Godot` obok projektu i kliknij `Uruchom Czarny Rynek.bat`
+  (domyślnie tryb zgodności OpenGL). Logi: `import-windows.log` i `gra-windows.log`.
+- **Linux / edytor:** zaimportuj `godot/project.godot` w Godocie 4.7 i naciśnij **F5**.
 
-Pierwsze uruchomienie wymaga importu modeli i tekstur, dlatego trwa dłużej. To projekt gry; Godot jest potrzebny do jego uruchomienia.
+Pierwsze uruchomienie importuje modele i tekstury, dlatego trwa dłużej. Paczki w Wydaniach buduje automatycznie
+GitHub Actions (`.github/workflows/wydanie.yml`) po wypchnięciu tagu wersji, np. `v0.9`.
 
-## Sterowanie
+</details>
 
-WASD — ruch, mysz — rozglądanie, E — interakcja. Gra pokazuje pozostałe klawisze podczas samouczka. F11 przełącza pełny ekran.
+## English
 
-## Towary
+**Czarny Rynek** ("Black Market") is a first-person underworld sim set in a fictional Polish city.
+After a police raid blows up your drug lab, you start over in a rented flat with nothing but a debt to pay off:
+produce, deal with characters who have their own moods and stories, sneak past flashlight patrols, and grow a crew.
+Open city with day/night cycle and weather, built in Godot 4. The game is in Polish. Fictional; for adults (18+).
 
-Sześć towarów w grze (wszystko fikcyjne): marihuana, amfetamina, metamfetamina, kokaina oraz dwa własnej produkcji.
+**[Download for Windows, macOS or Linux](https://github.com/piotrpilka123-ctrl/czarny-rynek/releases/latest)** — no Godot installation needed.
 
-- **Grzybki** (ok. 110 zł/g, od poziomu 4): szafa grzybowa kupiona w hurtowni i grzybnia ze sklepu Stasia. Kupują artyści z ogródków działkowych „Hutnik” (Tosia, Pan Zdzisław).
-- **Ecstasy** (ok. 140 zł/g, od poziomu 6): stół laboratoryjny i dwa zestawy chemikaliów. Kupują ludzie z Neonu i afterów na zapleczu Repair Yard (Kaja, Bogdan z bramki).
+## Autor i licencje
 
-Nowe miejsca spotkań i skrytek: ogródki działkowe oraz zaplecze Repair Yard. Każdy nowy klient ma też swoją rozmowę telefoniczną, która dopisuje kolejny kawałek historii o tym, kto sprzedał ekipę Wiktora.
+Gra Piotra Piłki. Autorzy i licencje zasobów (modele, tekstury, dźwięki, muzyka, czcionki): [LICENCJE.md](LICENCJE.md).
 
-## Dopamina w grze
-
-Po każdej sprzedaży wylatuje kwota, a kolejne udane transakcje z rzędu budują serię (do +40% doświadczenia). Rzadko trafia się klient w dobrym nastroju, który płaci ponad stawkę. Każdego dnia są dwa małe cele z drobną nagrodą, cienki pasek przy kondycji pokazuje postęp do następnego poziomu, a po śnie dostajesz krótkie podsumowanie dnia z rekordami. Gotowa partia w laboratorium ma własny dźwięk i wyskakującą liczbę przy odbiorze.
-
-## Pliki
-
-`godot/` zawiera kod, scenę, modele, tekstury, animacje, muzykę i dźwięki aktualnej gry. Zapis gry jest przechowywany w danych użytkownika Godota, poza repozytorium.
-
-Własną muzykę można umieścić w `godot/muzyka/` zgodnie z tamtejszą instrukcją. Nie jest przesyłana na GitHuba.
-
-Autorzy i licencje zasobów: [LICENCJE.md](LICENCJE.md).
+Podoba Ci się? Zostaw ⭐ — to najprostszy sposób, żeby więcej osób trafiło na grę.

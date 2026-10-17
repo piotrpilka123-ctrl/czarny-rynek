@@ -40,3 +40,7 @@ godot/tools/tex_orig/
 godot/.zajete
 godot/.kolejka
 .claude/worktrees/
+
+# paczki gry z eksportu (wydania budują się w GitHub Actions)
+/build/
+/dist/

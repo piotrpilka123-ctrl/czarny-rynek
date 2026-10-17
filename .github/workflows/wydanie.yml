@@ -1,0 +1,89 @@
+# Gotowe paczki gry (Windows, Linux, macOS) budowane przez GitHuba — bez instalowania Godota przez gracza.
+# Uruchamia się samo po wypchnięciu tagu wersji (np. `git tag v0.9 && git push origin v0.9`)
+# albo ręcznie: zakładka Actions → „Wydanie gry” → Run workflow (wtedy powstaje szkic wydania do sprawdzenia).
+# Nie używa żadnych sekretów ani kluczy — tylko wbudowany token GitHuba do dodania plików do wydania.
+name: Wydanie gry
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      wersja:
+        description: "Nazwa wersji (np. v0.9-test)"
+        required: true
+        default: "v0.0-test"
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Pobierz kod gry
+        uses: actions/checkout@v4
+
+      - name: Pobierz Godota i szablony eksportu
+        run: |
+          set -e
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot-bin
+          chmod +x godot-bin
+          tdir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$tdir"
+          unzip -q templates.tpz -d tpl
+          mv tpl/templates/* "$tdir/"
+          rm -rf godot.zip templates.tpz tpl
+
+      - name: Import zasobów (modele, tekstury, dźwięki)
+        run: |
+          timeout 3000 ./godot-bin --headless --path godot --import 2>&1 | tail -n 40
+
+      - name: Eksport Windows, Linux, macOS
+        run: |
+          set -e
+          mkdir -p build/windows build/linux build/macos
+          ./godot-bin --headless --path godot --export-release "Windows" ../build/windows/CzarnyRynek.exe
+          ./godot-bin --headless --path godot --export-release "Linux" ../build/linux/CzarnyRynek.x86_64
+          ./godot-bin --headless --path godot --export-release "macOS" ../build/macos/CzarnyRynek.zip
+          ls -la build/*
+
+      - name: Spakuj paczki
+        run: |
+          set -e
+          ver="${{ github.event.inputs.wersja || github.ref_name }}"
+          mkdir -p dist
+          for os in windows linux; do
+            mkdir -p "build/$os/muzyka"
+            cp godot/muzyka/CZYTAJ.txt "build/$os/muzyka/"
+            cp LICENCJE.md "build/$os/"
+          done
+          printf '@echo off\r\nrem Tryb zgodnosci (OpenGL) dla starszych i zintegrowanych kart graficznych, np. Intel Iris Xe.\r\nstart "" "%%~dp0CzarnyRynek.exe" --rendering-method gl_compatibility\r\n' > "build/windows/Czarny Rynek - tryb zgodnosci.bat"
+          (cd build/windows && zip -qr "../../dist/CzarnyRynek-${ver}-Windows.zip" .)
+          (cd build/linux && chmod +x CzarnyRynek.x86_64 && zip -qr "../../dist/CzarnyRynek-${ver}-Linux.zip" .)
+          cp build/macos/CzarnyRynek.zip "dist/CzarnyRynek-${ver}-macOS.zip"
+          ls -la dist
+
+      - name: Dodaj paczki do wydania
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.wersja || github.ref_name }}
+          name: Czarny Rynek ${{ github.event.inputs.wersja || github.ref_name }}
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
+          files: dist/*
+          body: |
+            **Pobierz paczkę dla swojego systemu, rozpakuj i uruchom — Godot nie jest potrzebny.**
+
+            - **Windows:** `CzarnyRynek.exe`. Na słabszej karcie (np. Intel Iris Xe) uruchom `Czarny Rynek - tryb zgodnosci.bat`.
+            - **macOS:** rozpakuj, kliknij `Czarny Rynek.app` prawym przyciskiem → Otwórz (aplikacja nie jest podpisana przez Apple).
+            - **Linux:** `./CzarnyRynek.x86_64`.
+
+            Własna muzyka do klubu: wrzuć pliki MP3 do folderu `muzyka` obok gry.
