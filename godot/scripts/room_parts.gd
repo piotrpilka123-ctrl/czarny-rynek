@@ -384,31 +384,13 @@ static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 		_puddle(dec, Vector3(cx + e[0], 0.011, e[1]), Vector2(e[2] * 0.8, e[3] * 0.8), e[2] * 3.0)
 	for e in [[-1.3, 1.2, 0.0, 0.17, 8.0], [-0.7, 1.5, 0.0, 0.17, 8.0], [3.8, 0.8, 0.12, 0.2, 6.0]]:
 		Interior.stain(dec, Vector3(cx + e[0], 0.007, e[1]), Vector3(-PI / 2.0, 0.0, PI / 2.0 + e[2]), Vector2(e[4], e[3]), Color(0.04, 0.04, 0.04, 0.28))
-	# bałagan przy ścianach: palety, worki, wiadra, skrzynie, opony (większe sztuki z kolizją, drobiazgi bez)
-	var pal: Node3D = W._rp(dec, "pallet", cx - 6.1, 0.5, 0.15, 0.16)
-	_age(pal, Color(0.42, 0.37, 0.32))
-	for j in range(2):
-		W._rp(dec, "cement_bag", cx - 6.2 + j * 0.28, 0.5 - j * 0.08, 0.4 + j, 0.2, 0.16 + j * 0.12)
-	W.add_col(cx - 6.7, cx - 5.5, -0.1, 1.1, 0.6, true, -1.0)
-	W.rects.pop_back()
-	for j in range(3):
-		W._rp(dec, "plastic_crate_01", cx + 6.4, -5.0 + (0.0 if j < 2 else 0.1), 0.1 * j, 0.28, 0.28 * (1 if j == 2 else 0) + 0.0, 0.0, 0.0)
-	W.add_col(cx + 6.0, cx + 6.8, -5.4, -4.6, 0.9, true, -1.0)
-	W.rects.pop_back()
-	for e in [[2.9, -5.1, 0.3], [3.2, -4.9, 1.2], [2.6, -4.8, 2.0]]:
-		W._rp(dec, "trashbag_1", cx + e[0] - 0.9, e[1], e[2], 0.5)
-	W._rp(dec, "wooden_crate_02", cx + 6.4, 2.9, 0.2, 0.5, 0.0, 0.35, 0.35)
-	W._rp(dec, "old_tyre", cx - 3.2, 3.3, 0.3, 0.16)
-	W._rp(dec, "old_tyre", cx - 3.1, 3.35, 0.9, 0.16, 0.16)
-	W._rp(dec, "plastic_container", cx - 0.2, -3.9, 0.4, 0.4, 0.0, 0.3, 0.3)
-	W._rp(dec, "can_rusted", cx + 1.0, 0.9, 0.5, 0.2)
-	W._rp(dec, "can_rusted", cx - 1.9, 1.9, 2.1, 0.2)
-	W._rp(dec, "plastic_bottle_gallon", cx + 3.2, 1.0, 0.3, 0.32)
-	W._rp(dec, "plastic_bottle_gallon", cx - 4.9, 0.4, 1.0, 0.32)
-	W._rp(dec, "cardboard_box_01", cx - 2.2, 1.0, 0.7, 0.4)
-	W._rp(dec, "trashbag", cx - 1.5, 4.0, 0.2, 0.5)
-	# prowizoryczny stół ze sklejki i przedłużacze po podłodze
-	W._rp(dec, "metal_stool_01", cx - 4.7, 1.9, 0.5, 0.6)
+	# przy ścianach tylko sprzęt laboratorium z własnych modeli: beczki z odczynnikami (z kolizją).
+	# Zdjęciowe rekwizyty (palety, worki cementu, skrzynki drewniane i plastikowe, opony, puszki, kartony, worki na śmieci,
+	# mały taboret) wyglądały obco przy reszcie modeli i miały złą skalę — Piotr kazał je usunąć.
+	for e in [[-6.2, 0.15, 0.4], [-5.65, 0.55, 1.9], [6.5, -5.05, 0.2], [5.85, -5.1, 2.3], [-0.2, -3.9, 0.9]]:
+		W._lm(dec, "lab_beczka", cx + e[0], e[1], e[2], 0.0, Vector2(0.3, 0.3))
+	# krzesło przy maskach i przedłużacze po podłodze
+	W._rp(dec, "painted_wooden_chair_01", cx - 4.7, 1.9, 0.5 + PI, 1.02)
 	for e in [[-4.1, 0.7, -3.3, 2.6, 0.0], [0.4, 1.0, 1.7, 2.3, 0.0]]:
 		var a := Vector2(e[0], e[1])
 		var b := Vector2(e[2], e[3])
@@ -460,8 +442,9 @@ static func _puddle(g: Node3D, pos: Vector3, size: Vector2, rot: float) -> void:
 
 ## obrysy (x, z lokalne) rekwizytów z kolizją w labie oraz strefy przejść — dla testu przenikania
 const LAB_FOOTPRINTS := {
-	"paleta": Rect2(-6.7, -0.1, 1.2, 1.2), "skrzynie_ne": Rect2(6.0, -5.4, 0.8, 0.8),
-	"skrzynia_e": Rect2(6.05, 2.55, 0.7, 0.7), "pojemnik": Rect2(-0.5, -4.2, 0.6, 0.6), "suszarnia": Rect2(-1.85, -5.5, 2.55, 0.9),
+	"beczka_w1": Rect2(-6.5, -0.15, 0.6, 0.6), "beczka_w2": Rect2(-5.95, 0.25, 0.6, 0.6), "beczka_ne1": Rect2(6.2, -5.35, 0.6, 0.6),
+	"beczka_ne2": Rect2(5.55, -5.4, 0.6, 0.6), "beczka_n": Rect2(-0.5, -4.2, 0.6, 0.6), "beczka_s1": Rect2(-1.5, 4.55, 0.6, 0.6),
+	"beczka_s2": Rect2(2.6, 4.55, 0.6, 0.6), "biurko": Rect2(5.52, 3.3, 0.86, 1.9), "suszarnia": Rect2(-1.85, -5.5, 2.55, 0.9),
 	"chemia_sw": Rect2(-6.9, 3.8, 1.6, 1.5), "reaktor": Rect2(3.28, -4.92, 1.24, 1.24), "stol_pakowanie": Rect2(0.58, 1.95, 2.04, 0.9),
 	"stol_synt1": Rect2(6.0, -4.52, 0.9, 2.04), "stol_synt2": Rect2(6.0, -2.32, 0.9, 2.04), "stol_synt3": Rect2(6.0, -0.12, 0.9, 2.04)}
 const LAB_PASSAGES := {

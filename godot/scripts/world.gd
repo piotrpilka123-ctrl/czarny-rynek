@@ -3804,13 +3804,13 @@ func _dense() -> void:
 	_prologue_yard()
 
 
-## Zaniedbane ogródki za halą Starej Huty, którymi ucieka się w prologu: grządki wśród chwastów, krzaki, stare skrzynki,
-## opony i palety, sznur z praniem, altanka z krasnalem. Wszystko trzyma się z dala od trasy ucieczki — ma dawać cień i kryjówki, nie blokować.
+## Zaniedbane ogródki za halą Starej Huty, którymi ucieka się w prologu: grządki wśród chwastów, krzaki, sznur z praniem,
+## altanka z krasnalem. Wszystko trzyma się z dala od trasy ucieczki — ma dawać cień i kryjówki, nie blokować.
+## (Rozrzucone palety, opony, skrzynki, beczki i worki Piotr kazał usunąć — tylko zaśmiecały ogródki.)
 func _prologue_yard() -> void:
 	var yr := RandomNumberGenerator.new()
 	yr.seed = 7711
 	var route := [Vector2(176.0, -113.5), Vector2(166.0, -106.0), Vector2(153.0, -97.0), Vector2(142.0, -93.0), Vector2(130.6, -90.0)]
-	var junk := [["pallet", 0.16], ["old_tyre", 0.16], ["wooden_crate_02", 0.45], ["barrel_01", 0.9], ["trashbag", 0.5], ["plastic_crate_01", 0.28], ["cement_bag", 0.18]]
 	var beds := ["pod_grzadka", "pod_grzadka", "pod_kwiaty"]
 	for i in range(route.size() - 1):
 		var a: Vector2 = route[i]
@@ -3825,7 +3825,7 @@ func _prologue_yard() -> void:
 				var p: Vector2 = base + nor * off + dir * yr.randf_range(-1.2, 1.2)
 				if not _soft_ground(p.x, p.y):
 					continue
-				var kind := yr.randi() % 7
+				var kind := yr.randi() % 5
 				if kind <= 1:
 					for k in range(2):
 						var wd := Props.weeds(yr.randi(), yr.randf_range(1.0, 1.6))
@@ -3834,13 +3834,10 @@ func _prologue_yard() -> void:
 						city.add_child(wd)
 				elif kind == 2:
 					_bush(p.x, p.y, yr.randf_range(0.9, 1.4))
-				elif kind == 3 or kind == 4:
+				else:
 					var gm := Stations.model(String(beds[yr.randi() % beds.size()]))
 					if gm != null:
 						Props.set_range(_place(gm, p.x, p.y, yr.randf_range(-0.4, 0.4) + (PI / 2.0 if yr.randf() < 0.5 else 0.0)), 150.0)
-				else:
-					var jk: Array = junk[yr.randi() % junk.size()]
-					_prop(String(jk[0]), p.x, p.y, yr.randf_range(0.0, TAU), float(jk[1]), 0.0, false)
 	# sznur z praniem i altanka pod płotem, trochę dalej od trasy
 	for e in [["pod_sznur", 170.0, -96.0, 0.3], ["pod_wiata", 163.0, -87.5, 0.0], ["pod_krasnal", 160.5, -89.5, 2.4], ["pod_stolik", 166.5, -88.0, 0.5]]:
 		var pm := Stations.model(String(e[0]))
@@ -6402,19 +6399,18 @@ func _lab_room() -> void:
 	bag.position = Vector3(tx - 0.1, 0.0, tz + 0.95)
 	bag.rotation.y = 0.4
 	g.add_child(bag)
-	_rp(g, "hand_truck", cx + 4.9, 4.4, 2.2, 1.3)
-	_rp(g, "cardboard_box_01", cx - 1.2, 4.8, 0.3, 0.4, 0.0, 0.3, 0.3)
-	_rp(g, "cardboard_box_01", cx - 0.5, 4.9, 1.1, 0.34)
-	_rp(g, "wooden_crate_02", cx + 2.9, 4.8, 0.2, 0.5, 0.0, 0.35, 0.6)
+	# beczki z odczynnikami pod południową ścianą (zamiast zdjęciowych kartonów, skrzynki i wózka, które nie pasowały do reszty)
+	_lm(g, "lab_beczka", cx - 1.2, 4.85, 0.3, 0.0, Vector2(0.3, 0.3))
+	_lm(g, "lab_beczka", cx + 2.9, 4.85, 1.7, 0.0, Vector2(0.3, 0.3))
 	# plamy rozlanych odczynników na posadzce
 	for e in [[2.6, -3.2, 1.3, 0.9], [-3.9, -3.0, 1.0, 0.7], [5.2, 0.2, 0.8, 1.2], [-5.2, 3.0, 0.9, 0.6]]:
 		Interior.stain(g, Vector3(cx + e[0], 0.004, e[1]), Vector3(0, float(e[2]) * 2.0, 0), Vector2(float(e[2]), float(e[3])), Color(0.04, 0.05, 0.05, 0.55))
 	inter.append({"loc": "lab", "x": tx, "z": tz, "y0": 0.6, "y1": 1.3, "r": 0.9, "reach": 2.8, "id": "pack_lab",
 		"label": func(): return "Spakuj ostatnią partię do torby", "act": func(): G.main.prologue_act("pack")})
-	# --- biurko z podglądem kamer
-	_rp(g, "metal_office_desk", cx + 5.9, 4.2, -PI / 2.0, 0.76, 0.0, 0.45, 0.8)
-	_rp(g, "television_01", cx + 6.0, 4.2, -PI / 2.0, 0.42, 0.76)
-	_rp(g, "metal_stool_01", cx + 5.0, 4.2, 0.3, 0.6)
+	# --- biurko z podglądem kamer: własne modele w prawdziwej skali (stary taboret był za mały, biurko i telewizor ze zdjęć)
+	_rp(g, "painted_wooden_table", cx + 5.95, 4.25, -PI / 2.0, 0.8, 0.0, 0.43, 0.95)
+	_rp(g, "television_02", cx + 6.1, 4.25, -PI / 2.0, 0.45, 0.8)
+	_rp(g, "painted_wooden_chair_01", cx + 5.05, 4.1, PI / 2.0 - 0.25, 1.02)
 	var mon := _room_light(g, cx + 5.5, 4.2, 1.5, 0.3, Color(0.5, 0.8, 1.0), 2.6)
 	mon.shadow_enabled = false
 	# --- brama frontowa (północ): to w nią walą, przez świetliki wpada światło kogutów

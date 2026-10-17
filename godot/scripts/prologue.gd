@@ -6,7 +6,6 @@ extends Node
 
 const Fx = preload("res://scripts/fx.gd")
 const Models = preload("res://scripts/models.gd")
-const Props = preload("res://scripts/props.gd")
 const Chars = preload("res://scripts/chars.gd")
 const Stations = preload("res://scripts/stations.gd")
 
@@ -24,14 +23,22 @@ const ESCAPE_ROUTE := [[176.0, -113.5], [166.0, -106.0], [153.0, -97.0], [142.0,
 var _grace := 0.0               # sekundy po powrocie pod drzwi, w których patrol jeszcze nie „łapie”
 var extra: Array = []           # patrole dostawione na czas prologu (znikają po nim)
 ## dalsze patrole (plan miasta): [x, z, x2, z2] chodzi tam i z powrotem, [x, z, obrót] stoi i się rozgląda
-const FAR_PATROLS := [[207.0, -138.0, 0.9], [152.0, -140.0, 168.0, -146.0], [153.0, -62.0, 2.6], [150.0, -40.0, 150.0, -12.0], [100.0, -150.0, 122.0, -150.0]]
+## Trasy omijają furgony, słupy trakcyjne i komin: nikt nie przechodzi przez auto ani przez słup.
+const FAR_PATROLS := [[207.0, -140.0, 0.9], [150.0, -152.0, 166.0, -152.0], [153.0, -62.0, 2.6], [154.0, -40.0, 154.0, -14.0], [100.0, -150.0, 122.0, -150.0]]
 ## Furgony antyterrorystów odcinają pozostałe drogi (plan miasta: x, z, obrót). Kto podejdzie bliżej niż CORDON_R, wraca pod drzwi —
-## zostaje jedna droga: na zachód, pod siatką za torami.
-const SWAT_VANS := [[201.0, -133.0, 1.2], [158.0, -145.0, 0.25], [149.5, -57.0, -1.35]]
+## zostaje jedna droga: na zachód, pod siatką za torami. Południowy stoi na trawie między torami a jezdnią (wcześniej wjeżdżał w podkłady).
+const SWAT_VANS := [[201.0, -133.0, 1.2], [158.0, -145.0, 0.25], [155.0, -57.0, -1.47]]
 const CORDON_R := 8.5
+## Radiowozy od frontu (plan miasta: x, z, obrót; przód auta = +Z): przyjechały od Hutniczej i stanęły jeden za drugim
+## przy krawężniku drogi pod hutą (jezdnia x 162–170), lekko skręcone w stronę placu przed bramą — nie wjeżdżają w wiatę przystanku.
+const COP_CARS := [[165.2, -50.0, PI - 0.18], [166.6, -61.5, PI + 0.12]]
+## radiowóz, który w finale wylatuje w powietrze: na tej samej drodze, bliżej ogródków
+const BOOM_CAR := [166.0, -77.0, PI - 0.22]
+## połowa długości i szerokości (metry) radiowozu i furgonu — tyle zajmują na siatce przejść patrolu
+const CAR_HALF := Vector2(2.18, 0.84)
+const VAN_HALF := Vector2(2.35, 0.92)
+var _blocked: Array = []        # kratki siatki zajęte na czas prologu przez auta (zwalniane w _finish)
 var siwy = null
-var radio_it: Dictionary = {}   # radio patrolu przy ogródkach: podsłuchasz je w drodze do siatki
-var _radio_heard := false
 var _bang := 0.0
 var _steps_heard := false     # bieg antyterrorystów po korytarzu zagrał już w trakcie rozmowy
 var _shout := 0.0
@@ -122,49 +129,6 @@ func step() -> Dictionary:
 			return {"text": func(): return "Jesteś za siatką. Teraz biegiem [%s] między garaże!" % G.kn("sprint"),
 				"done": func(): return false, "marker": func(): return {"loc": "out", "x": run_end().x, "z": run_end().y}}
 	return {"text": func(): return "", "done": func(): return false}
-
-
-## Zgubione radio patrolu na skrzynce pod ogródkami: słychać z niego, że ktoś wiedział, którędy pójdziesz
-func _build_radio() -> void:
-	var W = M.world
-	if radio_it.is_empty():
-		var rp := P(158.0, -104.0)
-		var g := Node3D.new()
-		var crate := Props.make("wooden_crate_02", 0.5)
-		if crate != null:
-			g.add_child(crate)
-		var body := Models.box(g, Vector3(0.07, 0.17, 0.045), Vector3(0.0, 0.58, 0.0), Models.mat("1c1f22", 0.5), Vector3(0.0, 0.5, 0.0), false)
-		Models.box(body, Vector3(0.012, 0.012, 0.004), Vector3(0.0, 0.04, 0.026), Models.mat("45e070", 0.3, 0.0, 1.6), Vector3.ZERO, false)
-		Models.cyl(g, 0.004, 0.004, 0.2, Vector3(0.03, 0.74, 0.0), Models.mat("101214", 0.4), Vector3.ZERO, 4)
-		var led := OmniLight3D.new()
-		led.light_color = Color(0.3, 1.0, 0.45)
-		led.omni_range = 3.0
-		led.light_energy = 0.35
-		led.shadow_enabled = false
-		led.position = Vector3(0.0, 0.68, 0.1)
-		g.add_child(led)
-		g.position = Vector3(rp.x, W.height(rp.x, rp.y), rp.y)
-		g.rotation.y = 0.6
-		M.add_child(g)
-		nodes.append(g)
-		radio_it = {"loc": "out", "x": rp.x, "z": rp.y, "y0": 0.0, "y1": 0.9, "r": 0.9, "reach": 3.0, "id": "prolog_radio",
-			"label": func(): return "Podsłuchaj radio patrolu", "act": func(): radio_listen()}
-	_radio_heard = false
-	W.inter.erase(radio_it)
-
-
-func radio_listen() -> void:
-	if stage != "escape" or G.busy or _radio_heard:
-		return
-	_radio_heard = true
-	M.world.inter.erase(radio_it)
-	G.S.flags["prolog_radio"] = true
-	M.ui.dialog({"name": "Radio patrolu", "lines": [
-		"„…Bravo do centrali. Od frontu czysto, furgony trzymają kordon. Na północy i wschodzie mysz się nie prześliźnie.”",
-		"„Przyjąłem. Informator mówił, że pójdzie na zachód, pod siatką za torami. Mamy tam kogoś?”",
-		"„Negatywne. Szef kazał nie ruszać. Niech sam dojdzie do garaży — tam na niego poczekają.”",
-		{"n": "Ty", "t": "Niech sam dojdzie… Skąd oni wiedzą, którędy pójdę?"}],
-		"on_end": func(): G.notify("Ktoś im powiedział, którędy pójdziesz. Ktoś, kto znał ten plan.", "warn")})
 
 
 func _wait(sec: float) -> void:
@@ -395,29 +359,40 @@ func _setup_world() -> void:
 			c.x = far.x
 			c.z = far.y
 	_reset_cops()
-	# radiowóz z patrolu staje pod bramą huty; drugi dostawiamy jako rekwizyt
+	for c in N.cops:
+		_torch_boost(c, true)
+	# radiowóz z patrolu staje pod hutą; drugi dostawiamy jako rekwizyt — oba wzdłuż jezdni, jeden za drugim
+	_blocked.clear()
 	var car: Dictionary = N.car
-	var cp := P(163.0, -47.0)
+	var cp := P(float(COP_CARS[0][0]), float(COP_CARS[0][1]))
+	var cr0 := float(COP_CARS[0][2])
 	car.x = cp.x
 	car.z = cp.y
-	car.rot = 0.9
+	car.rot = cr0
 	car.wait = 99999.0
 	car.speed = 0.0
 	car.node.position = Vector3(cp.x, W.height(cp.x, cp.y), cp.y)
-	car.node.rotation.y = 0.9
+	car.node.rotation.y = cr0
 	var car2: Node3D = Models.car("sedan", "ffffff", true)
 	M.add_child(car2)
 	nodes.append(car2)
-	var c2 := P(170.5, -58.0)
+	var c2 := P(float(COP_CARS[1][0]), float(COP_CARS[1][1]))
+	var cr1 := float(COP_CARS[1][2])
 	car2.position = Vector3(c2.x, W.height(c2.x, c2.y), c2.y)
-	car2.rotation.y = -0.5
-	for e in [[cp, Color(0.15, 0.35, 1.0)], [c2, Color(1.0, 0.12, 0.1)], [cp + Vector2(0.6, 0.4), Color(1.0, 0.12, 0.1)], [c2 + Vector2(0.5, -0.4), Color(0.15, 0.35, 1.0)]]:
+	car2.rotation.y = cr1
+	for dome in car2.get_meta("siren", []):
+		(dome as Node3D).visible = true
+	_block_area(cp, cr0, CAR_HALF)
+	_block_area(c2, cr1, CAR_HALF)
+	# koguty na belce dachowej: niebieski z jednej, czerwony z drugiej strony każdego auta
+	for e in [[cp, cr0, -1.0, Color(0.15, 0.35, 1.0)], [c2, cr1, -1.0, Color(1.0, 0.12, 0.1)], [cp, cr0, 1.0, Color(1.0, 0.12, 0.1)], [c2, cr1, 1.0, Color(0.15, 0.35, 1.0)]]:
 		var li := OmniLight3D.new()
-		li.light_color = e[1]
+		li.light_color = e[3]
 		li.omni_range = 24.0
 		li.light_energy = 0.0
 		li.shadow_enabled = false
-		var lp: Vector2 = e[0]
+		var fw := Vector2(sin(float(e[1])), cos(float(e[1])))
+		var lp: Vector2 = (e[0] as Vector2) - fw * 0.15 + Vector2(fw.y, -fw.x) * 0.4 * float(e[2])
 		li.position = Vector3(lp.x, W.height(lp.x, lp.y) + 1.8, lp.y)
 		M.add_child(li)
 		nodes.append(li)
@@ -430,6 +405,7 @@ func _setup_world() -> void:
 		nodes.append(van)
 		van.position = Vector3(vp.x, W.height(vp.x, vp.y), vp.y)
 		van.rotation.y = float(e[2])
+		_block_area(vp, float(e[2]), VAN_HALF)
 		for dome in van.get_meta("siren", []):
 			(dome as Node3D).visible = true
 		var vl := OmniLight3D.new()
@@ -459,7 +435,6 @@ func _setup_world() -> void:
 		siwy.track = true
 		siwy.node.position = Vector3(siwy.x, 0.0, siwy.z)
 		siwy.node.rotation.y = PI * 0.9
-	_build_radio()
 	if W.door_tape != null:
 		W.door_tape.visible = false
 	W.set_mill_burnt(false)
@@ -499,13 +474,57 @@ func _reset_cops() -> void:
 		cop_b.x = b.x
 		cop_b.z = b.y
 		cop_b.idle = 0.0
-		cop_b.beat = [W.near_free(168.0 * D.SC, -60.0 * D.SC), b]
+		# chodzi wzdłuż jezdni i zawraca przed radiowozami (dawniej szedł prosto przez auto)
+		cop_b.beat = [W.near_free(167.5 * D.SC, -71.0 * D.SC), b]
 		cop_b.beat_i = 0
 		cop_b.notice = 0.0
 		cop_b.sees = false
 		cop_b.hear_t = 0.0
 		cop_b.node.rotation.y = 0.0
 		cop_b.node.position = Vector3(b.x, W.height(b.x, b.y), b.y)
+
+
+## Auto stojące w `at` (metry świata) z obrotem `rot` zajmuje kratki siatki przejść: patrol obchodzi je bokiem,
+## zamiast przenikać przez karoserię. `half` = połowa długości i szerokości w metrach, z zapasem na ramiona policjanta.
+func _block_area(at: Vector2, rot: float, half: Vector2) -> void:
+	var W = M.world
+	if W.grid == null:
+		return
+	var fw := Vector2(sin(rot), cos(rot))
+	var sd := Vector2(fw.y, -fw.x)
+	var pad := 0.35
+	var r := half.x + half.y + pad
+	var c0: Vector2i = W._cell(at.x - r, at.y - r)
+	var c1: Vector2i = W._cell(at.x + r, at.y + r)
+	for cz in range(c0.y, c1.y + 1):
+		for cx in range(c0.x, c1.x + 1):
+			var p := Vector2(W.X0 * W.SC + (cx + 0.5) * W.GCELL, W.Z0 * W.SC + (cz + 0.5) * W.GCELL) - at
+			if absf(p.dot(fw)) > half.x + pad or absf(p.dot(sd)) > half.y + pad:
+				continue
+			var cell := Vector2i(cx, cz)
+			if not W.grid.is_point_solid(cell):
+				W.grid.set_point_solid(cell, true)
+				_blocked.append(cell)
+
+
+func _unblock() -> void:
+	var W = M.world
+	if W.grid != null:
+		for cell in _blocked:
+			W.grid.set_point_solid(cell, false)
+	_blocked.clear()
+
+
+## Latarki obławy: w prologu jaśniejsze, z widocznym snopem w powietrzu (po prologu wracają do zwykłych).
+func _torch_boost(c: Dictionary, on: bool) -> void:
+	var tc = c.get("torch")
+	if not (tc is SpotLight3D):
+		return
+	tc.light_energy = M.npcs.TORCH_ENERGY * (1.8 if on else 1.0)
+	tc.light_volumetric_fog_energy = 2.4 if on else 0.9
+	var bm: Node = tc.get_node_or_null("Snop")
+	if bm != null:
+		bm.visible = on
 
 
 # ---------------------------------------------------------------- zdarzenia z gry
@@ -591,8 +610,6 @@ func on_outside() -> void:
 	for l in M.world.lab_fx.get("flash", []):
 		l.light_energy = 0.0
 	G.notify("Radiowozy stoją od frontu, a z boków furgony antyterrorystów zamknęły kordon. Zostaje jedna droga: na zachód, obok patroli z latarkami, pod siatką za torami.", "warn")
-	if not radio_it.is_empty() and not M.world.inter.has(radio_it) and not _radio_heard:
-		M.world.inter.append(radio_it)
 
 
 func _caught(why := "") -> void:
@@ -722,7 +739,7 @@ func _boom() -> void:
 	var cam_end := eye + Vector3(1.2, 0.5, 0.4)
 	# --- obsada: dwóch policjantów i radiowóz między garażami a hutą
 	var actors: Array = []
-	var cop_at := [P(160.0, -80.5), P(164.5, -90.0)]
+	var cop_at := [P(160.0, -80.5), P(164.5, -93.0)]
 	for i in range(2):
 		var c = [cop_a, cop_b][i]
 		if c == null:
@@ -737,13 +754,15 @@ func _boom() -> void:
 		Chars.set_armed(c.rig, true)
 		Chars.play(c.rig, "Pistol_Idle")
 		actors.append({"c": c, "kb": -1.0, "from": Vector3.ZERO})
-	var cpos := P(168.5, -76.0)
+	var cpos := P(float(BOOM_CAR[0]), float(BOOM_CAR[1]))
 	boom_car = Models.car("sedan", "ffffff", true)
 	M.add_child(boom_car)
 	nodes.append(boom_car)
 	var car_y: float = W.height(cpos.x, cpos.y)
 	boom_car.position = Vector3(cpos.x, car_y, cpos.y)
-	boom_car.rotation.y = 2.3
+	boom_car.rotation.y = float(BOOM_CAR[2])
+	for dome in boom_car.get_meta("siren", []):
+		(dome as Node3D).visible = true
 	var car_lights: Array = []
 	for k in range(2):
 		var cl := OmniLight3D.new()
@@ -1309,15 +1328,17 @@ func _finish() -> void:
 		if c != null:
 			c["scripted"] = false
 			Chars.set_armed(c.rig, false)
+	for c in M.npcs.cops:
+		_torch_boost(c, false)
 	# torba z ostatnią partią przepadła za garażami
 	G.S.inv = G.new_store()
 	G.S.stash.erase("lab")
 	var W = M.world
-	M.world.inter.erase(radio_it)
 	for n in nodes:
 		if is_instance_valid(n):
 			n.queue_free()
 	nodes.clear()
+	_unblock()
 	flashes.clear()
 	fire_lights.clear()
 	for l in W.lab_fx.get("flash", []):

@@ -1337,6 +1337,8 @@ void fragment() {
 	ALBEDO = tint;
 	// przy samym szkle snop jest wąski i ostry, dalej rozmywa się w powietrzu
 	ALPHA = pow(edge, 1.8) * pow(1.0 - along, 2.6) * power;
+	// z bliska (kamera w snopie albo tuż przy nim) stożek znika — inaczej rysował białe obręcze
+	ALPHA *= smoothstep(1.2, 4.5, length(VERTEX));
 }
 """
 
@@ -1369,6 +1371,7 @@ void fragment() {
 }
 """
 
+const BEAM_LEN := 11.0      # długość widocznego snopu latarki (m)
 static var _torch_cookie: GradientTexture2D = null
 static var _beam_mat: ShaderMaterial = null
 static var _glare_mat: ShaderMaterial = null
@@ -1408,6 +1411,28 @@ static func torch_fx(sp: SpotLight3D, half_angle: float, reach: float) -> void:
 	gl.position = Vector3(0, 0, -0.03)
 	gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sp.add_child(gl)
+	# Snop w powietrzu (stożek z miękkim brzegiem): domyślnie schowany, włącza go prolog — w ciemnej obławie
+	# latarki muszą być widoczne także bez mgły wolumetrycznej (na słabszym sprzęcie silnik jej nie rysuje).
+	var ln := minf(reach, BEAM_LEN)
+	_beam_mat.set_shader_parameter("len", ln)
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.035
+	cone.bottom_radius = tan(half_angle) * ln
+	cone.height = ln
+	cone.radial_segments = 20
+	cone.rings = 1
+	cone.cap_top = false
+	cone.cap_bottom = false
+	var bm := MeshInstance3D.new()
+	bm.name = "Snop"
+	bm.mesh = cone
+	bm.material_override = _beam_mat
+	bm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# oś walca (Y) obrócona w −Z, kierunek świecenia reflektora; wąski koniec przy szkle
+	bm.rotation.x = PI / 2.0
+	bm.position = Vector3(0, 0, -ln * 0.5)
+	bm.visible = false
+	sp.add_child(bm)
 
 
 ## pistolet w dłoni (wyjęty z kabury) albo schowany

@@ -20,6 +20,27 @@ static func run(T) -> void:
 	T.ok(pr != null and P.loc == "lab" and M.cut_hour > 0.5 and M.cut_hour < 4.5, "prolog startuje w laboratorium, w środku nocy")
 	T.ok(W.mill_burnt != null and not W.mill_burnt.visible and not W.door_tape.visible, "w prologu huta jeszcze stoi nietknięta")
 	T.ok(pr.cop_a != null and pr.cop_b != null and pr.cop_b.beat != null and pr.flashes.size() == 4 + pr.SWAT_VANS.size(), "dwa patrole z latarkami, radiowozy i furgony AT z kogutami na miejscach")
+	# radiowozy i furgony są dla patroli przeszkodą: ich miejsce na siatce przejść jest zajęte, a żadna trasa patrolu
+	# nie prowadzi przez auto (wcześniej patrol B szedł jezdnią prosto przez radiowóz, a dalszy — przez furgon)
+	var car_cells := []
+	for cc in pr.COP_CARS:
+		car_cells.append(pr.P(float(cc[0]), float(cc[1])))
+	for sv0 in pr.SWAT_VANS:
+		car_cells.append(pr.P(float(sv0[0]), float(sv0[1])))
+	var cars_solid := true
+	for cq in car_cells:
+		if not W.grid.is_point_solid(W._cell(cq.x, cq.y)):
+			cars_solid = false
+	var beats_clear := true
+	for c1 in N.cops:
+		if c1.get("beat") != null:
+			var bb: Array = c1.beat
+			for k in range(21):
+				var bq: Vector2 = (bb[0] as Vector2).lerp(bb[1], k / 20.0)
+				for cq1 in car_cells:
+					if bq.distance_to(cq1) < 2.6:
+						beats_clear = false
+	T.ok(cars_solid and beats_clear, "patrole obchodzą radiowozy i furgony, żadna trasa nie przechodzi przez auto")
 	var e0: Vector2 = pr.exit_pos()
 	var gap0: Vector2 = pr.gap()
 	var cordon_ok := true
@@ -53,10 +74,6 @@ static func run(T) -> void:
 	await M.exit_room()
 	var e: Vector2 = pr.exit_pos()
 	T.ok(P.loc == "out" and pr.stage == "escape" and Vector2(P.global_position.x - e.x, P.global_position.z - e.y).length() < 0.5, "wyjście tyłem huty: etap ucieczki")
-	T.ok(not pr.radio_it.is_empty() and W.inter.has(pr.radio_it) and not pr.radio_it.label.call().is_empty(), "przy ogródkach leży radio patrolu do podsłuchania")
-	pr.radio_listen()
-	T.ok(U.mode == "dialog" and G.flag("prolog_radio") and not W.inter.has(pr.radio_it) and String(U.dlg.lines[0].t).contains("Bravo"), "radio: ktoś znał trasę ucieczki, podsłuch tylko raz")
-	await T.skip_dialog()
 	await T.frames(3)
 	T.ok(G.night > 0.6, "na zewnątrz jest jeszcze ciemno (noc %.2f)" % G.night)
 
@@ -161,6 +178,11 @@ static func run(T) -> void:
 		await T.frames(1)
 	T.ok(G.prologue == null and P.loc == "safe" and G.flag("prologue_done") and M.cut_hour < 0.0, "po prologu: kawalerka, trzy tygodnie później")
 	T.ok(W.mill_burnt.visible and W.door_tape.visible and G.door_label("lab").contains("Zaplombowane"), "huta okopcona, drzwi laboratorium zaplombowane")
+	var freed := true
+	for cq2 in car_cells:
+		if W.grid.is_point_solid(W._cell(cq2.x, cq2.y)):
+			freed = false
+	T.ok(freed, "po prologu miejsca po radiowozach i furgonach znów są wolne dla patroli")
 	var clean := true
 	for c in N.cops:
 		if c.get("beat") != null or float(c.idle) > 100.0:
