@@ -308,27 +308,22 @@ static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 	var dec := Node3D.new()
 	dec.name = "LabDecor"
 	g.add_child(dec)
-	# folia na wschodniej ścianie za stołami i na podłodze linii syntezy
+	# folia na wschodniej ścianie za stołami: trzy pasy stykające się na zakład 4 cm (bez nakładania dwóch warstw)
 	for k in range(3):
-		var sh: Node3D = Stations.model("skr_folia_sciana")
-		if sh != null:
-			sh.position = Vector3(cx + w * 0.5 - 0.03, 0.0, -3.9 + k * 2.3)
-			sh.rotation.y = -PI / 2.0
-			sh.scale = Vector3(1.04, (h - 0.15) / 2.55, 1.0)
-			dec.add_child(sh)
-	var fp: Node3D = Stations.model("skr_folia_podloga")
-	if fp != null:
-		fp.position = Vector3(cx + 4.3, 0.005, -1.0)
-		fp.rotation.y = PI / 2.0
-		dec.add_child(fp)
-	# kotara z folii na południowej stronie przegrody magazynu (widać ją z hali)
-	for k in range(2):
-		var sh2: Node3D = Stations.model("skr_folia_sciana")
-		if sh2 != null:
-			sh2.position = Vector3(cx - 6.0 + k * 2.2, 0.0, -2.52)
-			sh2.scale = Vector3(1.0, (h - 0.15) / 2.55, 1.0)
-			sh2.rotation.y = 0.0
-			dec.add_child(sh2)
+		var sh := foil_sheet(2.44, h - 0.1, 31 + k)
+		sh.position = Vector3(cx + w * 0.5 - 0.005, 0.0, -4.0 + k * 2.4)
+		sh.rotation.y = -PI / 2.0
+		dec.add_child(sh)
+	# płachta pod linią syntezy (stoły stoją na niej)
+	var fp := foil_floor(5.0, 3.4, 7)
+	fp.position = Vector3(cx + 4.4, 0.0, -1.1)
+	dec.add_child(fp)
+	# folia na południowej stronie przegrody magazynu, tylko na ścianie — przejście (x −6,1…−4,9) zostaje wolne,
+	# wcześniej płat wisiał płasko w otworze i przechodziło się przez niego
+	for e in [[-6.55, 0.86, 41], [-3.7, 2.36, 42]]:
+		var sh2 := foil_sheet(float(e[1]), h - 0.1, int(e[2]))
+		sh2.position = Vector3(cx + float(e[0]), 0.0, -2.6 + (THICK + 0.08) * 0.5 + 0.005)
+		dec.add_child(sh2)
 	# suszarnia z lampami grzewczymi pod północną ścianą
 	for sx in [-1.2, 0.05]:
 		var sz: Node3D = Stations.model("skr_susz")
@@ -352,7 +347,8 @@ static func lab_decor(W: Node3D, g: Node3D, cx: float, w: float, d: float, h: fl
 		dec.add_child(wy)
 	var mk: Node3D = Stations.model("skr_maski")
 	if mk != null:
-		mk.position = Vector3(cx - w * 0.5 + 0.04, 0.55, 1.8)
+		# metr od ramy drzwi (rama sięga od z 1,8 do 3,7 — wcześniej maski wchodziły w nią)
+		mk.position = Vector3(cx - w * 0.5 + 0.04, 0.55, 1.0)
 		mk.rotation.y = PI / 2.0
 		dec.add_child(mk)
 	var kb: Node3D = Stations.model("skr_kable")
@@ -449,3 +445,146 @@ const LAB_FOOTPRINTS := {
 	"stol_synt1": Rect2(6.0, -4.52, 0.9, 2.04), "stol_synt2": Rect2(6.0, -2.32, 0.9, 2.04), "stol_synt3": Rect2(6.0, -0.12, 0.9, 2.04)}
 const LAB_PASSAGES := {
 	"otwor_wschodni": Rect2(-3.7, -4.6, 2.2, 1.2), "otwor_poludniowy": Rect2(-6.1, -3.6, 1.2, 2.2), "tylne_drzwi": Rect2(-6.8, 2.2, 1.8, 1.6)}
+
+
+# ---------------------------------------------------------------- folia malarska
+## Folia malarska zrobiona w kodzie (zamiast modeli skr_folia_*: ciemnozielonkawe, płaskie płaty nachodziły na siebie
+## i robiły ciemne pasy). Cienki, mleczny polietylen: przyklejony taśmą u góry, zwisa w miękkich pionowych fałdach,
+## które rosną ku dołowi; dół lekko odstaje od ściany. Na podłodze — pomięta płachta z taśmą po brzegach.
+static var _foil_mat: StandardMaterial3D = null
+static var _foil_floor_mat: StandardMaterial3D = null
+static var _tape_mat: StandardMaterial3D = null
+
+
+static func _foil_materials() -> void:
+	if _foil_mat != null:
+		return
+	var nz := FastNoiseLite.new()
+	nz.noise_type = FastNoiseLite.TYPE_CELLULAR
+	nz.frequency = 0.035
+	nz.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+	var crinkle := NoiseTexture2D.new()
+	crinkle.width = 256
+	crinkle.height = 256
+	crinkle.seamless = true
+	crinkle.as_normal_map = true
+	crinkle.bump_strength = 6.0
+	crinkle.noise = nz
+	_foil_mat = StandardMaterial3D.new()
+	_foil_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_foil_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_foil_mat.albedo_color = Color(0.86, 0.89, 0.9, 0.2)
+	_foil_mat.roughness = 0.28
+	_foil_mat.metallic_specular = 0.7
+	_foil_mat.normal_enabled = true
+	_foil_mat.normal_texture = crinkle
+	_foil_mat.normal_scale = 0.35
+	_foil_mat.uv1_scale = Vector3(1.6, 1.6, 1.0)
+	_foil_mat.rim_enabled = true
+	_foil_mat.rim = 0.35
+	_foil_mat.rim_tint = 0.8
+	_foil_floor_mat = _foil_mat.duplicate()
+	# na podłodze folia leży na betonie: mniej przezroczysta, bardziej pomięta, matowsza
+	_foil_floor_mat.albedo_color = Color(0.8, 0.83, 0.84, 0.42)
+	_foil_floor_mat.roughness = 0.45
+	_foil_floor_mat.normal_scale = 0.6
+	_foil_floor_mat.uv1_scale = Vector3(2.4, 2.4, 1.0)
+	_foil_floor_mat.rim_enabled = false
+	_tape_mat = StandardMaterial3D.new()
+	_tape_mat.albedo_color = Color(0.78, 0.72, 0.55)   # beżowa taśma malarska
+	_tape_mat.roughness = 0.85
+
+
+## Arkusz folii na ścianie: `w` szeroki, `h` wysoki, origin na dole pośrodku przy ścianie, folia po stronie +Z.
+static func foil_sheet(w: float, h: float, sd := 0) -> Node3D:
+	_foil_materials()
+	var root := Node3D.new()
+	root.name = "Folia"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = sd
+	var nx := maxi(6, int(ceil(w / 0.07)))
+	var ny := 10
+	var waves := []
+	for i in range(3):
+		waves.append([rng.randf_range(4.0, 9.0) * (1.0 + i), rng.randf() * TAU, 0.6 / (1.0 + i)])
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pts := []
+	for j in range(ny + 1):
+		var v := float(j) / ny
+		var y := lerpf(0.02, h - 0.03, v)
+		# przy taśmie folia przylega, im niżej, tym luźniej (głębsze fałdy i odstający dół)
+		var slack := lerpf(0.075, 0.01, v * v)
+		var row := []
+		for i in range(nx + 1):
+			var u := float(i) / nx
+			var x := lerpf(-w * 0.5, w * 0.5, u)
+			var f := 0.0
+			for wv in waves:
+				f += sin(x * float(wv[0]) + float(wv[1]) + v * 0.8) * float(wv[2])
+			var z := 0.012 + slack * (0.55 + 0.45 * f)
+			row.append(Vector3(x, y, maxf(0.006, z)))
+		pts.append(row)
+	for j in range(ny):
+		for i in range(nx):
+			var a: Vector3 = pts[j][i]
+			var b: Vector3 = pts[j][i + 1]
+			var c: Vector3 = pts[j + 1][i + 1]
+			var d: Vector3 = pts[j + 1][i]
+			var ua := Vector2(float(i) / nx * w, float(j) / ny * h)
+			var ub := Vector2(float(i + 1) / nx * w, float(j) / ny * h)
+			var uc := Vector2(float(i + 1) / nx * w, float(j + 1) / ny * h)
+			var ud := Vector2(float(i) / nx * w, float(j + 1) / ny * h)
+			# przód (zgodnie z ruchem wskazówek zegara) patrzy w +Z, od ściany do pokoju
+			for q in [[a, ua], [c, uc], [d, ud], [a, ua], [b, ub], [c, uc]]:
+				st.set_uv(q[1])
+				st.add_vertex(q[0])
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = _foil_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	# taśma u góry i krótkie kawałki taśmy przytrzymujące dolne rogi
+	Models.box(root, Vector3(w, 0.048, 0.003), Vector3(0, h - 0.04, 0.008), _tape_mat, Vector3.ZERO, false)
+	for sx in [-1.0, 1.0]:
+		Models.box(root, Vector3(0.12, 0.045, 0.003), Vector3(sx * (w * 0.5 - 0.08), h * 0.5, 0.012), _tape_mat, Vector3(0, 0, 0.6 * sx), false)
+	return root
+
+
+## Płachta folii na podłodze: `w` wzdłuż X, `d` wzdłuż Z, origin pośrodku na posadzce.
+static func foil_floor(w: float, d: float, sd := 0) -> Node3D:
+	_foil_materials()
+	var root := Node3D.new()
+	root.name = "FoliaPodloga"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = sd
+	var nx := maxi(4, int(ceil(w / 0.25)))
+	var nz := maxi(4, int(ceil(d / 0.25)))
+	var ph := [rng.randf() * TAU, rng.randf() * TAU, rng.randf() * TAU]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hgt := func(x: float, z: float) -> float:
+		# lekkie bąble i zagniecenia, przy brzegach (pod taśmą) folia leży płasko
+		var edge: float = minf(minf(x + w * 0.5, w * 0.5 - x), minf(z + d * 0.5, d * 0.5 - z))
+		var k: float = clampf(edge / 0.3, 0.0, 1.0)
+		return 0.004 + k * 0.012 * (0.5 + 0.5 * sin(x * 3.1 + float(ph[0])) * sin(z * 2.3 + float(ph[1])) + 0.3 * sin((x + z) * 5.7 + float(ph[2])))
+	for j in range(nz):
+		for i in range(nx):
+			var x0 := lerpf(-w * 0.5, w * 0.5, float(i) / nx)
+			var x1 := lerpf(-w * 0.5, w * 0.5, float(i + 1) / nx)
+			var z0 := lerpf(-d * 0.5, d * 0.5, float(j) / nz)
+			var z1 := lerpf(-d * 0.5, d * 0.5, float(j + 1) / nz)
+			for q in [[x0, z0], [x1, z1], [x0, z1], [x0, z0], [x1, z0], [x1, z1]]:
+				st.set_uv(Vector2(float(q[0]), float(q[1])))
+				st.add_vertex(Vector3(float(q[0]), hgt.call(float(q[0]), float(q[1])), float(q[1])))
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = _foil_floor_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	for e in [[Vector3(w, 0.002, 0.048), Vector3(0, 0.006, -d * 0.5 + 0.02)], [Vector3(w, 0.002, 0.048), Vector3(0, 0.006, d * 0.5 - 0.02)],
+			[Vector3(0.048, 0.002, d), Vector3(-w * 0.5 + 0.02, 0.006, 0)], [Vector3(0.048, 0.002, d), Vector3(w * 0.5 - 0.02, 0.006, 0)]]:
+		Models.box(root, e[0], e[1], _tape_mat, Vector3.ZERO, false)
+	return root

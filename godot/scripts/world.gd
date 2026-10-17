@@ -6402,9 +6402,9 @@ func _lab_room() -> void:
 	# beczki z odczynnikami pod południową ścianą (zamiast zdjęciowych kartonów, skrzynki i wózka, które nie pasowały do reszty)
 	_lm(g, "lab_beczka", cx - 1.2, 4.85, 0.3, 0.0, Vector2(0.3, 0.3))
 	_lm(g, "lab_beczka", cx + 2.9, 4.85, 1.7, 0.0, Vector2(0.3, 0.3))
-	# plamy rozlanych odczynników na posadzce
+	# plamy rozlanych odczynników na posadzce (quad leży płasko: obrót −90° wokół X; wcześniej stały pionowo jak smugi w powietrzu)
 	for e in [[2.6, -3.2, 1.3, 0.9], [-3.9, -3.0, 1.0, 0.7], [5.2, 0.2, 0.8, 1.2], [-5.2, 3.0, 0.9, 0.6]]:
-		Interior.stain(g, Vector3(cx + e[0], 0.004, e[1]), Vector3(0, float(e[2]) * 2.0, 0), Vector2(float(e[2]), float(e[3])), Color(0.04, 0.05, 0.05, 0.55))
+		Interior.stain(g, Vector3(cx + e[0], 0.004, e[1]), Vector3(-PI / 2.0, 0.0, float(e[2]) * 2.0), Vector2(float(e[2]), float(e[3])), Color(0.04, 0.05, 0.05, 0.55))
 	inter.append({"loc": "lab", "x": tx, "z": tz, "y0": 0.6, "y1": 1.3, "r": 0.9, "reach": 2.8, "id": "pack_lab",
 		"label": func(): return "Spakuj ostatnią partię do torby", "act": func(): G.main.prologue_act("pack")})
 	# --- biurko z podglądem kamer: własne modele w prawdziwej skali (stary taboret był za mały, biurko i telewizor ze zdjęć)
@@ -6421,23 +6421,27 @@ func _lab_room() -> void:
 	else:
 		Models.box(g, Vector3(3.2, 2.9, 0.12), Vector3(cx + 4.4, 1.45, -d * 0.5 + 0.06), Props.pbr("rusted_shutter", 0.5, Color(0.7, 0.7, 0.72)))
 		Models.box(g, Vector3(3.5, 0.18, 0.2), Vector3(cx + 4.4, 2.98, -d * 0.5 + 0.1), steel)
-	# --- tylne drzwi (zachodnia ściana, daleko od bramy): stalowe, z lampą w koszu, tablicą EXIT i reflektorem nad nimi
+	# --- tylne drzwi (zachodnia ściana, daleko od bramy): stalowe, z lampą w koszu i tablicą EXIT (z modelu drzwi).
+	# Wielki reflektor zewnętrzny na wysięgniku, który wisiał tu pod sufitem, zostaje tylko na zewnątrz huty;
+	# w środku światło daje sama lampa nad drzwiami.
 	var exx := cx - w * 0.5
 	var exz := 3.0
 	_lm(g, "huta_drzwi", exx, exz, PI / 2.0)
-	var rf := _lm(g, "huta_reflektor", exx, exz, PI / 2.0, 3.36)
-	Props._no_shadow(rf)
 	var dsp := SpotLight3D.new()
-	dsp.position = Vector3(exx + 0.62, 3.2, exz)
-	dsp.light_color = Color(1.0, 0.9, 0.72)
-	dsp.light_energy = 3.2
-	dsp.spot_range = 7.0
-	dsp.spot_angle = 50.0
-	dsp.spot_angle_attenuation = 0.7
-	dsp.shadow_enabled = false
-	dsp.light_volumetric_fog_energy = 1.6
+	dsp.position = Vector3(exx + 0.3, 2.5, exz)
+	dsp.light_color = Color(1.0, 0.86, 0.62)
+	dsp.light_energy = 2.2
+	dsp.spot_range = 5.5
+	dsp.spot_angle = 55.0
+	dsp.spot_angle_attenuation = 0.8
+	dsp.shadow_enabled = true
+	dsp.light_volumetric_fog_energy = 0.8
 	g.add_child(dsp)
-	dsp.look_at_from_position(dsp.position, Vector3(exx + 1.5, 0.0, exz), Vector3.UP)
+	dsp.look_at_from_position(dsp.position, Vector3(exx + 1.3, 0.0, exz), Vector3.UP)
+	# blacha progowa z ryflowaniem i wytarty beton przed drzwiami: tędy chodzi się najczęściej
+	var tread := Props.pbr("rusty_painted_metal", 0.3, Color(0.42, 0.42, 0.4))
+	Models.box(g, Vector3(0.55, 0.012, 1.1), Vector3(exx + 0.3, 0.006, exz + 0.15), tread, Vector3.ZERO, false)
+	Interior.stain(g, Vector3(exx + 1.0, 0.003, exz + 0.1), Vector3(-PI / 2.0, 0.0, 0.2), Vector2(1.6, 1.3), Color(0.05, 0.05, 0.045, 0.35))
 	var dgl := _room_light(g, exx + 0.45, exz, 2.55, 0.45, Color(1.0, 0.82, 0.55), 3.4)
 	dgl.shadow_enabled = false
 	var egl := _room_light(g, exx + 0.3, exz, 2.9, 0.35, Color(0.3, 1.0, 0.5), 2.2)
@@ -6722,11 +6726,9 @@ func _skrytka_lab(room: String, g: Node3D, fb: StaticBody3D, items: Array, cx: f
 				return false
 		return true
 	# folia na podłodze (pod meblami) i na trzech ścianach; południowa to wejście
-	var fp := Stations.model("skr_folia_podloga")
-	if fp != null:
-		fp.position = Vector3(cx, 0.0, -0.2)
-		fp.scale = Vector3(minf(1.0, (w - 0.5) / 3.5) if w < 4.0 else 1.0, 1.0, 1.0)
-		deco.add_child(fp)
+	var fp: Node3D = RoomParts.foil_floor(minf(3.5, w - 0.5), minf(5.2, d - 0.6), int(cx))
+	fp.position = Vector3(cx, 0.0, -0.2)
+	deco.add_child(fp)
 	var wall_runs := [
 		[Vector3(cx - w * 0.5, 0.0, 0.0), PI / 2.0, d - 1.2, Vector3(0, 0, 1)],
 		[Vector3(cx + w * 0.5, 0.0, 0.0), -PI / 2.0, d - 1.2, Vector3(0, 0, 1)],
@@ -6735,15 +6737,12 @@ func _skrytka_lab(room: String, g: Node3D, fb: StaticBody3D, items: Array, cx: f
 	for run in wall_runs:
 		var n_f := int(ceil(float(run[2]) / 2.0))
 		for k in range(n_f):
-			var sh := Stations.model("skr_folia_sciana")
-			if sh == null:
-				break
+			# folia z kodu (RoomParts.foil_sheet): pasy stykają się na zakład kilku cm, bez podwójnej warstwy
+			var sh: Node3D = RoomParts.foil_sheet(float(run[2]) / float(n_f) + 0.04, h - 0.1, fi + int(cx))
 			var t: float = (float(k) + 0.5) / float(n_f) - 0.5
-			var depth: float = 0.025 * float(fi % 2) + 0.02
 			sh.position = (run[0] as Vector3) + (run[3] as Vector3) * float(run[2]) * t
 			sh.rotation.y = float(run[1])
-			sh.position += Vector3(sin(float(run[1])), 0.0, cos(float(run[1]))) * depth
-			sh.scale = Vector3(float(run[2]) / float(n_f) / 2.2 * 1.04, (h - 0.12) / 2.55, 1.0)
+			sh.position += Vector3(sin(float(run[1])), 0.0, cos(float(run[1]))) * 0.005
 			deco.add_child(sh)
 			fi += 1
 	# kable pod sufitem wzdłuż pokoju
