@@ -65,13 +65,42 @@ static func _material(model: String, surf_name: String) -> Material:
 	if nt != null:
 		m.normal_enabled = true
 		m.normal_texture = nt
-	m.roughness = 0.82 if part == "body" else 0.7
-	m.metallic_specular = 0.3
+	# Wygląd jak w realistycznych grach na UE5 (np. „Halloween” 2026): skóra przepuszcza trochę światła i ma delikatny
+	# połysk, tkanina jest matowa i „miękka” na krawędziach, włosy mają gładkie brzegi zamiast poszarpanych pasm.
+	var forward := RenderingServer.get_current_rendering_method() == "forward_plus"
+	match part:
+		"head":
+			# twarz: skóra z rozproszeniem podpowierzchniowym (uszy i nos lekko prześwitują pod światłem), lekki połysk
+			m.roughness = 0.56
+			m.metallic_specular = 0.42
+			if nt != null:
+				m.normal_scale = 1.15
+			if forward:
+				m.subsurf_scatter_enabled = true
+				m.subsurf_scatter_skin_mode = true
+				m.subsurf_scatter_strength = 0.22
+		"body":
+			# ubranie i dłonie: matowa tkanina, delikatna poświata na krawędziach jak meszek materiału
+			m.roughness = 0.9
+			m.metallic_specular = 0.22
+			m.rim_enabled = true
+			m.rim = 0.18
+			m.rim_tint = 0.65
+			if nt != null:
+				m.normal_scale = 1.2
+		_:
+			m.roughness = 0.7
+			m.metallic_specular = 0.3
 	if is_hair:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 		m.alpha_scissor_threshold = 0.42
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		m.roughness = 0.6
+		m.metallic_specular = 0.35
+		# przy wygładzaniu krawędzi (MSAA na wyższych ustawieniach) brzegi pasm przechodzą płynnie w przezroczystość
+		m.alpha_antialiasing_mode = BaseMaterial3D.ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE
+		m.alpha_antialiasing_edge = 0.3
+		m.rim_enabled = false
 	_mats[key] = m
 	return m
 
